@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-ssr/
+*.local
+
+# env — real values are never committed
+.env
+.env.local
+.env.*.local
+
+# supabase cli
+supabase/.temp/
+supabase/.branches/
+
+# desktop / mobile shells
+src-tauri/target/
+android/
+ios/
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# reference material — the source workbook stays out of a public repo
+*.xlsx
+docs/reference/
+
+# files delivered into this folder by the Claude desktop app
+Claude outputs/
+env.txt
