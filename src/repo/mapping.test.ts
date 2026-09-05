@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHousehold, toInstrument, toMember, toValuation } from './mapping.ts';
+import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation } from './mapping.ts';
 import type { Member } from './types.ts';
 
 const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
@@ -196,5 +196,57 @@ describe('toValuation', () => {
 
   it('refuses a source we do not know', () => {
     expect(() => toValuation({ ...row, source: 'guessed' })).toThrow(/not one of/);
+  });
+});
+
+describe('toHolding', () => {
+  const ravi2: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
+  const members = new Map<string, Member>([[ravi2.id, ravi2]]);
+  const instruments = new Map([
+    [
+      'i-1',
+      toInstrument({
+        id: 'i-1',
+        name: 'US index ETF',
+        kind: 'etf',
+        symbol: 'VOO',
+        currency: 'USD',
+        exposure_currency: 'USD',
+        is_foreign_asset: true,
+        status: 'active',
+      }),
+    ],
+  ]);
+
+  const row = {
+    id: 'h-1',
+    household_id: 'hh-1',
+    member_id: 'm-1',
+    instrument_id: 'i-1',
+    quantity: '12.50000000',
+    cost_minor: 620000,
+    opened_on: '2026-02-14',
+    status: 'active',
+  };
+
+  it('joins member and instrument from what the household already loaded', () => {
+    const holding = toHolding(row, members, instruments);
+    expect(holding.member.displayName).toBe('Ravi');
+    expect(holding.instrument.symbol).toBe('VOO');
+    expect(holding.quantity).toBe('12.50000000');
+    expect(holding.cost).toEqual({ minor: 620000n, currency: 'USD' });
+    expect(holding.openedOn).toBe('2026-02-14');
+  });
+
+  it('refuses an instrument from outside the household', () => {
+    // The composite foreign key makes this impossible in the database. The
+    // guard is here because the mapper must not invent a holding either way.
+    expect(() => toHolding({ ...row, instrument_id: 'somewhere-else' }, members, instruments)).toThrow(
+      /not in this household/,
+    );
+  });
+
+  it('reads cost as null when there is none', () => {
+    expect(toHolding({ ...row, cost_minor: null }, members, instruments).cost).toBeNull();
   });
 });

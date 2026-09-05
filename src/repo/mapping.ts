@@ -152,7 +152,23 @@ export function toInstrument(raw: unknown): Instrument {
   };
 }
 
-export function toHolding(raw: unknown, membersById: ReadonlyMap<string, Member>): Holding {
+/**
+ * A holding, with its member and instrument resolved from what the household
+ * has already loaded.
+ *
+ * Neither is embedded in the query. Both foreign keys are composite —
+ * (household_id, member_id) and (household_id, instrument_id) — which is what
+ * makes it impossible for a holding to reference an instrument from another
+ * household. The cost is that PostgREST cannot infer a to-one embed from the
+ * single column, so the rows are fetched separately and joined here. That is
+ * the trade, and it is the right way round: the guarantee lives in the
+ * database, and the inconvenience lives in one function.
+ */
+export function toHolding(
+  raw: unknown,
+  membersById: ReadonlyMap<string, Member>,
+  instrumentsById: ReadonlyMap<string, Instrument>,
+): Holding {
   const row = requireRecord(raw, 'holding');
 
   const memberId = requireString(row['member_id'], 'holding.member_id');
@@ -164,7 +180,15 @@ export function toHolding(raw: unknown, membersById: ReadonlyMap<string, Member>
     );
   }
 
-  const instrument = toInstrument(row['instrument']);
+  const instrumentId = requireString(row['instrument_id'], 'holding.instrument_id');
+  const instrument = instrumentsById.get(instrumentId);
+  if (instrument === undefined) {
+    throw new MalformedRowError(
+      'holding.instrument_id',
+      `points at an instrument (${instrumentId}) that is not in this household`,
+    );
+  }
+
   const costMinor = row['cost_minor'];
 
   return {

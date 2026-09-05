@@ -11,7 +11,7 @@
  */
 
 import { supabase } from './client.ts';
-import { toHolding, toMember, toValuation } from './mapping.ts';
+import { toHolding, toInstrument, toMember, toValuation } from './mapping.ts';
 import {
   NoHouseholdError,
   type Holding,
@@ -25,11 +25,25 @@ import { toHousehold, toRole } from './mapping.ts';
 
 const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 
+// Two things are going on in these column lists.
+//
+// No embed: both foreign keys on holding are composite, so PostgREST cannot
+// infer a to-one relationship from instrument_id alone — the same reason
+// listExpenses resolves members from a separate query rather than a join.
+//
+// And ::text on every exact number. PostgREST renders numeric and bigint as
+// JSON numbers, which are doubles: 12.34567891 survives, a long enough
+// quantity does not, and neither does an amount above 2^53. Casting in the
+// query makes the database hand over the decimal string it already holds, so
+// precision is never a matter of luck about magnitude.
 const HOLDING_COLUMNS =
-  'id, household_id, member_id, quantity, cost_minor, opened_on, status, ' +
-  'instrument:instrument_id (id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status)';
+  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status';
 
-const VALUATION_COLUMNS = 'id, holding_id, as_of_date, quantity, value_minor, currency, source, note';
+const INSTRUMENT_COLUMNS =
+  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status';
+
+const VALUATION_COLUMNS =
+  'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
 
 export async function listHoldings(): Promise<HoldingListing> {
   const client = supabase();
@@ -60,6 +74,20 @@ export async function listHoldings(): Promise<HoldingListing> {
   const members: Member[] = membersResult.data.map(toMember);
   const membersById = new Map(members.map((member) => [member.id, member]));
 
+  const instrumentsResult = await client
+    .from('instrument')
+    .select(INSTRUMENT_COLUMNS)
+    .eq('household_id', household.id);
+
+  if (instrumentsResult.error !== null) throw asRepositoryError(instrumentsResult.error);
+
+  const instrumentsById = new Map(
+    instrumentsResult.data.map((row) => {
+      const instrument = toInstrument(row);
+      return [instrument.id, instrument] as const;
+    }),
+  );
+
   const holdingsResult = await client
     .from('holding')
     .select(HOLDING_COLUMNS)
@@ -68,7 +96,9 @@ export async function listHoldings(): Promise<HoldingListing> {
 
   if (holdingsResult.error !== null) throw asRepositoryError(holdingsResult.error);
 
-  const holdings: Holding[] = holdingsResult.data.map((row) => toHolding(row, membersById));
+  const holdings: Holding[] = holdingsResult.data.map((row) =>
+    toHolding(row, membersById, instrumentsById),
+  );
 
   // Every reading, not just this year's. The peak is a calendar-year question
   // and the tax year is a different one, so the screen is given the readings
