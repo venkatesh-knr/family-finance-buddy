@@ -267,7 +267,7 @@ function RecordReading({
         void submit(event);
       }}
     >
-      <div className="w-[140px] shrink-0">
+      <div className="w-full sm:w-[140px] sm:shrink-0">
         <Field
           label={`Value (${currency})`}
           numeric
@@ -280,7 +280,7 @@ function RecordReading({
           }}
         />
       </div>
-      <div className="w-[150px] shrink-0">
+      <div className="w-full sm:w-[150px] sm:shrink-0">
         <Field
           label="As at"
           type="date"
@@ -370,7 +370,7 @@ function AddHolding({
           void submit(event);
         }}
       >
-        <div className="min-w-[180px] flex-1">
+        <div className="w-full sm:w-auto sm:min-w-[180px] sm:flex-1">
           <Field
             label="Name"
             placeholder="Vanguard S&P 500 ETF"
@@ -382,7 +382,7 @@ function AddHolding({
           />
         </div>
 
-        <div className="w-[110px] shrink-0">
+        <div className="w-full sm:w-[110px] sm:shrink-0">
           <Field
             label="Symbol"
             placeholder="VOO"
@@ -393,7 +393,7 @@ function AddHolding({
           />
         </div>
 
-        <label className="flex w-[130px] shrink-0 flex-col gap-1.5">
+        <label className="flex w-full sm:w-[130px] sm:shrink-0 flex-col gap-1.5">
           <span className="micro-label">Kind</span>
           <select
             className="field"
@@ -410,7 +410,7 @@ function AddHolding({
           </select>
         </label>
 
-        <div className="w-[92px] shrink-0">
+        <div className="w-full sm:w-[92px] sm:shrink-0">
           <Field
             label="Currency"
             numeric
@@ -423,7 +423,7 @@ function AddHolding({
           />
         </div>
 
-        <div className="w-[104px] shrink-0">
+        <div className="w-full sm:w-[104px] sm:shrink-0">
           <Field
             label="Tracks"
             numeric
@@ -437,7 +437,7 @@ function AddHolding({
           />
         </div>
 
-        <div className="w-[120px] shrink-0">
+        <div className="w-full sm:w-[120px] sm:shrink-0">
           <Field
             label="Quantity"
             numeric
@@ -451,7 +451,7 @@ function AddHolding({
           />
         </div>
 
-        <label className="flex w-[150px] shrink-0 flex-col gap-1.5">
+        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
           <span className="micro-label">Member</span>
           <select
             className="field"

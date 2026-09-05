@@ -123,7 +123,7 @@ function QuickAdd({
           void submit(event);
         }}
       >
-        <div className="w-[130px] shrink-0">
+        <div className="w-full sm:w-[130px] sm:shrink-0">
           <Field
             label={`Amount (${currency})`}
             numeric
@@ -137,7 +137,7 @@ function QuickAdd({
           />
         </div>
 
-        <div className="min-w-[160px] flex-1">
+        <div className="w-full sm:w-auto sm:min-w-[160px] sm:flex-1">
           <Field
             label="Payee"
             placeholder="Optional"
@@ -148,7 +148,7 @@ function QuickAdd({
           />
         </div>
 
-        <div className="w-[150px] shrink-0">
+        <div className="w-full sm:w-[150px] sm:shrink-0">
           <Field
             label="Date"
             type="date"
@@ -159,7 +159,7 @@ function QuickAdd({
           />
         </div>
 
-        <label className="flex w-[150px] shrink-0 flex-col gap-1.5">
+        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
           <span className="micro-label">Member</span>
           <select
             className="field"
@@ -228,23 +228,39 @@ function ExpenseList({
           device signed in to this household.
         </p>
       ) : (
-        <div className="scroll-x">
-          <table className="w-full border-collapse text-cell">
-            <thead>
-              <tr>
-                <Th>Date</Th>
-                <Th>Payee</Th>
-                <Th>Member</Th>
-                <Th align="right">Amount</Th>
-              </tr>
-            </thead>
-            <tbody className="row-separated">
-              {expenses.map((expense) => (
-                <Row key={expense.id} expense={expense} privacy={privacy} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/*
+            Two renderings, not one that scrolls.
+            
+            Four columns do not fit a phone, and a table in a sideways-scrolling
+            box hides the amount — the one column anybody opened the screen for.
+            So a phone gets a stacked list where the figure is always visible,
+            and the table starts where there is room for it.
+          */}
+          <ul className="row-separated sm:hidden">
+            {expenses.map((expense) => (
+              <StackedRow key={expense.id} expense={expense} privacy={privacy} />
+            ))}
+          </ul>
+
+          <div className="hidden scroll-x sm:block">
+            <table className="w-full border-collapse text-cell">
+              <thead>
+                <tr>
+                  <Th>Date</Th>
+                  <Th>Payee</Th>
+                  <Th>Member</Th>
+                  <Th align="right">Amount</Th>
+                </tr>
+              </thead>
+              <tbody className="row-separated">
+                {expenses.map((expense) => (
+                  <Row key={expense.id} expense={expense} privacy={privacy} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </Card>
   );
@@ -268,6 +284,35 @@ function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: str
     <span title={liveDetail ?? 'The change stream did not connect.'}>
       <Pill tone="due">Not live</Pill>
     </span>
+  );
+}
+
+/**
+ * One expense on a phone.
+ *
+ * The amount leads, because it is what the eye is looking for, and it keeps the
+ * tabular figures so a column of them still lines up. Everything else drops to
+ * a second line rather than competing for width.
+ */
+function StackedRow({ expense, privacy }: { expense: ExpenseRow; privacy: boolean }) {
+  return (
+    <li className="flex flex-col gap-1 py-2.5" style={expense.isVoided ? { opacity: 0.55 } : undefined}>
+      <div className="flex items-baseline justify-between gap-3">
+        <span style={{ color: 'var(--ink)' }}>
+          {expense.payee ?? <span className="note">No payee</span>}
+        </span>
+        <span className="num whitespace-nowrap" style={{ color: 'var(--ink)' }}>
+          {formatMoney(expense.amount, { privacy })}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className="num note">{formatIsoDate(expense.date)}</span>
+        <MemberTag member={expense.member} />
+        {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
+        {expense.isVoided && <Pill tone="due">Voided</Pill>}
+      </div>
+    </li>
   );
 }
 

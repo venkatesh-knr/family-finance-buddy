@@ -196,4 +196,24 @@
   .scroll-x {
     overflow-x: auto;
   }
+
+  /*
+   * Installed as an app, the window runs to the physical edges of the screen —
+   * under the status bar on iOS, under rounded corners and gesture bars
+   * elsewhere. These insets are zero in a browser tab and only pay for
+   * themselves once the app is on a home screen, which is where it will
+   * mostly be used.
+   */
+  .inset-safe-top {
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+
+  .inset-safe-x {
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+  }
+
+  .inset-safe-bottom {
+    padding-bottom: max(44px, env(safe-area-inset-bottom));
+  }
 }
