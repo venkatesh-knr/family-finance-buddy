@@ -56,8 +56,34 @@ export function supabase(): SupabaseClient {
         flowType: 'pkce',
       },
     });
+
+    keepRealtimeTokenCurrent(client);
   }
   return client;
+}
+
+/**
+ * Hand Realtime the token again once a second factor has been presented.
+ *
+ * supabase-js pushes the access token to its Realtime client on SIGNED_IN,
+ * INITIAL_SESSION and TOKEN_REFRESHED — but not on MFA_CHALLENGE_VERIFIED,
+ * which is the event that raises a session from aal1 to aal2. Realtime is left
+ * holding the pre-MFA token.
+ *
+ * That stays invisible until a policy cares about assurance level, and ours
+ * does: require_second_factor refuses anything below aal2. Realtime evaluates
+ * row policies per change to decide who may see a row, so the channel joins
+ * happily and then delivers nothing — the screen reports itself live and
+ * quietly stops updating, which is the worst of both.
+ *
+ * Handing the token over on that one extra event is the whole fix.
+ */
+function keepRealtimeTokenCurrent(client: SupabaseClient): void {
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'MFA_CHALLENGE_VERIFIED' && session !== null) {
+      void client.realtime.setAuth(session.access_token);
+    }
+  });
 }
 
 /** True when the app has been built with a backend to talk to. */

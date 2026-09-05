@@ -8,7 +8,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { addExpense, listExpenses, subscribeToExpenses } from '../../repo/expenses.ts';
+import {
+  addExpense,
+  listExpenses,
+  subscribeToExpenses,
+  type LiveStatus,
+} from '../../repo/expenses.ts';
 import type { ExpenseListing, NewExpense } from '../../repo/types.ts';
 
 export interface ExpensesState {
@@ -17,6 +22,9 @@ export interface ExpensesState {
   readonly problem: string | null;
   /** True while a change arriving from another device is being folded in. */
   readonly refreshing: boolean;
+  /** Whether this screen is actually receiving live updates. */
+  readonly live: LiveStatus;
+  readonly liveDetail: string | null;
 }
 
 export function useExpenses(): ExpensesState & {
@@ -27,6 +35,8 @@ export function useExpenses(): ExpensesState & {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [live, setLive] = useState<LiveStatus>('connecting');
+  const [liveDetail, setLiveDetail] = useState<string | null>(null);
 
   // Guards against a stale response overwriting a newer one when several
   // reloads are in flight — which realtime makes ordinary rather than rare.
@@ -61,9 +71,16 @@ export function useExpenses(): ExpensesState & {
   const householdId = listing?.household.id ?? null;
   useEffect(() => {
     if (householdId === null) return;
-    return subscribeToExpenses(householdId, () => {
-      void load(true);
-    });
+    return subscribeToExpenses(
+      householdId,
+      () => {
+        void load(true);
+      },
+      (status, detail) => {
+        setLive(status);
+        setLiveDetail(detail);
+      },
+    );
   }, [householdId, load]);
 
   const add = useCallback(
@@ -81,5 +98,5 @@ export function useExpenses(): ExpensesState & {
     void load(true);
   }, [load]);
 
-  return { listing, loading, refreshing, problem, add, reload };
+  return { listing, loading, refreshing, problem, live, liveDetail, add, reload };
 }

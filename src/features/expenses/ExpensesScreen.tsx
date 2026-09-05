@@ -10,12 +10,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
+import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({ privacy }: { privacy: boolean }) {
-  const { listing, loading, refreshing, problem, add } = useExpenses();
+  const { listing, loading, refreshing, problem, live, liveDetail, add } = useExpenses();
 
   if (loading) {
     return <p className="note px-4.5 py-4.5">Loading…</p>;
@@ -44,7 +45,13 @@ export function ExpensesScreen({ privacy }: { privacy: boolean }) {
         </Card>
       )}
 
-      <ExpenseList listing={listing} privacy={privacy} refreshing={refreshing} />
+      <ExpenseList
+        listing={listing}
+        privacy={privacy}
+        refreshing={refreshing}
+        live={live}
+        liveDetail={liveDetail}
+      />
     </div>
   );
 }
@@ -192,10 +199,14 @@ function ExpenseList({
   listing,
   privacy,
   refreshing,
+  live,
+  liveDetail,
 }: {
   listing: ExpenseListing;
   privacy: boolean;
   refreshing: boolean;
+  live: LiveStatus;
+  liveDetail: string | null;
 }) {
   const { expenses } = listing;
 
@@ -203,8 +214,11 @@ function ExpenseList({
     <Card
       title="Expenses"
       aside={
-        <span className="note" aria-live="polite">
-          {refreshing ? 'Updating…' : `${String(expenses.length)} most recent`}
+        <span className="flex items-center gap-2.5">
+          <LiveIndicator live={live} liveDetail={liveDetail} />
+          <span className="note" aria-live="polite">
+            {refreshing ? 'Updating…' : `${String(expenses.length)} most recent`}
+          </span>
         </span>
       }
     >
@@ -233,6 +247,27 @@ function ExpenseList({
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * Whether this screen is actually live.
+ *
+ * Shown rather than assumed: a channel that never joined behaves exactly like
+ * one with nothing to report, so without this the list silently goes stale and
+ * a figure entered on another device never arrives.
+ */
+function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: string | null }) {
+  if (live === 'live') {
+    return <Pill tone="ok">Live</Pill>;
+  }
+  if (live === 'connecting') {
+    return <Pill tone="neutral">Connecting</Pill>;
+  }
+  return (
+    <span title={liveDetail ?? 'The change stream did not connect.'}>
+      <Pill tone="due">Not live</Pill>
+    </span>
   );
 }
 

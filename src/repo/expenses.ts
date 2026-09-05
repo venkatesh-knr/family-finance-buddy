@@ -14,6 +14,7 @@
  * doing its job, visible in the shape of the API.
  */
 
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { istCalendarDate } from '../lib/dates.ts';
 import { supabase } from './client.ts';
 import { toExpense, toHousehold, toMember, toRole } from './mapping.ts';
@@ -161,27 +162,77 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
  * The stream honours the same policies as any query, so a subscriber is only
  * ever told about rows they could already have read.
  */
-export function subscribeToExpenses(householdId: Uuid, onChange: () => void): () => void {
+export type LiveStatus = 'connecting' | 'live' | 'failed';
+
+export function subscribeToExpenses(
+  householdId: Uuid,
+  onChange: () => void,
+  onStatus: (status: LiveStatus, detail: string | null) => void = () => {},
+): () => void {
   const client = supabase();
 
-  const channel = client
-    .channel(`expense_txn:${householdId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'expense_txn',
-        filter: `household_id=eq.${householdId}`,
-      },
-      () => {
-        onChange();
-      },
-    )
-    .subscribe();
+  onStatus('connecting', null);
+
+  let channel: RealtimeChannel | null = null;
+  let cancelled = false;
+
+  const join = (): RealtimeChannel =>
+    client
+      .channel(`expense_txn:${householdId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expense_txn',
+          filter: `household_id=eq.${householdId}`,
+        },
+        () => {
+          if (import.meta.env.DEV) {
+            // console.info, not console.debug: Chrome files debug under
+            // Verbose, which its default log level hides — a diagnostic
+            // nobody can see is not a diagnostic.
+            console.info('[realtime] change received on expense_txn');
+          }
+          onChange();
+        },
+      )
+      // The status callback is not optional in practice. Without it a channel
+      // that never joins — the table missing from the publication, a policy
+      // refusing the subscriber, a stale token — looks exactly like a channel
+      // that joined and has nothing to report, and the screen quietly stops
+      // being live with no way to tell.
+      .subscribe((status, error) => {
+        if (status === 'SUBSCRIBED') {
+          onStatus('live', null);
+          return;
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          onStatus('failed', error?.message ?? status);
+        }
+      });
+
+  // The token must be in Realtime's hands BEFORE the channel joins, not merely
+  // on its way there. setAuth is asynchronous and subscribe is not, so a
+  // channel started straight from an effect can join carrying the publishable
+  // key rather than the session — which joins perfectly well and then delivers
+  // nothing, because Realtime checks the row policies per change and every one
+  // of them fails.
+  void (async () => {
+    const { data } = await client.auth.getSession();
+    if (cancelled) return;
+
+    if (data.session !== null) {
+      await client.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
+    }
+
+    channel = join();
+  })();
 
   return () => {
-    void client.removeChannel(channel);
+    cancelled = true;
+    if (channel !== null) void client.removeChannel(channel);
   };
 }
 
