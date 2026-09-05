@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- No cross-origin referrers, ever. -->
+    <meta name="referrer" content="no-referrer" />
+
+    <!--
+      The content-security policy is injected at build time from the backend
+      origin — see the plugin in vite.config.ts, which is the single source of
+      truth for it. It is not written here because the origin is configuration.
+    -->
+
+    <title>Finance Buddy</title>
+    <meta
+      name="description"
+      content="Family Finance Buddy — expenses, investments, property and tax for one household."
+    />
+
+    <!--
+      Three faces, three jobs (docs/tokens.md §3). Newsreader for titles, Public
+      Sans for everything read as prose, IBM Plex Mono for every number.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Finance Buddy needs JavaScript. It is a single-page app with no server behind it.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -38,3 +38,6 @@ docs/reference/
 # files delivered into this folder by the Claude desktop app
 Claude outputs/
 env.txt
+
+# local dev-server config for the in-app browser preview
+.claude/
