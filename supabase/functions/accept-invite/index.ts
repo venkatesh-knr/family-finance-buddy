@@ -150,26 +150,27 @@ Deno.serve(async (request: Request): Promise<Response> => {
   });
 
   if (redeemed.error !== null) {
-    // The code died between the check above and here — someone else used it, or
-    // it expired in the gap. Remove the account rather than leave a signed-in
-    // stranger with no household, and so a retry is not refused for the address
-    // being taken.
+    // The code died between the check above and here — used by someone else, or
+    // expired in the gap.
     //
-    // The result is checked. An earlier version did not, and when the delete
-    // failed the endpoint reported a bad code while quietly leaving an orphan
-    // account behind — a failure that is invisible exactly when it matters.
-    const removed = await admin.auth.admin.deleteUser(authUserId);
-    if (removed.error !== null) {
-      console.error(
-        `orphaned auth user ${authUserId} after failed redemption: ${removed.error.message}`,
-      );
-      return json(
-        { error: 'Something went wrong part way. Tell whoever invited you before trying again.' },
-        500,
-        origin,
-      );
-    }
-    return json({ error: REFUSED }, 400, origin);
+    // The account cannot be undone. user_account.auth_user_id is `on delete
+    // restrict` on purpose: "deleting a login must not silently delete
+    // financial attribution", and the trigger gives every new user such a row.
+    // So an earlier version of this function tried to delete and quietly
+    // failed, leaving an orphan while reporting an ordinary refusal.
+    //
+    // The honest answer is to say what happened. The account is real, it is
+    // theirs, and the signed-in path takes a code — so this is recoverable
+    // without anyone touching the dashboard.
+    console.error(`invite redemption failed after account creation for ${authUserId}`);
+    return json(
+      {
+        error:
+          'Your account was created, but that code was no longer usable. Ask for a new code, then sign in and enter it there.',
+      },
+      409,
+      origin,
+    );
   }
 
   // No session is returned. The client signs in normally, which puts the new
