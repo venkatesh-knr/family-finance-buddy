@@ -102,10 +102,22 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-  // The account is created first, then the invite is redeemed for it. The other
-  // order is impossible — redemption needs an account id — so the failure to
-  // guard against is an account created for a code that then turns out to be
-  // dead. That is cleaned up below rather than left behind.
+  // Ask before creating anything.
+  //
+  // Redemption needs an account, so the account must exist first — which would
+  // mean a wrong code creates an account and then relies on deleting it again.
+  // Cleanup is precisely the step that fails quietly, so the ordinary failure
+  // should not depend on it. A bad code now creates nothing whatever, and the
+  // delete below is left for the rare case where a code dies in between.
+  const open = await admin.rpc('invite_is_open', { invite_code: code });
+  if (open.error !== null) {
+    console.error('invite_is_open failed', open.error.message);
+    return json({ error: 'Could not check that code. Try again shortly.' }, 500, origin);
+  }
+  if (open.data !== true) {
+    return json({ error: REFUSED }, 400, origin);
+  }
+
   const created = await admin.auth.admin.createUser({
     email,
     password,
@@ -138,10 +150,25 @@ Deno.serve(async (request: Request): Promise<Response> => {
   });
 
   if (redeemed.error !== null) {
-    // The code was dead. Remove the account rather than leave a signed-in
-    // stranger with no household and no way to get one — and so that a second
-    // attempt with a good code is not refused for the address being taken.
-    await admin.auth.admin.deleteUser(authUserId);
+    // The code died between the check above and here — someone else used it, or
+    // it expired in the gap. Remove the account rather than leave a signed-in
+    // stranger with no household, and so a retry is not refused for the address
+    // being taken.
+    //
+    // The result is checked. An earlier version did not, and when the delete
+    // failed the endpoint reported a bad code while quietly leaving an orphan
+    // account behind — a failure that is invisible exactly when it matters.
+    const removed = await admin.auth.admin.deleteUser(authUserId);
+    if (removed.error !== null) {
+      console.error(
+        `orphaned auth user ${authUserId} after failed redemption: ${removed.error.message}`,
+      );
+      return json(
+        { error: 'Something went wrong part way. Tell whoever invited you before trying again.' },
+        500,
+        origin,
+      );
+    }
     return json({ error: REFUSED }, 400, origin);
   }
 

@@ -116,3 +116,38 @@ comment on function public.accept_invite(text) is
 
 revoke all on function public.accept_invite(text) from public;
 grant execute on function public.accept_invite(text) to authenticated;
+
+-- ================================================= looking before leaping
+
+/**
+ * Is this code usable? No side effects, no rows touched.
+ *
+ * The invite endpoint has to create an account before it can redeem anything,
+ * which means a bad code would otherwise create an account and then need it
+ * cleaned up — and cleanup is exactly the step that fails quietly. Asking first
+ * turns the ordinary failure (a wrong or expired code) into one that creates
+ * nothing at all, and leaves the delete path for the rare race.
+ *
+ * service_role only. It answers a question the endpoint already answers by
+ * other means, so it reveals nothing new — but there is no reason for anyone
+ * else to be able to ask it directly.
+ */
+create or replace function public.invite_is_open(invite_code text)
+returns boolean
+language sql
+security definer
+stable
+set search_path = ''
+as $fn$
+  select exists (
+    select 1
+      from public.invite
+     where code_hash = encode(extensions.digest(upper(btrim(invite_code)), 'sha256'), 'hex')
+       and accepted_at is null
+       and revoked_at is null
+       and expires_at > now()
+  )
+$fn$;
+
+revoke all on function public.invite_is_open(text) from public;
+grant execute on function public.invite_is_open(text) to service_role;

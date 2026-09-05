@@ -13,7 +13,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(19);
+select plan(20);
 
 -- ============================================================== the fixture
 
@@ -265,6 +265,21 @@ select is(
   0,
   'and holds no grant on it — only service_role does'
 );
+
+-- ==================== the pre-flight check is service_role only (1)
+
+set local role authenticated;
+set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
+set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ select public.invite_is_open('ANYCODE123') $q$,
+  '42501'::char(5),
+  null::text,
+  'a client cannot ask whether a code is open — that question is the endpoint''s alone'
+);
+
+reset role;
 
 select * from finish();
 
