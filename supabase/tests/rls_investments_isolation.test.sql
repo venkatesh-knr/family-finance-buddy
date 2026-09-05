@@ -65,26 +65,26 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
 -- and disclosable. The case the isolation matters most for.
 insert into public.instrument
   (id, household_id, name, kind, symbol, currency, exposure_currency, is_foreign_asset) values
-  ('a0000000-0000-4000-8000-0000000000i1', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  ('a0000000-0000-4000-8000-00000000a0f1', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
    'US index ETF', 'etf', 'VOO', 'USD', 'USD', true),
-  ('b0000000-0000-4000-8000-0000000000i1', 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  ('b0000000-0000-4000-8000-00000000b0f1', 'ffffffff-ffff-4fff-8fff-ffffffffffff',
    'World index ETF', 'etf', 'VT', 'USD', 'USD', true);
 
 -- Fractional quantities on purpose: US brokers sell part shares, and a schema
 -- that quietly rounded them would be wrong from the first row.
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, cost_minor) values
-  ('a0000000-0000-4000-8000-0000000000h1', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-   'a11a0000-0000-4000-8000-000000000101', 'a0000000-0000-4000-8000-0000000000i1', 12.5000000, 620000),
-  ('b0000000-0000-4000-8000-0000000000h1', 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-   'b11b0000-0000-4000-8000-000000000101', 'b0000000-0000-4000-8000-0000000000i1', 40.0000000, 410000);
+  ('a0000000-0000-4000-8000-00000000a0d1', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+   'a11a0000-0000-4000-8000-000000000101', 'a0000000-0000-4000-8000-00000000a0f1', 12.5000000, 620000),
+  ('b0000000-0000-4000-8000-00000000b0d1', 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+   'b11b0000-0000-4000-8000-000000000101', 'b0000000-0000-4000-8000-00000000b0f1', 40.0000000, 410000);
 
 insert into public.valuation_snapshot
   (household_id, holding_id, as_of_date, quantity, value_minor, currency, source, created_by) values
-  ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'a0000000-0000-4000-8000-0000000000h1',
+  ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'a0000000-0000-4000-8000-00000000a0d1',
    date '2026-08-31', 12.5000000, 715000, 'USD', 'manual', 'dddddddd-0000-4000-8000-0000000000a1'),
-  ('ffffffff-ffff-4fff-8fff-ffffffffffff', 'b0000000-0000-4000-8000-0000000000h1',
+  ('ffffffff-ffff-4fff-8fff-ffffffffffff', 'b0000000-0000-4000-8000-00000000b0d1',
    date '2026-08-31', 40.0000000, 480000, 'USD', 'manual', 'dddddddd-0000-4000-8000-0000000000b1'),
-  ('ffffffff-ffff-4fff-8fff-ffffffffffff', 'b0000000-0000-4000-8000-0000000000h1',
+  ('ffffffff-ffff-4fff-8fff-ffffffffffff', 'b0000000-0000-4000-8000-00000000b0d1',
    date '2026-07-31', 40.0000000, 452500, 'USD', 'manual', 'dddddddd-0000-4000-8000-0000000000b1');
 
 -- ================================================== structural guards (2)
@@ -149,7 +149,7 @@ select throws_ok(
   $q$ insert into public.holding (household_id, member_id, instrument_id, quantity)
       values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
               'a11a0000-0000-4000-8000-000000000101',
-              'a0000000-0000-4000-8000-0000000000i1', 1) $q$,
+              'a0000000-0000-4000-8000-00000000a0f1', 1) $q$,
   '42501'::char(5),
   null::text,
   'a member of household B cannot write a holding into household A'
@@ -159,7 +159,7 @@ select throws_ok(
   $q$ insert into public.valuation_snapshot
         (household_id, holding_id, as_of_date, quantity, value_minor, currency)
       values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-              'a0000000-0000-4000-8000-0000000000h1',
+              'a0000000-0000-4000-8000-00000000a0d1',
               date '2026-09-30', 1, 100, 'USD') $q$,
   '42501'::char(5),
   null::text,
@@ -170,7 +170,7 @@ select throws_ok(
   $q$ insert into public.valuation_snapshot
         (household_id, holding_id, as_of_date, quantity, value_minor, currency, created_by)
       values ('ffffffff-ffff-4fff-8fff-ffffffffffff',
-              'b0000000-0000-4000-8000-0000000000h1',
+              'b0000000-0000-4000-8000-00000000b0d1',
               date '2026-09-30', 40, 500000, 'USD',
               'dddddddd-0000-4000-8000-0000000000a1') $q$,
   '42501'::char(5),
@@ -189,7 +189,7 @@ select throws_ok(
   $q$ insert into public.valuation_snapshot
         (household_id, holding_id, as_of_date, quantity, value_minor, currency)
       values ('ffffffff-ffff-4fff-8fff-ffffffffffff',
-              'b0000000-0000-4000-8000-0000000000h1',
+              'b0000000-0000-4000-8000-00000000b0d1',
               date '2026-09-30', 40, 500000, 'USD') $q$,
   '42501'::char(5),
   null::text,
