@@ -13,7 +13,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(16);
+select plan(17);
 
 -- ============================================================== the fixture
 
@@ -105,7 +105,7 @@ select throws_ok(
   'someone outside the household cannot issue an invite into it'
 );
 
--- ==================================================== the owner can (3)
+-- ==================================================== the owner can (4)
 
 reset role;
 set local role authenticated;
@@ -129,11 +129,27 @@ select is(
   'and one open invite now exists'
 );
 
+-- Reading code_hash as a client is itself refused, which is the point of the
+-- column-level grant. So prove that, then check the stored value as the table
+-- owner, where the question can actually be asked.
+select throws_ok(
+  $q$ select code_hash from public.invite $q$,
+  '42501'::char(5),
+  null::text,
+  'a client cannot read code_hash at all'
+);
+
+reset role;
+
 select isnt(
   (select code_hash from public.invite limit 1),
   (select code from issued),
-  'what is stored is not the code — a copy of this table yields no invites'
+  'and what is stored is not the code — a copy of this table yields no invites'
 );
+
+set local role authenticated;
+set local request.jwt.claim.sub to '77777777-7777-4777-8777-777777777777';
+set local request.jwt.claims   to '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated","aal":"aal2"}';
 
 -- ==================================== a bad code does nothing (3)
 
