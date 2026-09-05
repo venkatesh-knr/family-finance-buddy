@@ -82,7 +82,7 @@ export function App() {
   return (
     <div className="min-h-screen">
       <header
-        className="mb-4.5 flex flex-wrap items-center justify-between gap-3 px-4.5 py-3.5"
+        className="inset-safe-top inset-safe-x mb-4.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5"
         style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
       >
         <h1 className="text-title">Finance Buddy</h1>
@@ -114,7 +114,7 @@ export function App() {
         </div>
       </header>
 
-      <nav className="mx-auto mb-4.5 flex max-w-app px-4.5">
+      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app">
         <div className="segmented" role="group" aria-label="Screen">
           {SCREENS.map(([id, label]) => (
             <button
@@ -131,7 +131,7 @@ export function App() {
         </div>
       </nav>
 
-      <main className="mx-auto max-w-app px-4.5 pb-11">
+      <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
         {screen === 'expenses' ? (
           <ExpensesScreen privacy={privacy} />
         ) : (
