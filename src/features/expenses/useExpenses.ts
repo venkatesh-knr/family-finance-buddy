@@ -14,7 +14,7 @@ import {
   subscribeToExpenses,
   type LiveStatus,
 } from '../../repo/expenses.ts';
-import type { ExpenseListing, NewExpense } from '../../repo/types.ts';
+import { NoHouseholdError, type ExpenseListing, type NewExpense } from '../../repo/types.ts';
 
 export interface ExpensesState {
   readonly listing: ExpenseListing | null;
@@ -25,6 +25,12 @@ export interface ExpensesState {
   /** Whether this screen is actually receiving live updates. */
   readonly live: LiveStatus;
   readonly liveDetail: string | null;
+  /**
+   * Not an error, a state. An invited person signs in before they belong to
+   * anything, and telling them "could not load expenses" would describe the
+   * symptom rather than what to do.
+   */
+  readonly noHousehold: boolean;
 }
 
 export function useExpenses(): ExpensesState & {
@@ -35,6 +41,7 @@ export function useExpenses(): ExpensesState & {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [noHousehold, setNoHousehold] = useState(false);
   const [live, setLive] = useState<LiveStatus>('connecting');
   const [liveDetail, setLiveDetail] = useState<string | null>(null);
 
@@ -50,10 +57,16 @@ export function useExpenses(): ExpensesState & {
       if (mine === generation.current) {
         setListing(next);
         setProblem(null);
+        setNoHousehold(false);
       }
     } catch (error) {
       if (mine === generation.current) {
-        setProblem(error instanceof Error ? error.message : 'Could not load expenses.');
+        if (error instanceof NoHouseholdError) {
+          setNoHousehold(true);
+          setProblem(null);
+        } else {
+          setProblem(error instanceof Error ? error.message : 'Could not load expenses.');
+        }
       }
     } finally {
       if (mine === generation.current) {
@@ -98,5 +111,5 @@ export function useExpenses(): ExpensesState & {
     void load(true);
   }, [load]);
 
-  return { listing, loading, refreshing, problem, live, liveDetail, add, reload };
+  return { listing, loading, refreshing, problem, live, liveDetail, noHousehold, add, reload };
 }
