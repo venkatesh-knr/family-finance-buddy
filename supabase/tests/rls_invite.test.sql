@@ -13,7 +13,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(17);
+select plan(19);
 
 -- ============================================================== the fixture
 
@@ -234,6 +234,36 @@ select throws_ok(
   '22023'::char(5),
   null::text,
   'and so is an empty one'
+);
+
+-- ============= the redemption function is not reachable by a client (2)
+--
+-- redeem_invite takes an account id on trust, so anything able to call it could
+-- join any account to any household. It is in `public` because the endpoint
+-- reaches it over the API, so the grant is the whole of the control — which
+-- makes asserting the grant worth doing rather than assuming.
+
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
+set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ select public.redeem_invite('ANYCODE123', 'aaaaaaaa-1111-4111-8111-000000000002') $q$,
+  '42501'::char(5),
+  null::text,
+  'a client cannot call the redemption function directly'
+);
+
+reset role;
+
+select is(
+  (select count(*)::int
+   from information_schema.role_routine_grants
+   where routine_schema = 'public' and routine_name = 'redeem_invite'
+     and grantee in ('authenticated', 'anon', 'PUBLIC')),
+  0,
+  'and holds no grant on it — only service_role does'
 );
 
 select * from finish();
