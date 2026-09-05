@@ -210,7 +210,10 @@ insert into issued
 select app.create_invite(
   'cccccccc-1111-4111-8111-000000000001', 'Late', 'viewer', 'c4', interval '1 second');
 
--- Reach past the expiry without waiting for it.
+-- Reach past the expiry without waiting for it. As the table owner, because a
+-- client has no update grant here — which is the point, and is why the app can
+-- never quietly extend an invite it issued.
+reset role;
 update public.invite set expires_at = now() - interval '1 minute'
   where code_hash = encode(extensions.digest((select code from issued), 'sha256'), 'hex');
 
