@@ -13,3 +13,16 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+/*
+ * Register the service worker in built output only.
+ *
+ * Not in dev: a worker sitting in front of Vite's module graph turns every
+ * hot reload into a debugging session. BASE_URL rather than a literal path,
+ * so the scope follows the deployment rather than assuming a repository name.
+ */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+  });
+}

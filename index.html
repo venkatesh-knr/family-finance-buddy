@@ -13,6 +13,24 @@
       truth for it. It is not written here because the origin is configuration.
     -->
 
+    <!--
+      Installable as its own icon, not a browser tab. Relative paths throughout,
+      so this keeps working if VITE_BASE changes for a custom domain.
+
+      This is a web app in a standalone window, not the native shell. Biometric
+      unlock, push, camera receipts and offline entry are what make it a real
+      app, and they arrive with Capacitor in phase 2 (docs/blueprint.md §797,
+      §1100) — the store's minimum-functionality rule refuses a wrapped page.
+    -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Finance Buddy" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
     <title>Finance Buddy</title>
     <meta
       name="description"

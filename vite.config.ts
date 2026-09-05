@@ -29,6 +29,10 @@ function contentSecurityPolicy(supabaseUrl: string): Plugin {
     `style-src 'self' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data:`,
+    // Both fall back to default-src, but spelling them out means the install
+    // path does not depend on a reader knowing CSP's fallback chain.
+    `manifest-src 'self'`,
+    `worker-src 'self'`,
     `connect-src 'self' ${origin} ${socket}`.trim(),
     `base-uri 'self'`,
     `form-action 'self'`,
