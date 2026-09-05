@@ -16,7 +16,7 @@ import {
   type AuthStage,
   type TotpEnrolment,
 } from '../../repo/auth.ts';
-import { Button, Card, Field, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, PasswordField, Problem } from '../../ui/primitives.tsx';
 
 export function SignInScreen({ stage, email }: { stage: AuthStage; email: string | null }) {
   if (stage === 'needs-totp-enrolment') return <EnrolTotp email={email} />;
@@ -72,9 +72,8 @@ function PasswordForm() {
             setEmail(event.target.value);
           }}
         />
-        <Field
+        <PasswordField
           label="Password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
