@@ -73,9 +73,16 @@ npm run test:policies   # row-level security — this one gates the deploy
 3. **Repository → Settings → Pages → Source: GitHub Actions.**
 4. **Repository → Settings → Secrets and variables → Actions → Variables**, add
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Variables, not secrets.
-5. **Create the first household.** There is no household-creation screen yet and no client
-   write policy for one, so the first `household`, `member` and `membership` rows are
-   inserted from the SQL editor. Invite acceptance is the next slice.
+5. **Create the first household — the demo one.** The blueprint has the demo household come
+   first: it is where the app is exercised, and it is what proves the row policies hold with
+   two households in one database before any real figure depends on them. Run
+   `supabase/bootstrap/first_household.sql` in the SQL editor; the real household is created
+   later by changing `v_kind` to `'real'` and running it again.
+
+   The demo household is **not** a demo login — "a real account, fake money". You sign in as
+   yourself. The `owner@finance-buddy.test` credentials in `supabase/seed/` belong to the
+   local throwaway stack only; that file is in a public repository, so its password is public.
+   Never run `supabase db reset --linked`, which would apply seeds to your live project.
 6. **Create the first account** from the Supabase dashboard — Authentication → Users →
    Invite. Public sign-up is disabled in `supabase/config.toml`, and there is no
    registration route in the app.

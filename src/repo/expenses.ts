@@ -43,10 +43,21 @@ export async function listExpenses(options: { limit?: number } = {}): Promise<Ex
 
   // Membership resolves identity to a household. RLS restricts this to the
   // caller's own rows, so no filter by user id is needed or trusted here.
+  //
+  // Ordered, not merely limited. An account is expected to belong to more than
+  // one household — the demo one alongside the real one is the intended setup,
+  // and it is what proves the policies hold with two in a single database. Left
+  // unordered, this would pick whichever row Postgres happened to return and
+  // could show a different household between two loads.
+  //
+  // Oldest membership wins, which is stable and predictable. It is a stand-in,
+  // not an answer: the real fix is the household switcher (blueprint §783), and
+  // when that lands this becomes an explicit choice by the person using it.
   const membershipResult = await client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
     .is('revoked_at', null)
+    .order('created_at', { ascending: true })
     .limit(1);
 
   if (membershipResult.error !== null) throw asRepositoryError(membershipResult.error);
