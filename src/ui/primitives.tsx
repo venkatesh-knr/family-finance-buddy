@@ -5,6 +5,7 @@
  * pill; everything else can wait until a second screen asks for it.
  */
 
+import { useId, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 
 export function Card({
@@ -53,6 +54,84 @@ export function Button({
     <button className={variant === 'primary' ? 'btn btn-primary' : 'btn btn-quiet'} {...props}>
       {children}
     </button>
+  );
+}
+
+/**
+ * A password field with a reveal control.
+ *
+ * Worth having: this app demands a password and then an authenticator code, and
+ * a typo caught only after the second step costs a wasted code and a fresh
+ * thirty-second wait. Hidden by default, and it never persists — a reload, or
+ * arriving back at this screen, always starts concealed.
+ */
+export function PasswordField({
+  label,
+  hint,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: string; hint?: string }) {
+  const [revealed, setRevealed] = useState(false);
+  const hintId = useId();
+
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="micro-label">{label}</span>
+
+      <span className="relative flex items-center">
+        <input
+          className="field pr-11"
+          type={revealed ? 'text' : 'password'}
+          aria-describedby={hint === undefined ? undefined : hintId}
+          {...props}
+        />
+        <button
+          type="button"
+          // Not a submit button: inside a form, a bare <button> submits it, and
+          // revealing the password would post the form instead.
+          className="absolute right-1 flex items-center rounded p-2"
+          style={{ color: 'var(--muted)' }}
+          aria-pressed={revealed}
+          aria-label={revealed ? 'Hide password' : 'Show password'}
+          title={revealed ? 'Hide password' : 'Show password'}
+          onClick={() => {
+            setRevealed((on) => !on);
+          }}
+        >
+          <EyeIcon crossed={revealed} />
+        </button>
+      </span>
+
+      {hint !== undefined && (
+        <span className="note" id={hintId}>
+          {hint}
+        </span>
+      )}
+    </label>
+  );
+}
+
+/**
+ * Drawn inline rather than pulled from an icon set: two paths do not justify a
+ * dependency, and `currentColor` means it follows the token in either theme.
+ */
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+      {crossed && <path d="M4 20 20 4" />}
+    </svg>
   );
 }
 
