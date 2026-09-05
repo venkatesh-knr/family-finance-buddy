@@ -85,7 +85,7 @@ set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
 set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
 
 select throws_ok(
-  $q$ select app.create_invite(
+  $q$ select public.create_invite(
         'cccccccc-1111-4111-8111-000000000001', 'Sneaky', 'owner') $q$,
   '42501'::char(5),
   null::text,
@@ -98,7 +98,7 @@ set local request.jwt.claim.sub to '99999999-9999-4999-8999-999999999999';
 set local request.jwt.claims   to '{"sub":"99999999-9999-4999-8999-999999999999","role":"authenticated","aal":"aal2"}';
 
 select throws_ok(
-  $q$ select app.create_invite(
+  $q$ select public.create_invite(
         'cccccccc-1111-4111-8111-000000000001', 'Sneaky', 'owner') $q$,
   '42501'::char(5),
   null::text,
@@ -114,7 +114,7 @@ set local request.jwt.claims   to '{"sub":"77777777-7777-4777-8777-777777777777"
 
 create temporary table issued (code text);
 insert into issued
-select app.create_invite(
+select public.create_invite(
   'cccccccc-1111-4111-8111-000000000001', 'Partner', 'owner', 'c3', interval '7 days');
 
 select matches(
@@ -159,7 +159,7 @@ set local request.jwt.claim.sub to '99999999-9999-4999-8999-999999999999';
 set local request.jwt.claims   to '{"sub":"99999999-9999-4999-8999-999999999999","role":"authenticated","aal":"aal2"}';
 
 select throws_ok(
-  $q$ select app.accept_invite('NOTAREALCODE') $q$,
+  $q$ select public.accept_invite('NOTAREALCODE') $q$,
   '22023'::char(5),
   null::text,
   'a made-up code is refused'
@@ -180,7 +180,7 @@ select is_empty(
 -- ============================== the real code works, exactly once (3)
 
 select lives_ok(
-  $q$ select app.accept_invite((select code from issued)) $q$,
+  $q$ select public.accept_invite((select code from issued)) $q$,
   'the newcomer accepts the invite'
 );
 
@@ -192,7 +192,7 @@ select is(
 );
 
 select throws_ok(
-  $q$ select app.accept_invite((select code from issued)) $q$,
+  $q$ select public.accept_invite((select code from issued)) $q$,
   '22023'::char(5),
   null::text,
   'the same code cannot be used twice'
@@ -207,7 +207,7 @@ set local request.jwt.claims   to '{"sub":"77777777-7777-4777-8777-777777777777"
 
 delete from issued;
 insert into issued
-select app.create_invite(
+select public.create_invite(
   'cccccccc-1111-4111-8111-000000000001', 'Late', 'viewer', 'c4', interval '1 second');
 
 -- Reach past the expiry without waiting for it. As the table owner, because a
@@ -223,14 +223,14 @@ set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
 set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
 
 select throws_ok(
-  $q$ select app.accept_invite((select code from issued)) $q$,
+  $q$ select public.accept_invite((select code from issued)) $q$,
   '22023'::char(5),
   null::text,
   'an expired code is dead'
 );
 
 select throws_ok(
-  $q$ select app.accept_invite('') $q$,
+  $q$ select public.accept_invite('') $q$,
   '22023'::char(5),
   null::text,
   'and so is an empty one'

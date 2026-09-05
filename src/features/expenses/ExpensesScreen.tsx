@@ -13,13 +13,19 @@ import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({ privacy }: { privacy: boolean }) {
-  const { listing, loading, refreshing, problem, live, liveDetail, add } = useExpenses();
+  const { listing, loading, refreshing, problem, live, liveDetail, noHousehold, add, reload } =
+    useExpenses();
 
   if (loading) {
     return <p className="note px-4.5 py-4.5">Loading…</p>;
+  }
+
+  if (noHousehold) {
+    return <JoinHousehold onJoined={reload} />;
   }
 
   if (problem !== null && listing === null) {

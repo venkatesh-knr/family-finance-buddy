@@ -14,13 +14,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
+import { HouseholdScreen } from '../features/household/HouseholdScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
 import { Card, Problem } from '../ui/primitives.tsx';
 import { ThemeToggle, useTheme } from './theme.tsx';
 
-type Screen = 'expenses' | 'holdings';
+type Screen = 'expenses' | 'holdings' | 'household';
 
 /**
  * Still no router. Two screens and a gate does not justify the dependency, the
@@ -30,6 +31,7 @@ type Screen = 'expenses' | 'holdings';
 const SCREENS: readonly (readonly [Screen, string])[] = [
   ['expenses', 'Expenses'],
   ['holdings', 'Holdings'],
+  ['household', 'Household'],
 ];
 
 export function App() {
@@ -132,11 +134,9 @@ export function App() {
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
-        {screen === 'expenses' ? (
-          <ExpensesScreen privacy={privacy} />
-        ) : (
-          <HoldingsScreen privacy={privacy} />
-        )}
+        {screen === 'expenses' && <ExpensesScreen privacy={privacy} />}
+        {screen === 'holdings' && <HoldingsScreen privacy={privacy} />}
+        {screen === 'household' && <HouseholdScreen />}
       </main>
     </div>
   );

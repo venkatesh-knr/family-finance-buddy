@@ -10,12 +10,24 @@
 -- landing route for a token — machinery worth having when strangers sign up,
 -- and not yet worth it for a household whose members are in the same room.
 --
--- The two functions below are SECURITY DEFINER because acceptance has to write
--- rows the caller could not otherwise write: a member and a membership. Doing
--- that through a policy would mean granting every authenticated user the right
--- to insert a membership and hoping the policy caught the rest, which is
--- exactly the "business rule in a policy" this project refuses. A function is
--- the honest tool — it can check the code, and it is testable.
+-- The functions below are SECURITY DEFINER because acceptance has to write rows
+-- the caller could not otherwise write: a member and a membership. Doing that
+-- through a policy would mean granting every authenticated user the right to
+-- insert a membership and hoping the policy caught the rest, which is exactly
+-- the "business rule in a policy" this project refuses. A function is the
+-- honest tool — it can check the code, and it is testable.
+--
+-- They live in `public` rather than `app`, and the split is deliberate:
+--
+--   app     internals. Called by policies, never by a client. The schema is not
+--           exposed through the API, so app.household_role() cannot be invoked
+--           over HTTP to enumerate anything.
+--   public  the API surface. Anything here is callable by whoever holds the
+--           publishable key, so everything here checks its own caller.
+--
+-- Putting these three in `app` would have been quietly useless: PostgREST
+-- exposes `public` and `graphql_public` only, so the client could never have
+-- reached them.
 
 -- ================================================================== the table
 
@@ -108,7 +120,7 @@ create policy require_second_factor
  * nothing above it, so the person who can grant access is the person who
  * already has the most of it.
  */
-create or replace function app.create_invite(
+create or replace function public.create_invite(
   target_household_id uuid,
   member_display_name text,
   member_role text,
@@ -164,11 +176,11 @@ begin
 end;
 $fn$;
 
-comment on function app.create_invite(uuid, text, text, text, interval, text) is
+comment on function public.create_invite(uuid, text, text, text, interval, text) is
   'Owner only. Returns the code once; only its hash is kept.';
 
-revoke all on function app.create_invite(uuid, text, text, text, interval, text) from public;
-grant execute on function app.create_invite(uuid, text, text, text, interval, text) to authenticated;
+revoke all on function public.create_invite(uuid, text, text, text, interval, text) from public;
+grant execute on function public.create_invite(uuid, text, text, text, interval, text) to authenticated;
 
 -- ========================================================== accepting one
 
@@ -179,7 +191,7 @@ grant execute on function app.create_invite(uuid, text, text, text, interval, te
  * expiry, whether it has been used, and whether this account is already in that
  * household. The caller supplies a string and nothing else.
  */
-create or replace function app.accept_invite(invite_code text)
+create or replace function public.accept_invite(invite_code text)
 returns uuid
 language plpgsql
 security definer
@@ -235,15 +247,15 @@ begin
 end;
 $fn$;
 
-comment on function app.accept_invite(text) is
+comment on function public.accept_invite(text) is
   'Single use. Creates the member and membership the invite describes, then closes it.';
 
-revoke all on function app.accept_invite(text) from public;
-grant execute on function app.accept_invite(text) to authenticated;
+revoke all on function public.accept_invite(text) from public;
+grant execute on function public.accept_invite(text) to authenticated;
 
 -- Revoking is an ordinary update the owner should be able to make, but there is
 -- no update grant on the table — so it too goes through a function.
-create or replace function app.revoke_invite(target_invite_id uuid)
+create or replace function public.revoke_invite(target_invite_id uuid)
 returns void
 language plpgsql
 security definer
@@ -266,5 +278,5 @@ begin
 end;
 $fn$;
 
-revoke all on function app.revoke_invite(uuid) from public;
-grant execute on function app.revoke_invite(uuid) to authenticated;
+revoke all on function public.revoke_invite(uuid) from public;
+grant execute on function public.revoke_invite(uuid) to authenticated;
