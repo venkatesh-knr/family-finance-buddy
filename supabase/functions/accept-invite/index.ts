@@ -128,22 +128,13 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return json({ error: 'Could not create the account.' }, 500, origin);
   }
 
-  // on_auth_user_created made this row; find it to redeem against.
-  const account = await admin
-    .from('user_account')
-    .select('id')
-    .eq('auth_user_id', authUserId)
-    .single();
-
-  if (account.error !== null) {
-    await admin.auth.admin.deleteUser(authUserId);
-    console.error('user_account row missing after createUser', account.error.message);
-    return json({ error: 'Could not create the account.' }, 500, origin);
-  }
-
+  // The auth user id is handed straight to redeem_invite, which resolves the
+  // account row itself. This endpoint holds no table grant at all — its whole
+  // reach is "create a user" and "redeem a code", and it can do nothing else
+  // with the key it carries.
   const redeemed = await admin.rpc('redeem_invite', {
     invite_code: code,
-    account_id: account.data.id,
+    for_auth_user: authUserId,
   });
 
   if (redeemed.error !== null) {

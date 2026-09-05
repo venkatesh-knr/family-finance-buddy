@@ -16,21 +16,30 @@
 -- schema is not being reachable: without a grant, anon and authenticated get
 -- 42501, which the suite asserts. The grant is the control, not the hiding.
 
-create or replace function public.redeem_invite(invite_code text, account_id uuid)
+-- Takes the auth user id rather than the account id, so the caller never has to
+-- look up user_account. That matters: the invite endpoint would otherwise need
+-- a table grant, and the only capability it should hold is "create a user, then
+-- redeem a code". Resolving the account here keeps its reach to two functions.
+create or replace function public.redeem_invite(invite_code text, for_auth_user uuid)
 returns uuid
 language plpgsql
 security definer
 set search_path = ''
 as $fn$
 declare
-  v_invite public.invite;
-  v_member uuid;
+  v_invite  public.invite;
+  v_member  uuid;
+  account_id uuid;
 begin
-  if account_id is null then
+  if for_auth_user is null then
     raise exception 'No account to redeem for.' using errcode = '42501';
   end if;
 
-  if not exists (select 1 from public.user_account where id = account_id) then
+  select id into account_id
+    from public.user_account
+   where auth_user_id = for_auth_user;
+
+  if account_id is null then
     raise exception 'No account to redeem for.' using errcode = '42501';
   end if;
 
@@ -89,14 +98,16 @@ security definer
 set search_path = ''
 as $fn$
 declare
-  v_account uuid;
+  v_auth_user uuid;
 begin
-  v_account := app.current_account_id();
-  if v_account is null then
+  v_auth_user := auth.uid();
+  if v_auth_user is null then
     raise exception 'Not signed in.' using errcode = '42501';
   end if;
 
-  return public.redeem_invite(invite_code, v_account);
+  -- The caller's own identity and nothing else: there is no parameter here that
+  -- could name somebody else's account.
+  return public.redeem_invite(invite_code, v_auth_user);
 end;
 $fn$;
 

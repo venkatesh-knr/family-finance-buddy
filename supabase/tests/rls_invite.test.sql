@@ -249,7 +249,7 @@ set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
 set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
 
 select throws_ok(
-  $q$ select public.redeem_invite('ANYCODE123', 'aaaaaaaa-1111-4111-8111-000000000002') $q$,
+  $q$ select public.redeem_invite('ANYCODE123', '88888888-8888-4888-8888-888888888888') $q$,
   '42501'::char(5),
   null::text,
   'a client cannot call the redemption function directly'
