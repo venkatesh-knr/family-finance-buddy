@@ -1,0 +1,85 @@
+/**
+ * The expenses screen's data.
+ *
+ * Reads through the repository, and re-reads when the change stream says
+ * something moved. The subscription carries no rows: it is a signal, so
+ * `listExpenses` stays the only path expense data travels and there is never a
+ * second, untested mapping of a payload shape.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { addExpense, listExpenses, subscribeToExpenses } from '../../repo/expenses.ts';
+import type { ExpenseListing, NewExpense } from '../../repo/types.ts';
+
+export interface ExpensesState {
+  readonly listing: ExpenseListing | null;
+  readonly loading: boolean;
+  readonly problem: string | null;
+  /** True while a change arriving from another device is being folded in. */
+  readonly refreshing: boolean;
+}
+
+export function useExpenses(): ExpensesState & {
+  add: (expense: NewExpense) => Promise<void>;
+  reload: () => void;
+} {
+  const [listing, setListing] = useState<ExpenseListing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  // Guards against a stale response overwriting a newer one when several
+  // reloads are in flight — which realtime makes ordinary rather than rare.
+  const generation = useRef(0);
+
+  const load = useCallback(async (quiet: boolean) => {
+    const mine = ++generation.current;
+    if (quiet) setRefreshing(true);
+    try {
+      const next = await listExpenses();
+      if (mine === generation.current) {
+        setListing(next);
+        setProblem(null);
+      }
+    } catch (error) {
+      if (mine === generation.current) {
+        setProblem(error instanceof Error ? error.message : 'Could not load expenses.');
+      }
+    } finally {
+      if (mine === generation.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(false);
+  }, [load]);
+
+  // Subscribe once the household is known, and re-subscribe if it changes.
+  const householdId = listing?.household.id ?? null;
+  useEffect(() => {
+    if (householdId === null) return;
+    return subscribeToExpenses(householdId, () => {
+      void load(true);
+    });
+  }, [householdId, load]);
+
+  const add = useCallback(
+    async (expense: NewExpense) => {
+      await addExpense(expense);
+      // The change stream will also fire, but not necessarily first, and the
+      // person who just typed the amount should not have to wait for a round
+      // trip through the websocket to see it.
+      await load(true);
+    },
+    [load],
+  );
+
+  const reload = useCallback(() => {
+    void load(true);
+  }, [load]);
+
+  return { listing, loading, refreshing, problem, add, reload };
+}

@@ -1,0 +1,134 @@
+/*
+ * Family Finance Buddy — design tokens.
+ *
+ * A transcription of docs/tokens.md §1. That document is the source of truth;
+ * this file is the only place the values exist in code. No component may
+ * hardcode a colour, and nothing may define a colour only inside a media or
+ * [data-theme] block — every token is declared on bare :root first.
+ *
+ * Three theme states: light on bare :root, dark by preference, and an explicit
+ * [data-theme] override so a manual toggle wins in both directions.
+ */
+
+:root {
+  /* surfaces */
+  --bg: #eef1f5;          /* page ground */
+  --surface: #ffffff;     /* cards, panels */
+  --surface-2: #f6f8fa;   /* table headers, insets, code */
+  --surface-3: #ebeff4;   /* segmented-control track, progress track */
+
+  /* text */
+  --ink: #151b24;         /* primary */
+  --ink-2: #3d4855;       /* body, secondary */
+  --muted: #68758a;       /* captions, labels, axis text */
+
+  /* lines */
+  --line: #dce3eb;        /* hairlines, borders */
+  --line-strong: #c3cdd9; /* chip borders, list markers */
+
+  /* brand + semantic */
+  --brass: #9a6f14;
+  --brass-soft: #f4ead3;  /* accent, targets, "plan" */
+  --teal: #0d7466;
+  --teal-soft: #ddf0eb;   /* gain, positive, "ok" */
+  --coral: #b0463a;
+  --coral-soft: #f9e6e2;  /* loss, overspend, "due" */
+  --indigo: #39537f;
+  --indigo-soft: #e4ebf6; /* attribution, ownership */
+
+  /* categorical — charts only, in this order */
+  --c1: #39537f; /* indigo */
+  --c2: #0d7466; /* teal   */
+  --c3: #9a6f14; /* brass  */
+  --c4: #7a5a9b; /* plum   */
+  --c5: #b0463a; /* coral  */
+  --c6: #4c7fa6; /* steel  */
+  --c7: #6e7c8c; /* slate  */
+
+  --shadow: 0 1px 2px rgba(21, 27, 36, 0.06), 0 10px 26px -18px rgba(21, 27, 36, 0.35);
+  --radius: 10px;
+  --radius-pill: 100px;
+
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-ui: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  color-scheme: light;
+}
+
+/*
+ * Dark is not an inversion — both palettes were tuned separately in
+ * docs/tokens.md. Keep them that way.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0b0f14;
+    --surface: #141b24;
+    --surface-2: #1a222d;
+    --surface-3: #212b37;
+
+    --ink: #e7edf4;
+    --ink-2: #c2cdda;
+    --muted: #8d9bac;
+
+    --line: #26303c;
+    --line-strong: #3a4653;
+
+    --brass: #d9ac4c;
+    --brass-soft: #31270f;
+    --teal: #48bba6;
+    --teal-soft: #0e2b27;
+    --coral: #e08475;
+    --coral-soft: #331815;
+    --indigo: #8faedc;
+    --indigo-soft: #161e2c;
+
+    --c1: #8faedc;
+    --c2: #48bba6;
+    --c3: #d9ac4c;
+    --c4: #b092ce;
+    --c5: #e08475;
+    --c6: #7fb3d0;
+    --c7: #94a3b3;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 30px -20px rgba(0, 0, 0, 0.95);
+
+    color-scheme: dark;
+  }
+}
+
+/* The same block again, so an explicit choice beats the system preference. */
+:root[data-theme='dark'] {
+  --bg: #0b0f14;
+  --surface: #141b24;
+  --surface-2: #1a222d;
+  --surface-3: #212b37;
+
+  --ink: #e7edf4;
+  --ink-2: #c2cdda;
+  --muted: #8d9bac;
+
+  --line: #26303c;
+  --line-strong: #3a4653;
+
+  --brass: #d9ac4c;
+  --brass-soft: #31270f;
+  --teal: #48bba6;
+  --teal-soft: #0e2b27;
+  --coral: #e08475;
+  --coral-soft: #331815;
+  --indigo: #8faedc;
+  --indigo-soft: #161e2c;
+
+  --c1: #8faedc;
+  --c2: #48bba6;
+  --c3: #d9ac4c;
+  --c4: #b092ce;
+  --c5: #e08475;
+  --c6: #7fb3d0;
+  --c7: #94a3b3;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 30px -20px rgba(0, 0, 0, 0.95);
+
+  color-scheme: dark;
+}
