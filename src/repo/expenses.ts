@@ -82,7 +82,9 @@ export async function listExpenses(options: { limit?: number } = {}): Promise<Ex
 
   const expensesResult = await client
     .from('expense_txn')
-    .select('id, household_id, member_id, txn_date, amount_minor, currency, payee, method, note, voided_at')
+    // amount_minor::text — a bigint over 2^53 would otherwise arrive as a
+    // lossy double. See the note in holdings.ts.
+    .select('id, household_id, member_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
     .order('txn_date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -131,7 +133,7 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
       method: expense.method ?? null,
       note: expense.note ?? null,
     })
-    .select('id, household_id, member_id, txn_date, amount_minor, currency, payee, method, note, voided_at')
+    .select('id, household_id, member_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
     .single();
 
   if (result.error !== null) throw asRepositoryError(result.error);

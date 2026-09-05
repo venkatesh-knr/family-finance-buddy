@@ -13,17 +13,31 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
+import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
 import { Card, Problem } from '../ui/primitives.tsx';
 import { ThemeToggle, useTheme } from './theme.tsx';
 
+type Screen = 'expenses' | 'holdings';
+
+/**
+ * Still no router. Two screens and a gate does not justify the dependency, the
+ * Pages base-path handling and a 404 fallback; a segmented control is the whole
+ * of what is needed. A router arrives when a URL has to be shareable.
+ */
+const SCREENS: readonly (readonly [Screen, string])[] = [
+  ['expenses', 'Expenses'],
+  ['holdings', 'Holdings'],
+];
+
 export function App() {
   const { choice, setChoice } = useTheme();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [privacy, setPrivacy] = useState(false);
+  const [screen, setScreen] = useState<Screen>('expenses');
 
   const refreshAuth = useCallback(async () => {
     try {
@@ -100,8 +114,29 @@ export function App() {
         </div>
       </header>
 
+      <nav className="mx-auto mb-4.5 flex max-w-app px-4.5">
+        <div className="segmented" role="group" aria-label="Screen">
+          {SCREENS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={screen === id}
+              onClick={() => {
+                setScreen(id);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       <main className="mx-auto max-w-app px-4.5 pb-11">
-        <ExpensesScreen privacy={privacy} />
+        {screen === 'expenses' ? (
+          <ExpensesScreen privacy={privacy} />
+        ) : (
+          <HoldingsScreen privacy={privacy} />
+        )}
       </main>
     </div>
   );

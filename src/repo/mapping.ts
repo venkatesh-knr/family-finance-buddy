@@ -10,6 +10,7 @@ import { isIsoDate, type IsoDate } from '../lib/dates.ts';
 import {
   MalformedRowError,
   optionalString,
+  requireBoolean,
   requireOneOf,
   requireRecord,
   requireString,
@@ -18,13 +19,19 @@ import {
 import { money } from '../lib/money.ts';
 import {
   HOUSEHOLD_ROLES,
+  INSTRUMENT_KINDS,
   MEMBER_COLOURS,
   PAYMENT_METHODS,
+  VALUATION_SOURCES,
   type Expense,
+  type Holding,
   type Household,
   type HouseholdRole,
+  type Instrument,
   type Member,
   type PaymentMethod,
+  type Quantity,
+  type Valuation,
 } from './types.ts';
 
 function requireIsoDate(value: unknown, field: string): IsoDate {
@@ -104,5 +111,115 @@ export function toExpense(raw: unknown, membersById: ReadonlyMap<string, Member>
     method: methodRaw === null ? null : requireOneOf<PaymentMethod>(methodRaw, PAYMENT_METHODS, 'expense_txn.method'),
     note: optionalString(row['note'], 'expense_txn.note'),
     isVoided: optionalString(row['voided_at'], 'expense_txn.voided_at') !== null,
+  };
+}
+
+/**
+ * A quantity, kept as a decimal string.
+ *
+ * PostgREST renders numeric as a string precisely so precision survives the
+ * trip, and turning it into a Number here would throw that away for the sake
+ * of a type that cannot hold 12.3456789 exactly. It stays a string.
+ */
+function requireQuantity(value: unknown, field: string): Quantity {
+  if (typeof value === 'number') {
+    // A driver configured to hand back numerics as numbers has already rounded.
+    // Refuse rather than accept a figure that may have lost digits in transit.
+    throw new MalformedRowError(
+      field,
+      'arrived as a number, which cannot hold a fractional share exactly — expected a decimal string',
+    );
+  }
+  const text = requireString(value, field);
+  if (!/^-?\d+(\.\d+)?$/.test(text)) {
+    throw new MalformedRowError(field, `is ${JSON.stringify(text)}, not a decimal number`);
+  }
+  return text;
+}
+
+export function toInstrument(raw: unknown): Instrument {
+  const row = requireRecord(unwrapEmbedded(raw), 'instrument');
+  return {
+    id: requireString(row['id'], 'instrument.id'),
+    name: requireString(row['name'], 'instrument.name'),
+    kind: requireOneOf(row['kind'], INSTRUMENT_KINDS, 'instrument.kind'),
+    symbol: optionalString(row['symbol'], 'instrument.symbol'),
+    currency: requireString(row['currency'], 'instrument.currency'),
+    exposureCurrency: requireString(row['exposure_currency'], 'instrument.exposure_currency'),
+    isForeignAsset: requireBoolean(row['is_foreign_asset'], 'instrument.is_foreign_asset'),
+    isArchived:
+      requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
+  };
+}
+
+/**
+ * A holding, with its member and instrument resolved from what the household
+ * has already loaded.
+ *
+ * Neither is embedded in the query. Both foreign keys are composite —
+ * (household_id, member_id) and (household_id, instrument_id) — which is what
+ * makes it impossible for a holding to reference an instrument from another
+ * household. The cost is that PostgREST cannot infer a to-one embed from the
+ * single column, so the rows are fetched separately and joined here. That is
+ * the trade, and it is the right way round: the guarantee lives in the
+ * database, and the inconvenience lives in one function.
+ */
+export function toHolding(
+  raw: unknown,
+  membersById: ReadonlyMap<string, Member>,
+  instrumentsById: ReadonlyMap<string, Instrument>,
+): Holding {
+  const row = requireRecord(raw, 'holding');
+
+  const memberId = requireString(row['member_id'], 'holding.member_id');
+  const member = membersById.get(memberId);
+  if (member === undefined) {
+    throw new MalformedRowError(
+      'holding.member_id',
+      `points at a member (${memberId}) that is not in this household`,
+    );
+  }
+
+  const instrumentId = requireString(row['instrument_id'], 'holding.instrument_id');
+  const instrument = instrumentsById.get(instrumentId);
+  if (instrument === undefined) {
+    throw new MalformedRowError(
+      'holding.instrument_id',
+      `points at an instrument (${instrumentId}) that is not in this household`,
+    );
+  }
+
+  const costMinor = row['cost_minor'];
+
+  return {
+    id: requireString(row['id'], 'holding.id'),
+    householdId: requireString(row['household_id'], 'holding.household_id'),
+    member,
+    instrument,
+    quantity: requireQuantity(row['quantity'], 'holding.quantity'),
+    cost:
+      costMinor === null || costMinor === undefined
+        ? null
+        : money(toBigIntExact(costMinor, 'holding.cost_minor'), instrument.currency),
+    openedOn: row['opened_on'] === null || row['opened_on'] === undefined
+      ? null
+      : requireIsoDate(row['opened_on'], 'holding.opened_on'),
+    isArchived:
+      requireOneOf(row['status'], ['active', 'archived'] as const, 'holding.status') === 'archived',
+  };
+}
+
+export function toValuation(raw: unknown): Valuation {
+  const row = requireRecord(raw, 'valuation_snapshot');
+  const currency = requireString(row['currency'], 'valuation_snapshot.currency');
+
+  return {
+    id: requireString(row['id'], 'valuation_snapshot.id'),
+    holdingId: requireString(row['holding_id'], 'valuation_snapshot.holding_id'),
+    date: requireIsoDate(row['as_of_date'], 'valuation_snapshot.as_of_date'),
+    quantity: requireQuantity(row['quantity'], 'valuation_snapshot.quantity'),
+    amount: money(toBigIntExact(row['value_minor'], 'valuation_snapshot.value_minor'), currency),
+    source: requireOneOf(row['source'], VALUATION_SOURCES, 'valuation_snapshot.source'),
+    note: optionalString(row['note'], 'valuation_snapshot.note'),
   };
 }
