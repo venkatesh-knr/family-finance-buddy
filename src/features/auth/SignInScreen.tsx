@@ -16,6 +16,7 @@ import {
   type AuthStage,
   type TotpEnrolment,
 } from '../../repo/auth.ts';
+import { createAccountFromInvite } from '../../repo/invites.ts';
 import { Button, Card, Field, PasswordField, Problem } from '../../ui/primitives.tsx';
 
 export function SignInScreen({ stage, email }: { stage: AuthStage; email: string | null }) {
@@ -37,6 +38,20 @@ function Frame({ title, blurb, children }: { title: string; blurb: string; child
 }
 
 function PasswordForm() {
+  const [redeeming, setRedeeming] = useState(false);
+  if (redeeming) {
+    return (
+      <RedeemInvite
+        onDone={() => {
+          setRedeeming(false);
+        }}
+      />
+    );
+  }
+  return <SignInForm onRedeem={() => { setRedeeming(true); }} />;
+}
+
+function SignInForm({ onRedeem }: { onRedeem: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -89,6 +104,110 @@ function PasswordForm() {
           You will be asked for a code from your authenticator app next. Every account on this
           system has one.
         </p>
+
+        <button type="button" className="note self-start underline" onClick={onRedeem}>
+          I have an invite code and no account yet
+        </button>
+      </form>
+    </Frame>
+  );
+}
+
+/**
+ * Create an account from an invite code.
+ *
+ * This has to live on the sign-in screen rather than behind it: someone holding
+ * a code has no account, so every other screen is out of reach. It is the one
+ * route into this system that does not start with an account already existing.
+ */
+function RedeemInvite({ onDone }: { onDone: () => void }) {
+  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+      setProblem(null);
+      setBusy(true);
+      try {
+        await createAccountFromInvite({ code, email, password });
+        setDone(true);
+      } catch (error) {
+        setProblem(error instanceof Error ? error.message : 'Could not create the account.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [code, email, password],
+  );
+
+  if (done) {
+    return (
+      <Frame title="Account created" blurb="One more step.">
+        <div className="flex flex-col gap-3.5">
+          <p className="text-caption" style={{ color: 'var(--ink-2)' }}>
+            You are in the household. Sign in with the address and password you just chose — you
+            will then set up an authenticator app, which every account here has.
+          </p>
+          <Button type="button" onClick={onDone}>
+            Sign in
+          </Button>
+        </div>
+      </Frame>
+    );
+  }
+
+  return (
+    <Frame title="Use an invite code" blurb="This is how an account is created here.">
+      <form className="flex flex-col gap-3.5" onSubmit={(event) => void submit(event)}>
+        <Field
+          label="Invite code"
+          numeric
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          maxLength={10}
+          placeholder="XXXXXXXXXX"
+          required
+          value={code}
+          onChange={(event) => {
+            setCode(event.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''));
+          }}
+        />
+        <Field
+          label="Your email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+          }}
+        />
+        <PasswordField
+          label="Choose a password"
+          autoComplete="new-password"
+          required
+          hint="At least 12 characters. A passphrase of a few words is easier to remember and harder to guess."
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+          }}
+        />
+
+        {problem !== null && <Problem>{problem}</Problem>}
+
+        <Button type="submit" disabled={busy || code.length !== 10 || password.length < 12}>
+          {busy ? 'Creating…' : 'Create my account'}
+        </Button>
+
+        <button type="button" className="note self-start underline" onClick={onDone}>
+          Back to sign in
+        </button>
       </form>
     </Frame>
   );

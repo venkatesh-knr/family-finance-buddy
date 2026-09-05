@@ -137,3 +137,56 @@ function asRepositoryError(error: ProviderError): Error {
   }
   return new Error(error.message);
 }
+
+/**
+ * Create an account from an invite code.
+ *
+ * The one call in this app that reaches a function rather than the database,
+ * because it is the one thing no client may do: create an account. Public
+ * sign-up is disabled, and the code is the whole of the justification for the
+ * exception — so the endpoint checks it before anything exists, and a bad code
+ * leaves nothing behind.
+ *
+ * No session comes back. The new account signs in normally afterwards, through
+ * the same password-then-authenticator path as everyone else: an account
+ * created this way is not a way around the second factor.
+ */
+export async function createAccountFromInvite(input: {
+  readonly code: string;
+  readonly email: string;
+  readonly password: string;
+}): Promise<void> {
+  const client = supabase();
+
+  const { data, error } = await client.functions.invoke<{ ok?: boolean; error?: string }>(
+    'accept-invite',
+    {
+      body: {
+        code: input.code.trim().toUpperCase(),
+        email: input.email.trim(),
+        password: input.password,
+      },
+    },
+  );
+
+  if (error !== null) {
+    // The function replies with its own wording for anything a person can fix.
+    // Reading it back beats "Edge Function returned a non-2xx status code".
+    const context: unknown = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body = (await context.json()) as { error?: unknown };
+        if (typeof body.error === 'string' && body.error !== '') {
+          throw new Error(body.error);
+        }
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message !== '') throw parseError;
+      }
+    }
+    throw new Error('Could not create the account. Check the code and try again.');
+  }
+
+  if (data?.ok !== true) {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'Could not create the account.');
+  }
+}
