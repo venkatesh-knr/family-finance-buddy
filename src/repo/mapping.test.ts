@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHousehold, toMember } from './mapping.ts';
+import { toExpense, toHousehold, toInstrument, toMember, toValuation } from './mapping.ts';
 import type { Member } from './types.ts';
 
 const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
@@ -121,5 +121,80 @@ describe('embedded relations', () => {
 
   it('accepts it as a single-element array too', () => {
     expect(toHousehold([household]).id).toBe('h-1');
+  });
+});
+
+describe('toInstrument', () => {
+  const row = {
+    id: 'i-1',
+    name: 'US index ETF',
+    kind: 'etf',
+    symbol: 'VOO',
+    currency: 'USD',
+    exposure_currency: 'USD',
+    is_foreign_asset: true,
+    status: 'active',
+  };
+
+  it('keeps currency and exposure currency apart', () => {
+    // An Indian feeder fund: bought in rupees, tracking dollars, and NOT a
+    // foreign asset for tax. Collapsing these two fields would lose that.
+    const feeder = toInstrument({
+      ...row,
+      name: 'Indian feeder fund',
+      kind: 'mutual_fund',
+      currency: 'INR',
+      exposure_currency: 'USD',
+      is_foreign_asset: false,
+    });
+    expect(feeder.currency).toBe('INR');
+    expect(feeder.exposureCurrency).toBe('USD');
+    expect(feeder.isForeignAsset).toBe(false);
+  });
+
+  it('maps a directly held foreign asset', () => {
+    const direct = toInstrument(row);
+    expect(direct.currency).toBe('USD');
+    expect(direct.exposureCurrency).toBe('USD');
+    expect(direct.isForeignAsset).toBe(true);
+  });
+
+  it('refuses a foreign-asset flag that is not a boolean', () => {
+    expect(() => toInstrument({ ...row, is_foreign_asset: 'yes' })).toThrow(/is_foreign_asset/);
+  });
+});
+
+describe('toValuation', () => {
+  const row = {
+    id: 'v-1',
+    holding_id: 'h-1',
+    as_of_date: '2026-08-31',
+    quantity: '12.50000000',
+    value_minor: 715000,
+    currency: 'USD',
+    source: 'manual',
+    note: null,
+  };
+
+  it('keeps a fractional quantity exact, as a string', () => {
+    const v = toValuation({ ...row, quantity: '12.34567891' });
+    // 12.34567891 is not representable exactly as a double; the string is.
+    expect(v.quantity).toBe('12.34567891');
+  });
+
+  it('refuses a quantity that arrived as a number', () => {
+    // A number here means something upstream already rounded it.
+    expect(() => toValuation({ ...row, quantity: 12.3456789 })).toThrow(/fractional share/);
+  });
+
+  it('maps the value as minor units in its own currency', () => {
+    const v = toValuation(row);
+    expect(v.amount).toEqual({ minor: 715000n, currency: 'USD' });
+    expect(v.date).toBe('2026-08-31');
+    expect(v.source).toBe('manual');
+  });
+
+  it('refuses a source we do not know', () => {
+    expect(() => toValuation({ ...row, source: 'guessed' })).toThrow(/not one of/);
   });
 });
