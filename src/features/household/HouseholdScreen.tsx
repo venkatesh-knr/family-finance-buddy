@@ -347,6 +347,7 @@ function IssuedCode({
   onDone: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
   const message = invitationText(code, validForDays);
 
   // navigator.share is the right thing on a phone — one tap to WhatsApp, mail,
@@ -419,12 +420,43 @@ function IssuedCode({
           WhatsApp
         </a>
 
+        {/*
+          Gmail directly, rather than a mailto: link.
+          
+          mailto: hands off to whatever the operating system has registered,
+          and a webmail account is usually not registered at all — so a Gmail
+          user gets an app picker listing every mail client they do not use.
+          This opens a compose window with the message already in it.
+        */}
         <a
           className="btn btn-quiet"
-          href={`mailto:?subject=${encodeURIComponent('Finance Buddy invitation')}&body=${encodeURIComponent(message)}`}
+          href={`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Finance Buddy invitation')}&body=${encodeURIComponent(message)}`}
+          target="_blank"
+          rel="noreferrer noopener"
         >
-          Email
+          Gmail
         </a>
+
+        {/*
+          And the general answer, for anything not listed: the whole message,
+          ready to paste wherever they actually write to people.
+        */}
+        <Button
+          variant="quiet"
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(message).then(
+              () => {
+                setCopiedMessage(true);
+              },
+              () => {
+                setCopiedMessage(false);
+              },
+            );
+          }}
+        >
+          {copiedMessage ? 'Message copied' : 'Copy message'}
+        </Button>
 
         <Button variant="quiet" type="button" onClick={onDone}>
           Done
@@ -432,9 +464,9 @@ function IssuedCode({
       </div>
 
       <p className="note">
-        The message includes the link and the instructions, so there is nothing to type out. Send
-        it to one person directly rather than to a group — the code is what lets them in, and a
-        group chat keeps it forever.
+        Every route sends the same message: the link, the code, the expiry and what to do with
+        them. Send it to one person directly rather than to a group — the code is what lets them
+        in, and a group chat keeps it forever.
       </p>
     </div>
   );
