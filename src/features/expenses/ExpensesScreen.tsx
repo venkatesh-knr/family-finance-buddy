@@ -40,7 +40,7 @@ export function ExpensesScreen({ privacy }: { privacy: boolean }) {
 
   return (
     <div className="flex flex-col gap-4.5">
-      {listing.viewer.canAddExpense ? (
+      {listing.viewer.canRecord ? (
         <QuickAdd listing={listing} onAdd={add} />
       ) : (
         <Card title="Quick add">
@@ -69,9 +69,16 @@ function QuickAdd({
   listing: ExpenseListing;
   onAdd: (expense: Parameters<ReturnType<typeof useExpenses>['add']>[0]) => Promise<void>;
 }) {
-  const activeMembers = useMemo(
-    () => listing.members.filter((member) => !member.isArchived),
-    [listing.members],
+  // A contributor may only file under their own name, so they are offered only
+  // their own name. The policy would refuse anything else; a form that offered
+  // it would be teaching people the app is unreliable rather than that they
+  // lack the permission.
+  const selectableMembers = useMemo(
+    () =>
+      listing.viewer.canFileForOthers
+        ? listing.members.filter((member) => !member.isArchived)
+        : listing.members.filter((member) => member.id === listing.viewer.memberId),
+    [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
   );
 
   const [amount, setAmount] = useState('');
@@ -174,7 +181,7 @@ function QuickAdd({
               setMemberId(event.target.value);
             }}
           >
-            {activeMembers.map((member) => (
+            {selectableMembers.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.displayName}
               </option>

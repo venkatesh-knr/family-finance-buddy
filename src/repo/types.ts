@@ -60,7 +60,18 @@ export interface Viewer {
   readonly accountId: Uuid;
   readonly memberId: Uuid;
   readonly role: HouseholdRole;
-  readonly canAddExpense: boolean;
+  /** May record anything at all. A viewer may not. */
+  readonly canRecord: boolean;
+  /**
+   * May record under another member's name.
+   *
+   * A contributor may not: "A contributor writes only under their own name.
+   * Attribution cannot be forged." The insert policies enforce it, and the
+   * forms have to agree — offering a choice the database will refuse is a
+   * worse experience than not offering it, and teaches people the app is
+   * unreliable rather than that they lack the permission.
+   */
+  readonly canFileForOthers: boolean;
 }
 
 export interface Expense {

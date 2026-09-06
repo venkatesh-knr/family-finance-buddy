@@ -27,8 +27,8 @@ import {
   type Uuid,
 } from './types.ts';
 
-/** Roles that may file a spend. A viewer may not, and the database agrees. */
-const CAN_ADD: readonly string[] = ['owner', 'partner', 'contributor'];
+/** Roles that may record anything. A viewer may not, and the database agrees. */
+const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 
 /**
  * The most recent spends for the household the caller belongs to, newest first,
@@ -99,7 +99,8 @@ export async function listExpenses(options: { limit?: number } = {}): Promise<Ex
       accountId: String(membership.user_account_id),
       memberId: String(membership.member_id),
       role,
-      canAddExpense: CAN_ADD.includes(role),
+      canRecord: CAN_WRITE.includes(role),
+      canFileForOthers: role === 'owner' || role === 'partner',
     },
     members,
     expenses,

@@ -29,7 +29,7 @@ export function HoldingsScreen({ privacy }: { privacy: boolean }) {
   }
   if (listing === null) return null;
 
-  const canWrite = listing.viewer.canAddExpense;
+  const canWrite = listing.viewer.canRecord;
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -309,9 +309,14 @@ function AddHolding({
   listing: HoldingListing;
   onAdd: (holding: Parameters<ReturnType<typeof useHoldings>['add']>[0]) => Promise<void>;
 }) {
-  const activeMembers = useMemo(
-    () => listing.members.filter((member) => !member.isArchived),
-    [listing.members],
+  // Same rule as expenses: a contributor records only against their own
+  // holdings, so that is all the form offers.
+  const selectableMembers = useMemo(
+    () =>
+      listing.viewer.canFileForOthers
+        ? listing.members.filter((member) => !member.isArchived)
+        : listing.members.filter((member) => member.id === listing.viewer.memberId),
+    [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
   );
 
   const [name, setName] = useState('');
@@ -460,7 +465,7 @@ function AddHolding({
               setMemberId(event.target.value);
             }}
           >
-            {activeMembers.map((member) => (
+            {selectableMembers.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.displayName}
               </option>
