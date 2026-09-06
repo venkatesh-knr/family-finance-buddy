@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { fireLadder, fireTarget } from './fire.ts';
+import { fireBaseYear, fireLadder, fireTarget } from './fire.ts';
 
 /**
  * The FIRE target, and the ladder of what it becomes as prices rise.
@@ -140,5 +140,29 @@ describe('fireLadder', () => {
         years: -1,
       }),
     ).toThrow(/years/i);
+  });
+});
+
+describe('fireBaseYear', () => {
+  it('is the calendar year of the given IST date', () => {
+    expect(fireBaseYear('2026-09-06')).toBe(2026);
+  });
+
+  it('turns over on 1 January, not on 1 April', () => {
+    // The tax year begins in April and the ladder does not. Both meanings of
+    // "2026" exist in this app, and this one is the calendar.
+    expect(fireBaseYear('2026-03-31')).toBe(2026);
+    expect(fireBaseYear('2025-12-31')).toBe(2025);
+  });
+
+  it('anchors the ladder at today rather than at whenever it was written', () => {
+    const ladder = fireLadder({
+      annualExpense: FINAL_EXPENSE,
+      multiplier: 25,
+      inflationPct: 6,
+      fromYear: fireBaseYear('2026-09-06'),
+      years: 2,
+    });
+    expect(ladder.map((step) => step.year)).toEqual([2026, 2027, 2028]);
   });
 });

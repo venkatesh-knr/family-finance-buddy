@@ -16,7 +16,26 @@
  * financial year, which is the sort of thing nobody notices until it matters.
  */
 
+import type { IsoDate } from '../lib/dates.ts';
 import { money, type Money } from '../lib/money.ts';
+
+/**
+ * Where a ladder starts: the calendar year of the given IST date.
+ *
+ * The workbook's ladder is anchored at a year that was typed once and has not
+ * moved since, so its projection quietly refers to a base two years in the
+ * past. Deriving the anchor from today removes that failure — but the date is
+ * still an argument, because a projection that read the clock would answer
+ * differently in January than in December of one financial year, and nobody
+ * would notice until the two answers were compared.
+ *
+ * Calendar years rather than tax years: the ladder is labelled by year and
+ * compounds annually, and mixing in an April boundary would put two different
+ * meanings of "2026" on one screen.
+ */
+export function fireBaseYear(today: IsoDate): number {
+  return Number(today.slice(0, 4));
+}
 
 /**
  * The corpus that supports a given annual expense at a given multiple.

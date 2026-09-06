@@ -185,11 +185,16 @@ create trigger budget_touch_updated_at
  * "Maintance" corrected; renaming is free and safe by design, so this is a
  * starting point either way.
  *
- * Two pairs are per-person rather than per-kind — Office expense Venki and
- * Saran, Mobile1 and Mobile2. They are kept as the sheet has them, because
- * that is what their owner recognises. Member attribution on the transaction
- * would let each pair become one category, which is worth doing later and is
- * not worth surprising anybody with on day one.
+ * Two pairs are per-person rather than per-kind — office expense and mobile,
+ * one of each per person. The sheet names them after the people; this does not.
+ * A starter list is seeded into every household that asks for it, including
+ * ones with different people in them, so a name from somebody else's family is
+ * noise at best. person1 and person2 are placeholders to be renamed, which
+ * costs nothing and is safe by design.
+ *
+ * Member attribution on the transaction would let each pair become a single
+ * category — one Office expense, told apart by who spent it. That is the
+ * better shape and it is a later decision, not one to impose while seeding.
  *
  * is_essential is left false everywhere. The sheet does not record it, and it
  * feeds the FIRE floor later — a guess there would be a fabricated number in a
@@ -245,8 +250,8 @@ begin
     (260, 'Bus/Train Ticket', 'variable'),
     (270, 'Extracurricular Activity', 'variable'),
     (280, 'Dress', 'variable'),
-    (290, 'Office expense Venki', 'variable'),
-    (300, 'Office expense Saran', 'variable'),
+    (290, 'Office expense person1', 'variable'),
+    (300, 'Office expense person2', 'variable'),
     (310, 'House Appliances maintenance', 'variable'),
     (320, 'FastTag', 'variable'),
     (330, 'RO Water maintenance', 'variable'),
