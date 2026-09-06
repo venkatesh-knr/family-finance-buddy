@@ -99,6 +99,8 @@ export interface Expense {
   readonly id: Uuid;
   readonly householdId: Uuid;
   readonly member: Member;
+  /** Null means uncategorised — a state to show, not a gap to fill in. */
+  readonly categoryId: Uuid | null;
   /** A calendar date in IST. Not an instant. */
   readonly date: IsoDate;
   /** Stored native. Never overwritten with a converted figure. */
@@ -118,11 +120,14 @@ export interface ExpenseListing {
   readonly viewer: Viewer;
   readonly members: readonly Member[];
   readonly expenses: readonly Expense[];
+  /** Active categories, for filing a spend and for comparing against a plan. */
+  readonly categories: readonly ExpenseCategory[];
 }
 
 export interface NewExpense {
   readonly householdId: Uuid;
   readonly memberId: Uuid;
+  readonly categoryId?: Uuid | null;
   readonly date: IsoDate;
   readonly amount: Money;
   readonly payee?: string | null;

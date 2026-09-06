@@ -7,14 +7,16 @@
  * second, untested mapping of a payload shape.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addExpense,
   listExpenses,
   subscribeToExpenses,
   type LiveStatus,
 } from '../../repo/expenses.ts';
-import { NoHouseholdError, type ExpenseListing, type NewExpense } from '../../repo/types.ts';
+import { listPlan } from '../../repo/planning.ts';
+import { istCalendarDate } from '../../lib/dates.ts';
+import { NoHouseholdError, type Budget, type ExpenseListing, type NewExpense } from '../../repo/types.ts';
 
 export interface ExpensesState {
   readonly listing: ExpenseListing | null;
@@ -31,6 +33,10 @@ export interface ExpensesState {
    * symptom rather than what to do.
    */
   readonly noHousehold: boolean;
+  /** The plan for this tax year, so the ledger can be held against it. */
+  readonly budgets: readonly Budget[];
+  readonly fy: number;
+  readonly today: string;
 }
 
 export function useExpenses(householdId: string | null): ExpensesState & {
@@ -42,7 +48,15 @@ export function useExpenses(householdId: string | null): ExpensesState & {
   const [refreshing, setRefreshing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [noHousehold, setNoHousehold] = useState(false);
+  const [budgets, setBudgets] = useState<readonly Budget[]>([]);
   const [live, setLive] = useState<LiveStatus>('connecting');
+
+  // Read once at the edge; every calculation below takes it as an argument.
+  const [today] = useState(() => istCalendarDate(new Date()));
+  const fy = useMemo(() => {
+    const year = Number(today.slice(0, 4));
+    return Number(today.slice(5, 7)) >= 4 ? year : year - 1;
+  }, [today]);
   const [liveDetail, setLiveDetail] = useState<string | null>(null);
 
   // Guards against a stale response overwriting a newer one when several
@@ -59,6 +73,16 @@ export function useExpenses(householdId: string | null): ExpensesState & {
         setProblem(null);
         setNoHousehold(false);
       }
+
+      // The plan, for the comparison. Fetched separately and allowed to fail
+      // on its own: a viewer with no access to budgets should still see their
+      // expenses rather than an error where the ledger ought to be.
+      try {
+        const plan = await listPlan({ householdId: next.household.id, fy });
+        if (mine === generation.current) setBudgets(plan.budgets);
+      } catch {
+        if (mine === generation.current) setBudgets([]);
+      }
     } catch (error) {
       if (mine === generation.current) {
         if (error instanceof NoHouseholdError) {
@@ -74,7 +98,7 @@ export function useExpenses(householdId: string | null): ExpensesState & {
         setRefreshing(false);
       }
     }
-  }, [householdId]);
+  }, [householdId, fy]);
 
   useEffect(() => {
     void load(false);
@@ -114,5 +138,18 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     void load(true);
   }, [load]);
 
-  return { listing, loading, refreshing, problem, live, liveDetail, noHousehold, add, reload };
+  return {
+    listing,
+    loading,
+    refreshing,
+    problem,
+    live,
+    liveDetail,
+    noHousehold,
+    budgets,
+    fy,
+    today,
+    add,
+    reload,
+  };
 }

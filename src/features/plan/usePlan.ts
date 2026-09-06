@@ -52,6 +52,9 @@ export interface PlanState {
   readonly setMultiplier: (next: number) => void;
   readonly inflationPct: number;
   readonly setInflationPct: (next: number) => void;
+  /** How far ahead to project. The horizon is the reader's, not the app's. */
+  readonly yearsAhead: number;
+  readonly setYearsAhead: (next: number) => void;
   readonly fy: number;
   readonly today: string;
   readonly loading: boolean;
@@ -80,6 +83,7 @@ export function usePlan(householdId: string | null): PlanState & {
 
   const [multiplier, setMultiplier] = useState(25);
   const [inflationPct, setInflationPct] = useState(6);
+  const [yearsAhead, setYearsAhead] = useState(10);
 
   const generation = useRef(0);
 
@@ -185,9 +189,9 @@ export function usePlan(householdId: string | null): PlanState & {
       multiplier,
       inflationPct,
       fromYear: fireBaseYear(today),
-      years: 10,
+      years: yearsAhead,
     });
-  }, [annual, multiplier, inflationPct, today]);
+  }, [annual, multiplier, inflationPct, today, yearsAhead]);
 
   const after = useCallback(
     async <T,>(action: Promise<T>): Promise<void> => {
@@ -206,6 +210,8 @@ export function usePlan(householdId: string | null): PlanState & {
     setMultiplier,
     inflationPct,
     setInflationPct,
+    yearsAhead,
+    setYearsAhead,
     fy,
     today,
     loading,

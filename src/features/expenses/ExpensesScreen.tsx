@@ -14,11 +14,24 @@ import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
-  const { listing, loading, refreshing, problem, live, liveDetail, noHousehold, add, reload } =
-    useExpenses(householdId);
+  const {
+    listing,
+    loading,
+    refreshing,
+    problem,
+    live,
+    liveDetail,
+    noHousehold,
+    budgets,
+    fy,
+    today,
+    add,
+    reload,
+  } = useExpenses(householdId);
 
   if (loading) {
     return <p className="note px-4.5 py-4.5">Loading…</p>;
@@ -50,6 +63,16 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
           </p>
         </Card>
       )}
+
+      <BudgetVsActual
+        categories={listing.categories}
+        budgets={budgets}
+        expenses={listing.expenses}
+        today={today}
+        fy={fy}
+        currency={listing.household.baseCurrency}
+        privacy={privacy}
+      />
 
       <ExpenseList
         listing={listing}
@@ -85,6 +108,7 @@ function QuickAdd({
   const [payee, setPayee] = useState('');
   const [date, setDate] = useState(todayInIst);
   const [memberId, setMemberId] = useState(listing.viewer.memberId);
+  const [categoryId, setCategoryId] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -113,6 +137,10 @@ function QuickAdd({
         await onAdd({
           householdId: listing.household.id,
           memberId,
+          // Blank stays blank. Guessing a category to avoid an empty field
+          // would file spending somewhere nobody chose, and the comparison
+          // downstream would treat that guess as a fact.
+          categoryId: categoryId === '' ? null : categoryId,
           date,
           amount: money(minor, currency),
           payee: payee.trim() === '' ? null : payee.trim(),
@@ -125,7 +153,7 @@ function QuickAdd({
         setBusy(false);
       }
     },
-    [amount, currency, date, listing.household.id, memberId, onAdd, payee],
+    [amount, categoryId, currency, date, listing.household.id, memberId, onAdd, payee],
   );
 
   return (
@@ -171,6 +199,24 @@ function QuickAdd({
             }}
           />
         </div>
+
+        <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
+          <span className="micro-label">Category</span>
+          <select
+            className="field"
+            value={categoryId}
+            onChange={(event) => {
+              setCategoryId(event.target.value);
+            }}
+          >
+            <option value="">Uncategorised</option>
+            {listing.categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
           <span className="micro-label">Member</span>
