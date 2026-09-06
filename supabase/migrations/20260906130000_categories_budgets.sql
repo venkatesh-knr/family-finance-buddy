@@ -111,8 +111,17 @@ create table public.budget (
   -- must never be confused.
   fy            smallint    not null check (fy between 2000 and 2100),
 
-  -- Which month within that year, 1 meaning April. Null means the figure is
-  -- for the whole year, which is how yearly cadences are budgeted.
+  -- Which month within that year, 1 meaning April.
+  --
+  -- Null is the ordinary case and means "one occurrence of this category's
+  -- cadence", which is exactly what the workbook records: a monthly figure or
+  -- a yearly one, never twelve separate months. Annualising is then
+  --
+  --     monthly cadence -> planned x 12
+  --     yearly cadence  -> planned
+  --
+  -- which is what M&Y Total computes today. A number 1..12 overrides one
+  -- particular month, for the December that is never like the others.
   period        smallint    check (period is null or period between 1 and 12),
 
   planned_minor bigint      not null check (planned_minor >= 0),
@@ -140,7 +149,7 @@ create table public.budget (
 comment on column public.budget.fy is
   'The Indian tax year by its starting calendar year: 2026 is 1 Apr 2026 to 31 Mar 2027.';
 comment on column public.budget.period is
-  'Month within the tax year, 1 = April. Null is the whole year.';
+  'Month within the tax year, 1 = April. Null means one occurrence of the category cadence — the ordinary case, annualised by x12 for monthly and x1 for yearly.';
 
 create index budget_household_fy_idx on public.budget (household_id, fy);
 
