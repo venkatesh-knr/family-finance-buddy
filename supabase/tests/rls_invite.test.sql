@@ -300,26 +300,33 @@ set local role authenticated;
 set local request.jwt.claim.sub to '77777777-7777-4777-8777-777777777777';
 set local request.jwt.claims   to '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated","aal":"aal2"}';
 
--- The owner is the only one, and the newcomer accepted an owner invite earlier
--- in this file — so demoting the original owner must be allowed, and demoting
--- the last one must not.
+-- The newcomer accepted an OWNER invite earlier in this file, so this household
+-- has two. Demoting one is therefore allowed, and only the last is protected —
+-- which is the distinction worth testing, and the one an earlier version of
+-- this file got wrong by assuming a single owner.
+
+select lives_ok(
+  $q$ select public.set_member_role(
+        (select member_id from public.membership
+          where user_account_id = 'aaaaaaaa-1111-4111-8111-000000000003'
+            and revoked_at is null),
+        'partner') $q$,
+  'an owner may demote another owner while a second remains'
+);
+
+select is(
+  (select count(*)::int from public.membership
+    where household_id = 'cccccccc-1111-4111-8111-000000000001'
+      and role = 'owner' and revoked_at is null),
+  1,
+  'which leaves exactly one'
+);
+
 select throws_ok(
   $q$ select public.set_member_role('dddddddd-1111-4111-8111-000000000001', 'viewer') $q$,
   '22023'::char(5),
   null::text,
-  'the last owner cannot stop being one'
-);
-
-select lives_ok(
-  $q$ select public.set_member_role('dddddddd-1111-4111-8111-000000000002', 'partner') $q$,
-  'an owner can change somebody else''s role'
-);
-
-select is(
-  (select role from public.membership
-    where member_id = 'dddddddd-1111-4111-8111-000000000002'),
-  'partner',
-  'and the change takes effect'
+  'and that last owner cannot stop being one — a household without an owner cannot administer or recover itself'
 );
 
 reset role;
