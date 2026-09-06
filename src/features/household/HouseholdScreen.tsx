@@ -14,6 +14,7 @@ import {
   inviteState,
   listInvites,
   revokeInvite,
+  setMemberRole,
   type Invite,
   type InviteState,
 } from '../../repo/invites.ts';
@@ -23,6 +24,7 @@ import {
   MEMBER_COLOURS,
   type ExpenseListing,
   type HouseholdRole,
+  type Member,
   type MemberColour,
 } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
@@ -90,20 +92,23 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
       <Card title="Members" aside={<span className="note">{listing.household.name}</span>}>
         <ul className="row-separated">
           {listing.members.map((member) => (
-            <li key={member.id} className="flex items-center gap-2.5 py-2.5">
-              <span
-                aria-hidden="true"
-                className="inline-block h-2 w-2 rounded-pill"
-                style={{ background: `var(--${member.colour})` }}
-              />
-              <span style={{ color: 'var(--ink)' }}>{member.displayName}</span>
-              {member.id === listing.viewer.memberId && (
-                <Pill tone="own">you · {listing.viewer.role}</Pill>
-              )}
-              {member.isArchived && <Pill tone="neutral">Archived</Pill>}
-            </li>
+            <MemberRow
+              key={member.id}
+              member={member}
+              isYou={member.id === listing.viewer.memberId}
+              canChangeRoles={isOwner}
+              onChanged={load}
+            />
           ))}
         </ul>
+
+        {isOwner && (
+          <p className="note mt-3">
+            An owner administers the household and is the only role that can invite. There must
+            always be one — the app refuses to remove the last, because a household without an owner
+            cannot invite, administer or recover itself.
+          </p>
+        )}
       </Card>
 
       {invites.length > 0 && (
@@ -133,6 +138,89 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
         user — then give them the code.
       </p>
     </div>
+  );
+}
+
+/**
+ * One member, with what they may do and — for an owner — a way to change it.
+ *
+ * The role was previously shown only for the person looking, which told you
+ * nothing about anybody else. Who can do what in a shared household is exactly
+ * the thing the screen exists to answer.
+ */
+function MemberRow({
+  member,
+  isYou,
+  canChangeRoles,
+  onChanged,
+}: {
+  member: Member;
+  isYou: boolean;
+  canChangeRoles: boolean;
+  onChanged: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const change = useCallback(
+    (next: HouseholdRole) => {
+      void (async () => {
+        setBusy(true);
+        setProblem(null);
+        try {
+          await setMemberRole(member.id, next);
+          await onChanged();
+        } catch (error) {
+          setProblem(error instanceof Error ? error.message : 'Could not change that role.');
+        } finally {
+          setBusy(false);
+        }
+      })();
+    },
+    [member.id, onChanged],
+  );
+
+  return (
+    <li className="flex flex-col gap-1.5 py-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 rounded-pill"
+          style={{ background: `var(--${member.colour})` }}
+        />
+        <span style={{ color: 'var(--ink)' }}>{member.displayName}</span>
+        {isYou && <Pill tone="own">you</Pill>}
+        {member.isArchived && <Pill tone="neutral">Archived</Pill>}
+
+        <span className="ml-auto flex items-center gap-2">
+          {canChangeRoles && member.role != null ? (
+            <label className="flex items-center gap-2">
+              <span className="micro-label">Role</span>
+              <select
+                className="field w-auto"
+                value={member.role}
+                disabled={busy}
+                onChange={(event) => {
+                  change(event.target.value as HouseholdRole);
+                }}
+              >
+                {HOUSEHOLD_ROLES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <Pill tone={member.role === 'owner' ? 'own' : 'neutral'}>
+              {member.role ?? 'no login'}
+            </Pill>
+          )}
+        </span>
+      </div>
+
+      {problem !== null && <Problem>{problem}</Problem>}
+    </li>
   );
 }
 

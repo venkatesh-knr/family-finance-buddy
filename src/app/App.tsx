@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { HouseholdScreen } from '../features/household/HouseholdScreen.tsx';
+import { PlanScreen } from '../features/plan/PlanScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
@@ -22,7 +23,7 @@ import { Card, Problem } from '../ui/primitives.tsx';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { ThemeToggle, useTheme, type ThemeChoice } from './theme.tsx';
 
-type Screen = 'expenses' | 'holdings' | 'household';
+type Screen = 'plan' | 'expenses' | 'holdings' | 'household';
 
 /**
  * Still no router. Two screens and a gate does not justify the dependency, the
@@ -30,6 +31,7 @@ type Screen = 'expenses' | 'holdings' | 'household';
  * of what is needed. A router arrives when a URL has to be shareable.
  */
 const SCREENS: readonly (readonly [Screen, string])[] = [
+  ['plan', 'Plan'],
   ['expenses', 'Expenses'],
   ['holdings', 'Holdings'],
   ['household', 'Household'],
@@ -129,7 +131,7 @@ function SignedIn({
         className="inset-safe-top inset-safe-x mb-4.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5"
         style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
       >
-        <h1 className="text-title">Finance Buddy</h1>
+        <h1 className="text-title">Family Finance Buddy</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="segmented" role="group" aria-label="Privacy mode">
@@ -195,6 +197,7 @@ function SignedIn({
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
+        {screen === 'plan' && <PlanScreen privacy={privacy} householdId={householdId} />}
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
         {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
         {screen === 'household' && <HouseholdScreen householdId={householdId} />}

@@ -80,7 +80,26 @@ export async function listExpenses(
 
   if (membersResult.error !== null) throw asRepositoryError(membersResult.error);
 
-  const members: Member[] = membersResult.data.map(toMember);
+  // Roles come from membership rather than member: a member is a person in a
+  // household, a membership is their access to it, and the two are separate on
+  // purpose. Reading them is allowed — "Who else is in this household, and in
+  // what role" is what that select policy exists for.
+  const rolesResult = await client
+    .from('membership')
+    .select('member_id, role')
+    .eq('household_id', household.id)
+    .is('revoked_at', null);
+
+  if (rolesResult.error !== null) throw asRepositoryError(rolesResult.error);
+
+  const roleByMember = new Map(
+    rolesResult.data.map((row) => [String(row.member_id), toRole(row.role)] as const),
+  );
+
+  const members: Member[] = membersResult.data.map((row) => {
+    const member = toMember(row);
+    return { ...member, role: roleByMember.get(member.id) ?? null };
+  });
   const membersById = new Map(members.map((member) => [member.id, member]));
 
   // Scoped to the household in view, not merely to what the policies allow.

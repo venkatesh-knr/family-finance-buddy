@@ -196,3 +196,20 @@ export async function createAccountFromInvite(input: {
     throw new Error(typeof data?.error === 'string' ? data.error : 'Could not create the account.');
   }
 }
+
+/**
+ * Change what somebody may do in this household.
+ *
+ * Owner only, and the database refuses to remove the last owner — a household
+ * without one cannot invite, administer or recover itself, and the way that
+ * happens is somebody tidying up their own role without noticing they were the
+ * only one.
+ */
+export async function setMemberRole(memberId: Uuid, role: HouseholdRole): Promise<void> {
+  const client = supabase();
+  const result = await client.rpc('set_member_role', {
+    target_member_id: memberId,
+    new_role: role,
+  });
+  if (result.error !== null) throw asRepositoryError(result.error);
+}
