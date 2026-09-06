@@ -33,7 +33,7 @@ export interface ExpensesState {
   readonly noHousehold: boolean;
 }
 
-export function useExpenses(): ExpensesState & {
+export function useExpenses(householdId: string | null): ExpensesState & {
   add: (expense: NewExpense) => Promise<void>;
   reload: () => void;
 } {
@@ -53,7 +53,7 @@ export function useExpenses(): ExpensesState & {
     const mine = ++generation.current;
     if (quiet) setRefreshing(true);
     try {
-      const next = await listExpenses();
+      const next = await listExpenses(householdId === null ? {} : { householdId });
       if (mine === generation.current) {
         setListing(next);
         setProblem(null);
@@ -74,18 +74,21 @@ export function useExpenses(): ExpensesState & {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [householdId]);
 
   useEffect(() => {
     void load(false);
   }, [load]);
 
-  // Subscribe once the household is known, and re-subscribe if it changes.
-  const householdId = listing?.household.id ?? null;
+  // Subscribe to the household that actually loaded, which is not quite the
+  // same as the one asked for: on a switch, the old listing is still on screen
+  // for a moment, and subscribing to the new id before its rows arrive would
+  // watch a household nothing on screen belongs to.
+  const loadedHouseholdId = listing?.household.id ?? null;
   useEffect(() => {
-    if (householdId === null) return;
+    if (loadedHouseholdId === null) return;
     return subscribeToExpenses(
-      householdId,
+      loadedHouseholdId,
       () => {
         void load(true);
       },
@@ -94,7 +97,7 @@ export function useExpenses(): ExpensesState & {
         setLiveDetail(detail);
       },
     );
-  }, [householdId, load]);
+  }, [loadedHouseholdId, load]);
 
   const add = useCallback(
     async (expense: NewExpense) => {

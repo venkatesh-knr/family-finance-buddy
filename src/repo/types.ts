@@ -37,9 +37,22 @@ export const PAYMENT_METHODS: readonly PaymentMethod[] = [
   'other',
 ];
 
+export type HouseholdKind = 'real' | 'demo';
+
+export const HOUSEHOLD_KINDS: readonly HouseholdKind[] = ['real', 'demo'];
+
 export interface Household {
   readonly id: Uuid;
   readonly name: string;
+  /**
+   * Whether this household is play money.
+   *
+   * Carried into the domain because it drives a permanent badge, not a
+   * first-run notice: "Demo households are marked kind = demo and carry a
+   * persistent badge, so there is never a moment of wondering which numbers
+   * you are looking at" (§423).
+   */
+  readonly kind: HouseholdKind;
   /** The currency every figure is normalised to on read. */
   readonly baseCurrency: string;
   readonly displayCurrency: string;

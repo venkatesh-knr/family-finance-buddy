@@ -18,6 +18,7 @@ import {
 } from '../lib/guards.ts';
 import { money } from '../lib/money.ts';
 import {
+  HOUSEHOLD_KINDS,
   HOUSEHOLD_ROLES,
   INSTRUMENT_KINDS,
   MEMBER_COLOURS,
@@ -61,6 +62,7 @@ export function toHousehold(raw: unknown): Household {
   return {
     id: requireString(row['id'], 'household.id'),
     name: requireString(row['name'], 'household.name'),
+    kind: requireOneOf(row['kind'], HOUSEHOLD_KINDS, 'household.kind'),
     baseCurrency: requireString(row['base_currency'], 'household.base_currency'),
     displayCurrency: requireString(row['display_currency'], 'household.display_currency'),
     fyStartMonth,

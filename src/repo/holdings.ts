@@ -19,6 +19,7 @@ import {
   type Member,
   type NewHolding,
   type NewValuation,
+  type Uuid,
   type Valuation,
 } from './types.ts';
 import { toHousehold, toRole } from './mapping.ts';
@@ -45,15 +46,21 @@ const INSTRUMENT_COLUMNS =
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
 
-export async function listHoldings(): Promise<HoldingListing> {
+export async function listHoldings(options: { householdId?: Uuid } = {}): Promise<HoldingListing> {
   const client = supabase();
 
-  const membershipResult = await client
+  // See the note in expenses.ts: this narrows the view, and cannot widen access.
+  let membershipQuery = client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
     .is('revoked_at', null)
-    .order('created_at', { ascending: true })
-    .limit(1);
+    .order('created_at', { ascending: true });
+
+  if (options.householdId !== undefined) {
+    membershipQuery = membershipQuery.eq('household_id', options.householdId);
+  }
+
+  const membershipResult = await membershipQuery.limit(1);
 
   if (membershipResult.error !== null) throw asRepositoryError(membershipResult.error);
 
@@ -88,9 +95,12 @@ export async function listHoldings(): Promise<HoldingListing> {
     }),
   );
 
+  // Scoped to the household in view. See the note in expenses.ts: policies keep
+  // other households out, not your own other household.
   const holdingsResult = await client
     .from('holding')
     .select(HOLDING_COLUMNS)
+    .eq('household_id', household.id)
     .eq('status', 'active')
     .order('created_at', { ascending: true });
 
@@ -106,6 +116,7 @@ export async function listHoldings(): Promise<HoldingListing> {
   const valuationsResult = await client
     .from('valuation_snapshot')
     .select(VALUATION_COLUMNS)
+    .eq('household_id', household.id)
     .order('as_of_date', { ascending: false });
 
   if (valuationsResult.error !== null) throw asRepositoryError(valuationsResult.error);

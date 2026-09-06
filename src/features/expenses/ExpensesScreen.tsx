@@ -16,9 +16,9 @@ import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { useExpenses } from './useExpenses.ts';
 
-export function ExpensesScreen({ privacy }: { privacy: boolean }) {
+export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
   const { listing, loading, refreshing, problem, live, liveDetail, noHousehold, add, reload } =
-    useExpenses();
+    useExpenses(householdId);
 
   if (loading) {
     return <p className="note px-4.5 py-4.5">Loading…</p>;

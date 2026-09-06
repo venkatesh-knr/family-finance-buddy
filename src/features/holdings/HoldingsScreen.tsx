@@ -15,8 +15,8 @@ import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
-export function HoldingsScreen({ privacy }: { privacy: boolean }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record } = useHoldings();
+export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
+  const { listing, rows, year, setYear, today, loading, problem, add, record } = useHoldings(householdId);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 

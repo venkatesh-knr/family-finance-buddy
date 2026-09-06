@@ -20,7 +20,7 @@ export interface HoldingRow {
   readonly peak: CalendarYearPeak;
 }
 
-export function useHoldings(): {
+export function useHoldings(householdId: string | null): {
   listing: HoldingListing | null;
   rows: readonly HoldingRow[];
   year: number;
@@ -45,7 +45,7 @@ export function useHoldings(): {
   const load = useCallback(async () => {
     const mine = ++generation.current;
     try {
-      const next = await listHoldings();
+      const next = await listHoldings(householdId === null ? {} : { householdId });
       if (mine === generation.current) {
         setListing(next);
         setProblem(null);
@@ -57,7 +57,7 @@ export function useHoldings(): {
     } finally {
       if (mine === generation.current) setLoading(false);
     }
-  }, []);
+  }, [householdId]);
 
   useEffect(() => {
     void load();

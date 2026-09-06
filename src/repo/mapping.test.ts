@@ -92,6 +92,7 @@ describe('toHousehold', () => {
       toHousehold({
         id: 'h-1',
         name: 'Demo household',
+        kind: 'demo',
         base_currency: 'INR',
         display_currency: 'INR',
         fy_start_month: 4,
@@ -99,6 +100,7 @@ describe('toHousehold', () => {
     ).toEqual({
       id: 'h-1',
       name: 'Demo household',
+      kind: 'demo',
       baseCurrency: 'INR',
       displayCurrency: 'INR',
       fyStartMonth: 4,
@@ -110,6 +112,7 @@ describe('embedded relations', () => {
   const household = {
     id: 'h-1',
     name: 'Demo household',
+    kind: 'demo',
     base_currency: 'INR',
     display_currency: 'INR',
     fy_start_month: 4,
@@ -248,5 +251,31 @@ describe('toHolding', () => {
 
   it('reads cost as null when there is none', () => {
     expect(toHolding({ ...row, cost_minor: null }, members, instruments).cost).toBeNull();
+  });
+});
+
+describe('household kind', () => {
+  const real = {
+    id: 'h-2',
+    name: 'Our household',
+    kind: 'real',
+    base_currency: 'INR',
+    display_currency: 'INR',
+    fy_start_month: 4,
+  };
+
+  it('carries demo through, because a badge depends on it', () => {
+    expect(toHousehold({ ...real, kind: 'demo' }).kind).toBe('demo');
+  });
+
+  it('carries real through', () => {
+    expect(toHousehold(real).kind).toBe('real');
+  });
+
+  it('refuses a kind it does not know rather than guessing', () => {
+    // Guessing would mean either badging real money as play money, or failing
+    // to badge play money as play money. Both are the mistake §423 exists to
+    // prevent, so neither is a safe default.
+    expect(() => toHousehold({ ...real, kind: 'sandbox' })).toThrow(/not one of/);
   });
 });

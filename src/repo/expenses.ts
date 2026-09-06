@@ -34,7 +34,9 @@ const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
  * The most recent spends for the household the caller belongs to, newest first,
  * together with the household, the members and who the caller is within it.
  */
-export async function listExpenses(options: { limit?: number } = {}): Promise<ExpenseListing> {
+export async function listExpenses(
+  options: { limit?: number; householdId?: Uuid } = {},
+): Promise<ExpenseListing> {
   const client = supabase();
   const limit = options.limit ?? 50;
 
@@ -45,21 +47,22 @@ export async function listExpenses(options: { limit?: number } = {}): Promise<Ex
   // Membership resolves identity to a household. RLS restricts this to the
   // caller's own rows, so no filter by user id is needed or trusted here.
   //
-  // Ordered, not merely limited. An account is expected to belong to more than
-  // one household — the demo one alongside the real one is the intended setup,
-  // and it is what proves the policies hold with two in a single database. Left
-  // unordered, this would pick whichever row Postgres happened to return and
-  // could show a different household between two loads.
-  //
-  // Oldest membership wins, which is stable and predictable. It is a stand-in,
-  // not an answer: the real fix is the household switcher (blueprint §783), and
-  // when that lands this becomes an explicit choice by the person using it.
-  const membershipResult = await client
+  // householdId narrows to one of them. It is a view, not an access decision:
+  // asking for a household you do not belong to returns nothing, because the
+  // policies decide that and this parameter cannot widen them. Omitted, the
+  // oldest membership wins — stable, and the sensible default before anyone
+  // has chosen.
+  let membershipQuery = client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
     .is('revoked_at', null)
-    .order('created_at', { ascending: true })
-    .limit(1);
+    .order('created_at', { ascending: true });
+
+  if (options.householdId !== undefined) {
+    membershipQuery = membershipQuery.eq('household_id', options.householdId);
+  }
+
+  const membershipResult = await membershipQuery.limit(1);
 
   if (membershipResult.error !== null) throw asRepositoryError(membershipResult.error);
 
@@ -80,11 +83,19 @@ export async function listExpenses(options: { limit?: number } = {}): Promise<Ex
   const members: Member[] = membersResult.data.map(toMember);
   const membersById = new Map(members.map((member) => [member.id, member]));
 
+  // Scoped to the household in view, not merely to what the policies allow.
+  //
+  // Row-level security keeps other people's households out; it does not keep
+  // your own second household out, because you are entitled to both. Without
+  // this filter, belonging to the demo and the real household would show one
+  // ledger containing both — and "nothing crosses between households, not a
+  // transaction, not an aggregate" (§423) is the rule that would break.
   const expensesResult = await client
     .from('expense_txn')
     // amount_minor::text — a bigint over 2^53 would otherwise arrive as a
     // lossy double. See the note in holdings.ts.
     .select('id, household_id, member_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
+    .eq('household_id', household.id)
     .order('txn_date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);

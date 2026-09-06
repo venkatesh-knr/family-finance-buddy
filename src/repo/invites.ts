@@ -53,15 +53,21 @@ function toInvite(raw: unknown): Invite {
   };
 }
 
-export async function listInvites(): Promise<readonly Invite[]> {
+export async function listInvites(householdId?: Uuid): Promise<readonly Invite[]> {
   const client = supabase();
 
   // code_hash is deliberately absent: no client holds a grant on that column,
   // and asking for it would fail rather than return null.
-  const result = await client
+  let query = client
     .from('invite')
     .select('id, display_name, colour, role, email, expires_at, accepted_at, revoked_at')
     .order('created_at', { ascending: false });
+
+  // Scoped to the household in view, for the same reason as everything else:
+  // belonging to two households must not merge them on screen.
+  if (householdId !== undefined) query = query.eq('household_id', householdId);
+
+  const result = await query;
 
   if (result.error !== null) throw asRepositoryError(result.error);
   return result.data.map(toInvite);

@@ -27,7 +27,7 @@ import {
 } from '../../repo/types.ts';
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 
-export function HouseholdScreen() {
+export function HouseholdScreen({ householdId }: { householdId: string | null }) {
   const [listing, setListing] = useState<ExpenseListing | null>(null);
   const [invites, setInvites] = useState<readonly Invite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,10 @@ export function HouseholdScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [next, open] = await Promise.all([listExpenses({ limit: 1 }), listInvites()]);
+      const [next, open] = await Promise.all([
+        listExpenses(householdId === null ? { limit: 1 } : { limit: 1, householdId }),
+        listInvites(householdId ?? undefined),
+      ]);
       setListing(next);
       setInvites(open);
       setProblem(null);
@@ -49,7 +52,7 @@ export function HouseholdScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [householdId]);
 
   useEffect(() => {
     void load();

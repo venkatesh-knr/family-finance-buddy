@@ -19,7 +19,8 @@ import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
 import { Card, Problem } from '../ui/primitives.tsx';
-import { ThemeToggle, useTheme } from './theme.tsx';
+import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
+import { ThemeToggle, useTheme, type ThemeChoice } from './theme.tsx';
 
 type Screen = 'expenses' | 'holdings' | 'household';
 
@@ -82,6 +83,47 @@ export function App() {
   }
 
   return (
+    <HouseholdProvider>
+      <SignedIn
+        privacy={privacy}
+        setPrivacy={setPrivacy}
+        choice={choice}
+        setChoice={setChoice}
+        email={auth.email}
+        screen={screen}
+        setScreen={setScreen}
+      />
+    </HouseholdProvider>
+  );
+}
+
+/**
+ * The signed-in shell.
+ *
+ * Separate from App because it reads the chosen household, and a component
+ * cannot consume a provider it is itself rendering.
+ */
+function SignedIn({
+  privacy,
+  setPrivacy,
+  choice,
+  setChoice,
+  email,
+  screen,
+  setScreen,
+}: {
+  privacy: boolean;
+  setPrivacy: (update: (on: boolean) => boolean) => void;
+  choice: ThemeChoice;
+  setChoice: (next: ThemeChoice) => void;
+  email: string | null;
+  screen: Screen;
+  setScreen: (next: Screen) => void;
+}) {
+  const { current } = useHouseholdChoice();
+  const householdId = current?.household.id ?? null;
+
+  return (
     <div className="min-h-screen">
       <header
         className="inset-safe-top inset-safe-x mb-4.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5"
@@ -110,9 +152,9 @@ export function App() {
             nothing on screen to tell them apart.
           */}
           <span className="flex flex-wrap items-center gap-2.5">
-            {auth.email !== null && (
-              <span className="note" title={auth.email}>
-                {auth.email}
+            {email !== null && (
+              <span className="note" title={email}>
+                {email}
               </span>
             )}
             <button
@@ -128,7 +170,7 @@ export function App() {
         </div>
       </header>
 
-      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app">
+      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app flex-wrap items-center justify-between gap-3">
         <div className="segmented" role="group" aria-label="Screen">
           {SCREENS.map(([id, label]) => (
             <button
@@ -143,12 +185,19 @@ export function App() {
             </button>
           ))}
         </div>
+
+        {/*
+          Beside the screen tabs, because switching changes what every one of
+          them is about (§783). It shows the household name when there is only
+          one, so the demo badge has somewhere to live either way.
+        */}
+        <HouseholdSwitcher />
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
-        {screen === 'expenses' && <ExpensesScreen privacy={privacy} />}
-        {screen === 'holdings' && <HoldingsScreen privacy={privacy} />}
-        {screen === 'household' && <HouseholdScreen />}
+        {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'household' && <HouseholdScreen householdId={householdId} />}
       </main>
     </div>
   );
