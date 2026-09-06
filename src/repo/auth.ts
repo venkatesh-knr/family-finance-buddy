@@ -31,10 +31,19 @@ export interface AuthState {
 
 export interface TotpEnrolment {
   readonly factorId: string;
-  /** An SVG served by our own auth server, for scanning. */
+  /** An SVG served by our own auth server, for scanning from another device. */
   readonly qrCodeSvg: string;
-  /** The same secret as text, for someone typing it in by hand. */
+  /** The same secret as text, for someone typing or pasting it. */
   readonly secret: string;
+  /**
+   * The otpauth:// URI the QR encodes.
+   *
+   * The QR is useless when the authenticator is on the same device as the
+   * screen — a phone cannot photograph itself. Opening this link hands the
+   * secret straight to the authenticator app instead, which is the ordinary
+   * case for anyone setting this up on their own phone.
+   */
+  readonly uri: string;
 }
 
 const SIGNED_OUT: AuthState = { stage: 'signed-out', email: null };
@@ -179,6 +188,7 @@ export async function beginTotpEnrolment(): Promise<TotpEnrolment> {
       factorId: data.id,
       qrCodeSvg: data.totp.qr_code,
       secret: data.totp.secret,
+      uri: data.totp.uri,
     };
   })();
 

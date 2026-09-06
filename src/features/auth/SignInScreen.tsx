@@ -249,18 +249,35 @@ function EnrolTotp({ email }: { email: string | null }) {
           <p className="note">Preparing…</p>
         ) : (
           <>
-            <div
-              className="mx-auto rounded bg-white p-3"
-              // The SVG comes from our own auth server over TLS. It is markup,
-              // not an image request, so it needs no img-src allowance.
-              dangerouslySetInnerHTML={{ __html: enrolment.qrCodeSvg }}
-            />
-            <div className="flex flex-col gap-1.5">
-              <span className="micro-label">Or type this in</span>
-              <code className="num scroll-x rounded bg-s2 px-2.5 py-2 text-cell">
-                {enrolment.secret}
-              </code>
-            </div>
+            {/*
+              Setting this up on the phone you are reading it on is the ordinary
+              case, and a phone cannot photograph its own screen. So the link
+              comes first: it opens the authenticator directly with the secret
+              already in it. The QR is for the other case — scanning from a
+              second device — and the secret is the fallback for both.
+            */}
+            <a className="btn btn-primary text-center" href={enrolment.uri}>
+              Open my authenticator app
+            </a>
+            <p className="note">
+              That opens the app on this phone with the account already filled in. If nothing
+              happens, no authenticator is installed yet — install one, then come back.
+            </p>
+
+            <details>
+              <summary className="note cursor-pointer">Setting it up on another device?</summary>
+
+              <div className="mt-3 flex flex-col gap-3">
+                <div
+                  className="mx-auto rounded bg-white p-3"
+                  // The SVG comes from our own auth server over TLS. It is
+                  // markup, not an image request, so it needs no img-src rule.
+                  dangerouslySetInnerHTML={{ __html: enrolment.qrCodeSvg }}
+                />
+                <SecretToType secret={enrolment.secret} />
+              </div>
+            </details>
+
             <CodeForm factorId={enrolment.factorId} submitLabel="Confirm and finish" />
           </>
         )}
@@ -282,6 +299,46 @@ function PresentCode({ email }: { email: string | null }) {
         <SignOutLink />
       </div>
     </Frame>
+  );
+}
+
+/**
+ * The secret, with a copy button.
+ *
+ * Worth saving somewhere safe as well as scanning: it is the only way to add
+ * this account to a new phone later, and there is no recovery path that does
+ * not go through the Supabase dashboard.
+ */
+function SecretToType({ secret }: { secret: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="micro-label">Or enter this by hand</span>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <code className="num scroll-x rounded bg-s2 px-2.5 py-2 text-cell">{secret}</code>
+        <Button
+          variant="quiet"
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(secret).then(
+              () => {
+                setCopied(true);
+              },
+              () => {
+                setCopied(false);
+              },
+            );
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+      <span className="note">
+        Keep this somewhere safe. It is what lets you add this account to a new phone if you lose
+        this one.
+      </span>
+    </div>
   );
 }
 
