@@ -56,12 +56,22 @@ begin
   -- and under the row lock below, so two owners demoting each other at once
   -- cannot both succeed and leave nobody.
   if v_current = 'owner' and new_role <> 'owner' then
+    -- Lock first, then count. Postgres refuses FOR UPDATE alongside an
+    -- aggregate, and the two steps are what make the guard hold anyway: the
+    -- lock serialises two owners demoting each other at once, so the second
+    -- transaction counts after the first has committed rather than beside it.
+    perform 1
+       from public.membership
+      where household_id = v_household
+        and role = 'owner'
+        and revoked_at is null
+        for update;
+
     select count(*) into v_owners
       from public.membership
      where household_id = v_household
        and role = 'owner'
-       and revoked_at is null
-       for update;
+       and revoked_at is null;
 
     if v_owners <= 1 then
       raise exception
