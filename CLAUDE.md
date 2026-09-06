@@ -1,9 +1,10 @@
 # Family Finance Buddy
 
-**Names.** Product name: *Family Finance Buddy*. Short form used in the app header, the
-docs and the icon: *Finance Buddy*. Slug for the repo, package and Supabase project:
-`family-finance-buddy`. Use the short form in UI copy; the full name in store listings,
-the README and anywhere it stands alone.
+**Names.** Product name: *Family Finance Buddy*, and that is what the app calls itself —
+the header, the sign-in screen and the browser tab all say it in full. *Finance Buddy* is
+the short form, kept for places with no room for the whole thing: the home-screen icon
+label, where anything longer is truncated by the launcher. Slug for the repo, package and
+Supabase project: `family-finance-buddy`.
 
 Family finance app for an Indian household. Tracks expenses, investments across nine asset
 classes, property, insurance, liabilities, FIRE targets, and Indian + US taxes.

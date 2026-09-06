@@ -13,7 +13,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(20);
+select plan(24);
 
 -- ============================================================== the fixture
 
@@ -277,6 +277,49 @@ select throws_ok(
   '42501'::char(5),
   null::text,
   'a client cannot ask whether a code is open — that question is the endpoint''s alone'
+);
+
+reset role;
+
+-- ================================ changing a role, and the last owner (4)
+
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to '88888888-8888-4888-8888-888888888888';
+set local request.jwt.claims   to '{"sub":"88888888-8888-4888-8888-888888888888","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ select public.set_member_role('dddddddd-1111-4111-8111-000000000002', 'owner') $q$,
+  '42501'::char(5),
+  null::text,
+  'a viewer cannot promote themselves'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to '77777777-7777-4777-8777-777777777777';
+set local request.jwt.claims   to '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated","aal":"aal2"}';
+
+-- The owner is the only one, and the newcomer accepted an owner invite earlier
+-- in this file — so demoting the original owner must be allowed, and demoting
+-- the last one must not.
+select throws_ok(
+  $q$ select public.set_member_role('dddddddd-1111-4111-8111-000000000001', 'viewer') $q$,
+  '22023'::char(5),
+  null::text,
+  'the last owner cannot stop being one'
+);
+
+select lives_ok(
+  $q$ select public.set_member_role('dddddddd-1111-4111-8111-000000000002', 'partner') $q$,
+  'an owner can change somebody else''s role'
+);
+
+select is(
+  (select role from public.membership
+    where member_id = 'dddddddd-1111-4111-8111-000000000002'),
+  'partner',
+  'and the change takes effect'
 );
 
 reset role;
