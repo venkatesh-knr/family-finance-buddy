@@ -11,21 +11,64 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react
 export function Card({
   title,
   aside,
+  collapsible = false,
+  defaultOpen = true,
+  summary,
   children,
 }: {
   title?: string;
   aside?: ReactNode;
+  /**
+   * Whether the card can be folded away.
+   *
+   * Long lists — three dozen categories, a decade of projections — make a
+   * screen that has to be scrolled past rather than read. Folding is not a
+   * decoration on those; it is what lets the cards above and below them stay
+   * reachable.
+   */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  /** Shown in place of the content when folded, so the card still says something. */
+  summary?: ReactNode;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const shown = !collapsible || open;
+
   return (
     <section className="card">
       {title !== undefined && (
         <header className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="card-title font-sans">{title}</h2>
+          {collapsible ? (
+            <button
+              type="button"
+              className="card-title flex items-center gap-2 font-sans"
+              aria-expanded={open}
+              onClick={() => {
+                setOpen((was) => !was);
+              }}
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--ink)' }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  transition: 'transform 120ms',
+                  transform: open ? 'rotate(90deg)' : 'none',
+                  color: 'var(--muted)',
+                }}
+              >
+                ▸
+              </span>
+              {title}
+            </button>
+          ) : (
+            <h2 className="card-title font-sans">{title}</h2>
+          )}
           {aside}
         </header>
       )}
-      {children}
+      {shown ? children : <div className="note">{summary}</div>}
     </section>
   );
 }

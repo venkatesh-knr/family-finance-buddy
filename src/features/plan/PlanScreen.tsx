@@ -138,33 +138,114 @@ function Figure({
   );
 }
 
-/** The ladder, which is the point of computing an annual figure at all. */
+/**
+ * The target, and what it becomes as prices rise.
+ *
+ * A retirement number is about a year — the one you are aiming at — so that
+ * year leads and the ladder supports it. Showing every year of a projection as
+ * a table of equal rows says none of them matters more than the others, which
+ * is false: one of them is the answer and the rest are context.
+ *
+ * The horizon and the multiple are both the reader's to choose. Twenty-five
+ * times is the four-percent rule and six per cent is a guess about India;
+ * neither is a fact, and an app that hard-codes them is quietly asserting they
+ * are.
+ */
 function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy: boolean }) {
-  const { ladder, multiplier, setMultiplier, inflationPct, setInflationPct, annual } = plan;
+  const {
+    ladder,
+    multiplier,
+    setMultiplier,
+    inflationPct,
+    setInflationPct,
+    yearsAhead,
+    setYearsAhead,
+    annual,
+  } = plan;
+  const [everyYear, setEveryYear] = useState(false);
 
   if (annual === null) return null;
+
+  const target = ladder[ladder.length - 1];
+  const baseYear = ladder[0]?.year ?? 0;
+
+  // Milestones rather than a row per year: the first, the last, and every
+  // fifth in between. A long projection is otherwise a wall of numbers that
+  // differ from their neighbours by six per cent and from the point by more.
+  const shown = everyYear
+    ? ladder
+    : ladder.filter(
+        (step, index) => index === 0 || index === ladder.length - 1 || (step.year - baseYear) % 5 === 0,
+      );
 
   return (
     <Card
       title="FIRE target"
       aside={
-        <span className="flex flex-wrap items-center gap-2.5">
-          <span className="segmented" role="group" aria-label="Multiplier">
-            {MULTIPLIERS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={multiplier === option}
-                onClick={() => {
-                  setMultiplier(option);
-                }}
-              >
-                {option}×
-              </button>
-            ))}
+        <label className="flex items-center gap-2">
+          <span className="micro-label">Retiring in</span>
+          <input
+            className="field field-num w-[62px]"
+            inputMode="numeric"
+            value={String(yearsAhead)}
+            onChange={(event) => {
+              const next = Number(event.target.value.replace(/\D/g, ''));
+              // Bounded at sixty: beyond that the compounding dominates and the
+              // figure stops being a plan and becomes a curiosity.
+              if (Number.isFinite(next)) setYearsAhead(Math.min(60, next));
+            }}
+          />
+          <span className="note">years</span>
+        </label>
+      }
+    >
+      {target !== undefined && (
+        <div className="mb-4.5">
+          <p className="num" style={{ color: 'var(--ink)', fontSize: '28px', lineHeight: 1.15 }}>
+            {formatMoney(target.target, { privacy })}
+          </p>
+          <p className="note">
+            what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
+            rise {inflationPct}% a year
+          </p>
+        </div>
+      )}
+
+      <div className="mb-3.5 flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1.5">
+          <span className="micro-label">Multiple of annual spending</span>
+          <span className="flex flex-wrap items-center gap-2.5">
+            <span className="segmented" role="group" aria-label="Multiplier">
+              {MULTIPLIERS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={multiplier === option}
+                  onClick={() => {
+                    setMultiplier(option);
+                  }}
+                >
+                  {option}×
+                </button>
+              ))}
+            </span>
+            <input
+              className="field field-num w-[76px]"
+              inputMode="decimal"
+              aria-label="Custom multiple"
+              value={String(multiplier)}
+              onChange={(event) => {
+                const next = Number(event.target.value.replace(/[^\d.]/g, ''));
+                if (Number.isFinite(next) && next > 0) setMultiplier(next);
+              }}
+            />
+            <span className="note">× — or any figure you prefer</span>
           </span>
-          <label className="flex items-center gap-2">
-            <span className="micro-label">Inflation</span>
+        </div>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="micro-label">Inflation</span>
+          <span className="flex items-center gap-2">
             <input
               className="field field-num w-[62px]"
               inputMode="decimal"
@@ -174,11 +255,11 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
                 if (Number.isFinite(next)) setInflationPct(next);
               }}
             />
-            <span className="note">%</span>
-          </label>
-        </span>
-      }
-    >
+            <span className="note">% a year</span>
+          </span>
+        </label>
+      </div>
+
       <div className="scroll-x">
         <table className="w-full border-collapse text-cell">
           <thead>
@@ -200,26 +281,49 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
             </tr>
           </thead>
           <tbody className="row-separated">
-            {ladder.map((step, index) => (
-              <tr key={step.year}>
-                <td className="num px-2.5 py-2" style={{ color: index === 0 ? 'var(--ink)' : 'var(--muted)' }}>
-                  {step.year}
-                  {index === 0 && <span className="note"> · today</span>}
-                </td>
-                <td className="num px-2.5 py-2 text-right" style={{ color: 'var(--ink)' }}>
-                  {formatMoney(step.target, { privacy })}
-                </td>
-              </tr>
-            ))}
+            {shown.map((step) => {
+              const isTarget = step.year === target?.year;
+              const isToday = step.year === baseYear;
+              return (
+                <tr key={step.year}>
+                  <td
+                    className="num px-2.5 py-2"
+                    style={{ color: isTarget || isToday ? 'var(--ink)' : 'var(--muted)' }}
+                  >
+                    {step.year}
+                    {isToday && <span className="note"> · today</span>}
+                    {isTarget && !isToday && <span className="note"> · your target</span>}
+                  </td>
+                  <td
+                    className="num px-2.5 py-2 text-right"
+                    style={{ color: 'var(--ink)', fontWeight: isTarget ? 600 : 400 }}
+                  >
+                    {formatMoney(step.target, { privacy })}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
+      {ladder.length > 3 && (
+        <button
+          type="button"
+          className="note mt-2.5 underline"
+          onClick={() => {
+            setEveryYear((on) => !on);
+          }}
+        >
+          {everyYear ? 'Show milestones only' : `Show all ${String(ladder.length)} years`}
+        </button>
+      )}
+
       <p className="note mt-3">
-        Each year is the one before it plus {inflationPct}%, compounded. The ladder starts at this
-        year rather than at whenever it was last set up, which is how a target quietly stops being
-        enough. Which multiple is right is a judgement about risk — the app shows all three and
-        recommends none.
+        Each year is the one before it plus {inflationPct}%, compounded, and the ladder starts at
+        this year rather than at whenever it was last set up — which is how a target quietly stops
+        being enough. Which multiple is right is a judgement about risk, so the app shows what you
+        ask for and recommends nothing.
       </p>
     </Card>
   );
@@ -242,11 +346,34 @@ function Categories({
     [rows, showArchived],
   );
 
+  // Grouped by nature, because that is the workbook's primary split and the
+  // one that means something: what the household must spend, and what it
+  // chooses to.
+  const groups = useMemo(
+    () => [
+      { nature: 'fixed' as const, label: 'Compulsory', rows: visible.filter((r) => r.nature === 'fixed') },
+      { nature: 'variable' as const, label: 'As needed', rows: visible.filter((r) => r.nature === 'variable') },
+    ],
+    [visible],
+  );
+
+  const plannedCount = rows.filter((r) => r.monthly !== null || r.yearly !== null).length;
+
   if (listing === null) return null;
 
   return (
     <Card
       title="Categories"
+      collapsible
+      // Folded to begin with once the list is long enough to push everything
+      // else off the screen. Three dozen rows above the loans card means the
+      // loans card is never seen.
+      defaultOpen={rows.length <= 12}
+      summary={
+        rows.length === 0
+          ? 'None yet.'
+          : `${String(rows.length)} categories, ${String(plannedCount)} with a planned figure.`
+      }
       aside={
         <button
           type="button"
@@ -277,18 +404,27 @@ function Categories({
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {visible.map((row) => (
-            <CategoryRow
-              key={row.categoryId}
-              row={row}
-              currency={listing.household.baseCurrency}
-              privacy={privacy}
-              editable={editable}
-              onSave={plan.saveBudget}
-              onArchive={plan.setArchived}
-            />
-          ))}
+        <div className="flex flex-col gap-4.5">
+          {groups.map((group) =>
+            group.rows.length === 0 ? null : (
+              <div key={group.nature} className="flex flex-col gap-2.5">
+                <span className="micro-label">
+                  {group.label} · {group.rows.length}
+                </span>
+                {group.rows.map((row) => (
+                  <CategoryRow
+                    key={row.categoryId}
+                    row={row}
+                    currency={listing.household.baseCurrency}
+                    privacy={privacy}
+                    editable={editable}
+                    onSave={plan.saveBudget}
+                    onArchive={plan.setArchived}
+                  />
+                ))}
+              </div>
+            ),
+          )}
         </div>
       )}
 
@@ -506,8 +642,15 @@ function Commitments({
   const { listing } = plan;
   if (listing === null) return null;
 
+  const count = listing.liabilities.length + listing.policies.length;
+
   return (
-    <Card title="Loans and policies">
+    <Card
+      title="Loans and policies"
+      collapsible
+      defaultOpen={count <= 8}
+      summary={count === 0 ? 'None yet.' : `${String(count)} recorded.`}
+    >
       <p className="note mb-3">
         These leave the account like any other spending and count toward the year. What makes a loan
         reduce net worth and a policy not — principal, cover, renewal — belongs with the screen that

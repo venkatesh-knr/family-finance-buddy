@@ -166,3 +166,60 @@ describe('fireBaseYear', () => {
     expect(ladder.map((step) => step.year)).toEqual([2026, 2027, 2028]);
   });
 });
+
+describe('a horizon and a multiple the reader chooses', () => {
+  it('projects as far ahead as asked', () => {
+    const thirty = fireLadder({
+      annualExpense: FINAL_EXPENSE,
+      multiplier: 25,
+      inflationPct: 6,
+      fromYear: 2026,
+      years: 30,
+    });
+    expect(thirty).toHaveLength(31);
+    expect(thirty[30]?.year).toBe(2056);
+  });
+
+  it('answers for a single year when asked for no span at all', () => {
+    const now = fireLadder({
+      annualExpense: FINAL_EXPENSE,
+      multiplier: 25,
+      inflationPct: 6,
+      fromYear: 2026,
+      years: 0,
+    });
+    expect(now).toHaveLength(1);
+    expect(rupees(now[0]!.target)).toBe(44_845_000);
+  });
+
+  it('takes a multiple beyond the three the app offers', () => {
+    // 100x is a defensible reading for someone who wants withdrawals to be
+    // irrelevant, and nothing in the arithmetic cares which figure it is.
+    expect(rupees(fireTarget(FINAL_EXPENSE, 100))).toBe(179_380_000);
+  });
+
+  it('takes a fractional multiple, which a withdrawal rate implies', () => {
+    // A 3% withdrawal rate is 33.33x, not a round number.
+    expect(rupees(fireTarget(FINAL_EXPENSE, 33.33))).toBe(59_787_354);
+  });
+
+  it('stays exact at a long horizon rather than drifting', () => {
+    // Thirty compoundings through a float would visibly drift; integer
+    // arithmetic gives the same answer whichever way it is reached.
+    const direct = fireLadder({
+      annualExpense: FINAL_EXPENSE,
+      multiplier: 25,
+      inflationPct: 6,
+      fromYear: 2026,
+      years: 30,
+    });
+    const viaTwenty = fireLadder({
+      annualExpense: FINAL_EXPENSE,
+      multiplier: 25,
+      inflationPct: 6,
+      fromYear: 2026,
+      years: 20,
+    });
+    expect(direct[20]).toEqual(viaTwenty[20]);
+  });
+});
