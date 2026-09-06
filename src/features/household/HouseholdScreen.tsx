@@ -33,6 +33,11 @@ export function HouseholdScreen() {
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // Held here rather than inside the form, because revoking an invite has to
+  // take its code off the screen — a revoked code shown under "give them this"
+  // is worse than no code at all.
+  const [issued, setIssued] = useState<{ code: string; validForDays: number } | null>(null);
+
   const load = useCallback(async () => {
     try {
       const [next, open] = await Promise.all([listExpenses({ limit: 1 }), listInvites()]);
@@ -59,7 +64,17 @@ export function HouseholdScreen() {
   return (
     <div className="flex flex-col gap-4.5">
       {isOwner ? (
-        <IssueInvite householdId={listing.household.id} onIssued={load} />
+        <IssueInvite
+          householdId={listing.household.id}
+          issued={issued}
+          onIssued={(next) => {
+            setIssued(next);
+            void load();
+          }}
+          onDismiss={() => {
+            setIssued(null);
+          }}
+        />
       ) : (
         <Card title="Invite someone">
           <p className="note">
@@ -92,7 +107,18 @@ export function HouseholdScreen() {
         <Card title="Invites">
           <ul className="row-separated">
             {invites.map((invite) => (
-              <InviteRow key={invite.id} invite={invite} canRevoke={isOwner} onChanged={load} />
+              <InviteRow
+                key={invite.id}
+                invite={invite}
+                canRevoke={isOwner}
+                onChanged={async () => {
+                  // Whichever invite was revoked, no code on screen is worth
+                  // keeping: it is either the one just killed, or one the owner
+                  // has had ample time to send.
+                  setIssued(null);
+                  await load();
+                }}
+              />
             ))}
           </ul>
         </Card>
@@ -163,16 +189,19 @@ function InviteRow({
 
 function IssueInvite({
   householdId,
+  issued,
   onIssued,
+  onDismiss,
 }: {
   householdId: string;
-  onIssued: () => Promise<void>;
+  issued: { code: string; validForDays: number } | null;
+  onIssued: (issued: { code: string; validForDays: number }) => void;
+  onDismiss: () => void;
 }) {
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<HouseholdRole>('partner');
   const [colour, setColour] = useState<MemberColour>('c2');
   const [days, setDays] = useState('7');
-  const [code, setCode] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -182,16 +211,15 @@ function IssueInvite({
       setProblem(null);
       setBusy(true);
       try {
-        const issued = await createInvite({
+        const code = await createInvite({
           householdId,
           displayName,
           role,
           colour,
           validForDays: Number(days),
         });
-        setCode(issued);
         setDisplayName('');
-        await onIssued();
+        onIssued({ code, validForDays: Number(days) });
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not create the invite.');
       } finally {
@@ -203,14 +231,8 @@ function IssueInvite({
 
   return (
     <Card title="Invite someone">
-      {code !== null ? (
-        <IssuedCode
-          code={code}
-          validForDays={Number(days)}
-          onDone={() => {
-            setCode(null);
-          }}
-        />
+      {issued !== null ? (
+        <IssuedCode code={issued.code} validForDays={issued.validForDays} onDone={onDismiss} />
       ) : (
         <form
           className="flex flex-wrap items-end gap-3"
@@ -288,7 +310,7 @@ function IssueInvite({
         </form>
       )}
 
-      {code === null && (
+      {issued === null && (
         <p className="note mt-3">
           An owner can grant any role, including owner. A second owner is worth having: it is what
           stops a lost authenticator locking the household out of its own records.
