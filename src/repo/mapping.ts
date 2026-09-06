@@ -18,6 +18,7 @@ import {
 } from '../lib/guards.ts';
 import { money } from '../lib/money.ts';
 import {
+  CATEGORY_NATURES,
   HOUSEHOLD_KINDS,
   HOUSEHOLD_ROLES,
   INSTRUMENT_KINDS,
@@ -31,6 +32,7 @@ import {
   type Instrument,
   type Member,
   type PaymentMethod,
+  type ExpenseCategory,
   type Quantity,
   type Valuation,
 } from './types.ts';
@@ -107,6 +109,7 @@ export function toExpense(raw: unknown, membersById: ReadonlyMap<string, Member>
     id: requireString(row['id'], 'expense_txn.id'),
     householdId: requireString(row['household_id'], 'expense_txn.household_id'),
     member,
+    categoryId: optionalString(row['category_id'], 'expense_txn.category_id'),
     date: requireIsoDate(row['txn_date'], 'expense_txn.txn_date'),
     amount: money(toBigIntExact(row['amount_minor'], 'expense_txn.amount_minor'), currency),
     payee: optionalString(row['payee'], 'expense_txn.payee'),
@@ -223,5 +226,31 @@ export function toValuation(raw: unknown): Valuation {
     amount: money(toBigIntExact(row['value_minor'], 'valuation_snapshot.value_minor'), currency),
     source: requireOneOf(row['source'], VALUATION_SOURCES, 'valuation_snapshot.source'),
     note: optionalString(row['note'], 'valuation_snapshot.note'),
+  };
+}
+
+/**
+ * A category row.
+ *
+ * Shared by the expenses repository and the planning one: the same rows answer
+ * "what may I file this under" and "what did we mean to spend", and two
+ * mappers would eventually disagree about one of them.
+ */
+export function toExpenseCategory(raw: unknown): ExpenseCategory {
+  const row = requireRecord(raw, 'expense_category');
+  const sortOrder = row['sort_order'];
+  if (typeof sortOrder !== 'number') {
+    throw new MalformedRowError('expense_category.sort_order', 'is not a number');
+  }
+  return {
+    id: requireString(row['id'], 'expense_category.id'),
+    name: requireString(row['name'], 'expense_category.name'),
+    nature: requireOneOf(row['nature'], CATEGORY_NATURES, 'expense_category.nature'),
+    parentId: optionalString(row['parent_id'], 'expense_category.parent_id'),
+    isEssential: requireBoolean(row['is_essential'], 'expense_category.is_essential'),
+    sortOrder,
+    isArchived:
+      requireOneOf(row['status'], ['active', 'archived'] as const, 'expense_category.status') ===
+      'archived',
   };
 }

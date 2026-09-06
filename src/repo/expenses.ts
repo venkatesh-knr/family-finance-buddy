@@ -17,7 +17,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { istCalendarDate } from '../lib/dates.ts';
 import { supabase } from './client.ts';
-import { toExpense, toHousehold, toMember, toRole } from './mapping.ts';
+import { toExpense, toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
   NoHouseholdError,
   type Expense,
@@ -113,7 +113,7 @@ export async function listExpenses(
     .from('expense_txn')
     // amount_minor::text — a bigint over 2^53 would otherwise arrive as a
     // lossy double. See the note in holdings.ts.
-    .select('id, household_id, member_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
     .eq('household_id', household.id)
     .order('txn_date', { ascending: false })
     .order('created_at', { ascending: false })
@@ -122,6 +122,17 @@ export async function listExpenses(
   if (expensesResult.error !== null) throw asRepositoryError(expensesResult.error);
 
   const expenses: Expense[] = expensesResult.data.map((row) => toExpense(row, membersById));
+
+  // Active categories only: an archived one stays on its historical rows but
+  // leaves the picker, which is what archiving is for.
+  const categoriesResult = await client
+    .from('expense_category')
+    .select('id, name, nature, parent_id, is_essential, sort_order, status')
+    .eq('household_id', household.id)
+    .eq('status', 'active')
+    .order('sort_order', { ascending: true });
+
+  if (categoriesResult.error !== null) throw asRepositoryError(categoriesResult.error);
 
   return {
     household,
@@ -134,6 +145,7 @@ export async function listExpenses(
     },
     members,
     expenses,
+    categories: categoriesResult.data.map(toExpenseCategory),
   };
 }
 
@@ -156,6 +168,7 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
     .insert({
       household_id: expense.householdId,
       member_id: expense.memberId,
+      category_id: expense.categoryId ?? null,
       txn_date: expense.date,
       // The bigint becomes a decimal string, never a float, on the way out.
       amount_minor: expense.amount.minor.toString(),
@@ -164,7 +177,7 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
       method: expense.method ?? null,
       note: expense.note ?? null,
     })
-    .select('id, household_id, member_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
     .single();
 
   if (result.error !== null) throw asRepositoryError(result.error);

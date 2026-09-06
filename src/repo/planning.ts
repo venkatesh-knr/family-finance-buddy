@@ -12,17 +12,15 @@ import { supabase } from './client.ts';
 import {
   MalformedRowError,
   optionalString,
-  requireBoolean,
   requireOneOf,
   requireRecord,
   requireString,
   toBigIntExact,
 } from '../lib/guards.ts';
 import { money, type Money } from '../lib/money.ts';
-import { toHousehold, toMember, toRole } from './mapping.ts';
+import { toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
   BUDGET_CADENCES,
-  CATEGORY_NATURES,
   COMMITMENT_CADENCES,
   LIABILITY_KINDS,
   NoHouseholdError,
@@ -31,7 +29,6 @@ import {
   type BudgetCadence,
   type CategoryNature,
   type CommitmentCadence,
-  type ExpenseCategory,
   type InsurancePolicy,
   type Liability,
   type LiabilityKind,
@@ -47,25 +44,6 @@ const CATEGORY_COLUMNS = 'id, name, nature, parent_id, is_essential, sort_order,
 const BUDGET_COLUMNS = 'id, category_id, fy, cadence, period, planned_minor::text, currency, member_id';
 const LIABILITY_COLUMNS = 'id, name, kind, instalment_minor::text, currency, cadence, member_id, status';
 const POLICY_COLUMNS = 'id, name, kind, premium_minor::text, currency, cadence, member_id, status';
-
-function toCategory(raw: unknown): ExpenseCategory {
-  const row = requireRecord(raw, 'expense_category');
-  const sortOrder = row['sort_order'];
-  if (typeof sortOrder !== 'number') {
-    throw new MalformedRowError('expense_category.sort_order', 'is not a number');
-  }
-  return {
-    id: requireString(row['id'], 'expense_category.id'),
-    name: requireString(row['name'], 'expense_category.name'),
-    nature: requireOneOf<CategoryNature>(row['nature'], CATEGORY_NATURES, 'expense_category.nature'),
-    parentId: optionalString(row['parent_id'], 'expense_category.parent_id'),
-    isEssential: requireBoolean(row['is_essential'], 'expense_category.is_essential'),
-    sortOrder,
-    isArchived:
-      requireOneOf(row['status'], ['active', 'archived'] as const, 'expense_category.status') ===
-      'archived',
-  };
-}
 
 function toBudget(raw: unknown): Budget {
   const row = requireRecord(raw, 'budget');
@@ -243,7 +221,7 @@ export async function listPlan(options: {
       canFileForOthers: role === 'owner' || role === 'partner',
     },
     members,
-    categories: (categoriesResult.data ?? []).map(toCategory),
+    categories: (categoriesResult.data ?? []).map(toExpenseCategory),
     budgets: (budgetsResult.data ?? []).map(toBudget),
     liabilities,
     policies,
