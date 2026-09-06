@@ -79,6 +79,9 @@ export function HouseholdScreen() {
                 style={{ background: `var(--${member.colour})` }}
               />
               <span style={{ color: 'var(--ink)' }}>{member.displayName}</span>
+              {member.id === listing.viewer.memberId && (
+                <Pill tone="own">you · {listing.viewer.role}</Pill>
+              )}
               {member.isArchived && <Pill tone="neutral">Archived</Pill>}
             </li>
           ))}
@@ -201,7 +204,13 @@ function IssueInvite({
   return (
     <Card title="Invite someone">
       {code !== null ? (
-        <IssuedCode code={code} onDone={() => { setCode(null); }} />
+        <IssuedCode
+          code={code}
+          validForDays={Number(days)}
+          onDone={() => {
+            setCode(null);
+          }}
+        />
       ) : (
         <form
           className="flex flex-wrap items-end gap-3"
@@ -290,19 +299,66 @@ function IssueInvite({
 }
 
 /**
- * The code, shown once.
+ * Where this app lives, as the invitee will need to open it.
  *
- * Only its hash was stored, so this is genuinely the only moment it exists.
- * Saying so plainly is better than a quiet dismissal that loses it.
+ * Derived rather than written down, so it stays right on localhost, on Pages,
+ * and on a custom domain later without anyone remembering to change it.
  */
-function IssuedCode({ code, onDone }: { code: string; onDone: () => void }) {
+function appUrl(): string {
+  return new URL(import.meta.env.BASE_URL, window.location.origin).href;
+}
+
+/**
+ * What to send someone.
+ *
+ * Both routes are described because the owner does not always know which the
+ * recipient needs, and picking the wrong one gives a confusing refusal rather
+ * than a helpful one.
+ */
+function invitationText(code: string, validForDays: number): string {
+  const expires = new Date(Date.now() + validForDays * 86_400_000);
+  return [
+    'You have been invited to our Finance Buddy household.',
+    '',
+    `Open: ${appUrl()}`,
+    `Code: ${code}`,
+    '',
+    'If you do not have an account yet, tap "I have an invite code and no account yet" on the sign-in screen.',
+    'If you already have one, sign in and enter the code when asked.',
+    '',
+    `The code works once and expires on ${expires.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.`,
+  ].join('\n');
+}
+
+/**
+ * The code, shown once, with a way to send it.
+ *
+ * Only its hash was stored, so this is genuinely the only moment it exists —
+ * and a code that has to be read off one screen and typed into another is a
+ * code that gets mistyped. Sharing it is part of issuing it, not an extra.
+ */
+function IssuedCode({
+  code,
+  validForDays,
+  onDone,
+}: {
+  code: string;
+  validForDays: number;
+  onDone: () => void;
+}) {
   const [copied, setCopied] = useState(false);
+  const message = invitationText(code, validForDays);
+
+  // navigator.share is the right thing on a phone — one tap to WhatsApp, mail,
+  // Signal, whatever they use — and absent on most desktop browsers, where the
+  // explicit links below do the job instead.
+  const canShare = typeof navigator.share === 'function';
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3.5">
       <p className="text-caption" style={{ color: 'var(--ink)' }}>
-        Give them this code. <strong>It is shown once</strong> — only its fingerprint is stored, so
-        it cannot be looked up again. If it is lost, revoke the invite and issue another.
+        <strong>Shown once.</strong> Only its fingerprint is stored, so it cannot be looked up
+        again. If it is lost, revoke the invite and issue another.
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -328,19 +384,58 @@ function IssuedCode({ code, onDone }: { code: string; onDone: () => void }) {
                 setCopied(true);
               },
               () => {
-                // Clipboard access can be refused; the code is on screen either way.
+                // Clipboard access can be refused; the code is on screen anyway.
                 setCopied(false);
               },
             );
           }}
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? 'Copied' : 'Copy code'}
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5">
+        {canShare && (
+          <Button
+            type="button"
+            onClick={() => {
+              void navigator
+                .share({ title: 'Finance Buddy invitation', text: message })
+                .catch(() => {
+                  // Dismissing the share sheet rejects. Nothing to report.
+                });
+            }}
+          >
+            Share…
+          </Button>
+        )}
+
+        <a
+          className="btn btn-quiet"
+          href={`https://wa.me/?text=${encodeURIComponent(message)}`}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          WhatsApp
+        </a>
+
+        <a
+          className="btn btn-quiet"
+          href={`mailto:?subject=${encodeURIComponent('Finance Buddy invitation')}&body=${encodeURIComponent(message)}`}
+        >
+          Email
+        </a>
 
         <Button variant="quiet" type="button" onClick={onDone}>
           Done
         </Button>
       </div>
+
+      <p className="note">
+        The message includes the link and the instructions, so there is nothing to type out. Send
+        it to one person directly rather than to a group — the code is what lets them in, and a
+        group chat keeps it forever.
+      </p>
     </div>
   );
 }

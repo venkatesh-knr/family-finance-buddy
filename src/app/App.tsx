@@ -104,15 +104,27 @@ export function App() {
 
           <ThemeToggle choice={choice} onChange={setChoice} />
 
-          <button
-            type="button"
-            className="note underline"
-            onClick={() => {
-              void signOut();
-            }}
-          >
-            Sign out
-          </button>
+          {/*
+            Who is signed in. Two accounts on one phone is the ordinary case
+            here — an owner and whoever they invited — and without this there is
+            nothing on screen to tell them apart.
+          */}
+          <span className="flex flex-wrap items-center gap-2.5">
+            {auth.email !== null && (
+              <span className="note" title={auth.email}>
+                {auth.email}
+              </span>
+            )}
+            <button
+              type="button"
+              className="note underline"
+              onClick={() => {
+                void signOut();
+              }}
+            >
+              Sign out
+            </button>
+          </span>
         </div>
       </header>
 
