@@ -113,3 +113,39 @@ describe('annualPlannedExpense', () => {
     expect(result.unplanned).toEqual(['Dress']);
   });
 });
+
+/**
+ * The workbook's own figures, as a regression fixture.
+ *
+ * Not a unit test of arithmetic so much as a record of what the sheet actually
+ * contains and what it reports — the gap between those two is the reason this
+ * module exists.
+ */
+describe('the workbook, as at FY 2025-26', () => {
+  const categoriesMonthly = 82_700; // what the monthly column adds to
+  const categoriesYearly = 421_400;
+  const commitments = 490_000; // home loan, three health policies, two term
+
+  it('reproduces the true annual figure, which the sheet does not', () => {
+    const outgoings: PlannedOutgoing[] = [
+      { label: 'categories, monthly', amount: inr(categoriesMonthly), cadence: 'monthly', source: 'category', compulsory: true },
+      { label: 'categories, yearly', amount: inr(categoriesYearly), cadence: 'yearly', source: 'category', compulsory: true },
+      { label: 'home loan and policies', amount: inr(commitments), cadence: 'yearly', source: 'liability' },
+    ];
+
+    const result = annualPlannedExpense(outgoings);
+
+    // 82,700 x 12 + 421,400 + 490,000
+    expect(result.total.minor).toBe(190_380_000n);
+
+    // The sheet's own M&Y Total, for comparison: 12,93,800. It is short by
+    // 1,20,000 of stale monthly total and 4,90,000 of uncounted commitments.
+    const sheetSays = 1_293_800;
+    expect(Number(result.total.minor) / 100 - sheetSays).toBe(610_000);
+  });
+
+  it('shows what that gap costs at a 25x FIRE target', () => {
+    const understated = 610_000;
+    expect(understated * 25).toBe(15_250_000);
+  });
+});

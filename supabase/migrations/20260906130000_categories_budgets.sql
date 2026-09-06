@@ -30,11 +30,6 @@ create table public.expense_category (
   -- The workbook's primary grouping, kept as the primary grouping.
   nature        text        not null check (nature in ('fixed', 'variable')),
 
-  -- Monthly and yearly both roll into one annual figure the way M&Y Total does
-  -- today, so the cadence has to be recorded rather than inferred.
-  cadence       text        not null default 'monthly'
-                            check (cadence in ('monthly', 'yearly')),
-
   -- Whether this is spending the household could not simply stop. Feeds the
   -- FIRE floor later; here it is only recorded.
   is_essential  boolean     not null default false,
@@ -111,17 +106,25 @@ create table public.budget (
   -- must never be confused.
   fy            smallint    not null check (fy between 2000 and 2100),
 
+  -- How often this planned figure recurs.
+  --
+  -- On the budget rather than on the category, because the workbook has a
+  -- category carrying both: Bus/Train Ticket is planned at 0 a month and
+  -- 30,000 a year. A cadence on the category would have made that impossible
+  -- to record, and the app would have quietly dropped one of the two.
+  cadence       text        not null default 'monthly'
+                            check (cadence in ('monthly', 'yearly')),
+
   -- Which month within that year, 1 meaning April.
   --
-  -- Null is the ordinary case and means "one occurrence of this category's
-  -- cadence", which is exactly what the workbook records: a monthly figure or
-  -- a yearly one, never twelve separate months. Annualising is then
+  -- Null is the ordinary case and means "one occurrence of the cadence above",
+  -- which is exactly what the workbook records. Annualising is then
   --
-  --     monthly cadence -> planned x 12
-  --     yearly cadence  -> planned
+  --     monthly -> planned x 12
+  --     yearly  -> planned
   --
-  -- which is what M&Y Total computes today. A number 1..12 overrides one
-  -- particular month, for the December that is never like the others.
+  -- which is what M&Y Total computes. A number 1..12 overrides one particular
+  -- month, for the December that is never like the others.
   period        smallint    check (period is null or period between 1 and 12),
 
   planned_minor bigint      not null check (planned_minor >= 0),
@@ -141,15 +144,20 @@ create table public.budget (
     foreign key (household_id, member_id)
     references public.member (household_id, id) on delete restrict,
 
-  -- One planned figure per category, per year, per period, per member. A
-  -- second is a correction, not an addition, so it replaces rather than sums.
-  constraint budget_one_per_period unique (household_id, category_id, fy, period, member_id)
+  -- One planned figure per category, per year, per cadence, per period, per
+  -- member. A second at the same cadence is a correction, not an addition, so
+  -- it replaces rather than sums — but a monthly and a yearly figure for one
+  -- category are two different plans and both stand.
+  constraint budget_one_per_period
+    unique (household_id, category_id, fy, cadence, period, member_id)
 );
 
 comment on column public.budget.fy is
   'The Indian tax year by its starting calendar year: 2026 is 1 Apr 2026 to 31 Mar 2027.';
+comment on column public.budget.cadence is
+  'How often this planned figure recurs. On the budget, not the category: a category can be planned monthly and yearly at once.';
 comment on column public.budget.period is
-  'Month within the tax year, 1 = April. Null means one occurrence of the category cadence — the ordinary case, annualised by x12 for monthly and x1 for yearly.';
+  'Month within the tax year, 1 = April. Null means one occurrence of the cadence — the ordinary case.';
 
 create index budget_household_fy_idx on public.budget (household_id, fy);
 
@@ -173,16 +181,15 @@ create trigger budget_touch_updated_at
  * one and is never consulted again — nothing in the app depends on a category
  * being one of these.
  *
- * Two departures from the sheet, both deliberate:
+ * Taken from the sheet as it stands, with the spelling of "Sccoty" and
+ * "Maintance" corrected; renaming is free and safe by design, so this is a
+ * starting point either way.
  *
- *   Mobile1, Mobile2 and Data1 each appeared twice, once per person. They
- *   collapse to one apiece here, because member attribution on the transaction
- *   is what tells two people's phone bills apart — that is the whole point of
- *   a ledger with a member on every row, and duplicating the category to do
- *   the same job would leave two envelopes for one kind of spending.
- *
- *   "Sccoty" and "Maintance" are spelled out. Renaming is free and safe by
- *   design, so this is only a starting point either way.
+ * Two pairs are per-person rather than per-kind — Office expense Venki and
+ * Saran, Mobile1 and Mobile2. They are kept as the sheet has them, because
+ * that is what their owner recognises. Member attribution on the transaction
+ * would let each pair become one category, which is worth doing later and is
+ * not worth surprising anybody with on day one.
  *
  * is_essential is left false everywhere. The sheet does not record it, and it
  * feeds the FIRE floor later — a guess there would be a fabricated number in a
@@ -207,38 +214,45 @@ begin
     raise exception 'This household already has categories.' using errcode = '22023';
   end if;
 
-  insert into public.expense_category (household_id, name, nature, cadence, sort_order)
-  select target_household_id, starter.name, starter.nature, 'monthly', starter.sort_order
+  insert into public.expense_category (household_id, name, nature, sort_order)
+  select target_household_id, starter.name, starter.nature, starter.sort_order
     from (values
     (10, 'School fee', 'fixed'),
-    (20, 'GAS', 'fixed'),
-    (30, 'EB', 'fixed'),
-    (40, 'DTH', 'fixed'),
-    (50, 'Mobile1', 'fixed'),
-    (60, 'Mobile2', 'fixed'),
-    (70, 'Data1', 'fixed'),
-    (80, 'Insurance Bike', 'fixed'),
-    (90, 'Insurance Scooty', 'fixed'),
-    (100, 'Insurance Car', 'fixed'),
-    (110, 'Bike Maintenance', 'fixed'),
-    (120, 'Scooty Maintenance', 'fixed'),
-    (130, 'Car Maintenance', 'fixed'),
-    (140, 'Vegetables', 'fixed'),
-    (150, 'Fruits', 'fixed'),
-    (160, 'Grocery', 'fixed'),
-    (170, 'Rice', 'fixed'),
-    (180, 'Petrol', 'fixed'),
-    (190, 'Oil', 'fixed'),
-    (200, 'Milk', 'fixed'),
-    (210, 'Restaurants', 'variable'),
-    (220, 'Bus/Train Ticket', 'variable'),
-    (230, 'Extracurricular Activity', 'variable'),
-    (240, 'Dress', 'variable'),
-    (250, 'House Appliances maintenance', 'variable'),
-    (260, 'FastTag', 'variable'),
-    (270, 'RO Water maintenance', 'variable'),
-    (280, 'Vacation', 'variable'),
-    (290, 'Others', 'variable')
+    (20, 'Maintenance', 'fixed'),
+    (30, 'Maid', 'fixed'),
+    (40, 'Day Care', 'fixed'),
+    (50, 'GAS', 'fixed'),
+    (60, 'EB', 'fixed'),
+    (70, 'DTH', 'fixed'),
+    (80, 'Mobile1', 'fixed'),
+    (90, 'Mobile2', 'fixed'),
+    (100, 'Data1', 'fixed'),
+    (110, 'Insurance Bike', 'fixed'),
+    (120, 'Insurance Scooty', 'fixed'),
+    (130, 'Insurance Car', 'fixed'),
+    (140, 'Bike Maintenance', 'fixed'),
+    (150, 'Scooty Maintenance', 'fixed'),
+    (160, 'Car Maintenance', 'fixed'),
+    (170, 'Vegetables', 'fixed'),
+    (180, 'Fruits', 'fixed'),
+    (190, 'Grocery', 'fixed'),
+    (200, 'Rice', 'fixed'),
+    (210, 'Petrol', 'fixed'),
+    (220, 'Oil', 'fixed'),
+    (230, 'Milk Aavin', 'fixed'),
+    (240, 'Milk A2', 'fixed'),
+    (250, 'Restaurants', 'variable'),
+    (260, 'Bus/Train Ticket', 'variable'),
+    (270, 'Extracurricular Activity', 'variable'),
+    (280, 'Dress', 'variable'),
+    (290, 'Office expense Venki', 'variable'),
+    (300, 'Office expense Saran', 'variable'),
+    (310, 'House Appliances maintenance', 'variable'),
+    (320, 'FastTag', 'variable'),
+    (330, 'RO Water maintenance', 'variable'),
+    (340, 'Vacation', 'variable'),
+    (350, 'To Friends', 'variable'),
+    (360, 'Others', 'variable')
     ) as starter (sort_order, name, nature);
 
   get diagnostics v_added = row_count;
