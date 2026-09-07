@@ -94,6 +94,10 @@ create trigger invite_touch_updated_at
   before update on public.invite
   for each row execute function app.touch_updated_at();
 
+create trigger invite_audit
+  after insert or update or delete on public.invite
+  for each row execute function app.write_audit();
+
 create policy invite_select_same_household
   on public.invite
   for select

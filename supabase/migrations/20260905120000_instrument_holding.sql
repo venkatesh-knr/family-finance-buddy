@@ -88,6 +88,21 @@ create table public.holding (
   -- the day lots arrive; until then it is what the sheet already knows.
   cost_minor     bigint        check (cost_minor is null or cost_minor >= 0),
 
+  -- Personal entries (§20).
+  --
+  -- "Any member can mark a transaction, an account, an income entry or a
+  -- document as personal. It counts in their own figures and in household
+  -- aggregates; the line-item detail is returned to nobody else, the owner
+  -- included."
+  --
+  -- The default is household, because a shared ledger is the premise of the
+  -- app and a private-by-default one would quietly become something else. The
+  -- policy pairs this with member_id: a personal row is returned to the member
+  -- it belongs to and to nobody else, and the household total still includes
+  -- it through a function that returns sums rather than rows.
+  visibility     text          not null default 'household'
+                               check (visibility in ('household', 'personal')),
+
   opened_on      date,
   status         text          not null default 'active' check (status in ('active', 'archived')),
   archived_at    timestamptz,
@@ -117,6 +132,10 @@ create table public.holding (
 create index holding_household_status_idx
   on public.holding (household_id, status);
 
+-- The visibility policy filters on these two together on every read.
+create index holding_household_visibility_idx
+  on public.holding (household_id, visibility, member_id);
+
 alter table public.holding enable row level security;
 alter table public.holding force row level security;
 
@@ -127,6 +146,14 @@ create trigger holding_touch_updated_at
   before update on public.holding
   for each row execute function app.touch_updated_at();
 
+create trigger holding_audit
+  after insert or update or delete on public.holding
+  for each row execute function app.write_audit();
+
 create trigger instrument_touch_updated_at
   before update on public.instrument
   for each row execute function app.touch_updated_at();
+
+create trigger instrument_audit
+  after insert or update or delete on public.instrument
+  for each row execute function app.write_audit();

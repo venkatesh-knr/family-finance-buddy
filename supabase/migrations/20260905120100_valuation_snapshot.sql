@@ -84,3 +84,7 @@ grant select, insert, update on public.valuation_snapshot to authenticated;
 create trigger valuation_snapshot_touch_updated_at
   before update on public.valuation_snapshot
   for each row execute function app.touch_updated_at();
+
+create trigger valuation_snapshot_audit
+  after insert or update or delete on public.valuation_snapshot
+  for each row execute function app.write_audit();

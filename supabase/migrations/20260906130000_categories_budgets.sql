@@ -72,6 +72,10 @@ create trigger expense_category_touch_updated_at
   before update on public.expense_category
   for each row execute function app.touch_updated_at();
 
+create trigger expense_category_audit
+  after insert or update or delete on public.expense_category
+  for each row execute function app.write_audit();
+
 -- ============================================== the ledger gains a category
 
 -- Nullable, and deliberately so. Every expense already recorded has no
@@ -170,6 +174,10 @@ grant select, insert, update on public.budget to authenticated;
 create trigger budget_touch_updated_at
   before update on public.budget
   for each row execute function app.touch_updated_at();
+
+create trigger budget_audit
+  after insert or update or delete on public.budget
+  for each row execute function app.write_audit();
 
 -- ====================================================== the starter list
 

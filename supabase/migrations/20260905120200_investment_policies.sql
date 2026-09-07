@@ -40,7 +40,13 @@ create policy holding_select_same_household
   on public.holding
   for select
   to authenticated
-  using (household_id in (select app.household_ids()));
+  using (
+    household_id in (select app.household_ids())
+    and (visibility = 'household' or member_id = app.current_member_id(household_id))
+  );
+
+comment on policy holding_select_same_household on public.holding is
+  'A personal holding is returned to its member and to nobody else. Household totals still include it, through a function that returns sums.';
 
 create policy holding_insert_own_household
   on public.holding
@@ -78,11 +84,29 @@ comment on policy holding_insert_own_household on public.holding is
 
 -- ----------------------------------------------------- valuation_snapshot
 
+/**
+ * A valuation is as private as the holding it values.
+ *
+ * valuation_snapshot carries no member_id and no visibility of its own — it
+ * hangs off a holding, and that is where the question belongs. Leaving this
+ * policy on household_id alone would have published the month-by-month value
+ * of a personal holding while hiding the holding itself, which is the more
+ * revealing half of the pair.
+ *
+ * The subquery is read as the caller, so the holding's own policy decides what
+ * it can see. That is deliberate: one rule, written once, rather than a second
+ * copy here to drift out of step with it.
+ */
 create policy valuation_snapshot_select_same_household
   on public.valuation_snapshot
   for select
   to authenticated
-  using (household_id in (select app.household_ids()));
+  using (
+    household_id in (select app.household_ids())
+    and exists (
+      select 1 from public.holding h where h.id = valuation_snapshot.holding_id
+    )
+  );
 
 create policy valuation_snapshot_insert_own_household
   on public.valuation_snapshot

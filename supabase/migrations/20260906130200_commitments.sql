@@ -69,6 +69,10 @@ create trigger liability_touch_updated_at
   before update on public.liability
   for each row execute function app.touch_updated_at();
 
+create trigger liability_audit
+  after insert or update or delete on public.liability
+  for each row execute function app.write_audit();
+
 -- ======================================================= insurance policy
 
 create table public.insurance_policy (
@@ -119,6 +123,10 @@ grant select, insert, update on public.insurance_policy to authenticated;
 create trigger insurance_policy_touch_updated_at
   before update on public.insurance_policy
   for each row execute function app.touch_updated_at();
+
+create trigger insurance_policy_audit
+  after insert or update or delete on public.insurance_policy
+  for each row execute function app.write_audit();
 
 -- ================================================================ policies
 
