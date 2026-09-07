@@ -1,0 +1,1537 @@
+<title>Family Finance Buddy Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F5; --surface:#FFFFFF; --surface-2:#F6F8FA; --surface-3:#EBEFF4;
+    --ink:#151B24; --ink-2:#3D4855; --muted:#68758A;
+    --line:#DCE3EB; --line-strong:#C3CDD9;
+    --brass:#9A6F14; --brass-soft:#F4EAD3;
+    --teal:#0D7466; --teal-soft:#DDF0EB;
+    --coral:#B0463A; --coral-soft:#F9E6E2;
+    --indigo:#39537F; --indigo-soft:#E4EBF6;
+    --c1:#39537F; --c2:#0D7466; --c3:#9A6F14; --c4:#7A5A9B; --c5:#B0463A; --c6:#4C7FA6; --c7:#6E7C8C;
+    --shadow:0 1px 2px rgba(21,27,36,.06), 0 10px 26px -18px rgba(21,27,36,.35);
+    --r:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0B0F14; --surface:#141B24; --surface-2:#1A222D; --surface-3:#212B37;
+      --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+      --line:#26303C; --line-strong:#3A4653;
+      --brass:#D9AC4C; --brass-soft:#31270F;
+      --teal:#48BBA6; --teal-soft:#0E2B27;
+      --coral:#E08475; --coral-soft:#331815;
+      --indigo:#8FAEDC; --indigo-soft:#161E2C;
+      --c1:#8FAEDC; --c2:#48BBA6; --c3:#D9AC4C; --c4:#B092CE; --c5:#E08475; --c6:#7FB3D0; --c7:#94A3B3;
+      --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0F14; --surface:#141B24; --surface-2:#1A222D; --surface-3:#212B37;
+    --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+    --line:#26303C; --line-strong:#3A4653;
+    --brass:#D9AC4C; --brass-soft:#31270F;
+    --teal:#48BBA6; --teal-soft:#0E2B27;
+    --coral:#E08475; --coral-soft:#331815;
+    --indigo:#8FAEDC; --indigo-soft:#161E2C;
+    --c1:#8FAEDC; --c2:#48BBA6; --c3:#D9AC4C; --c4:#B092CE; --c5:#E08475; --c6:#7FB3D0; --c7:#94A3B3;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono,.n{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+  button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+  :focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:4px}
+
+  /* ---- app shell ---- */
+  .app{max-width:1240px;margin:0 auto;padding:0 18px 60px}
+  .topbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+    padding:16px 0 14px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .mark{width:26px;height:26px;border-radius:7px;background:var(--brass);color:#fff;
+    display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;align-self:center}
+  :root[data-theme="dark"] .brand .mark{color:#1A1305}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .brand .mark{color:#1A1305}}
+  .brand h1{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:22px;margin:0;letter-spacing:-.01em}
+  .brand .fy{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .seg{display:flex;background:var(--surface-3);border-radius:8px;padding:2.5px;gap:2px}
+  .seg button{padding:5px 11px;border-radius:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.09)}
+  .asof{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+
+  .iconbtn{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:8px;background:var(--surface-3);font-size:12.5px;color:var(--muted)}
+  .iconbtn[aria-pressed="true"]{background:var(--brass-soft);color:var(--brass);font-weight:600}
+  .iconbtn .eye{font-size:12px;filter:grayscale(1)}
+  @media (max-width:720px){.iconbtn .ilabel{display:none}}
+
+  .avwrap{position:relative}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--c1);color:#fff;font-weight:600;font-size:13px;display:grid;place-items:center}
+  .menu[hidden]{display:none}
+  .menu{position:absolute;right:0;top:40px;z-index:40;width:236px;background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px}
+  .menu .mhead{padding:9px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:4px;display:grid;gap:2px}
+  .menu .mhead b{font-size:13.5px}
+  .menu .mhead span{font-size:11.5px;color:var(--muted)}
+  .menu .mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px}
+  .menu .mlbl{font-size:12.5px;color:var(--ink-2)}
+  .seg.sm button{padding:3px 9px;font-size:12px}
+  .menu .mitem{text-align:left;padding:8px 10px;border-radius:7px;font-size:13.4px;color:var(--ink)}
+  .menu .mitem:hover{background:var(--surface-2)}
+  .menu .mitem.quiet{color:var(--muted)}
+
+  .setgrp{display:grid;gap:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+  .setrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .setrow:last-child{border-bottom:none}
+  .setrow .sk{font-size:13.6px;color:var(--ink);font-weight:600}
+  .setrow .sd{font-size:12.2px;color:var(--muted);margin-top:2px}
+  .setrow .sv{font-family:"IBM Plex Mono",monospace;font-size:12.6px;color:var(--ink-2);white-space:nowrap}
+  .grouphead{display:flex;flex-wrap:wrap;gap:9px;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+  .grouphead h3{font-size:14.5px;font-weight:600;margin:0}
+  .grouphead .who{font-size:11.8px;color:var(--muted)}
+
+  nav.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:22px;scrollbar-width:thin}
+  nav.tabs button{padding:11px 14px;font-size:13.5px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--brass)}
+
+  .view{display:none;gap:18px;grid-template-columns:1fr}
+  .view.on{display:grid}
+
+  /* ---- primitives ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .card > header{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .card h2{font-size:14.5px;font-weight:600;margin:0;letter-spacing:.005em}
+  .card .sub{font-size:12.2px;color:var(--muted)}
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}
+  .g2e{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+  @media (max-width:1000px){.g3{grid-template-columns:1fr}}
+  @media (max-width:860px){.g2,.g2e{grid-template-columns:1fr}}
+
+  h4.lab{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:500}
+
+  .hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:18px;box-shadow:var(--shadow)}
+  .hero-top{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-end;justify-content:space-between}
+  .bignum{font-family:"IBM Plex Mono",monospace;font-size:clamp(32px,6vw,48px);font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .delta{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 9px;border-radius:100px;font-weight:600}
+  .delta.up{background:var(--teal-soft);color:var(--teal)}
+  .delta.down{background:var(--coral-soft);color:var(--coral)}
+  .hero-stats{display:flex;flex-wrap:wrap;gap:26px}
+  .stat{display:grid;gap:3px}
+  .stat .v{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+  .stat .v.pos{color:var(--teal)} .stat .v.neg{color:var(--coral)}
+
+  table{border-collapse:collapse;width:100%;font-size:13.4px}
+  .tw{overflow-x:auto}
+  th{text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+     color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  td.k{color:var(--ink);font-weight:600}
+  td.n,th.n{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  td.n{color:var(--ink)}
+  tr.tot td{border-top:1.5px solid var(--line-strong);border-bottom:none;font-weight:700;color:var(--ink);padding-top:11px}
+  .pos{color:var(--teal)} .neg{color:var(--coral)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:8px;vertical-align:baseline}
+  .sm{font-size:11.8px;color:var(--muted)}
+
+  .pill{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:2.5px 7px;border-radius:3px;white-space:nowrap}
+  .pill.own{background:var(--indigo-soft);color:var(--indigo)}
+  .pill.warn{background:var(--brass-soft);color:var(--brass)}
+  .pill.due{background:var(--coral-soft);color:var(--coral)}
+  .pill.ok{background:var(--teal-soft);color:var(--teal)}
+  .pill.fx{background:var(--surface-3);color:var(--muted)}
+
+  .samplebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--brass-soft);border:1px solid var(--brass);
+    border-radius:8px;padding:9px 13px;font-size:12.6px;color:var(--ink-2)}
+  .samplebar b{color:var(--brass)}
+
+  .barrow{display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(90px,3fr) 78px 62px;gap:12px;align-items:center;padding:6px 0;font-size:13px}
+  .barrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .track{height:9px;background:var(--surface-3);border-radius:3px;overflow:hidden;display:flex}
+  .track i{display:block;height:100%;border-radius:3px}
+  .barrow .amt{font-family:"IBM Plex Mono",monospace;text-align:right;font-variant-numeric:tabular-nums;font-size:12.6px}
+  .barrow .pct{font-family:"IBM Plex Mono",monospace;text-align:right;font-size:11.5px;color:var(--muted)}
+  @media (max-width:640px){.barrow{grid-template-columns:minmax(90px,1.3fr) 1fr 72px;}.barrow .pct{display:none}}
+
+  .alerts{display:grid;gap:0}
+  .alert{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .alert:last-child{border-bottom:none}
+  .alert .when{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);width:66px}
+  .alert .what{font-size:13.3px;min-width:0}
+  .alert .what b{color:var(--ink)}
+  .alert .what span{display:block;color:var(--muted);font-size:12px}
+
+  .fireslab{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+  .fslab{padding:16px;border-right:1px solid var(--line);display:grid;gap:7px}
+  .fslab:last-child{border-right:none}
+  .fslab.pick{background:var(--brass-soft)}
+  .fslab .amt{font-family:"IBM Plex Mono",monospace;font-size:21px;font-weight:600;letter-spacing:-.01em}
+  .fslab .prog{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+  .fslab .prog i{display:block;height:100%;background:var(--brass);border-radius:3px}
+  .fslab.pick .prog{background:rgba(0,0,0,.09)}
+  @media (max-width:700px){.fslab{border-right:none;border-bottom:1px solid var(--line)}.fslab:last-child{border-bottom:none}}
+
+  .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .kv{display:grid;gap:3px}
+  .kv .v{font-family:"IBM Plex Mono",monospace;font-size:15.5px;font-weight:500}
+
+  .qadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .qadd input,.qadd select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line-strong);border-radius:7px;
+    background:var(--surface-2);color:var(--ink);min-width:0}
+  .qadd input.amt{width:110px;font-family:"IBM Plex Mono",monospace}
+  .qadd .go{background:var(--brass);color:#fff;padding:7px 15px;border-radius:7px;font-size:13px;font-weight:600}
+  :root[data-theme="dark"] .qadd .go{color:#1A1305}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .qadd .go{color:#1A1305}}
+  .toast{font-size:12.5px;color:var(--teal);opacity:0;transition:opacity .25s}
+  .toast.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+  svg{display:block;max-width:100%}
+  .legend{display:grid;gap:7px;font-size:12.8px}
+  .lg{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center}
+  .lg .lv{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12.4px;color:var(--ink)}
+  .lg .lp{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);width:44px;text-align:right}
+  .donutwrap{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .donutwrap > .legend{flex:1;min-width:210px}
+
+  .note{font-size:12.4px;color:var(--muted);max-width:74ch}
+  .footnote{text-align:center;font-size:12px;color:var(--muted);padding-top:26px}
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">₹</span>
+      <h1>Family Finance Buddy</h1>
+      <span class="fy">FY 2025–26</span>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Member filter">
+        <button data-member="all" aria-pressed="true">Household</button>
+        <button data-member="Venkat" aria-pressed="false">Venkat</button>
+        <button data-member="Spouse" aria-pressed="false">Spouse</button>
+      </div>
+      <button class="iconbtn" id="privBtn" aria-pressed="false" title="Hide amounts">
+        <span class="eye" aria-hidden="true">👁</span><span class="ilabel">Hide amounts</span>
+      </button>
+      <div class="avwrap">
+        <button class="avatar" id="avBtn" aria-haspopup="true" aria-expanded="false" title="Venkat">V</button>
+        <div class="menu" id="avMenu" hidden>
+          <div class="mhead"><b>Venkat</b><span>Owner · Household</span></div>
+          <div class="mrow">
+            <span class="mlbl">Show amounts in</span>
+            <div class="seg sm" role="group" aria-label="Display currency">
+              <button data-ccy="INR" aria-pressed="true">₹</button>
+              <button data-ccy="USD" aria-pressed="false">$</button>
+            </div>
+          </div>
+          <button class="mitem" data-goto="profile">Profile</button>
+          <button class="mitem" data-goto="settings">Settings</button>
+          <button class="mitem" data-goto="privacy">Privacy &amp; data</button>
+          <button class="mitem quiet">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="overview">Overview</button>
+    <button role="tab" aria-selected="false" data-view="expenses">Expenses</button>
+    <button role="tab" aria-selected="false" data-view="investments">Investments</button>
+    <button role="tab" aria-selected="false" data-view="property">Property</button>
+    <button role="tab" aria-selected="false" data-view="global">Global</button>
+    <button role="tab" aria-selected="false" data-view="fire">FIRE &amp; goals</button>
+    <button role="tab" aria-selected="false" data-view="tax">Tax</button>
+    <button role="tab" aria-selected="false" data-view="protection">Protection &amp; debt</button>
+    <button role="tab" aria-selected="false" data-view="calendar">Calendar</button>
+    <button role="tab" aria-selected="false" data-view="reports">Reports</button>
+  </nav>
+
+  <!-- ======== OVERVIEW ======== -->
+  <div class="view on" id="v-overview">
+    <div class="hero">
+      <div class="hero-top">
+        <div style="display:grid;gap:8px">
+          <h4 class="lab">Net worth · <span id="scopeLabel">Household</span></h4>
+          <div class="bignum" id="nwBig">₹9,17,600</div>
+          <div><span class="delta up" id="nwDelta">▲ ₹28,410 this month</span></div>
+          <div class="asof" id="asof">Valued 31 May 2025 · ₹85.60/$</div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h4 class="lab">Assets</h4><div class="v" id="sAssets">₹9,67,600</div></div>
+          <div class="stat"><h4 class="lab">Liabilities</h4><div class="v neg" id="sLiab">₹50,000</div></div>
+          <div class="stat"><h4 class="lab">Invested</h4><div class="v" id="sInvested">₹8,90,120</div></div>
+          <div class="stat"><h4 class="lab">Unrealised gain</h4><div class="v pos" id="sGain">+₹77,480</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <header><h2>Allocation</h2><span class="sub">Nine classes, as the NetWorth sheet defines them</span></header>
+        <div class="donutwrap">
+          <div id="donut"></div>
+          <div class="legend" id="allocLegend"></div>
+        </div>
+      </div>
+      <div class="grid" style="align-content:start">
+        <div class="card">
+          <header><h2>Needs attention</h2><span class="sub">Next 90 days</span></header>
+          <div class="alerts">
+            <div class="alert"><span class="when">01 Jul</span><span class="what"><b>Bond2 matures</b><span><span class="m" data-inr="99475"></span> returns to cash — reinvest or park?</span></span><span class="pill due">14 days</span></div>
+            <div class="alert"><span class="when">01 Oct</span><span class="what"><b>Bond1 matures</b><span>CRISIL A (Stable) · 10.75% · <span class="m" data-inr="24101"></span></span></span><span class="pill warn">Plan</span></div>
+            <div class="alert"><span class="when">—</span><span class="what"><b>Gold holding shows 0 g</b><span>Rate is set at <span class="m" data-inr="8990"></span>/g but no grams recorded</span></span><span class="pill warn">Empty</span></div>
+            <div class="alert"><span class="when">—</span><span class="what"><b>FDs and retirement funds unfunded</b><span>ICICI, KNBF, PF, PPF, NPS have no balances yet</span></span><span class="pill warn">Empty</span></div>
+            <div class="alert"><span class="when">—</span><span class="what"><b>Cash is 20.7% of the portfolio</b><span><span class="m" data-inr="200000"></span> idle — above your 10% target weight</span></span><span class="pill due">Drift</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <header><h2>Who holds what</h2><span class="sub">Attribution the sheet has no column for</span></header>
+          <div id="memberBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Net worth since inception</h2><span class="sub">What the workbook erases each month — contributions in slate, growth in teal</span></header>
+      <div id="nwChart"></div>
+      <p class="note" style="margin:12px 0 0">Illustrative history: the workbook keeps only the latest value per cell, so this curve is what monthly snapshots would have captured from Oct 2023 onward. From the app's first month it is real data.</p>
+    </div>
+  </div>
+
+  <!-- ======== EXPENSES ======== -->
+  <div class="view" id="v-expenses">
+    <div class="samplebar"><b>Sample figures</b> Your Expense sheet has all 33 category names but no amounts. These are placeholder values so the screen behaves — every category name, and the Fixed/Variable split, is yours.</div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div style="display:grid;gap:8px">
+          <h4 class="lab">Annual run rate · monthly × 12 + yearly</h4>
+          <div class="bignum"><span class="m" data-inr="623176"></span></div>
+          <div><span class="delta down">▲ 4.6% over plan this month</span></div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h4 class="lab">Fixed / month</h4><div class="v"><span class="m" data-inr="28948"></span></div></div>
+          <div class="stat"><h4 class="lab">Variable / month</h4><div class="v"><span class="m" data-inr="7600"></span></div></div>
+          <div class="stat"><h4 class="lab">Annual one-offs</h4><div class="v"><span class="m" data-inr="102600"></span></div></div>
+          <div class="stat"><h4 class="lab">Premiums &amp; loans</h4><div class="v"><span class="m" data-inr="82000"></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Log an expense</h2><span class="sub">Five seconds on a phone, or it won't get used</span></header>
+      <div class="qadd">
+        <input class="amt" id="qAmt" type="text" inputmode="decimal" placeholder="₹ amount" aria-label="Amount">
+        <select id="qCat" aria-label="Category"></select>
+        <select id="qWho" aria-label="Paid by"><option>Venkat</option><option>Spouse</option></select>
+        <button class="go" id="qGo">Add</button>
+        <span class="toast" id="qToast">Added — Grocery, today</span>
+      </div>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Fixed · monthly</h2><span class="sub">Actual against envelope</span></header>
+        <div id="fixedBars"></div>
+      </div>
+      <div class="card">
+        <header><h2>Variable · monthly</h2><span class="sub">Where the month actually moves</span></header>
+        <div id="varBars"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Annual &amp; recurring</h2><span class="sub">Yearly cadence rolled into the same run rate</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Item</th><th>Type</th><th>Cadence</th><th>Owner</th><th class="n">Amount</th><th class="n">Share of year</th></tr></thead>
+          <tbody id="yearlyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Recent transactions</h2><span class="sub">The ledger under every envelope</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Date</th><th>Payee</th><th>Category</th><th>Paid by</th><th>Method</th><th class="n">Amount</th></tr></thead>
+          <tbody id="txnBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== INVESTMENTS ======== -->
+  <div class="view" id="v-investments">
+    <div class="hero">
+      <div class="hero-top">
+        <div style="display:grid;gap:8px">
+          <h4 class="lab">Market value · <span class="scopeLabel">Household</span></h4>
+          <div class="bignum" id="invBig">₹7,67,600</div>
+          <div><span class="delta up" id="invDelta">▲ ₹77,480 · +11.2% absolute</span></div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h4 class="lab">Monthly SIP</h4><div class="v" id="sipTotal">₹30,000</div></div>
+          <div class="stat"><h4 class="lab">Equity exposure</h4><div class="v">83.9%</div></div>
+          <div class="stat"><h4 class="lab">Fixed income</h4><div class="v">16.1%</div></div>
+          <div class="stat"><h4 class="lab">Blended XIRR</h4><div class="v pos">14.8%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>All holdings</h2><span class="sub">XIRR is computed from the cash-flow ledger — the column the sheet cannot produce</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Holding</th><th>Class</th><th>Owner</th><th class="n">SIP</th><th class="n">Invested</th><th class="n">Current</th><th class="n">Gain</th><th class="n">XIRR</th></tr></thead>
+          <tbody id="holdBody"></tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">Parag Parikh shows +15.4% absolute but a materially higher XIRR — the SIP stepped from ₹10,000 to ₹20,000 in the second year, so most of the money has been invested for less time than the absolute figure implies.</p>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Fixed income ladder</h2><span class="sub">Bonds by maturity, with accrued interest</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Bond</th><th>Coupon</th><th>Pays</th><th>Rating</th><th>Matures</th><th class="n">Value</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Bond2</td><td class="n">11.50%</td><td>Monthly</td><td><span class="pill fx">CARE A</span></td><td class="n">01 Jul 25</td><td class="n"><span class="m" data-inr="99475"></span></td></tr>
+              <tr><td class="k">Bond1</td><td class="n">10.75%</td><td>Yearly</td><td><span class="pill fx">CRISIL A</span></td><td class="n">01 Oct 25</td><td class="n"><span class="m" data-inr="24101"></span></td></tr>
+              <tr class="tot"><td>Total</td><td colspan="4" class="sm">Interest received to date <span class="m" data-inr="9049"></span></td><td class="n"><span class="m" data-inr="123576"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">Both bonds mature within five months and both are A-rated NBFC paper. Concentrated by issuer quality and by date.</p>
+      </div>
+      <div class="card">
+        <header><h2>Unfunded slots</h2><span class="sub">Structure exists in the sheet, values don't</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Slot</th><th>Class</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="k">ICICI</td><td>Fixed deposit</td><td><span class="pill warn">No balance</span></td></tr>
+              <tr><td class="k">KNBF</td><td>Fixed deposit</td><td><span class="pill warn">No balance</span></td></tr>
+              <tr><td class="k">PF</td><td>Retirement</td><td><span class="pill warn">No balance</span></td></tr>
+              <tr><td class="k">PPF</td><td>Retirement</td><td><span class="pill warn">No balance</span></td></tr>
+              <tr><td class="k">NPS</td><td>Retirement</td><td><span class="pill warn">No balance</span></td></tr>
+              <tr><td class="k">Gold</td><td>Commodity</td><td><span class="pill warn">0 g @ <span class="m" data-inr="8990"></span></span></td></tr>
+              <tr><td class="k">Land1, Land2, House</td><td>Property</td><td><span class="pill warn">No value</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">Imported as empty records, not zeros — so the allocation ring isn't quietly wrong while you fill them in.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== GLOBAL ======== -->
+  <div class="view" id="v-global">
+    <div class="samplebar"><b>One real holding, the rest sample</b> Your workbook has a single foreign line — the US Nasdaq 100 index fund. A direct US brokerage account, RSUs and a remittance are shown alongside it so the screen demonstrates what it captures.</div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div style="display:grid;gap:8px">
+          <h4 class="lab">Overseas exposure</h4>
+          <div class="bignum"><span class="m" data-inr="382700">₹3,82,700</span></div>
+          <div><span class="delta up">39.6% of the portfolio · ▲ <span class="m" data-inr="18240"></span> from the rupee alone</span></div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h4 class="lab">Direct (USD held)</h4><div class="v"><span class="m" data-inr="358000">₹3,58,000</span></div></div>
+          <div class="stat"><h4 class="lab">Via Indian feeder</h4><div class="v"><span class="m" data-inr="24700">₹24,700</span></div></div>
+          <div class="stat"><h4 class="lab">LRS used this FY</h4><div class="v"><span class="m" data-native="USD 4,200"></span></div></div>
+          <div class="stat"><h4 class="lab">TCS collected</h4><div class="v"><span class="m" data-inr="0">₹0</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Foreign holdings</h2><span class="sub">Two return figures, because the fund and the rupee are different stories</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Holding</th><th>Held in</th><th>Route</th><th class="n">Value (native)</th><th class="n">Value (₹)</th><th class="n">Return native</th><th class="n">Return ₹</th></tr></thead>
+          <tbody>
+            <tr><td class="k">VOO · S&amp;P 500 ETF<div class="sm">18 units · Vested</div></td><td class="n">USD</td><td><span class="pill fx">LRS · direct</span></td><td class="n"><span class="m" data-native="$2,880"></span></td><td class="n"><span class="m" data-inr="246528">₹2,46,528</span></td><td class="n pos">+9.4%</td><td class="n pos">+12.8%</td></tr>
+            <tr><td class="k">MSFT<div class="sm">6 units · RSU vested</div></td><td class="n">USD</td><td><span class="pill fx">RSU</span></td><td class="n"><span class="m" data-native="$1,303"></span></td><td class="n"><span class="m" data-inr="111537">₹1,11,537</span></td><td class="n pos">+6.1%</td><td class="n pos">+9.4%</td></tr>
+            <tr><td class="k">US Nasdaq 100 Index Fund<div class="sm">Indian feeder · SIP ₹5,000</div></td><td class="n">INR</td><td><span class="pill ok">Domestic</span></td><td class="n">—</td><td class="n"><span class="m" data-inr="24700">₹24,700</span></td><td class="n">—</td><td class="n">0.0%</td></tr>
+            <tr class="tot"><td colspan="4">Total overseas exposure</td><td class="n"><span class="m" data-inr="382765">₹3,82,765</span></td><td class="n" colspan="2"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">The feeder fund is an Indian asset with dollar exposure — no remittance, no foreign-asset disclosure, taxed like any Indian fund. The two direct holdings are foreign assets. That distinction is a field on the instrument, not a judgement call made at filing time.</p>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Remittances this year</h2><span class="sub">Running total against the LRS limit</span></header>
+        <div class="barrow" style="grid-template-columns:minmax(90px,1fr) 3fr 92px"><span class="nm">LRS used</span><span class="track"><i style="width:1.7%;background:var(--c1)"></i></span><span class="amt"><span class="m" data-native="$4,200"></span></span></div>
+        <p class="sm" style="margin:2px 0 14px">1.7% of the USD 250,000 annual limit per person</p>
+        <div class="barrow" style="grid-template-columns:minmax(90px,1fr) 3fr 92px"><span class="nm">TCS threshold</span><span class="track"><i style="width:36%;background:var(--c3)"></i></span><span class="amt"><span class="m" data-inr="359520">₹3,59,520</span></span></div>
+        <p class="sm" style="margin:2px 0 0">36% of the ₹10 lakh a year that can be remitted before 20% TCS applies. TCS is creditable against your tax — the app tracks it so it isn't forgotten at filing.</p>
+        <div class="tw" style="margin-top:14px">
+          <table>
+            <thead><tr><th>Date</th><th>Purpose</th><th class="n">Sent</th><th class="n">Received</th><th class="n">Rate</th><th class="n">TCS</th></tr></thead>
+            <tbody>
+              <tr><td class="n" style="text-align:left">14 Apr 25</td><td>Investment</td><td class="n"><span class="m" data-inr="215520">₹2,15,520</span></td><td class="n"><span class="m" data-native="$2,500"></span></td><td class="n">86.21</td><td class="n">₹0</td></tr>
+              <tr><td class="n" style="text-align:left">09 Jan 25</td><td>Investment</td><td class="n"><span class="m" data-inr="144000">₹1,44,000</span></td><td class="n"><span class="m" data-native="$1,700"></span></td><td class="n">84.71</td><td class="n">₹0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <header><h2>Dividends &amp; withholding</h2><span class="sub">Declared gross in India, withheld tax claimed back</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Date</th><th>Holding</th><th class="n">Gross</th><th class="n">US withheld</th><th class="n">Net</th></tr></thead>
+            <tbody>
+              <tr><td class="n" style="text-align:left">28 Mar 25</td><td class="k">VOO</td><td class="n"><span class="m" data-native="$11.42"></span></td><td class="n neg"><span class="m" data-native="$2.86"></span></td><td class="n"><span class="m" data-native="$8.56"></span></td></tr>
+              <tr><td class="n" style="text-align:left">13 Mar 25</td><td class="k">MSFT</td><td class="n"><span class="m" data-native="$4.98"></span></td><td class="n neg"><span class="m" data-native="$1.25"></span></td><td class="n"><span class="m" data-native="$3.73"></span></td></tr>
+              <tr><td class="n" style="text-align:left">27 Dec 24</td><td class="k">VOO</td><td class="n"><span class="m" data-native="$10.88"></span></td><td class="n neg"><span class="m" data-native="$2.72"></span></td><td class="n"><span class="m" data-native="$8.16"></span></td></tr>
+              <tr class="tot"><td colspan="2">Calendar year</td><td class="n"><span class="m" data-native="$27.28"></span></td><td class="n neg"><span class="m" data-native="$6.83"></span></td><td class="n"><span class="m" data-native="$20.45"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">Withholding is 25% — the rate the India–US treaty sets for individual investors who have filed a W-8BEN, not the 15% that applies to corporate holders. The withheld amount is a foreign tax credit, claimed on Form 67 before the return is filed. The app carries the gross figure, because that is what India taxes.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Foreign asset disclosure · calendar year 2025</h2><span class="sub">Jan–Dec, not Apr–Mar — the one report that runs on a different clock</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Asset</th><th>Country</th><th class="n">Initial value</th><th class="n">Peak during year</th><th class="n">Closing value</th><th class="n">Income</th></tr></thead>
+          <tbody>
+            <tr><td class="k">VOO · S&amp;P 500 ETF</td><td>United States</td><td class="n"><span class="m" data-native="$2,412"></span></td><td class="n"><span class="m" data-native="$3,014"></span></td><td class="n"><span class="m" data-native="$2,880"></span></td><td class="n"><span class="m" data-native="$22.30"></span></td></tr>
+            <tr><td class="k">MSFT</td><td>United States</td><td class="n"><span class="m" data-native="$1,164"></span></td><td class="n"><span class="m" data-native="$1,388"></span></td><td class="n"><span class="m" data-native="$1,303"></span></td><td class="n"><span class="m" data-native="$4.98"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">The peak-value column is the reason snapshots matter. It cannot be reconstructed in July from a closing balance — either the app recorded values through the year or the number is a guess. Disclosure applies even when a holding made no income or sat at a loss, so these rows accumulate whether or not anything happened.</p>
+    </div>
+  </div>
+
+  <!-- ======== FIRE ======== -->
+  <div class="view" id="v-fire">
+    <div class="samplebar"><b>Driven by the expense figures</b> Targets recompute from the annual run rate on the Expenses screen, exactly as <span class="mono">C80 → C82:C84</span> does in your workbook.</div>
+
+    <div class="fireslab">
+      <div class="fslab"><h4 class="lab">25× · lean</h4><div class="amt"><span class="m" data-big="15579400"></span></div><div class="prog"><i style="width:6.2%"></i></div><div class="sm">6.2% funded · <span class="m" data-big="967600"></span> of <span class="m" data-inr="15579400"></span></div></div>
+      <div class="fslab pick"><h4 class="lab">30× · target</h4><div class="amt"><span class="m" data-big="18695280"></span></div><div class="prog"><i style="width:5.2%"></i></div><div class="sm">5.2% funded · <span class="m" data-big="967600"></span> of <span class="m" data-inr="18695280"></span></div></div>
+      <div class="fslab"><h4 class="lab">50× · fat</h4><div class="amt"><span class="m" data-big="31158800"></span></div><div class="prog"><i style="width:3.1%"></i></div><div class="sm">3.1% funded · <span class="m" data-big="967600"></span> of <span class="m" data-inr="31158800"></span></div></div>
+      <div class="fslab"><h4 class="lab">Reaches target in</h4><div class="amt" id="yearsToFire">—</div><div class="sm" id="fireYearNote">At ₹30,000/month and 10% nominal return</div></div>
+    </div>
+
+    <div class="card">
+      <header>
+        <h2 id="fireTitle">Target corpus under 6% inflation</h2>
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Multiple">
+            <button data-mult="25" aria-pressed="false">25×</button>
+            <button data-mult="30" aria-pressed="true">30×</button>
+            <button data-mult="50" aria-pressed="false">50×</button>
+          </div>
+          <div class="seg" role="group" aria-label="Inflation">
+            <button data-infl="0.04" aria-pressed="false">4%</button>
+            <button data-infl="0.06" aria-pressed="true">6%</button>
+            <button data-infl="0.08" aria-pressed="false">8%</button>
+          </div>
+        </div>
+      </header>
+      <div id="fireChart"></div>
+      <p class="note" style="margin:12px 0 0">The workbook hardcodes this ladder across 30 cells for 2023–2033 at a fixed 6%. Here the base year, the rate and the multiple are inputs — change any of them and the corpus line, the projection and the crossing year all move.</p>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>What the target is built from</h2></header>
+        <div class="tw">
+          <table>
+            <tbody>
+              <tr><td class="k">Monthly expenses × 12</td><td class="n"><span class="m" data-inr="438576"></span></td></tr>
+              <tr><td class="k">Annual one-off expenses</td><td class="n"><span class="m" data-inr="102600"></span></td></tr>
+              <tr><td class="k">Premiums &amp; loan payments</td><td class="n"><span class="m" data-inr="82000"></span></td></tr>
+              <tr class="tot"><td>Annual expense basis</td><td class="n"><span class="m" data-inr="623176"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">School fees and extracurricular costs end at some point; excluding them drops the basis by ₹1.10 L and the 30× target by ₹33 L. That scenario is a toggle, not a rewrite.</p>
+      </div>
+      <div class="card">
+        <header><h2>Levers</h2><span class="sub">Effect on the 30× target date</span></header>
+        <div class="kvs">
+          <div class="kv"><h4 class="lab">+₹10,000 SIP</h4><div class="v pos">−3.4 years</div></div>
+          <div class="kv"><h4 class="lab">Deploy idle cash</h4><div class="v pos">−0.9 years</div></div>
+          <div class="kv"><h4 class="lab">Inflation 8% not 6%</h4><div class="v neg">+5.1 years</div></div>
+          <div class="kv"><h4 class="lab">Fees end in 2034</h4><div class="v pos">−2.2 years</div></div>
+        </div>
+        <p class="note" style="margin:14px 0 0">Indicative, on the same 10% nominal return assumption. In the built app each of these is a saved scenario you can compare side by side.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== PROTECTION ======== -->
+  <div class="view" id="v-protection">
+    <div class="samplebar"><b>Sample cover figures</b> Your Insurance sheet lists Term Plan and Health Insurance with the columns defined but no values. Premiums shown here match the four premium rows sitting in the Expense sheet's loan block.</div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Policies</h2><span class="sub">Lifted out of the expense sheet into their own records</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Holder</th><th>Type</th><th class="n">Cover</th><th class="n">Premium/yr</th><th>Renews</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Venkat</td><td>Term plan</td><td class="n"><span class="m" data-inr="10000000"></span></td><td class="n"><span class="m" data-inr="18000"></span></td><td class="n">12 Jan 26</td></tr>
+              <tr><td class="k">Family floater</td><td>Health insurance 1</td><td class="n"><span class="m" data-inr="1000000"></span></td><td class="n"><span class="m" data-inr="24000"></span></td><td class="n">04 Mar 26</td></tr>
+              <tr><td class="k">Family floater</td><td>Health insurance 2 (top-up)</td><td class="n"><span class="m" data-inr="2500000"></span></td><td class="n"><span class="m" data-inr="8000"></span></td><td class="n">04 Mar 26</td></tr>
+              <tr><td class="k">Parents</td><td>Senior health</td><td class="n"><span class="m" data-inr="500000"></span></td><td class="n"><span class="m" data-inr="32000"></span></td><td class="n">19 Nov 25</td></tr>
+              <tr class="tot"><td colspan="3">Total premium</td><td class="n"><span class="m" data-inr="82000"></span></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Cover adequacy</h2><span class="sub">The read the sheet can't give</span></header>
+        <div class="kvs">
+          <div class="kv"><h4 class="lab">Term cover</h4><div class="v"><span class="m" data-big="10000000"></span></div></div>
+          <div class="kv"><h4 class="lab">Suggested (10–12× income)</h4><div class="v"><span class="m" data-big="12000000"></span>–<span class="m" data-big="15000000"></span></div></div>
+          <div class="kv"><h4 class="lab">Gap</h4><div class="v neg"><span class="m" data-big="2000000"></span>–<span class="m" data-big="5000000"></span></div></div>
+          <div class="kv"><h4 class="lab">Health, family</h4><div class="v pos"><span class="m" data-big="3500000"></span> effective</div></div>
+        </div>
+        <p class="note" style="margin:14px 0 0">Computed from household income, outstanding liabilities and years to the youngest dependant's independence. Income isn't in the workbook at all — it's the one input the app needs that the sheet never asked for.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Liabilities</h2><span class="sub">Home loan and card, out of the expense table and into net worth</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Liability</th><th>Holder</th><th class="n">Outstanding</th><th class="n">Rate</th><th class="n">EMI</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Credit card</td><td>Venkat</td><td class="n"><span class="m" data-inr="50000"></span></td><td class="n">—</td><td class="n">—</td><td><span class="pill due">Due 18 Jun</span></td></tr>
+            <tr><td class="k">Home loan</td><td>—</td><td class="n"><span class="m" data-inr="0"></span></td><td class="n">—</td><td class="n">—</td><td><span class="pill ok">Not taken</span></td></tr>
+            <tr class="tot"><td colspan="2">Total</td><td class="n"><span class="m" data-inr="50000"></span></td><td colspan="3"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">A card balance carried past the due date compounds at 36–42% a year — higher than any return on this portfolio. It sits on the home screen for that reason.</p>
+    </div>
+  </div>
+
+  <!-- ======== CALENDAR ======== -->
+  <div class="view" id="v-calendar">
+    <div class="card">
+      <header><h2>Everything with a date</h2><span class="sub">Bond maturities, policy renewals, SIP debits and bill dates on one timeline</span></header>
+      <div class="alerts" id="calBody"></div>
+    </div>
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Cash-flow forecast</h2><span class="sub">Next six months, from recurring rules</span></header>
+        <div id="cfChart"></div>
+      </div>
+      <div class="card">
+        <header><h2>Reminder settings</h2><span class="sub">Lead time per event type</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Event</th><th class="n">Lead time</th><th>Channel</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Bond / FD maturity</td><td class="n">30 days</td><td>Push + email</td></tr>
+              <tr><td class="k">Policy renewal</td><td class="n">21 days</td><td>Push + email</td></tr>
+              <tr><td class="k">Credit card due</td><td class="n">5 days</td><td>Push</td></tr>
+              <tr><td class="k">SIP debit</td><td class="n">1 day</td><td>Silent</td></tr>
+              <tr><td class="k">Advance tax</td><td class="n">14 days</td><td>Push + email</td></tr>
+              <tr><td class="k">Monthly snapshot</td><td class="n">Last day</td><td>Automatic</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== PROPERTY ======== -->
+  <div class="view" id="v-property">
+    <div class="samplebar"><b>Sample values</b> Your NetWorth sheet names Land1, Land2 and House but carries no figures for them. The structure below is what the app asks for — and the reason it asks now rather than later is the cost basis.</div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div style="display:grid;gap:8px">
+          <h4 class="lab">Property · estimated value</h4>
+          <div class="bignum"><span class="m" data-inr="9250000"></span></div>
+          <div><span class="delta up">Equity after loans — no borrowing against these</span></div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h4 class="lab">Total cost basis</h4><div class="v"><span class="m" data-inr="6184000"></span></div></div>
+          <div class="stat"><h4 class="lab">Of which duty &amp; registration</h4><div class="v"><span class="m" data-inr="434000"></span></div></div>
+          <div class="stat"><h4 class="lab">Capital improvements</h4><div class="v"><span class="m" data-inr="350000"></span></div></div>
+          <div class="stat"><h4 class="lab">Oldest valuation</h4><div class="v">17 months</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Holdings</h2><span class="sub">Cost basis is what a future gain is measured against — capture it once, keep it forever</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Property</th><th>Owner</th><th>Bought</th><th class="n">Price paid</th><th class="n">Duty + reg.</th><th class="n">Improvements</th><th class="n">Cost basis</th><th class="n">Valued at</th></tr></thead>
+          <tbody>
+            <tr><td class="k">House<div class="sm">Apartment · self-occupied</div></td><td><span class="pill own">Venkat</span></td><td class="n">Mar 2019</td><td class="n"><span class="m" data-inr="4200000"></span></td><td class="m n"><span class="m" data-inr="294000"></span></td><td class="n"><span class="m" data-inr="350000"></span></td><td class="n"><span class="m" data-inr="4844000"></span></td><td class="n"><span class="m" data-inr="6400000"></span></td></tr>
+            <tr><td class="k">Land1<div class="sm">Plot · held</div></td><td><span class="pill own">Venkat</span></td><td class="n">Aug 2021</td><td class="n"><span class="m" data-inr="900000"></span></td><td class="n"><span class="m" data-inr="90000"></span></td><td class="n">—</td><td class="n"><span class="m" data-inr="990000"></span></td><td class="n"><span class="m" data-inr="1500000"></span></td></tr>
+            <tr><td class="k">Land2<div class="sm">Plot · joint, 50%</div></td><td><span class="pill own">Joint</span></td><td class="n">Jan 2023</td><td class="n"><span class="m" data-inr="300000"></span></td><td class="n"><span class="m" data-inr="50000"></span></td><td class="n">—</td><td class="n"><span class="m" data-inr="350000"></span></td><td class="n"><span class="m" data-inr="1350000"></span></td></tr>
+            <tr class="tot"><td colspan="3">Total</td><td class="n"><span class="m" data-inr="5400000"></span></td><td class="n"><span class="m" data-inr="434000"></span></td><td class="n"><span class="m" data-inr="350000"></span></td><td class="n"><span class="m" data-inr="6184000"></span></td><td class="n"><span class="m" data-inr="9250000"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">Stamp duty, registration and capital improvements all form part of the basis. Nobody reconstructs those fifteen years later from memory, which is why they are separate fields rather than folded into one "cost" number.</p>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Valuation, and how honest it is</h2><span class="sub">A figure, a date, and where it came from</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">House</div><div class="sd">Broker estimate · 12 Aug 2026</div></div><span class="pill ok">Fresh</span></div>
+          <div class="setrow"><div><div class="sk">Land1</div><div class="sd">Circle rate calculation · 3 Apr 2026</div></div><span class="pill warn">17 months</span></div>
+          <div class="setrow"><div><div class="sk">Land2</div><div class="sd">Your own estimate · 20 Jun 2026</div></div><span class="pill fx">Self</span></div>
+        </div>
+        <p class="note" style="margin:12px 0 0">The app never pretends a property is worth a precise number. It records what you believed, when, and on what basis — and flags a valuation that has gone stale rather than quietly carrying it into net worth.</p>
+      </div>
+      <div class="card">
+        <header><h2>Improvements log</h2><span class="sub">Capital work adds to basis; repairs do not</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Date</th><th>Property</th><th>Work</th><th>Type</th><th class="n">Amount</th></tr></thead>
+            <tbody>
+              <tr><td class="n" style="text-align:left">Nov 2022</td><td class="k">House</td><td>Modular kitchen</td><td><span class="pill ok">Capital</span></td><td class="n"><span class="m" data-inr="280000"></span></td></tr>
+              <tr><td class="n" style="text-align:left">Jul 2024</td><td class="k">House</td><td>Balcony grille &amp; waterproofing</td><td><span class="pill ok">Capital</span></td><td class="n"><span class="m" data-inr="70000"></span></td></tr>
+              <tr><td class="n" style="text-align:left">Feb 2026</td><td class="k">House</td><td>Repainting</td><td><span class="pill fx">Repair</span></td><td class="n"><span class="m" data-inr="45000"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">The repair is recorded but excluded from basis. Getting that split right at the time is far easier than arguing it at sale.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== TAX ======== -->
+  <div class="view" id="v-tax">
+    <div class="samplebar"><b>Sample income</b> Salary is the one input your workbook never carried. Everything below follows from it — which is why the app asks for it, per member, in the setup.</div>
+
+    <div class="fireslab">
+      <div class="fslab"><h4 class="lab">New regime</h4><div class="amt"><span class="m" data-inr="292500"></span></div><div class="sm">Standard deduction ₹75,000 · no other relief</div></div>
+      <div class="fslab"><h4 class="lab">Old regime</h4><div class="amt"><span class="m" data-inr="475800"></span></div><div class="sm">With 80C ₹1.5L and 80D ₹50,000 claimed</div></div>
+      <div class="fslab pick"><h4 class="lab">New regime saves</h4><div class="amt"><span class="m" data-inr="183300"></span></div><div class="sm">Recomputed whenever a figure changes</div></div>
+      <div class="fslab"><h4 class="lab">Tax year</h4><div class="amt" style="font-size:19px">2026–27</div><div class="sm">1 Apr – 31 Mar, IST</div></div>
+    </div>
+
+    <div class="card">
+      <div>
+        <header><h2>The computation</h2><span class="sub">Every figure links back to the rows that produced it</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Head</th><th>Source</th><th class="n">New regime</th><th class="n">Old regime</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Salary</td><td class="sm">Entered per member</td><td class="n"><span class="m" data-inr="2400000"></span></td><td class="n"><span class="m" data-inr="2400000"></span></td></tr>
+              <tr><td class="k">Standard deduction</td><td class="sm">Automatic</td><td class="n neg">−<span class="m" data-inr="75000"></span></td><td class="n neg">−<span class="m" data-inr="50000"></span></td></tr>
+              <tr><td class="k">Other sources</td><td class="sm">Bond coupons, FD accrual, dividends</td><td class="n"><span class="m" data-inr="9049"></span></td><td class="n"><span class="m" data-inr="9049"></span></td></tr>
+              <tr><td class="k">Section 80C</td><td class="sm">PPF, EPF, ELSS — derived from your holdings</td><td class="n">—</td><td class="n neg">−<span class="m" data-inr="150000"></span></td></tr>
+              <tr><td class="k">Section 80D</td><td class="sm">Health premiums, self + parents</td><td class="n">—</td><td class="n neg">−<span class="m" data-inr="50000"></span></td></tr>
+              <tr><td class="k">Employer NPS</td><td class="sm">Allowed in both</td><td class="n">—</td><td class="n">—</td></tr>
+              <tr class="tot"><td colspan="2">Taxable income</td><td class="n"><span class="m" data-inr="2334049"></span></td><td class="n"><span class="m" data-inr="2159049"></span></td></tr>
+              <tr><td class="k">Tax before cess</td><td class="sm">Slabs then rebate then surcharge</td><td class="n"><span class="m" data-inr="281250"></span></td><td class="n"><span class="m" data-inr="457500"></span></td></tr>
+              <tr><td class="k">Health &amp; education cess</td><td class="sm">4%</td><td class="n"><span class="m" data-inr="11250"></span></td><td class="n"><span class="m" data-inr="18300"></span></td></tr>
+              <tr class="tot"><td colspan="2">Total liability</td><td class="n"><span class="m" data-inr="292500"></span></td><td class="n"><span class="m" data-inr="475800"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">A working paper, not a filing. Hand it to your accountant to check — every line traces to the transactions behind it, which is what makes checking it possible.</p>
+      </div>
+    </div>
+
+    <div class="grid g3">
+        <div class="card">
+          <header><h2>Expiring this year</h2><span class="sub">Use it or lose it</span></header>
+          <div class="barrow" style="grid-template-columns:minmax(90px,1fr) 3fr 96px"><span class="nm">LTCG allowance</span><span class="track"><i style="width:33.6%;background:var(--c3)"></i></span><span class="amt"><span class="m" data-inr="42000"></span></span></div>
+          <p class="sm" style="margin:2px 0 14px"><span class="m" data-inr="83000"></span> of the ₹1,25,000 long-term equity exemption still unused · 206 days left in the tax year</p>
+          <div class="setgrp">
+            <div class="setrow"><div><div class="sk">Carried-forward losses</div><div class="sd">Short-term, from FY 2024-25 · expires 2032-33</div></div><span class="sv"><span class="m" data-inr="18400"></span></span></div>
+            <div class="setrow"><div><div class="sk">Filed on time?</div><div class="sd">Losses are forfeited entirely if the return is late</div></div><span class="pill ok">Yes</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <header><h2>Holding-period clock</h2><span class="sub">One month can halve the rate</span></header>
+          <div class="setgrp">
+            <div class="setrow"><div><div class="sk">VOO · 12 units</div><div class="sd">Foreign shares turn long-term at 24 months</div></div><span class="pill due">23 months</span></div>
+            <div class="setrow"><div><div class="sk">UTI Nifty 50 · part lot</div><div class="sd">Indian equity turns long-term at 12 months</div></div><span class="pill ok">Long-term</span></div>
+            <div class="setrow"><div><div class="sk">Debt fund units</div><div class="sd">Bought after Apr 2023 — always short-term</div></div><span class="pill fx">No clock</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <header><h2>Advance tax</h2><span class="sub">Gains fall due in the instalment after the sale</span></header>
+          <div class="setgrp">
+            <div class="setrow"><div><div class="sk">15 Jun · 15%</div><div class="sd">Paid 12 Jun</div></div><span class="pill ok"><span class="m" data-inr="43875"></span></span></div>
+            <div class="setrow"><div><div class="sk">15 Sep · 45% cumulative</div><div class="sd">Due in 8 days</div></div><span class="pill due"><span class="m" data-inr="87750"></span></span></div>
+            <div class="setrow"><div><div class="sk">15 Dec · 75%</div><div class="sd">Estimated</div></div><span class="pill fx"><span class="m" data-inr="87750"></span></span></div>
+            <div class="setrow"><div><div class="sk">15 Mar · 100%</div><div class="sd">Estimated</div></div><span class="pill fx"><span class="m" data-inr="73125"></span></span></div>
+          </div>
+        </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Capital gains, by lot</h2><span class="sub">FIFO matched — no gain is ever stored, it is computed from the lots</span></header>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Sold</th><th>Holding</th><th>Lot acquired</th><th class="n">Held</th><th>Class</th><th class="n">Gain</th><th class="n">Rate</th><th class="n">Tax</th></tr></thead>
+          <tbody>
+            <tr><td class="n" style="text-align:left">14 Jun 26</td><td class="k">UTI Nifty 50</td><td class="n">02 Oct 23</td><td class="n">32 mo</td><td><span class="pill ok">LTCG equity</span></td><td class="n pos">+<span class="m" data-inr="42000"></span></td><td class="n">12.5%</td><td class="n"><span class="m" data-inr="0"></span></td></tr>
+            <tr><td class="n" style="text-align:left">22 Jul 26</td><td class="k">Debt fund</td><td class="n">11 May 24</td><td class="n">26 mo</td><td><span class="pill fx">Slab</span></td><td class="n pos">+<span class="m" data-inr="6200"></span></td><td class="n">30%</td><td class="n"><span class="m" data-inr="1860"></span></td></tr>
+            <tr><td class="n" style="text-align:left">03 Aug 26</td><td class="k">MSFT</td><td class="n">19 Jan 25</td><td class="n">19 mo</td><td><span class="pill due">STCG foreign</span></td><td class="n neg">−<span class="m" data-inr="3100"></span></td><td class="n">—</td><td class="n">—</td></tr>
+            <tr class="tot"><td colspan="5">Net position</td><td class="n pos">+<span class="m" data-inr="45100"></span></td><td class="n"></td><td class="n"><span class="m" data-inr="1860"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:12px 0 0">The Nifty gain attracts no tax because it sits inside the ₹1,25,000 exemption. The MSFT loss is short-term and offsets any gain; had it been long-term it could only offset long-term gains. Foreign figures convert at the prescribed rate — the State Bank's telegraphic-transfer buying rate on the last day of the month before the sale — not at the rate you actually received.</p>
+    </div>
+  </div>
+
+  <!-- ======== REPORTS ======== -->
+  <div class="view" id="v-reports">
+    <div class="samplebar"><b>Two calendars, because India needs both</b> Domestic reporting runs April to March. Foreign-asset disclosure runs January to December. The app produces each on its own clock rather than forcing one to serve both.</div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Tax year 2026–27</h2><span class="sub">1 Apr 2026 – 31 Mar 2027 · in progress</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Computation &amp; regime comparison</div><div class="sd">Both regimes, with the working shown</div></div><span class="pill fx">PDF</span></div>
+          <div class="setrow"><div><div class="sk">Capital gains statement</div><div class="sd">Lot by lot, with holding periods and rates</div></div><span class="pill fx">Excel · PDF</span></div>
+          <div class="setrow"><div><div class="sk">80C and 80D workings</div><div class="sd">Derived from your holdings and premiums</div></div><span class="pill fx">Excel</span></div>
+          <div class="setrow"><div><div class="sk">Spending by category</div><div class="sd">Fixed and variable, against budget</div></div><span class="pill fx">Excel</span></div>
+          <div class="setrow"><div><div class="sk">Year-end pack</div><div class="sd">Everything above, plus a list of what the app could not determine</div></div><span class="pill warn">31 Mar</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Calendar year 2026</h2><span class="sub">1 Jan – 31 Dec · for foreign assets</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Foreign asset schedule</div><div class="sd">Initial, peak and closing value per holding, plus income</div></div><span class="pill fx">Excel · PDF</span></div>
+          <div class="setrow"><div><div class="sk">Peak values captured</div><div class="sd">From monthly snapshots — cannot be reconstructed later</div></div><span class="pill ok">9 of 9 months</span></div>
+          <div class="setrow"><div><div class="sk">Foreign tax credit working</div><div class="sd">Gross dividend, tax withheld, credit claimable</div></div><span class="pill fx">PDF</span></div>
+          <div class="setrow"><div><div class="sk">Remittances and TCS</div><div class="sd">Against the annual limit, with collected TCS listed</div></div><span class="pill fx">Excel</span></div>
+        </div>
+        <p class="note" style="margin:12px 0 0">Disclosure applies whether or not a holding produced income, and whether or not it made a loss.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Everything else</h2><span class="sub">Exports are generated on your device — nothing is uploaded to produce a file</span></header>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Net worth history</div><div class="sd">Every monthly snapshot since the app started</div></div><span class="pill fx">Excel</span></div>
+        <div class="setrow"><div><div class="sk">Full data export</div><div class="sd">One sheet per entity — the same shape the uploader accepts</div></div><span class="pill fx">Excel</span></div>
+        <div class="setrow"><div><div class="sk">Year in review</div><div class="sd">Available once two years of snapshots exist</div></div><span class="pill warn">From 2027</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== PRIVACY & DATA ======== -->
+  <div class="view" id="v-privacy">
+    <div class="card">
+      <header><h2>Where your data lives</h2><span class="sub">A status page, not a policy document</span></header>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Region</div><div class="sd">Chosen at project creation and fixed thereafter</div></div><span class="sv">Mumbai · ap-south-1</span></div>
+        <div class="setrow"><div><div class="sk">What is stored</div><div class="sd">Your transactions, holdings, valuations and documents</div></div><span class="pill fx">Encrypted at rest</span></div>
+        <div class="setrow"><div><div class="sk">What never leaves your device</div><div class="sd">Imported statements are parsed here and uploaded only if you save them</div></div><span class="pill ok">Parsing</span></div>
+        <div class="setrow"><div><div class="sk">Analytics and trackers</div><div class="sd">None of any kind, including our own</div></div><span class="pill ok">None</span></div>
+        <div class="setrow"><div><div class="sk">Bank or broker passwords</div><div class="sd">Never asked for, never stored, no feature requires them</div></div><span class="pill ok">Never</span></div>
+        <div class="setrow"><div><div class="sk">Account identifiers</div><div class="sd">Last four digits only</div></div><span class="pill ok">Masked</span></div>
+        <div class="setrow"><div><div class="sk">Source code</div><div class="sd">Public — the access rules are readable by anyone</div></div><span class="pill fx">View repo</span></div>
+      </div>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Scheduled jobs</h2><span class="sub">What runs without anyone opening the app</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Fund NAV refresh</div><div class="sd">Daily, from the industry file</div></div><span class="pill ok">Ran 06:02</span></div>
+          <div class="setrow"><div><div class="sk">Gold rate and USD/INR</div><div class="sd">Daily, appended as dated rows</div></div><span class="pill ok">Ran 06:02</span></div>
+          <div class="setrow"><div><div class="sk">Monthly snapshot</div><div class="sd">Last calendar day, IST — captures peak values</div></div><span class="sv">31 Aug</span></div>
+          <div class="setrow"><div><div class="sk">Reminder dispatch</div><div class="sd">Never contains an amount</div></div><span class="pill ok">Ran 08:00</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Access rules, and the proof</h2><span class="sub">Tested on every release, blocking the deploy</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Row-level policy assertions</div><div class="sd">Each proves a query returns nothing it should not</div></div><span class="sv">47 passing</span></div>
+          <div class="setrow"><div><div class="sk">Cross-household isolation</div><div class="sd">A member of one household querying another</div></div><span class="pill ok">Denied</span></div>
+          <div class="setrow"><div><div class="sk">Private entries</div><div class="sd">Owner queries cannot return another member's personal detail</div></div><span class="pill ok">Denied</span></div>
+          <div class="setrow"><div><div class="sk">Last release</div><div class="sd">Deploy blocked automatically if any assertion fails</div></div><span class="sv">7 Sep 2026</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Your data is yours to take or delete</h2><span class="sub">Try the export before you enter anything real</span></header>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Export everything</div><div class="sd">Readable in Excel without this app existing</div></div><span class="pill fx">Download</span></div>
+        <div class="setrow"><div><div class="sk">Self-hosting guide</div><div class="sd">Ordinary Postgres — run it yourself if you would rather</div></div><span class="pill fx">Read</span></div>
+        <div class="setrow"><div><div class="sk">Delete my account</div><div class="sd">Identifiers removed; household totals unchanged; receipt issued</div></div><span class="pill due">Delete</span></div>
+        <div class="setrow"><div><div class="sk">Delete the household</div><div class="sd">Everything, for everyone, irreversibly</div></div><span class="pill due">Delete</span></div>
+      </div>
+      <p class="note" style="margin:12px 0 0">Deleting a person removes who they were, not what the household spent — their rows are reattributed to a placeholder so last year's figures do not move. Erasing a member should not quietly rewrite your history.</p>
+    </div>
+  </div>
+
+  <!-- ======== PROFILE ======== -->
+  <div class="view" id="v-profile">
+    <div class="card">
+      <header><h2>Venkat</h2><span class="sub">Owner · joined Sep 2026</span></header>
+      <div class="kvs">
+        <div class="kv"><h4 class="lab">Relation</h4><div class="v" style="font-family:inherit;font-size:14px">Self</div></div>
+        <div class="kv"><h4 class="lab">Role</h4><div class="v" style="font-family:inherit;font-size:14px">Owner</div></div>
+        <div class="kv"><h4 class="lab">Colour</h4><div class="v"><span class="dot" style="background:var(--c1);width:14px;height:14px"></span></div></div>
+      </div>
+      <p class="note" style="margin:14px 0 0">As owner you can manage members, roles and household settings, and you can see every entry that has not been marked personal. That last part is stated here deliberately — the people you invite should not have to guess it.</p>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Signing in</h2><span class="sub">How this account is protected</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Passkey · Windows Hello</div><div class="sd">Added 4 Sep 2026 · last used today</div></div><span class="pill ok">Active</span></div>
+          <div class="setrow"><div><div class="sk">Passkey · iPhone</div><div class="sd">Added 5 Sep 2026 · last used yesterday</div></div><span class="pill ok">Active</span></div>
+          <div class="setrow"><div><div class="sk">Password + authenticator</div><div class="sd">Required on every account, whatever the role</div></div><span class="pill ok">Enrolled</span></div>
+          <div class="setrow"><div><div class="sk">Recovery codes</div><div class="sd">Printed 4 Sep 2026 — store them off the device</div></div><span class="sv">8 of 10 left</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Your devices</h2><span class="sub">Sign out remotely if one goes missing</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Windows · Chrome</div><div class="sd">Chennai · active now</div></div><span class="pill fx">This device</span></div>
+          <div class="setrow"><div><div class="sk">iPhone · app</div><div class="sd">Chennai · 3 hours ago</div></div><span class="pill due">Revoke</span></div>
+          <div class="setrow"><div><div class="sk">iPad · app</div><div class="sd">Chennai · 12 days ago</div></div><span class="pill due">Revoke</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2e">
+      <div class="card">
+        <header><h2>Your privacy</h2><span class="sub">What others can and cannot see</span></header>
+        <div class="setgrp">
+          <div class="setrow"><div><div class="sk">Entries marked personal</div><div class="sd">Counted in household totals, detail visible only to you</div></div><span class="sv">4</span></div>
+          <div class="setrow"><div><div class="sk">Your income entries</div><div class="sd">Private by default; the tax effect still rolls up</div></div><span class="pill ok">Private</span></div>
+          <div class="setrow"><div><div class="sk">Export just my records</div><div class="sd">Excel, everything attributed to you</div></div><span class="pill fx">Download</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Who read what</h2><span class="sub">Your own audit log, owner included</span></header>
+        <div class="tw">
+          <table>
+            <thead><tr><th>When</th><th>Who</th><th>Did what</th></tr></thead>
+            <tbody>
+              <tr><td class="n" style="text-align:left">Today 09:14</td><td class="k">You</td><td>Viewed your income entry</td></tr>
+              <tr><td class="n" style="text-align:left">Yest 21:02</td><td class="k">Spouse</td><td>Edited a shared expense</td></tr>
+              <tr><td class="n" style="text-align:left">3 Sep</td><td class="k">You</td><td>Exported household data</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:12px 0 0">Reads as well as writes. If someone looks at your figures, you can see that they did — which is what turns a privacy promise into something checkable.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <header><h2>Notifications</h2><span class="sub">Yours alone — each member chooses their own</span></header>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Bond and deposit maturity</div><div class="sd">30 days ahead</div></div><span class="pill ok">Push + email</span></div>
+        <div class="setrow"><div><div class="sk">Policy renewals</div><div class="sd">21 days ahead</div></div><span class="pill ok">Push + email</span></div>
+        <div class="setrow"><div><div class="sk">Credit card due</div><div class="sd">5 days ahead</div></div><span class="pill ok">Push</span></div>
+        <div class="setrow"><div><div class="sk">Quiet hours</div><div class="sd">Nothing arrives in this window</div></div><span class="sv">22:00 – 07:30</span></div>
+        <div class="setrow"><div><div class="sk">Amounts in notifications</div><div class="sd">"Your card bill is due" — never the figure</div></div><span class="pill ok">Never</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== SETTINGS ======== -->
+  <div class="view" id="v-settings">
+    <div class="samplebar"><b>Two groups, deliberately separated</b> Device settings need nobody's permission and affect only you. Household settings change the app for everyone — owners and partners edit them, everyone else sees them read-only, so the rules are never a mystery.</div>
+
+    <div>
+      <div class="grouphead"><h3>This device</h3><span class="who">Yours alone · no permission needed</span></div>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Theme</div><div class="sd">Light, dark, or follow the system</div></div><span class="sv">Follow system</span></div>
+        <div class="setrow"><div><div class="sk">Show amounts in</div><div class="sd">Totals are always computed in the household's base currency</div></div><span class="sv">₹ INR</span></div>
+        <div class="setrow"><div><div class="sk">Number grouping</div><div class="sd">₹1,23,456 or $123,456</div></div><span class="sv">Indian</span></div>
+        <div class="setrow"><div><div class="sk">Hide amounts by default</div><div class="sd">Opens with figures masked; one tap reveals</div></div><span class="pill fx">Off</span></div>
+        <div class="setrow"><div><div class="sk">Auto-lock</div><div class="sd">Requires biometric or PIN to return</div></div><span class="sv">After 2 min</span></div>
+        <div class="setrow"><div><div class="sk">Biometric unlock</div><div class="sd">Face or fingerprint on this device</div></div><span class="pill ok">On</span></div>
+        <div class="setrow"><div><div class="sk">Open on</div><div class="sd">Which screen the app starts at</div></div><span class="sv">Overview</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="grouphead"><h3>This household</h3><span class="who">Owner and partner can edit · others see it read-only</span></div>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Household name</div><div class="sd">Shown in the switcher and on exports</div></div><span class="sv">Venkat &amp; family</span></div>
+        <div class="setrow"><div><div class="sk">Base currency</div><div class="sd">Net worth, FIRE and allocation are computed in this</div></div><span class="sv">INR</span></div>
+        <div class="setrow"><div><div class="sk">Tax year starts</div><div class="sd">Foreign-asset reporting still uses the calendar year</div></div><span class="sv">1 April</span></div>
+        <div class="setrow"><div><div class="sk">Members and invitations</div><div class="sd">3 members · invite-only, single use, expiring</div></div><span class="pill fx">Manage</span></div>
+        <div class="setrow"><div><div class="sk">Expense categories</div><div class="sd">Add, rename, reorder, nest — used ones archive rather than delete</div></div><span class="sv">33 active</span></div>
+        <div class="setrow"><div><div class="sk">Allocation profile</div><div class="sd">A named starting point you can adjust</div></div><span class="sv">Growth</span></div>
+        <div class="setrow"><div><div class="sk">Emergency fund target</div><div class="sd">Held out of the allocation drift calculation</div></div><span class="sv">6 months</span></div>
+        <div class="setrow"><div><div class="sk">FIRE inputs</div><div class="sd">Multiplier, inflation, expected return, SIP step-up</div></div><span class="sv">30× · 6% · 10% · 10%</span></div>
+        <div class="setrow"><div><div class="sk">Price sources</div><div class="sd">Daily NAV, gold rate and USD/INR, fetched on a schedule</div></div><span class="pill ok">Ran 06:00</span></div>
+        <div class="setrow"><div><div class="sk">Monthly snapshot</div><div class="sd">Freezes values — this is what captures peak figures for disclosure</div></div><span class="sv">Last day, IST</span></div>
+        <div class="setrow"><div><div class="sk">Reminder lead times</div><div class="sd">Per event type; each member chooses their own channels</div></div><span class="pill fx">Configure</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="grouphead"><h3>Data</h3><span class="who">Export works before you enter anything real</span></div>
+      <div class="setgrp">
+        <div class="setrow"><div><div class="sk">Download the template</div><div class="sd">One sheet per entity, validated dropdowns, example rows</div></div><span class="pill fx">Excel</span></div>
+        <div class="setrow"><div><div class="sk">Upload a filled template</div><div class="sd">Parsed on your device, previewed before anything is written</div></div><span class="pill fx">Choose file</span></div>
+        <div class="setrow"><div><div class="sk">Export everything</div><div class="sd">Same shape as the template — edit in Excel and upload it back</div></div><span class="pill fx">Excel · PDF</span></div>
+        <div class="setrow"><div><div class="sk">Where your data lives</div><div class="sd">Region, what is stored, what never leaves the device</div></div><span class="pill fx">Open</span></div>
+        <div class="setrow"><div><div class="sk">Reset the demo household</div><div class="sd">Wipes and reseeds it — your real household is untouched</div></div><span class="pill warn">Reset</span></div>
+        <div class="setrow"><div><div class="sk">Delete household</div><div class="sd">Issues a receipt of what was removed</div></div><span class="pill due">Delete</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">Prototype — asset figures are your workbook's own, as of the dates each sheet carries. Expense, insurance and history figures are marked samples.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- data ---------------- */
+  var HOLDINGS = [
+    {name:"Parag Parikh Flexi Cap Fund", cls:"Indian MF",    owner:"Venkat", sip:20000, inv:269986, cur:311612, xirr:19.4, started:"Dec 2023"},
+    {name:"UTI Nifty 50 Index Fund",     cls:"Indian MF",    owner:"Venkat", sip:5000,  inv:70727,  cur:77612,  xirr:11.6, started:"Oct 2023"},
+    {name:"Zerodha",                     cls:"Indian equity",owner:"Venkat", sip:0,     inv:200000, cur:230000, xirr:13.2, started:"—"},
+    {name:"Bond2 · CARE A",              cls:"Bonds",        owner:"Spouse", sip:0,     inv:99228,  cur:99475,  xirr:11.5, started:"May 2024"},
+    {name:"Bond1 · CRISIL A",            cls:"Bonds",        owner:"Venkat", sip:0,     inv:25379,  cur:24101,  xirr:10.4, started:"Jul 2024"},
+    {name:"US Nasdaq 100 Index",         cls:"Foreign equity",owner:"Spouse",sip:5000,  inv:24700,  cur:24700,  xirr:0.0,  started:"Jan 2025"},
+    {name:"Crypto",                      cls:"Crypto",       owner:"Venkat", sip:0,     inv:100,    cur:100,    xirr:0.0,  started:"—"},
+    {name:"Cash & savings",              cls:"Cash",         owner:"Household", sip:0,  inv:200000, cur:200000, xirr:0.0,  started:"—"}
+  ];
+  var LIABILITIES = [{name:"Credit card", owner:"Venkat", amt:50000}];
+  var CLASS_COLOR = {
+    "Indian MF":"var(--c1)","Indian equity":"var(--c2)","Bonds":"var(--c3)",
+    "Cash":"var(--c7)","Foreign equity":"var(--c4)","Crypto":"var(--c5)","Fixed deposit":"var(--c6)"
+  };
+  var ANNUAL_EXPENSE = 623176;
+
+  var FIXED = [
+    ["School fee",8000,8000],["Grocery",6000,6480],["Petrol",3000,3250],["Vegetables",2500,2310],
+    ["Milk",1800,1800],["Rice",1600,1600],["EB",1400,1520],["Fruits",1200,1080],
+    ["GAS",950,950],["Data1 (broadband)",800,800],["Oil",700,700],["DTH",400,400],
+    ["Mobile1 · Venkat",299,299],["Mobile2 · Spouse",299,299]
+  ];
+  var VARIABLE = [
+    ["Restaurants",2000,3450],["Others",1500,2100],["Extracurricular",1200,1200],
+    ["Dress",1000,640],["FastTag",800,910],["Bus/Train ticket",600,430],
+    ["House appliances maint.",500,0]
+  ];
+  var YEARLY = [
+    ["Vacation","Variable","Yearly","Household",60000],
+    ["Parents health insurance","Fixed","Yearly","Parents",32000],
+    ["Health insurance 1","Fixed","Yearly","Family",24000],
+    ["Insurance — Car","Fixed","Yearly","Venkat",18000],
+    ["Term insurance","Fixed","Yearly","Venkat",18000],
+    ["Car maintenance","Fixed","Yearly","Venkat",12000],
+    ["Health insurance 2","Fixed","Yearly","Family",8000],
+    ["Bike maintenance","Fixed","Yearly","Venkat",4000],
+    ["RO water maintenance","Fixed","Yearly","Household",3500],
+    ["Scooty maintenance","Fixed","Yearly","Spouse",3000],
+    ["Insurance — Bike","Fixed","Yearly","Venkat",1200],
+    ["Insurance — Scooty","Fixed","Yearly","Spouse",900]
+  ];
+  var TXNS = [
+    ["31 May","Reliance Fresh","Grocery","Spouse","UPI",2140],
+    ["30 May","HP Petrol Pump","Petrol","Venkat","Card",1600],
+    ["29 May","Saravana Bhavan","Restaurants","Venkat","UPI",860],
+    ["28 May","TNEB","EB","Venkat","Auto-debit",1520],
+    ["27 May","Local vendor","Vegetables","Spouse","Cash",520],
+    ["26 May","Amazon","Others","Venkat","Card",1240],
+    ["25 May","Aavin","Milk","Spouse","UPI",1800],
+    ["24 May","NHAI FASTag","FastTag","Venkat","Auto-debit",910]
+  ];
+  var CAL = [
+    ["18 Jun","Credit card payment due","{{50000}} · Venkat","due"],
+    ["01 Jul","Bond2 matures","{{99475}} returns to cash · CARE A","due"],
+    ["05 Jul","SIP debits","{{30000}} across three schemes","fx"],
+    ["10 Jul","RSU vest · 6 units","Perquisite value recorded at vest FMV","fx"],
+    ["31 Jul","Monthly snapshot","Net worth frozen for the month","ok"],
+    ["15 Sep","Advance tax · Q2","Second instalment","warn"],
+    ["01 Oct","Bond1 matures","{{24101}} · CRISIL A (Stable)","due"],
+    ["19 Nov","Parents health policy renews","{{32000}} premium","warn"],
+    ["31 Dec","Foreign asset year closes","Peak and closing values locked for disclosure","ok"],
+    ["12 Jan","Term plan renews","{{18000}} · ₹1 Cr cover","warn"],
+    ["04 Mar","Health floater + top-up renew","{{32000}} combined","warn"],
+    ["31 Mar","FY 2025–26 closes","Capital gains, 80C and Form 67 workings generated","ok"]
+  ];
+
+  /* ---------------- helpers ---------------- */
+  var CCY = "INR", RATE = 85.60;   // USD/INR reference rate, 31 May 2025
+
+  function inrFmt(n){
+    n = Math.round(n);
+    var s = String(Math.abs(n)), out;
+    if(s.length > 3){
+      var last3 = s.slice(-3), rest = s.slice(0,-3);
+      rest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+      out = rest + "," + last3;
+    } else { out = s; }
+    return (n<0?"−₹":"₹") + out;
+  }
+  function croreFmt(n){
+    if(n >= 10000000) return "₹" + (n/10000000).toFixed(2) + " Cr";
+    if(n >= 100000)   return "₹" + (n/100000).toFixed(2) + " L";
+    return inrFmt(n);
+  }
+  function usdFmt(n){
+    var neg = n < 0; n = Math.round(Math.abs(n));
+    return (neg?"−$":"$") + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+  function usdShort(n){
+    if(n >= 1000000) return "$" + (n/1000000).toFixed(2) + "M";
+    if(n >= 10000)   return "$" + (n/1000).toFixed(1) + "k";
+    return usdFmt(n);
+  }
+  // Privacy mode masks at the formatter, never with a CSS blur — a blur is
+  // recoverable from a screenshot, and surviving a screenshot is the point.
+  var PRIVATE = false;
+  function masked(){ return CCY === "INR" ? "₹•••••" : "$•••••"; }
+
+  // Every figure is stored in its native currency; these convert for display only.
+  function inr(v){   if(PRIVATE) return masked(); return CCY === "INR" ? inrFmt(v)   : usdFmt(v / RATE); }
+  function crore(v){ if(PRIVATE) return masked(); return CCY === "INR" ? croreFmt(v) : usdShort(v / RATE); }
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  /* ---------------- state ---------------- */
+  var member = "all", mult = 30, infl = 0.06;
+  function inScope(h){ return member === "all" || h.owner === member || h.owner === "Household"; }
+
+  /* ---------------- overview ---------------- */
+  function classTotals(){
+    var map = {}, order = [];
+    HOLDINGS.forEach(function(h){
+      if(!inScope(h)) return;
+      if(!(h.cls in map)){ map[h.cls] = 0; order.push(h.cls); }
+      map[h.cls] += h.cur;
+    });
+    return order.map(function(c){ return {cls:c, val:map[c]}; })
+                .sort(function(a,b){ return b.val - a.val; });
+  }
+
+  function renderOverview(){
+    var assets = 0, invested = 0;
+    HOLDINGS.forEach(function(h){ if(inScope(h)){ assets += h.cur; invested += h.inv; } });
+    var liab = 0;
+    LIABILITIES.forEach(function(l){ if(member === "all" || l.owner === member) liab += l.amt; });
+    var nw = assets - liab, gain = assets - invested;
+
+    el("nwBig").textContent = inr(nw);
+    el("sAssets").textContent = inr(assets);
+    el("sLiab").textContent = inr(liab);
+    el("sInvested").textContent = inr(invested);
+    el("sGain").textContent = (gain >= 0 ? "+" : "") + inr(gain);
+    el("sGain").className = "v " + (gain >= 0 ? "pos" : "neg");
+    var label = member === "all" ? "Household" : member;
+    el("scopeLabel").textContent = label;
+    Array.prototype.forEach.call(document.querySelectorAll(".scopeLabel"), function(n){ n.textContent = label; });
+    var monthMove = Math.round(nw * 0.031);
+    el("nwDelta").textContent = "▲ " + inr(monthMove) + " this month";
+
+    // market-only figures for the investments hero
+    var mkt = 0, mktInv = 0, sip = 0;
+    HOLDINGS.forEach(function(h){
+      if(!inScope(h) || h.cls === "Cash") return;
+      mkt += h.cur; mktInv += h.inv; sip += h.sip;
+    });
+    el("invBig").textContent = inr(mkt);
+    var mg = mkt - mktInv;
+    el("invDelta").textContent = "▲ " + inr(mg) + " · +" + (mktInv ? (mg/mktInv*100).toFixed(1) : "0.0") + "% absolute";
+    el("invDelta").className = "delta " + (mg >= 0 ? "up" : "down");
+    el("sipTotal").textContent = inr(sip) ;
+
+    drawDonut(classTotals(), assets);
+    renderMemberBars();
+    renderHoldings();
+  }
+
+  function drawDonut(rows, total){
+    var S = 208, R = 82, r = 52, cx = S/2, cy = S/2, gap = 0.018;
+    var a = -Math.PI/2, parts = [];
+    rows.forEach(function(d){
+      var frac = total ? d.val/total : 0;
+      var sweep = frac * Math.PI * 2;
+      if(sweep > gap*1.4) { parts.push({d:d, a0:a + gap/2, a1:a + sweep - gap/2}); }
+      else if(sweep > 0.0005){ parts.push({d:d, a0:a, a1:a + sweep}); }
+      a += sweep;
+    });
+    function arc(a0,a1){
+      var large = (a1-a0) > Math.PI ? 1 : 0;
+      var x0 = cx + R*Math.cos(a0), y0 = cy + R*Math.sin(a0);
+      var x1 = cx + R*Math.cos(a1), y1 = cy + R*Math.sin(a1);
+      var x2 = cx + r*Math.cos(a1), y2 = cy + r*Math.sin(a1);
+      var x3 = cx + r*Math.cos(a0), y3 = cy + r*Math.sin(a0);
+      return "M"+x0.toFixed(2)+" "+y0.toFixed(2)+
+             "A"+R+" "+R+" 0 "+large+" 1 "+x1.toFixed(2)+" "+y1.toFixed(2)+
+             "L"+x2.toFixed(2)+" "+y2.toFixed(2)+
+             "A"+r+" "+r+" 0 "+large+" 0 "+x3.toFixed(2)+" "+y3.toFixed(2)+"Z";
+    }
+    var svg = '<svg viewBox="0 0 '+S+' '+S+'" width="'+S+'" height="'+S+'" role="img" aria-label="Allocation by asset class">';
+    parts.forEach(function(p){
+      svg += '<path d="'+arc(p.a0,p.a1)+'" fill="'+(CLASS_COLOR[p.d.cls]||"var(--c7)")+'"></path>';
+    });
+    svg += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="1.4">TOTAL</text>';
+    svg += '<text x="'+cx+'" y="'+(cy+16)+'" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="17" font-weight="600">'+crore(total)+'</text>';
+    svg += '</svg>';
+    el("donut").innerHTML = svg;
+
+    var lg = "";
+    rows.forEach(function(d){
+      var pct = total ? (d.val/total*100) : 0;
+      lg += '<div class="lg"><span class="dot" style="background:'+(CLASS_COLOR[d.cls]||"var(--c7)")+'"></span>'+
+            '<span>'+esc(d.cls)+'</span><span class="lv">'+inr(d.val)+'</span>'+
+            '<span class="lp">'+(pct < 0.1 ? "<0.1" : pct.toFixed(1))+'%</span></div>';
+    });
+    el("allocLegend").innerHTML = lg;
+  }
+
+  function renderMemberBars(){
+    var by = {}, tot = 0;
+    HOLDINGS.forEach(function(h){ by[h.owner] = (by[h.owner]||0) + h.cur; tot += h.cur; });
+    var order = ["Venkat","Spouse","Household"], html = "";
+    order.forEach(function(o,i){
+      var v = by[o] || 0, pct = tot ? v/tot*100 : 0;
+      var col = ["var(--c1)","var(--c2)","var(--c7)"][i];
+      html += '<div class="barrow"><span class="nm">'+o+'</span>'+
+              '<span class="track"><i style="width:'+pct.toFixed(1)+'%;background:'+col+'"></i></span>'+
+              '<span class="amt">'+inr(v)+'</span><span class="pct">'+pct.toFixed(0)+'%</span></div>';
+    });
+    el("memberBars").innerHTML = html;
+  }
+
+  /* ---------------- net worth history ---------------- */
+  function drawNWChart(){
+    // Illustrative monthly path: contributions accumulate, market value tracks above.
+    var months = [], contrib = [], value = [];
+    var c = 0, v = 0, start = new Date(2023, 9, 1);
+    for(var i = 0; i <= 20; i++){
+      var add = i < 3 ? 5000 : (i < 15 ? 25000 : 30000);
+      c += add + (i === 6 ? 200000 : 0) + (i === 9 ? 124607 : 0);
+      v = (v + add + (i === 6 ? 200000 : 0) + (i === 9 ? 124607 : 0)) * (1 + (0.006 + 0.010*Math.sin(i/2.2)));
+      months.push(new Date(start.getFullYear(), start.getMonth()+i, 1));
+      contrib.push(c); value.push(v);
+    }
+    value[value.length-1] = 967600; contrib[contrib.length-1] = 890120;
+
+    var W = 900, H = 250, P = {t:16, r:16, b:30, l:62};
+    var maxY = 1050000;
+    var x = function(i){ return P.l + i*(W-P.l-P.r)/(months.length-1); };
+    var y = function(val){ return H-P.b - (val/maxY)*(H-P.t-P.b); };
+
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" role="img" aria-label="Net worth since October 2023">';
+    // gridlines
+    [0,250000,500000,750000,1000000].forEach(function(g){
+      svg += '<line x1="'+P.l+'" y1="'+y(g)+'" x2="'+(W-P.r)+'" y2="'+y(g)+'" stroke="var(--line)" stroke-width="1"></line>';
+      svg += '<text x="'+(P.l-9)+'" y="'+(y(g)+4)+'" text-anchor="end" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+(g?crore(g):"0")+'</text>';
+    });
+    function path(arr, close){
+      var d = "";
+      arr.forEach(function(v,i){ d += (i?"L":"M") + x(i).toFixed(1) + " " + y(v).toFixed(1); });
+      if(close) d += "L"+x(arr.length-1).toFixed(1)+" "+y(0)+"L"+x(0).toFixed(1)+" "+y(0)+"Z";
+      return d;
+    }
+    svg += '<path d="'+path(value,true)+'" fill="var(--c2)" opacity="0.14"></path>';
+    svg += '<path d="'+path(contrib,true)+'" fill="var(--c7)" opacity="0.20"></path>';
+    svg += '<path d="'+path(contrib,false)+'" fill="none" stroke="var(--c7)" stroke-width="1.6"></path>';
+    svg += '<path d="'+path(value,false)+'" fill="none" stroke="var(--c2)" stroke-width="2.2"></path>';
+    svg += '<circle cx="'+x(months.length-1)+'" cy="'+y(967600)+'" r="4" fill="var(--c2)"></circle>';
+    // x labels
+    [0,6,12,18,20].forEach(function(i){
+      var m = months[i], lbl = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m.getMonth()]+" "+String(m.getFullYear()).slice(2);
+      svg += '<text x="'+x(i)+'" y="'+(H-9)+'" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+lbl+'</text>';
+    });
+    svg += '<text x="'+(x(months.length-1)-8)+'" y="'+(y(967600)-11)+'" text-anchor="end" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">'+crore(967600)+'</text>';
+    svg += '</svg>';
+    el("nwChart").innerHTML = svg +
+      '<div class="legend" style="margin-top:10px;display:flex;gap:20px">'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c2)"></span>Market value</span>'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c7)"></span>Contributed</span></div>';
+  }
+
+  /* ---------------- expenses ---------------- */
+  function bars(list, node, col){
+    var max = 0;
+    list.forEach(function(r){ max = Math.max(max, r[1], r[2]); });
+    var html = "";
+    list.forEach(function(r){
+      var plan = r[1], act = r[2], over = act > plan;
+      html += '<div class="barrow"><span class="nm">'+esc(r[0])+'</span>'+
+        '<span class="track" title="Planned '+inr(plan)+' · actual '+inr(act)+'">'+
+          '<i style="width:'+(act/max*100).toFixed(1)+'%;background:'+(over?"var(--coral)":col)+'"></i>'+
+        '</span>'+
+        '<span class="amt'+(over?" neg":"")+'">'+inr(act)+'</span>'+
+        '<span class="pct">'+(plan?Math.round(act/plan*100):0)+'%</span></div>';
+    });
+    node.innerHTML = html;
+  }
+
+  function renderExpenses(){
+    bars(FIXED, el("fixedBars"), "var(--c1)");
+    bars(VARIABLE, el("varBars"), "var(--c3)");
+
+    var totY = 0; YEARLY.forEach(function(r){ totY += r[4]; });
+    var yh = "";
+    YEARLY.forEach(function(r){
+      yh += '<tr><td class="k">'+esc(r[0])+'</td><td><span class="pill fx">'+r[1]+'</span></td><td>'+r[2]+'</td>'+
+            '<td><span class="pill own">'+esc(r[3])+'</span></td><td class="n">'+inr(r[4])+'</td>'+
+            '<td class="n">'+(r[4]/ANNUAL_EXPENSE*100).toFixed(1)+'%</td></tr>';
+    });
+    yh += '<tr class="tot"><td colspan="4">Total annual items</td><td class="n">'+inr(totY)+'</td><td class="n">'+(totY/ANNUAL_EXPENSE*100).toFixed(1)+'%</td></tr>';
+    el("yearlyBody").innerHTML = yh;
+
+    var th = "";
+    TXNS.forEach(function(t){
+      th += '<tr><td class="n" style="text-align:left">'+t[0]+'</td><td class="k">'+esc(t[1])+'</td><td>'+esc(t[2])+'</td>'+
+            '<td><span class="pill own">'+t[3]+'</span></td><td class="sm">'+t[4]+'</td><td class="n">'+inr(t[5])+'</td></tr>';
+    });
+    el("txnBody").innerHTML = th;
+
+    var opts = "";
+    FIXED.concat(VARIABLE).forEach(function(r){ opts += '<option>'+esc(r[0])+'</option>'; });
+    el("qCat").innerHTML = opts;
+    el("qCat").value = "Grocery";
+  }
+
+  /* ---------------- investments ---------------- */
+  function renderHoldings(){
+    var h = "", ti = 0, tc = 0;
+    HOLDINGS.forEach(function(d){
+      if(!inScope(d)) return;
+      ti += d.inv; tc += d.cur;
+      var g = d.cur - d.inv;
+      h += '<tr><td class="k">'+esc(d.name)+'<div class="sm">'+d.started+'</div></td>'+
+           '<td><span class="dot" style="background:'+(CLASS_COLOR[d.cls]||"var(--c7)")+'"></span>'+d.cls+'</td>'+
+           '<td><span class="pill own">'+d.owner+'</span></td>'+
+           '<td class="n">'+(d.sip?inr(d.sip):"—")+'</td>'+
+           '<td class="n">'+inr(d.inv)+'</td>'+
+           '<td class="n">'+inr(d.cur)+'</td>'+
+           '<td class="n '+(g>0?"pos":(g<0?"neg":""))+'">'+(g>0?"+":"")+(g?inr(g):"—")+'</td>'+
+           '<td class="n '+(d.xirr>0?"pos":"")+'">'+(d.xirr?d.xirr.toFixed(1)+"%":"—")+'</td></tr>';
+    });
+    var tg = tc - ti;
+    h += '<tr class="tot"><td colspan="4">Total</td><td class="n">'+inr(ti)+'</td><td class="n">'+inr(tc)+'</td>'+
+         '<td class="n '+(tg>=0?"pos":"neg")+'">'+(tg>=0?"+":"")+inr(tg)+'</td><td class="n"></td></tr>';
+    el("holdBody").innerHTML = h;
+  }
+
+  /* ---------------- FIRE ---------------- */
+  function drawFire(){
+    var baseYear = 2026, years = 30, corpus = 967600, annualAdd = 360000, nominal = 0.10, stepUp = 0.10;
+    var target = [], proj = [], labels = [], c = corpus, add = annualAdd;
+    for(var i = 0; i <= years; i++){
+      labels.push(baseYear + i);
+      target.push(ANNUAL_EXPENSE * mult * Math.pow(1 + infl, i));
+      proj.push(c);
+      c = c * (1 + nominal) + add;
+      add = add * (1 + stepUp);
+    }
+    var cross = -1;
+    for(var j = 0; j <= years; j++){ if(proj[j] >= target[j]){ cross = j; break; } }
+
+    var maxY = Math.max(target[years], proj[years]) * 1.06;
+    var W = 900, H = 300, P = {t:18, r:20, b:32, l:70};
+    var x = function(i){ return P.l + i*(W-P.l-P.r)/years; };
+    var y = function(v){ return H-P.b - (v/maxY)*(H-P.t-P.b); };
+
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" role="img" aria-label="Target corpus versus projected corpus">';
+    var step = Math.pow(10, Math.floor(Math.log(maxY)/Math.LN10)) / 2;
+    for(var g = 0; g <= maxY; g += step){
+      svg += '<line x1="'+P.l+'" y1="'+y(g)+'" x2="'+(W-P.r)+'" y2="'+y(g)+'" stroke="var(--line)" stroke-width="1"></line>';
+      svg += '<text x="'+(P.l-9)+'" y="'+(y(g)+4)+'" text-anchor="end" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+(g?crore(g):"0")+'</text>';
+    }
+    function line(arr){
+      var d = "";
+      arr.forEach(function(v,i){ d += (i?"L":"M") + x(i).toFixed(1) + " " + y(v).toFixed(1); });
+      return d;
+    }
+    svg += '<path d="'+line(target)+'" fill="none" stroke="var(--c3)" stroke-width="2.2" stroke-dasharray="6 4"></path>';
+    svg += '<path d="'+line(proj)+'" fill="none" stroke="var(--c2)" stroke-width="2.4"></path>';
+    if(cross >= 0){
+      svg += '<line x1="'+x(cross)+'" y1="'+P.t+'" x2="'+x(cross)+'" y2="'+(H-P.b)+'" stroke="var(--brass)" stroke-width="1.4" stroke-dasharray="3 3"></line>';
+      svg += '<circle cx="'+x(cross)+'" cy="'+y(proj[cross])+'" r="4.5" fill="var(--brass)"></circle>';
+      var anchor = cross > years-6 ? "end" : "start", dx = cross > years-6 ? -9 : 9;
+      svg += '<text x="'+(x(cross)+dx)+'" y="'+(P.t+13)+'" text-anchor="'+anchor+'" fill="var(--brass)" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">'+labels[cross]+'</text>';
+    }
+    for(var k = 0; k <= years; k += 5){
+      svg += '<text x="'+x(k)+'" y="'+(H-10)+'" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+labels[k]+'</text>';
+    }
+    svg += '</svg>';
+    el("fireChart").innerHTML = svg +
+      '<div class="legend" style="margin-top:10px;display:flex;gap:20px;flex-wrap:wrap">'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c3)"></span>Target · '+mult+'× at '+(infl*100)+'% inflation</span>'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c2)"></span>Projected corpus · ₹30,000/mo, stepped up 10% a year, 10% return</span>'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--brass)"></span>'+(cross>=0?("Crosses in "+labels[cross]):"No crossing within 30 years")+'</span></div>';
+
+    el("fireTitle").textContent = "Target corpus · " + mult + "× under " + (infl*100) + "% inflation";
+    el("yearsToFire").textContent = cross >= 0 ? labels[cross] : "30 yr+";
+    el("fireYearNote").textContent = cross >= 0
+      ? (cross + " years away · ₹30,000/mo stepped up 10% a year, 10% return")
+      : "Not reached in 30 years at this contribution rate";
+  }
+
+  /* ---------------- calendar ---------------- */
+  function renderCalendar(){
+    var h = "";
+    CAL.forEach(function(c){
+      var lbl = {due:"Action", warn:"Plan", ok:"Auto", fx:"Routine"}[c[3]];
+      var desc = esc(c[2]).replace(/\{\{(\d+)\}\}/g, function(_, v){ return inr(+v); });
+      h += '<div class="alert"><span class="when">'+c[0]+'</span>'+
+           '<span class="what"><b>'+esc(c[1])+'</b><span>'+desc+'</span></span>'+
+           '<span class="pill '+c[3]+'">'+lbl+'</span></div>';
+    });
+    el("calBody").innerHTML = h;
+
+    var months = ["Jun","Jul","Aug","Sep","Oct","Nov"];
+    var outflow = [86548, 66548, 36548, 36548, 36548, 68548];
+    var inflow  = [0, 99475, 0, 0, 24101, 0];
+    var W = 560, H = 200, P = {t:14, r:14, b:28, l:62};
+    var maxV = 120000;
+    var bw = (W-P.l-P.r)/months.length;
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" role="img" aria-label="Six month cash flow forecast">';
+    [0,40000,80000,120000].forEach(function(g){
+      var yy = H-P.b - (g/maxV)*(H-P.t-P.b);
+      svg += '<line x1="'+P.l+'" y1="'+yy+'" x2="'+(W-P.r)+'" y2="'+yy+'" stroke="var(--line)" stroke-width="1"></line>';
+      svg += '<text x="'+(P.l-8)+'" y="'+(yy+4)+'" text-anchor="end" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+(g?crore(g):"0")+'</text>';
+    });
+    months.forEach(function(m,i){
+      var x0 = P.l + i*bw + bw*0.18, w = bw*0.28;
+      var ho = (outflow[i]/maxV)*(H-P.t-P.b), hi = (inflow[i]/maxV)*(H-P.t-P.b);
+      svg += '<rect x="'+x0+'" y="'+(H-P.b-ho)+'" width="'+w+'" height="'+ho+'" fill="var(--c5)" rx="2"></rect>';
+      if(hi > 0) svg += '<rect x="'+(x0+w+3)+'" y="'+(H-P.b-hi)+'" width="'+w+'" height="'+hi+'" fill="var(--c2)" rx="2"></rect>';
+      svg += '<text x="'+(P.l + i*bw + bw/2)+'" y="'+(H-9)+'" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">'+m+'</text>';
+    });
+    svg += '</svg>';
+    el("cfChart").innerHTML = svg +
+      '<div class="legend" style="margin-top:10px;display:flex;gap:20px">'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c5)"></span>Committed outflow</span>'+
+      '<span class="lg" style="display:flex"><span class="dot" style="background:var(--c2)"></span>Maturities in</span></div>';
+  }
+
+  /* ---------------- interactions ---------------- */
+  Array.prototype.forEach.call(document.querySelectorAll("nav.tabs button"), function(b){
+    b.addEventListener("click", function(){ showView(b.dataset.view); });
+  });
+
+  /* profile menu */
+  var avBtn = el("avBtn"), avMenu = el("avMenu");
+  function closeMenu(){ avMenu.hidden = true; avBtn.setAttribute("aria-expanded","false"); }
+  avBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    var open = avMenu.hidden;
+    avMenu.hidden = !open;
+    avBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", function(e){
+    if(!avMenu.hidden && !avMenu.contains(e.target)) closeMenu();
+  });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeMenu(); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-goto]"), function(b){
+    b.addEventListener("click", function(){ showView(b.dataset.goto); closeMenu(); });
+  });
+
+  /* privacy mode — one tap, from anywhere */
+  el("privBtn").addEventListener("click", function(){
+    PRIVATE = !PRIVATE;
+    this.setAttribute("aria-pressed", PRIVATE ? "true" : "false");
+    this.querySelector(".ilabel").textContent = PRIVATE ? "Amounts hidden" : "Hide amounts";
+    redrawAll();
+  });
+  function reformatStatic(){
+    Array.prototype.forEach.call(document.querySelectorAll(".m[data-inr]"), function(n){
+      n.textContent = inr(+n.dataset.inr);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".m[data-big]"), function(n){
+      n.textContent = crore(+n.dataset.big);
+    });
+    // native-currency figures shown as-is; masked, but never converted
+    Array.prototype.forEach.call(document.querySelectorAll(".m[data-native]"), function(n){
+      n.textContent = PRIVATE ? "$•••••" : n.dataset.native;
+    });
+  }
+  function showView(name){
+    Array.prototype.forEach.call(document.querySelectorAll(".view"), function(v){ v.classList.remove("on"); });
+    var t = el("v-" + name); if(t) t.classList.add("on");
+    Array.prototype.forEach.call(document.querySelectorAll("nav.tabs button"), function(o){
+      o.setAttribute("aria-selected", o.dataset.view === name ? "true" : "false");
+    });
+    window.scrollTo(0, 0);
+  }
+  function redrawAll(){
+    reformatStatic();
+    renderExpenses();
+    renderOverview();
+    drawNWChart();
+    drawFire();
+    renderCalendar();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ccy]"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-ccy]"), function(o){ o.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true");
+      CCY = b.dataset.ccy;
+      redrawAll();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-member]"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-member]"), function(o){ o.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true");
+      member = b.dataset.member;
+      renderOverview();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-mult]"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-mult]"), function(o){ o.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true"); mult = +b.dataset.mult; drawFire();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-infl]"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-infl]"), function(o){ o.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true"); infl = +b.dataset.infl; drawFire();
+    });
+  });
+  el("qGo").addEventListener("click", function(){
+    var v = parseFloat(String(el("qAmt").value).replace(/[^\d.]/g,""));
+    var cat = el("qCat").value, who = el("qWho").value;
+    var t = el("qToast");
+    if(!v || v <= 0){ t.textContent = "Enter an amount to log"; t.style.color = "var(--coral)"; }
+    else {
+      var row = document.createElement("tr");
+      row.innerHTML = '<td class="n" style="text-align:left">Today</td><td class="k">Quick add</td><td>'+esc(cat)+
+                      '</td><td><span class="pill own">'+esc(who)+'</span></td><td class="sm">UPI</td><td class="n">'+inr(v)+'</td>';
+      el("txnBody").insertBefore(row, el("txnBody").firstChild);
+      t.textContent = "Added — " + cat + ", " + inr(v); t.style.color = "var(--teal)";
+      el("qAmt").value = "";
+    }
+    t.classList.add("on");
+    setTimeout(function(){ t.classList.remove("on"); }, 2600);
+  });
+
+  /* ---------------- boot ---------------- */
+  redrawAll();
+})();
+</script>

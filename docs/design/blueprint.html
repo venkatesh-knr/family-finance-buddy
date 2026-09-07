@@ -1,0 +1,1381 @@
+<title>Family Finance Buddy Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F1F4F7; --surface:#FFFFFF; --surface-2:#F7F9FB;
+    --ink:#151B24; --ink-2:#3D4855; --muted:#68758A;
+    --line:#DCE3EB; --line-strong:#C3CDD9;
+    --brass:#9A6F14; --brass-soft:#F3E9D2;
+    --teal:#0D7466; --teal-soft:#DCEFEA;
+    --coral:#B0463A; --coral-soft:#F8E5E1;
+    --indigo:#39537F; --indigo-soft:#E3EAF5;
+    --shadow:0 1px 2px rgba(21,27,36,.06), 0 8px 24px -16px rgba(21,27,36,.28);
+    --radius:10px; --maxw:1180px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0D1117; --surface:#151C25; --surface-2:#1A222D;
+      --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+      --line:#26303C; --line-strong:#38434F;
+      --brass:#D9AC4C; --brass-soft:#312712;
+      --teal:#48BBA6; --teal-soft:#0F2B28;
+      --coral:#E08475; --coral-soft:#331915;
+      --indigo:#8FAEDC; --indigo-soft:#171F2E;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1117; --surface:#151C25; --surface-2:#1A222D;
+    --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+    --line:#26303C; --line-strong:#38434F;
+    --brass:#D9AC4C; --brass-soft:#312712;
+    --teal:#48BBA6; --teal-soft:#0F2B28;
+    --coral:#E08475; --coral-soft:#331915;
+    --indigo:#8FAEDC; --indigo-soft:#171F2E;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  a{color:var(--indigo)}
+  .num,code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.08em .34em;font-size:.86em}
+
+  header.mast{border-bottom:1px solid var(--line);background:var(--surface)}
+  .mast-inner{max-width:var(--maxw);margin:0 auto;padding:44px 24px 34px;display:grid;gap:20px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);margin:0}
+  h1.title{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:clamp(34px,5.4vw,56px);
+    line-height:1.06;letter-spacing:-.015em;margin:0;text-wrap:balance}
+  h1.title em{font-style:italic;color:var(--brass)}
+  .standfirst{font-size:17.5px;color:var(--ink-2);max-width:64ch;margin:0}
+  .meta-strip{display:flex;flex-wrap:wrap;gap:10px 26px;padding-top:6px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .meta-strip b{font-weight:600;color:var(--ink-2)}
+
+  .shell{max-width:var(--maxw);margin:0 auto;padding:40px 24px 90px;display:grid;grid-template-columns:224px minmax(0,1fr);gap:52px;align-items:start}
+  nav.toc{position:sticky;top:20px;display:grid;gap:2px;font-size:13.5px}
+  nav.toc .toc-h{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  nav.toc .toc-h + .toc-h{margin-top:14px}
+  nav.toc a{display:flex;gap:9px;text-decoration:none;color:var(--ink-2);padding:3.5px 8px;border-radius:6px}
+  nav.toc a span{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);padding-top:3px}
+  nav.toc a:hover{background:var(--surface);color:var(--ink)}
+  main{min-width:0;display:grid;gap:54px}
+
+  section{scroll-margin-top:20px;display:grid;gap:18px}
+  h2{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:30px;line-height:1.18;margin:0;letter-spacing:-.01em;
+     text-wrap:balance;display:flex;gap:14px;align-items:baseline}
+  h2 .sn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--brass);letter-spacing:.08em;flex:none}
+  h3{font-size:15px;font-weight:600;margin:0}
+  h4{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:500}
+  p{margin:0;max-width:70ch}
+  .lede{font-size:17px;color:var(--ink-2);max-width:66ch}
+  ul.plain{margin:0;padding-left:1.15em;display:grid;gap:7px;max-width:70ch}
+  ul.plain li::marker{color:var(--line-strong)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th{text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10.5px;letter-spacing:.12em;
+     text-transform:uppercase;color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+  tbody tr:last-child td{border-bottom:none}
+  td.k{color:var(--ink);font-weight:600;white-space:nowrap}
+  td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;color:var(--ink)}
+  td.pick{background:var(--brass-soft)}
+
+  .findings{display:grid;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .finding{display:grid;grid-template-columns:34px minmax(0,1fr);gap:16px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .finding:last-child{border-bottom:none}
+  .finding .idx{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);padding-top:3px}
+  .finding .body{display:grid;gap:5px;min-width:0}
+  .finding .hd{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+  .finding .hd strong{font-size:14.5px}
+  .finding p{font-size:13.6px;color:var(--ink-2);max-width:74ch}
+  .sev{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:2.5px 7px;border-radius:3px;white-space:nowrap}
+  .sev.broken{background:var(--coral-soft);color:var(--coral)}
+  .sev.risk{background:var(--brass-soft);color:var(--brass)}
+  .sev.gap{background:var(--indigo-soft);color:var(--indigo)}
+  .fix{font-size:13.2px;color:var(--ink-2);border-left:2px solid var(--teal);padding-left:11px}
+  .fix b{color:var(--teal);font-weight:600}
+
+  .schema{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:14px}
+  .mod{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;display:grid;align-content:start}
+  .mod .mh{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-2)}
+  .mod .mh h3{font-size:13px}
+  .mod .mh .tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .mod ul{margin:0;padding:10px 14px;list-style:none;display:grid;gap:9px}
+  .mod li{display:grid;gap:2px}
+  .mod .ent{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);font-weight:500}
+  .mod .flds{font-size:11.8px;color:var(--muted);line-height:1.5}
+  .mod.core{border-color:var(--brass);box-shadow:var(--shadow)}
+  .mod.core .mh{background:var(--brass-soft)}
+  .mod.core .mh h3,.mod.core .mh .tag{color:var(--brass)}
+
+  .screens{display:grid;gap:12px}
+  .screen{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;display:grid;gap:9px}
+  .screen .sh{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between}
+  .screen .sh h3{font-size:15px}
+  .screen .route{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--brass)}
+  .screen p{font-size:13.6px;color:var(--ink-2);max-width:74ch}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:11.5px;padding:3px 9px;border-radius:100px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface-2)}
+  .chip.new{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+
+  .formulas{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .fcard{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:15px 16px;display:grid;gap:8px}
+  .fcard h3{font-size:14px}
+  .fcard .expr{font-family:"IBM Plex Mono",monospace;font-size:12.4px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:6px;padding:9px 11px;overflow-x:auto;color:var(--ink);line-height:1.55}
+  .fcard p{font-size:12.9px;color:var(--muted);max-width:none}
+
+  pre.code{font-family:"IBM Plex Mono",monospace;font-size:12.4px;line-height:1.6;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:15px 17px;overflow-x:auto;margin:0;color:var(--ink-2)}
+  pre.code b{color:var(--ink);font-weight:600}
+  pre.code i{color:var(--muted);font-style:normal}
+  pre.code u{color:var(--brass);text-decoration:none}
+
+  .stack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+  .layer{padding:14px 16px;border-right:1px solid var(--line);display:grid;gap:6px;align-content:start}
+  .layer:last-child{border-right:none}
+  .layer .pick{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);font-weight:500}
+  .layer p{font-size:12.5px;color:var(--muted)}
+  @media (max-width:760px){.layer{border-right:none;border-bottom:1px solid var(--line)}.layer:last-child{border-bottom:none}}
+
+  .rules{display:grid;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .rule{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .rule:last-child{border-bottom:none}
+  .rule .rh{display:grid;gap:5px;align-content:start}
+  .rule .rh strong{font-size:13.5px;color:var(--ink)}
+  .rule p{font-size:13.4px;color:var(--ink-2);max-width:70ch}
+  @media (max-width:700px){.rule{grid-template-columns:1fr;gap:7px}}
+
+  .phases{display:grid;border-left:2px solid var(--line)}
+  .phase{padding:0 0 26px 22px;position:relative;display:grid;gap:7px}
+  .phase:last-child{padding-bottom:0}
+  .phase::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--line-strong)}
+  .phase.now::before{background:var(--brass);border-color:var(--brass)}
+  .phase .ph{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline}
+  .phase .ph h3{font-size:15px}
+  .phase .ph .when{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .phase p{font-size:13.6px;color:var(--ink-2)}
+
+  .callout{border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:8px;background:var(--surface);padding:14px 16px;display:grid;gap:6px}
+  .callout h4{color:var(--brass)}
+  .callout p{font-size:13.6px;color:var(--ink-2)}
+  .callout.warn{border-left-color:var(--coral)}
+  .callout.warn h4{color:var(--coral)}
+
+  footer{border-top:1px solid var(--line);background:var(--surface)}
+  .foot-inner{max-width:var(--maxw);margin:0 auto;padding:26px 24px;font-size:12.8px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px 26px;justify-content:space-between}
+
+  @media (max-width:900px){
+    .shell{grid-template-columns:1fr;gap:30px;padding-top:28px}
+    nav.toc{display:none}
+    h2{font-size:25px}
+  }
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="mast">
+  <div class="mast-inner">
+    <p class="eyebrow">Product blueprint · revision 6 · FY 2025–26</p>
+    <h1 class="title">From one workbook to <em>Family Finance Buddy</em></h1>
+    <p class="standfirst">MyFinancial_25_26_Template.xlsx already knows what matters — ten sheets covering expenses, nine asset classes, FIRE targets and a net-worth roll-up. This is the plan to turn it into an app that runs on desktop and phone, ships from GitHub Actions on a free database, holds rupees and dollars side by side, works out what you owe in tax, and is built to be attacked.</p>
+    <div class="meta-strip">
+      <span><b>Source</b> 10 sheets · 62 fields</span>
+      <span><b>Ships as</b> Web · Desktop · iOS &amp; Android</span>
+      <span><b>Hosting</b> GitHub Pages, free tier backend</span>
+      <span><b>Currencies</b> INR base, USD supported</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-h">The spreadsheet</div>
+    <a href="#audit"><span>01</span>What the sheet holds</a>
+    <a href="#findings"><span>02</span>What breaks today</a>
+    <a href="#principles"><span>03</span>Design principles</a>
+    <div class="toc-h">The product</div>
+    <a href="#model"><span>04</span>Domain model</a>
+    <a href="#screens"><span>05</span>Screens</a>
+    <a href="#math"><span>06</span>Calculation engine</a>
+    <a href="#currency"><span>07</span>Two currencies</a>
+    <a href="#abroad"><span>08</span>Investing abroad</a>
+    <a href="#tax"><span>09</span>The tax engine</a>
+    <a href="#datain"><span>10</span>Getting data in</a>
+    <a href="#family"><span>11</span>Family &amp; access</a>
+    <div class="toc-h">The build</div>
+    <a href="#arch"><span>12</span>One codebase, three shells</a>
+    <a href="#work"><span>13</span>Where the work runs</a>
+    <a href="#db"><span>14</span>Picking the free database</a>
+    <a href="#security"><span>15</span>Security</a>
+    <a href="#ship"><span>16</span>Shipping from Actions</a>
+    <a href="#migration"><span>17</span>First run</a>
+    <a href="#roadmap"><span>18</span>Roadmap</a>
+    <a href="#public"><span>19</span>If it ever goes public</a>
+    <a href="#trust"><span>20</span>Earning trust</a>
+  </nav>
+
+  <main>
+
+    <!-- 01 -->
+    <section id="audit">
+      <h2><span class="sn">01</span>What the sheet holds</h2>
+      <p class="lede">Every sheet, what it tracks, and what it currently carries. Rows marked <em>label-only</em> have the structure in place but no values yet — the app should treat those as intent, not as zero.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Sheet</th><th>Tracks</th><th>Key fields</th><th class="n">Live rows</th><th>State</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Expense</td><td>Household spend + loans + FIRE targets</td><td>Category, Monthly, Yearly, Exp Type (Fixed/Variable)</td><td class="n">33</td><td>Categories named, amounts empty</td></tr>
+            <tr><td class="k">Investment</td><td>Recurring contributions</td><td>PPF, RD, Gold Savings — Monthly, Yearly</td><td class="n">3</td><td>Label-only</td></tr>
+            <tr><td class="k">MutualFunds</td><td>Two blocks: India + a US-tracking feeder</td><td>Scheme, Current SIP, Old SIP, Started, Invested, Current</td><td class="n">3</td><td>Populated</td></tr>
+            <tr><td class="k">Stock</td><td>Broker-level equity</td><td>Account, Invested, Current Value</td><td class="n">1</td><td>Populated (Zerodha)</td></tr>
+            <tr><td class="k">FixedDeposit</td><td>Bank FDs</td><td>Bank, Deposit, Rate, End Date, Maturity Amount</td><td class="n">2</td><td>Label-only</td></tr>
+            <tr><td class="k">Bonds</td><td>NBFC / corporate bonds</td><td>Invested, Current, Interest paid, Coupon, Period, Repay, Dates, Rating</td><td class="n">2</td><td>Populated</td></tr>
+            <tr><td class="k">RetirementFunds</td><td>PF, PPF, NPS balances</td><td>Fund, Current value</td><td class="n">3</td><td>Label-only</td></tr>
+            <tr><td class="k">Insurance</td><td>Term + health cover</td><td>Holder, Type, Company, Sum, Premium, Plan ID</td><td class="n">2</td><td>Label-only</td></tr>
+            <tr><td class="k">Crypto</td><td>Crypto holdings</td><td>Invested, Current</td><td class="n">1</td><td>Populated (₹100)</td></tr>
+            <tr><td class="k">NetWorth</td><td>Gold, property, debt, allocation, summary</td><td>Grams, 22K rate, Invested/Projected, Debt, %</td><td class="n">9</td><td>Formulas present, mostly broken</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The nine asset classes the NetWorth sheet rolls up — Indian MF, Indian equity, retirement funds, bonds, fixed deposits, crypto, foreign equity, gold, cash — become the app's canonical asset taxonomy. Property and liabilities sit outside that roll-up in the sheet; in the app they join it, because net worth without the house and the card balance isn't net worth.</p>
+    </section>
+
+    <!-- 02 -->
+    <section id="findings">
+      <h2><span class="sn">02</span>What breaks today</h2>
+      <p class="lede">Thirteen concrete problems, found by reading the formulas rather than the numbers. The first four mean the workbook is currently reporting the wrong net worth.</p>
+      <div class="findings">
+        <div class="finding"><div class="idx">01</div><div class="body">
+          <div class="hd"><strong>Every allocation percentage is a <code>#NAME?</code></strong><span class="sev broken">Broken</span></div>
+          <p><code>NetWorth!G34:G43</code> uses <code>=DIVIDE(F34,F44)*100</code>. <code>DIVIDE</code> is a Google Sheets function; Excel has no such function, so the whole allocation column fails. The percentages you'd actually rebalance against don't exist.</p>
+          <div class="fix"><b>In the app —</b> allocation is derived, never typed: each class's share is computed from live valuations and rendered as a ring plus a drift-vs-target bar.</div>
+        </div></div>
+        <div class="finding"><div class="idx">02</div><div class="body">
+          <div class="hd"><strong>Gold silently contributes ₹0</strong><span class="sev broken">Broken</span></div>
+          <p><code>NetWorth!G6</code> is <code>=SUM(F3*G3)</code> — it reads one row only, and <code>G3</code> is 0 while the real 22K rate (₹8,990/g) sits one cell up in <code>G2</code>. Add a second gold row and it is ignored entirely.</p>
+          <div class="fix"><b>In the app —</b> gold is holdings in grams × purity-adjusted rate, with the rate refreshed on a schedule and stored per date, so past valuations stay correct.</div>
+        </div></div>
+        <div class="finding"><div class="idx">03</div><div class="body">
+          <div class="hd"><strong>Totals drift off their ranges</strong><span class="sev broken">Broken</span></div>
+          <p><code>MutualFunds!E17</code> sums <code>E1:E16</code> — including the header row. <code>RetirementFunds!B10</code> sums <code>B3:B8</code> but PF sits in <code>B2</code>, outside the range. <code>Expense!B47</code> sums <code>B2:B44</code> while categories run 3–41.</p>
+          <div class="fix"><b>In the app —</b> totals are aggregate queries over a table. There is no range to get wrong.</div>
+        </div></div>
+        <div class="finding"><div class="idx">04</div><div class="body">
+          <div class="hd"><strong>Net worth blends five different dates</strong><span class="sev risk">Risk</span></div>
+          <p>Each sheet carries its own "As of": mutual funds and stocks 31-May-2025, FDs, bonds and retirement 01-May-2025, gold 31-Mar-2025, insurance 01-Feb-2025. The summary is a composite of five snapshots up to four months apart.</p>
+          <div class="fix"><b>In the app —</b> one valuation date per snapshot, with a staleness badge on any holding whose price is older than its class's refresh window.</div>
+        </div></div>
+        <div class="finding"><div class="idx">05</div><div class="body">
+          <div class="hd"><strong>No history exists at all</strong><span class="sev gap">Gap</span></div>
+          <p>Every cell is overwritten when you update it. There is no way to draw net worth over time, split growth from fresh contributions, or answer "how did last year go".</p>
+          <div class="fix"><b>In the app —</b> an append-only <code>valuation_snapshot</code> table frozen monthly, plus a full transaction ledger.</div>
+        </div></div>
+        <div class="finding"><div class="idx">06</div><div class="body">
+          <div class="hd"><strong>Returns can't be measured</strong><span class="sev gap">Gap</span></div>
+          <p>Invested vs current gives absolute gain only. Parag Parikh at ₹2.70L → ₹3.12L is +15.4% absolute — but with SIPs from Dec 2023 stepping ₹10k to ₹20k, the annualised return is a different figure, and it's the one that matters.</p>
+          <div class="fix"><b>In the app —</b> XIRR from the actual cash-flow ledger, next to absolute gain on every holding.</div>
+        </div></div>
+        <div class="finding"><div class="idx">07</div><div class="body">
+          <div class="hd"><strong>Expenses have no transactions</strong><span class="sev gap">Gap</span></div>
+          <p>Each category holds one number. You can budget with that, but you cannot see what was spent, when, by whom, or why groceries jumped.</p>
+          <div class="fix"><b>In the app —</b> categories stay exactly as named, but each becomes a budget envelope over a real ledger with member attribution.</div>
+        </div></div>
+        <div class="finding"><div class="idx">08</div><div class="body">
+          <div class="hd"><strong>Duplicate rows with no owner</strong><span class="sev risk">Risk</span></div>
+          <p><code>Expense!A7:A9</code> and <code>A10:A12</code> both read Mobile1 / Mobile2 / Data1 — presumably two people's connections, but nothing records whose.</p>
+          <div class="fix"><b>In the app —</b> every expense, asset and policy carries a <code>member_id</code>.</div>
+        </div></div>
+        <div class="finding"><div class="idx">09</div><div class="body">
+          <div class="hd"><strong>Hardcoded cash and card balance</strong><span class="sev risk">Risk</span></div>
+          <p>Cash typed as ₹2,00,000 in <code>NetWorth!F42</code>, the credit-card bill as ₹50,000 in <code>J19</code>. Both change weekly; neither has a source.</p>
+          <div class="fix"><b>In the app —</b> both become accounts with a balance history.</div>
+        </div></div>
+        <div class="finding"><div class="idx">10</div><div class="body">
+          <div class="hd"><strong>The FIRE ladder is typed out year by year</strong><span class="sev risk">Risk</span></div>
+          <p><code>Expense!I82:R84</code> hardcodes 2023–2033 with <code>=I82+(I82*6/100)</code> across 30 cells. The horizon can't move and the base year is 2023 in an FY 25-26 workbook.</p>
+          <div class="fix"><b>In the app —</b> one FIRE profile driving a live projection, plus coast-FIRE and safe-withdrawal views.</div>
+        </div></div>
+        <div class="finding"><div class="idx">11</div><div class="body">
+          <div class="hd"><strong>Loans and insurance share a table</strong><span class="sev gap">Gap</span></div>
+          <p><code>Expense!A53:C76</code> is headed "Loan" but holds Home Loan alongside three health policies and a term plan. Premiums are cash outflow; a home loan is a liability with a schedule.</p>
+          <div class="fix"><b>In the app —</b> liabilities carry principal, rate, EMI and amortisation; policies carry cover, premium and renewal. Both feed cash flow, only one reduces net worth.</div>
+        </div></div>
+        <div class="finding"><div class="idx">12</div><div class="body">
+          <div class="hd"><strong>Nothing has a due date</strong><span class="sev gap">Gap</span></div>
+          <p>Bond2 matures 01-Jul-2025 and pays monthly; Bond1 matures 01-Oct-2025. FDs have end dates, policies have renewals. The sheet stores them and tells you nothing.</p>
+          <div class="fix"><b>In the app —</b> one calendar fed by every dated field, with lead-time alerts pushed to the phone.</div>
+        </div></div>
+        <div class="finding"><div class="idx">13</div><div class="body">
+          <div class="hd"><strong>Fragile summary arithmetic and stray cells</strong><span class="sev risk">Risk</span></div>
+          <p><code>NetWorth!M38</code> is <code>=SUM(M33:M34)-SUM(M36)</code>, so blank spacer rows M35 and M37 are load-bearing. And <code>Expense!A362</code> contains "BNNMM".</p>
+          <div class="fix"><b>In the app —</b> net worth is <code>Σ assets − Σ liabilities</code> over typed rows. No spacers, no strays.</div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section id="principles">
+      <h2><span class="sn">03</span>Design principles</h2>
+      <p class="lede">Eight rules that settle the arguments before they start.</p>
+      <ul class="plain">
+        <li><b>Your vocabulary wins.</b> Categories stay "EB", "DTH", "FastTag", "Rice", "Scooty Maintenance". The app adopts the household's names, not a generic chart of accounts.</li>
+        <li><b>Record events, derive everything else.</b> Humans type transactions, holdings and prices. Totals, allocations, XIRR, net worth, FX conversions and FIRE targets are computed.</li>
+        <li><b>Nothing is ever overwritten.</b> Valuations and exchange rates append. That single change buys the net-worth chart, the honest returns figure, and the peak-balance number foreign-asset reporting demands.</li>
+        <li><b>Every amount carries its currency.</b> There is no bare number in the database. A figure without a currency and a date is not a fact.</li>
+        <li><b>Entry has to be faster than the sheet.</b> If logging groceries takes more than five seconds on a phone, the ledger goes stale and the app is worse than the workbook.</li>
+        <li><b>Import beats typing.</b> Every number a statement, a CAS PDF or a NAV feed can supply should arrive that way.</li>
+        <li><b>Assume the client is hostile.</b> The app ships as public static files with no server of its own. Every rule that matters is enforced in the database, never in the UI.</li>
+        <li><b>Family-wide by default, per-person on demand.</b> One household view answers "are we okay". A member filter answers "whose SIP is this".</li>
+      </ul>
+    </section>
+
+    <!-- 04 -->
+    <section id="model">
+      <h2><span class="sn">04</span>Domain model</h2>
+      <p class="lede">Thirty-six tables in seven modules. Every sheet column lands in exactly one of them; the additions are history, ledger, currency, dates, ownership, tax rules and the foreign-asset paperwork.</p>
+      <div class="schema">
+        <div class="mod core">
+          <div class="mh"><h3>Household</h3><span class="tag">Identity</span></div>
+          <ul>
+            <li><span class="ent">household</span><span class="flds">name, kind (real / demo), base_currency (INR), display_currency, fy_start_month (4), created_at</span></li>
+            <li><span class="ent">member</span><span class="flds">household_id, display_name, relation, is_dependent, colour, status (active / archived), archived_at</span></li>
+            <li><span class="ent">user_account</span><span class="flds">auth_user_id, email, mfa_enrolled, last_seen_at — an identity, deliberately holding no household of its own</span></li>
+            <li><span class="ent">membership</span><span class="flds">user_account_id, household_id, member_id, role — the join that lets one person belong to several households</span></li>
+            <li><span class="ent">member_key</span><span class="flds">member_id, wrapped_household_key, wrap_method, rotated_at — the household document key, wrapped per member and per recovery code</span></li>
+            <li><span class="ent">invite</span><span class="flds">household_id, email, role, token_hash, expires_at, accepted_at</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Accounts &amp; assets</h3><span class="tag">Holdings</span></div>
+          <ul>
+            <li><span class="ent">institution</span><span class="flds">name, country, kind (bank / broker / AMC / NBFC / insurer)</span></li>
+            <li><span class="ent">account</span><span class="flds">household_id, member_id, institution_id, type, currency, is_foreign, identifier_last4, opened_on</span></li>
+            <li><span class="ent">instrument</span><span class="flds">asset_class, name, currency, exposure_currency, isin, amfi_code, ticker, coupon_rate, coupon_freq, maturity_date, rating, purity, country</span></li>
+            <li><span class="ent">holding</span><span class="flds">account_id, instrument_id, units, avg_cost_minor, invested_minor, currency</span></li>
+            <li><span class="ent">lot</span><span class="flds">holding_id, acquired_on, units, cost_minor, currency — drives FIFO gains and holding period</span></li>
+            <li><span class="ent">price</span><span class="flds">instrument_id, as_of_date, value_minor, currency, source</span></li>
+            <li><span class="ent">property</span><span class="flds">household_id, member_id, kind (land / plot / apartment / house / commercial), label, purchase_date, purchase_cost_minor, stamp_duty_minor, registration_minor, co_owner_share_pct, linked_liability_id, is_self_occupied, rent_minor, tenant_label, annual_property_tax_minor, current_value_minor, valued_on, valuation_basis</span></li>
+            <li><span class="ent">property_improvement</span><span class="flds">property_id, date, description, amount_minor, is_capital — capital work adds to cost basis, repairs do not</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Ledger</h3><span class="tag">Events</span></div>
+          <ul>
+            <li><span class="ent">investment_txn</span><span class="flds">account_id, instrument_id, date, type (sip / buy / sell / dividend / interest / contribution), units, amount_minor, currency, fx_rate, withholding_minor</span></li>
+            <li><span class="ent">expense_txn</span><span class="flds">household_id, member_id, category_id, date, amount_minor, currency, fx_rate, payee, method, note, receipt_id</span></li>
+            <li><span class="ent">valuation_snapshot</span><span class="flds">household_id, as_of_date, scope, value_minor, currency, base_value_minor — append-only</span></li>
+            <li><span class="ent">fx_rate</span><span class="flds">base_ccy, quote_ccy, as_of_date, rate, source — one row per day, never updated</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Planning</h3><span class="tag">Budget &amp; goals</span></div>
+          <ul>
+            <li><span class="ent">expense_category</span><span class="flds">name, parent_id, nature (fixed / variable), cadence, is_essential, sort_order, status (active / archived) — a fully user-managed list, seeded with the workbook's 33</span></li>
+            <li><span class="ent">budget</span><span class="flds">category_id, fy, period, planned_minor, currency, member_id</span></li>
+            <li><span class="ent">recurring_rule</span><span class="flds">category_id, amount_minor, currency, cadence, next_due, auto_post, reminder_days</span></li>
+            <li><span class="ent">goal</span><span class="flds">name, target_minor, currency, target_date, priority, linked_account_ids, inflation_rate</span></li>
+            <li><span class="ent">fire_profile</span><span class="flds">annual_expense_basis, multipliers [25,30,50], inflation_pct, swr_pct, expected_return, sip_step_up_pct</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Protection &amp; debt</h3><span class="tag">Obligations</span></div>
+          <ul>
+            <li><span class="ent">insurance_policy</span><span class="flds">holder_member_id, type, insurer, sum_assured_minor, premium_minor, currency, cadence, plan_id, renewal_date, nominee</span></li>
+            <li><span class="ent">liability</span><span class="flds">member_id, type, principal_minor, currency, rate, emi_minor, tenure, outstanding_minor</span></li>
+            <li><span class="ent">document</span><span class="flds">entity_type, entity_id, storage_key, kind, uploaded_by, sha256</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Tax</h3><span class="tag">Rules as data</span></div>
+          <ul>
+            <li><span class="ent">tax_rule</span><span class="flds">jurisdiction, kind (slab / surcharge / cess / rebate / deduction_cap / cg_rate / holding_period), regime, asset_class, band_from, band_to, rate, effective_from, effective_to</span></li>
+            <li><span class="ent">tax_profile</span><span class="flds">member_id, tax_year, regime_chosen, residential_status, employer_nps_pct</span></li>
+            <li><span class="ent">income_entry</span><span class="flds">member_id, tax_year, head (salary / house_property / other_sources / foreign), amount_minor, currency, tds_minor, source_ref</span></li>
+            <li><span class="ent">deduction_claim</span><span class="flds">member_id, tax_year, section_code, amount_minor, evidence_document_id, auto_derived_from</span></li>
+            <li><span class="ent">advance_tax_payment</span><span class="flds">member_id, tax_year, instalment, due_date, paid_on, amount_minor, challan_ref</span></li>
+            <li><span class="ent">loss_carry_forward</span><span class="flds">member_id, tax_year_incurred, kind (stcl / ltcl), amount_minor, expires_after</span></li>
+          </ul>
+        </div>
+        <div class="mod">
+          <div class="mh"><h3>Cross-border</h3><span class="tag">Compliance</span></div>
+          <ul>
+            <li><span class="ent">lrs_remittance</span><span class="flds">member_id, date, amount_inr_minor, amount_usd_minor, purpose, tcs_minor, bank, fy — running total against the annual limit</span></li>
+            <li><span class="ent">rsu_grant</span><span class="flds">member_id, employer, grant_date, units, vest_schedule, fmv_at_vest, perquisite_minor, currency</span></li>
+            <li><span class="ent">foreign_asset_period</span><span class="flds">instrument_id, calendar_year, initial_minor, peak_minor, closing_minor, income_minor, currency — the Schedule FA row</span></li>
+            <li><span class="ent">audit_log</span><span class="flds">actor, entity, action, before, after, at, ip_hash — append-only, insert via trigger only</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        <h4>Why identity and household are separate tables</h4>
+        <p>Splitting <code>user_account</code> from <code>membership</code> costs nothing today — you have one household — and it is the difference between a weekend and a migration if the app ever serves people beyond this family. A person managing their own household and helping with their parents' is then two membership rows, not two logins. Every policy in section 15 resolves through this join, so writing it now also means the authorisation model never has to be rewritten.</p>
+      </div>
+      <div class="callout">
+        <h4>The one decision that changes everything</h4>
+        <p>Keep <code>holding</code> and <code>investment_txn</code> both. The holding is the fast path — it is what the sheet already gives you, so migration is instant and the app is useful on day one. The ledger fills in behind it as SIPs post and CAS files import, and the moment a holding has a complete ledger, XIRR and lot-level capital gains turn on for it. You never have to choose between "working now" and "correct later".</p>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section id="screens">
+      <h2><span class="sn">05</span>Screens</h2>
+      <p class="lede">Seventeen screens. Chips in teal are capabilities the spreadsheet has no equivalent for. A currency toggle sits in the top bar on every one of them.</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="sh"><h3>Home — net worth</h3><span class="route">/</span></div>
+          <p>Opens on the number the workbook exists to produce, with the month's movement split into "you added" versus "it grew" — and, once foreign holdings exist, a third slice: "the rupee moved". Allocation ring across the nine classes, drift bars against target weights, and the alert strip for anything due in 30 days.</p>
+          <div class="chips"><span class="chip">Net worth</span><span class="chip">Allocation %</span><span class="chip new">Trend since inception</span><span class="chip new">Contribution vs growth vs FX</span><span class="chip new">Member split</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Expenses</h3><span class="route">/expenses</span></div>
+          <p>Your Fixed / Variable split becomes the primary grouping. Monthly and yearly cadences roll into one annual figure the way <code>M&amp;Y Total</code> does today, but on top of actual transactions. Quick-add is one field with payee memory; recurring rules auto-post EB, DTH, school fee and premiums on their due day.</p>
+          <p><b>The 33 category names are a starting point, not the list.</b> Add, rename, reorder and nest them freely — a category can sit under a parent, so Vegetables, Fruits, Grocery and Milk can roll up to Food while still being tracked separately. Two rules keep history intact: renaming changes only the label, because transactions reference a category by identity rather than by name, so past months keep their figures; and a category that has ever been used is <b>archived rather than deleted</b>, disappearing from the picker while remaining on every historical row it appears in.</p>
+          <div class="chips"><span class="chip">Fixed / Variable</span><span class="chip">Monthly &amp; Yearly</span><span class="chip new">Transaction ledger</span><span class="chip new">Budget vs actual</span><span class="chip new">Who paid</span><span class="chip new">Receipt capture</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Investments hub</h3><span class="route">/investments</span></div>
+          <p>One table across all classes — invested, current, absolute gain, XIRR, share of portfolio — drilling into a page per class. Foreign holdings show two return figures side by side: in their own currency, and in rupees.</p>
+          <div class="chips"><span class="chip">Invested vs current</span><span class="chip">SIP amounts</span><span class="chip new">XIRR per holding</span><span class="chip new">Native vs INR return</span><span class="chip new">NAV auto-refresh</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Equity — India and abroad</h3><span class="route">/investments/equity</span></div>
+          <p>One screen, two blocks, because that is how the holdings actually differ. <b>India</b>: direct shares and Indian exchange-traded funds, grouped by broker, in rupees. <b>Abroad</b>: US shares and US-listed ETFs, grouped by broker, held and reported in dollars with the rupee view alongside. The workbook's separate "Mutual Fund (US Stock)" block disappears — foreign equity belongs here with the rest of the equity, not in a fund list.</p>
+          <p>An exchange-traded fund sits with the shares because that is where people look for it, but it is <em>taxed by what it holds</em> rather than by the fact it trades on an exchange — an equity ETF, a gold ETF and a debt ETF each map to their own rule row in section 09. Treating the wrapper as the asset class is a classic way to get a tax figure wrong.</p>
+          <div class="chips"><span class="chip">Zerodha</span><span class="chip">Invested vs current</span><span class="chip new">Indian ETFs</span><span class="chip new">US shares &amp; ETFs</span><span class="chip new">Per-broker grouping</span><span class="chip new">XIRR</span><span class="chip new">Lot-level holding period</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Mutual funds</h3><span class="route">/investments/funds</span></div>
+          <p>Indian funds only — equity, debt, hybrid and index — with current SIP, previous SIP, start date, invested and current value, and NAV refreshing itself daily. No separate foreign block.</p>
+          <p><b>A fund that invests abroad still belongs here.</b> An Indian feeder or fund-of-funds tracking a US index is bought in rupees, is an Indian asset for tax, uses no remittance allowance and generates no foreign-asset disclosure — so it is a mutual fund with a flag saying its exposure is in dollars, not a foreign holding. A direct US ETF bought through a US broker is the opposite on all four counts and lives on the equity screen. The two look similar on a statement and are treated completely differently, which is why the instrument carries both a currency and an exposure currency.</p>
+          <div class="chips"><span class="chip">Current &amp; old SIP</span><span class="chip">Started</span><span class="chip">Invested vs current</span><span class="chip new">Daily NAV</span><span class="chip new">Foreign-exposure flag</span><span class="chip new">SIP step-up history</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Global</h3><span class="route">/global</span></div>
+          <p>Everything outside India in one place: US brokerage holdings, RSUs and their vesting schedule, foreign bank balances, dividends received net of withholding, and the running LRS total for the year against the annual limit. Feeds the Schedule FA export.</p>
+          <div class="chips"><span class="chip new">Foreign holdings</span><span class="chip new">RSU vesting</span><span class="chip new">Withholding tracked</span><span class="chip new">LRS &amp; TCS running total</span><span class="chip new">Schedule FA rows</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Bonds &amp; fixed income</h3><span class="route">/investments/fixed-income</span></div>
+          <p>The one place your sheet is already richest — coupon, period, repay mode, rating, start and close dates — becomes a maturity ladder. Accrued-but-unpaid interest is computed rather than typed, and rating changes are logged so a downgrade doesn't pass unnoticed.</p>
+          <div class="chips"><span class="chip">Coupon &amp; period</span><span class="chip">NBFC rating</span><span class="chip new">Maturity ladder</span><span class="chip new">Accrued interest</span><span class="chip new">Reinvestment prompt</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>FIRE &amp; goals</h3><span class="route">/fire</span></div>
+          <p>25×, 30× and 50× on the annual expense figure, exactly as the workbook computes them, plus the inflation ladder — as a live projection you can drag. Change inflation, the target year, the SIP step-up, or exclude a category, and watch the corpus and the reach-date move.</p>
+          <div class="chips"><span class="chip">25× / 30× / 50×</span><span class="chip">6% inflation ladder</span><span class="chip new">Live projection</span><span class="chip new">Coast FIRE</span><span class="chip new">Scenario compare</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Protection</h3><span class="route">/protection</span></div>
+          <p>Term and health policies per holder with cover, premium, plan ID and renewal date. A cover-adequacy read against household income and liabilities answers the question the sheet can't.</p>
+          <div class="chips"><span class="chip">Holder</span><span class="chip">Sum assured</span><span class="chip">Plan ID</span><span class="chip new">Renewal alerts</span><span class="chip new">Cover gap</span><span class="chip new">Policy documents</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Property</h3><span class="route">/property</span></div>
+          <p>Land1, Land2 and House stop being three labels on the NetWorth sheet and become records with a cost basis. Purchase price, stamp duty and registration all form part of what you actually paid — which is what a future capital-gains figure is measured against, and what nobody can reconstruct fifteen years later. Capital improvements are dated entries that add to the basis; repairs are recorded but don't. A linked home loan shows equity as value minus outstanding, and a let property carries rent, tenant and municipal tax so it can feed the house-property head of the tax computation.</p>
+          <p>Valuation is treated as the estimate it is: a figure, a date, and how you arrived at it — your own guess, a circle-rate calculation, a broker's view or a registered valuation. The app never pretends a property is worth a precise number, and it flags a valuation that has gone stale rather than quietly carrying a four-year-old figure into your net worth.</p>
+          <div class="chips"><span class="chip">Land1 / Land2 / House</span><span class="chip">Invested vs projected</span><span class="chip new">Full cost basis</span><span class="chip new">Improvements log</span><span class="chip new">Equity after loan</span><span class="chip new">Rent &amp; property tax</span><span class="chip new">Valuation basis &amp; staleness</span><span class="chip new">Co-ownership share</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Liabilities</h3><span class="route">/liabilities</span></div>
+          <p>Home loan and card balance lifted out of the expense sheet into proper obligations: outstanding principal, amortisation, interest paid this FY, and a prepayment calculator showing tenure saved per lakh.</p>
+          <div class="chips"><span class="chip">Home loan</span><span class="chip">CC bill</span><span class="chip new">Amortisation</span><span class="chip new">Prepayment impact</span><span class="chip new">EMI calendar</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Calendar</h3><span class="route">/calendar</span></div>
+          <p>Every dated field on one timeline — bond maturities, FD end dates, policy renewals, EMI dates, SIP debits, RSU vests, advance-tax instalments — with push reminders on the lead time you set per type.</p>
+          <div class="chips"><span class="chip new">Unified due dates</span><span class="chip new">Push reminders</span><span class="chip new">Cash-flow forecast</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Tax</h3><span class="route">/tax</span></div>
+          <p><b>Income is entered here, per member and per tax year</b> — the one input the workbook never carried and the one that two other features wait on. Salary broken into its components rather than a single figure, because the parts behave differently: basic, house-rent allowance, other allowances, employer's provident-fund and pension contributions, and tax already deducted. Alongside it, rent received, interest, dividends and anything else. A member who would rather not have their salary visible to the household can keep it private to their own login while its tax effect still rolls into the household view.</p>
+          <p>The year's computation follows from it: income by head, capital gains derived from lots, deductions the regime allows, and the old-versus-new comparison side by side. A live panel shows the unused long-term equity allowance, holdings approaching a holding-period boundary, carried-forward losses and the next advance-tax instalment. Every number links back to the transaction that produced it.</p>
+          <div class="chips"><span class="chip new">Old vs new regime</span><span class="chip new">Gains by lot</span><span class="chip new">Unused ₹1.25L allowance</span><span class="chip new">Holding-period clock</span><span class="chip new">Advance tax due</span><span class="chip new">Salary &amp; income input</span><span class="chip new">Foreign tax credit</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Profile</h3><span class="route">/me</span></div>
+          <p>Everything that is <em>yours</em> rather than the household's, reached from your avatar in the top bar. Your name, relation and colour. Your sign-in: which passkeys are registered, whether an authenticator is enrolled, how many recovery codes remain. Your active sessions as a device list, each revocable — the practical answer to a lost phone.</p>
+          <p>Then the personal slice of the trust design from section 20: how many of your entries are private, your own audit log showing what was read and by whom, your income entries which stay yours, and an export of just your records. Your role is shown read-only with what it permits spelled out, so nobody has to guess. Notification preferences live here too, because which reminders you want is a personal matter — as is leaving the household or deleting your account.</p>
+          <div class="chips"><span class="chip new">Sign-in methods</span><span class="chip new">Devices &amp; sessions</span><span class="chip new">Recovery codes</span><span class="chip new">Your audit log</span><span class="chip new">Your private entries</span><span class="chip new">Your notifications</span><span class="chip new">Export just mine</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Settings</h3><span class="route">/settings</span></div>
+          <p>Two clearly separated groups, because conflating them is how apps end up asking permission to change a theme.</p>
+          <p><b>This device</b> — no permission needed, nobody else affected: theme (light, dark, follow system), display currency, number grouping (lakh and crore, or international), privacy-mode default, auto-lock delay, biometric unlock, and which screen the app opens on.</p>
+          <p><b>This household</b> — owner and partner only, and visible as read-only to everyone else so the rules are never a mystery: household name, base currency, tax-year start, members and invitations, the category list, the allocation profile and its target weights, the emergency-fund target, the FIRE inputs, recurring rules, price sources and their schedule, reminder lead times per event type, and the day of the month the snapshot runs. Data lives here as well: template download, upload, full export, the demo household's reset, and deletion.</p>
+          <div class="chips"><span class="chip new">Device vs household split</span><span class="chip">Theme &amp; currency</span><span class="chip new">Number grouping</span><span class="chip">Categories</span><span class="chip">Targets &amp; FIRE inputs</span><span class="chip new">Reminder lead times</span><span class="chip new">Demo reset</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Privacy &amp; data</h3><span class="route">/privacy</span></div>
+          <p>Not a policy document — a status page. Which region holds your data, what is stored, what never leaves the device, which scheduled jobs exist and when each last ran. Each statement links to the file in the public repository that makes it true. Alongside it: your own audit log, including reads by the household owner; a count of your private entries; a one-tap full export; and deletion with a receipt.</p>
+          <div class="chips"><span class="chip new">Where your data lives</span><span class="chip new">Your audit log</span><span class="chip new">Private entry count</span><span class="chip new">Export everything</span><span class="chip new">Delete with receipt</span></div>
+        </div>
+        <div class="screen">
+          <div class="sh"><h3>Reports</h3><span class="route">/reports</span></div>
+          <p>Two calendars, because India needs both: the April–March tax year for domestic reporting, and the January–December calendar year that foreign-asset disclosure uses. FY spend by category, the year-end pack for your accountant, and an export back to Excel for anyone who still wants the sheet.</p>
+          <div class="chips"><span class="chip">FY 25–26 framing</span><span class="chip new">Calendar-year foreign report</span><span class="chip new">Year-end pack</span><span class="chip new">Excel &amp; PDF export</span></div>
+        </div>
+      </div>
+
+      <h3>Target allocation — five conventional profiles</h3>
+      <p>Drift needs something to drift from. Rather than inventing weights, the app ships the five profiles the industry conventionally uses, you pick one at setup, and you can adjust any figure afterwards. These are named conventions offered as starting points — the app presents them, it does not recommend one, because telling someone what their asset allocation ought to be is advice rather than arithmetic.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Profile</th><th class="n">Equity</th><th class="n">Debt</th><th class="n">Gold</th><th class="n">Cash</th><th>Typically chosen when</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Conservative</td><td class="n">25%</td><td class="n">60%</td><td class="n">10%</td><td class="n">5%</td><td>Capital preservation matters more than growth; a short horizon</td></tr>
+            <tr><td class="k">Moderate</td><td class="n">45%</td><td class="n">40%</td><td class="n">10%</td><td class="n">5%</td><td>A medium horizon and limited appetite for drawdowns</td></tr>
+            <tr><td class="k">Balanced</td><td class="n">60%</td><td class="n">25%</td><td class="n">10%</td><td class="n">5%</td><td>The common default for a long accumulation phase</td></tr>
+            <tr><td class="k">Growth</td><td class="n">70%</td><td class="n">18%</td><td class="n">7%</td><td class="n">5%</td><td>A long horizon and tolerance for volatility</td></tr>
+            <tr><td class="k">Aggressive</td><td class="n">80%</td><td class="n">10%</td><td class="n">5%</td><td class="n">5%</td><td>A very long horizon; income secure enough not to need the corpus</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="plain">
+        <li><b>Equity spans domestic and foreign</b>, so a target can carry a sub-split — a common convention is holding 10–20% of the equity portion outside India, which is exactly what a feeder fund or a direct US holding provides.</li>
+        <li><b>Gold at 5–15%</b> is the Indian convention and the reason it is a first-class class here rather than an afterthought — it is a meaningful allocation in most households, and the workbook already treated it as one.</li>
+        <li><b>The age rule of thumb</b> — equity percentage of roughly 100 minus your age — is worth offering as a shortcut to a starting profile, and worth labelling as the crude heuristic it is.</li>
+      </ul>
+      <div class="callout">
+        <h4>The emergency fund is not an allocation</h4>
+        <p>Six months of expenses held deliberately in cash is a <em>reserve</em>, not a portfolio position — but almost every allocation view lumps it into "cash" and then reports a permanent overweight, nagging you about money you are holding on purpose. So the app carries an emergency-fund target as its own figure, excludes it from the drift calculation, and tracks it separately against a months-of-expenses goal the expense screen already knows how to compute. Only cash above that reserve counts as an allocation decision.</p>
+      </div>
+
+      <h3>The shell: what earns a place in the top bar</h3>
+      <p>A top bar accumulates. Every control that has nowhere obvious to live ends up there, and on a phone it becomes a row of icons nobody can name. One rule prevents it: <b>the top bar carries only what you change while reading a screen.</b> Everything else belongs in Profile if it is about you, or Settings if it is about the app.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Control</th><th>Lives</th><th>Because</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Household switcher</td><td>Top bar, only when you belong to more than one</td><td>Changes everything on screen; hidden entirely for the common case of one household</td></tr>
+            <tr><td class="k">Member filter</td><td>Top bar</td><td>A view filter — "ours" versus "mine" is a question you ask <em>of</em> the screen you are on</td></tr>
+            <tr><td class="k">Privacy mode</td><td>Top bar</td><td>Must be one tap from anywhere; a hidden panic button is not a panic button</td></tr>
+            <tr><td class="k">Your avatar</td><td>Top bar</td><td>The door to Profile, and the answer to "who am I signed in as"</td></tr>
+            <tr><td class="k">Display currency</td><td>Settings, with a quick toggle in the profile menu</td><td>A preference occasionally flipped, not a control operated continuously</td></tr>
+            <tr><td class="k">Theme</td><td>Settings</td><td>Set once, then forgotten</td></tr>
+            <tr><td class="k">"Valued as of"</td><td>The home screen, beside net worth</td><td>Information about a figure, not a control — it belongs next to what it qualifies</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>That leaves four items on a phone, one of which usually hides. The test for anything proposed later: would you reach for it <em>while</em> reading a screen, or before you started? Only the first kind earns the space.</p>
+
+      <h3>Across every screen</h3>
+      <p>Five things belong to the shell rather than to any one screen, and they are worth specifying once rather than rediscovering them twelve times.</p>
+      <div class="rules">
+        <div class="rule"><div class="rh"><strong>Currency</strong><h4>₹ / $</h4></div>
+          <p>Set in Settings, flipped quickly from the profile menu — see the shell rule above. The display toggle from section 07. Native figures stay native; the base currency governs every total.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Theme</strong><h4>Light · dark · system</h4></div>
+          <p>Chosen in Settings, per device. Three states, defaulting to whatever the device is set to, remembered per device. Dark is not an inverted stylesheet: it needs its own palette, because the semantic colours carry meaning here — a gain and a loss must stay clearly distinguishable, and stay legible for the substantial minority of men with red-green colour vision deficiency, which is why the design pairs green with teal-blue rather than relying on hue alone. Charts read their colours from the same tokens as everything else, so a screenshot taken in either theme is readable.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Privacy mode</strong><h4>Hide the numbers</h4></div>
+          <p>One tap masks every amount on screen. This is the feature that lets you open your net worth on a train, hand your phone to someone to show them a bond's maturity date, or take a screenshot for a question without publishing your finances. Percentages, dates and chart <em>shapes</em> stay visible — the information you usually need is the trend, not the figure — while absolute amounts become dots. It should engage automatically in the app switcher, alongside the screenshot suppression in section 15, and stay on until you turn it off rather than resetting each launch.</p>
+          <p>It is convenience, not security, and the design says so: it defends against the person beside you, not against anyone holding the device. Nothing about the stored data changes.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Export</strong><h4>Excel · PDF</h4></div>
+          <p>Three scopes, all generated on the device so nothing is uploaded to be turned into a file. <b>This view</b> — whatever table you are looking at, filters applied. <b>A report</b> — the year-end pack, the capital-gains statement, the foreign-asset rows. <b>Everything</b> — the full dataset as a workbook with one sheet per entity, which doubles as the account-deletion export required in phase 1 and as a backup you can read without the app. Excel where the figures will be worked on, PDF where they will be read or sent.</p>
+          <p><b>The full export is deliberately identical in shape to the upload template</b> in section 17, so exporting, editing a hundred rows in Excel and uploading again is a supported way to work rather than an accident that happens to succeed.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Accessibility</strong><h4>Non-negotiable</h4></div>
+          <p>Parents will use this app, so respecting the operating system's text size — up to double — is a layout requirement, not a preference: nothing may be built at a fixed pixel height that a larger font would break. Contrast meets the standard threshold in both themes. <b>Nothing means anything by colour alone</b> — a gain carries a sign and an arrow as well as a hue, which matters for the substantial share of men with red-green colour deficiency. Every figure has a label a screen reader can announce, since a bare number read aloud is noise. Full keyboard navigation with visible focus, touch targets no smaller than a fingertip, and motion honoured off when the system asks for it.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Correcting mistakes</strong><h4>Edit or void</h4></div>
+          <p>Typing errors are constant and the rule is graded by consequence. An ordinary transaction is <b>freely editable</b>, with the previous values kept in the audit log — it is a household ledger, not a bank's. But once a figure has fed something that has been relied upon — a frozen month-end snapshot, a completed tax year, a generated report — editing it silently would change a number someone has already acted on, so from that point a correction is a <b>void and re-enter</b>: the original stays visible, marked void, and the replacement carries a reference to it. Deleting is always soft; voided rows stay behind a filter rather than vanishing.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Dates and boundaries</strong><h4>Always IST</h4></div>
+          <p>Every period boundary is computed in Indian Standard Time regardless of where the device is — the month-end snapshot is the last calendar day in IST, and the tax year runs 1 April to 31 March in IST. Timestamps are stored in UTC and converted for display, but no boundary is ever decided by the phone's own zone, otherwise a family member travelling would silently produce a snapshot on a different day from everyone else.</p></div>
+
+        <div class="rule"><div class="rh"><strong>Offline conflicts</strong><h4>Last write wins</h4></div>
+          <p>Two devices editing the same row while offline is rare in a household and does not justify merge machinery. The later write wins, and the version it replaced is written to the audit log so nothing is actually lost and a wrong outcome can be seen and undone. New records never conflict — they are separate rows — which covers the case that actually happens: two people logging expenses at once.</p></div>
+
+        <div class="rule"><div class="rh"><strong>The demo household</strong><h4>A real account, fake money</h4></div>
+          <p>Not a mode and not a set of static screens — <b>a genuine household in the real database, seeded with fabricated data, that behaves in every respect like the real thing.</b> You can add expenses to it, edit holdings, break things, run the tax computation, generate exports, and hand it to someone to poke at. It is where the app gets shaken down and improved before a single real rupee is entered, and it stays afterwards as a permanent place to try a change without touching live figures.</p>
+          <p>It costs almost nothing to build because the model already allows it: a household is a row, a person can belong to several through their membership, and a switcher in the top bar moves between them. <b>Its most valuable property is that it makes the security model real.</b> Two households sharing one database is exactly the condition the row policies exist to handle — so running a demo alongside your own data proves those policies work <em>before</em> anything important depends on them, rather than trusting a test suite alone.</p>
+          <p>Four rules keep it safe and useful. Demo households are marked <code>kind = demo</code> and carry a persistent badge, so there is never a moment of wondering which numbers you are looking at. <b>Nothing crosses between households</b> — not a transaction, not an aggregate, not an export — which is the same policy boundary that separates any two households and therefore needs no special code. <b>Reset</b> wipes and reseeds it to a known state, so you can experiment destructively without care. And there is deliberately <b>no "promote to real"</b> — when you are ready, you create your real household and enter your own opening position, because a half-copied fake portfolio is a far worse problem than an afternoon of typing.</p>
+          <p>The seed should be built to <em>find bugs</em>, not to look attractive: a holding sold at a loss, a carried-forward loss, a lot sitting either side of the twenty-four-month boundary, a matured bond, a category with no spending, a deliberately stale valuation, a member with no login, a foreign dividend with withholding. A demo portfolio that only contains happy paths teaches you nothing.</p>
+          <p>Alongside it, a short guided tour on first arrival at each screen — a few coach marks saying what this screen answers, dismissible and never repeated. If the app is ever offered publicly, <em>that</em> is when a bundled client-side fixture earns its place, as a no-signup demo for strangers; for a household app, an invited viewer in the demo household is simpler and consistent with invite-only access.</p></div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="math">
+      <h2><span class="sn">06</span>Calculation engine</h2>
+      <p class="lede">One module of pure functions, shared by web, desktop and mobile because they run the same bundle. Unit-tested against the workbook's own figures. Money is integer minor units — paise and cents — never floats.</p>
+      <div class="formulas">
+        <div class="fcard">
+          <h3>Net worth</h3>
+          <div class="expr">Σ holding.units × price(d) × fx(ccy→base, d)
+  + Σ account.balance × fx(…)
+  − Σ liability.outstanding × fx(…)</div>
+          <p>Replaces <code>NetWorth!M38</code> and its load-bearing blank rows. Every term is currency-converted at the same date.</p>
+        </div>
+        <div class="fcard">
+          <h3>Allocation share</h3>
+          <div class="expr">share(class) =
+  base_value(class) / Σ base_value(all) × 100</div>
+          <p>The working version of <code>=DIVIDE(F34,F44)*100</code>, computed after conversion so a US holding and an Indian one are comparable.</p>
+        </div>
+        <div class="fcard">
+          <h3>Annualised return (XIRR)</h3>
+          <div class="expr">solve r:  Σ Cᵢ / (1+r)^(dᵢ−d₀)/365 = 0
+Newton–Raphson, bisection fallback</div>
+          <p>Run twice for foreign holdings: once on native-currency flows, once on base-converted flows. The gap between the two is currency return.</p>
+        </div>
+        <div class="fcard">
+          <h3>Currency decomposition</h3>
+          <div class="expr">total ≈ asset_return + fx_return
+       + (asset_return × fx_return)</div>
+          <p>Answers "did the fund do well, or did the rupee just weaken". Shown on every foreign holding and on the home screen's monthly movement.</p>
+        </div>
+        <div class="fcard">
+          <h3>FIRE corpus</h3>
+          <div class="expr">annual_expense = monthly_total × 12
+                 + yearly_total
+target(m) = annual_expense × m,  m ∈ {25,30,50}</div>
+          <p>Exactly the workbook's <code>M&amp;Y Total</code> → <code>C80</code> → <code>C82:C84</code> chain, kept intact.</p>
+        </div>
+        <div class="fcard">
+          <h3>Inflation ladder</h3>
+          <div class="expr">target(m, y) =
+  annual_expense × m × (1+i)^(y − base_year)</div>
+          <p>The closed form of the 30 hardcoded cells in <code>I82:R84</code>. <b>Inflation is a setting, not a constant</b> — 6% is only the default carried over from the workbook, editable at any time, and each goal can carry its own rate, since school fees and healthcare have not historically risen at the same pace as groceries. Changing it recomputes every projection immediately rather than requiring 30 cells to be retyped.</p>
+        </div>
+        <div class="fcard">
+          <h3>Corpus projection</h3>
+          <div class="expr">cₙ₊₁ = cₙ(1+r) + sipₙ
+sipₙ₊₁ = sipₙ(1 + step_up)</div>
+          <p>Crossing point against the inflated target is the FIRE date. A flat SIP and a stepped-up SIP give wildly different answers; the app models the step-up because that's what actually happens.</p>
+        </div>
+        <div class="fcard">
+          <h3>Capital gains by lot</h3>
+          <div class="expr">FIFO match sale → lots
+held ≥ 24 months (foreign) → LTCG
+held ≥ 12 months (listed IN eq) → LTCG</div>
+          <p>Gains on foreign shares convert at the rate on each of the buy and sell dates, not today's — which is why lots and daily FX rows both exist.</p>
+        </div>
+        <div class="fcard">
+          <h3>Peak balance</h3>
+          <div class="expr">peak(instrument, cal_year) =
+  max over d ∈ year of units(d) × price(d) × fx(d)</div>
+          <p>Foreign-asset disclosure asks for the peak value during the calendar year, not the closing one. Only obtainable if valuations are snapshotted regularly — a real reason the history table exists.</p>
+        </div>
+        <div class="fcard">
+          <h3>FD maturity &amp; bond accrual</h3>
+          <div class="expr">M = P × (1 + rate/4)^(4y)
+accrued = P × coupon × days/365</div>
+          <p>Quarterly compounding is the Indian bank default. Bond1 at 10.75% yearly and Bond2 at 11.5% monthly accrue differently between payout dates.</p>
+        </div>
+        <div class="fcard">
+          <h3>Budget variance</h3>
+          <div class="expr">pace = actual /
+  (planned × days_elapsed / days_in_period)</div>
+          <p>Pace above 1.0 flags a category mid-month, rather than after the overspend.</p>
+        </div>
+        <div class="fcard">
+          <h3>Gold valuation</h3>
+          <div class="expr">value = Σ grams × rate_22K(d) × purity_factor</div>
+          <p>Rate stored per date so historical snapshots don't retroactively change when today's rate moves.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section id="currency">
+      <h2><span class="sn">07</span>Two currencies, one truth</h2>
+      <p class="lede">Multi-currency is where personal finance apps quietly go wrong. The failure is always the same: converting once, storing the converted number, and losing the original. Six rules prevent it.</p>
+      <div class="rules">
+        <div class="rule"><div class="rh"><strong>Store native, derive base</strong><h4>Rule 01</h4></div>
+          <p>Every money column is a pair: <code>amount_minor</code> plus <code>currency</code>. The rupee figure is computed on read, never written in place of the dollar figure. A US holding is stored in USD forever; INR is a view of it.</p></div>
+        <div class="rule"><div class="rh"><strong>Rates are dated facts</strong><h4>Rule 02</h4></div>
+          <p><code>fx_rate</code> holds one row per currency pair per day, appended by a scheduled job and never updated. A transaction converts at its own date's rate; a valuation at the snapshot date's rate. Yesterday's net worth does not change because the rupee moved today.</p></div>
+        <div class="rule"><div class="rh"><strong>Base is the household's, display is the viewer's</strong><h4>Rule 03</h4></div>
+          <p>The household has one <code>base_currency</code> — INR — in which net worth, FIRE targets and allocation are always computed. A separate display toggle lets anyone read the whole app in USD without changing a stored value or a target.</p></div>
+        <div class="rule"><div class="rh"><strong>Currency ≠ exposure</strong><h4>Rule 04</h4></div>
+          <p>Your US Nasdaq 100 index fund is bought in rupees but tracks dollars. <code>currency = INR</code>, <code>exposure_currency = USD</code>. Without that distinction the app either double-counts your dollar exposure or reports none at all. A direct US brokerage holding has both set to USD.</p></div>
+        <div class="rule"><div class="rh"><strong>Round once, at the edge</strong><h4>Rule 05</h4></div>
+          <p>Integer minor units in storage, decimal arithmetic for conversion, rounding only in the formatter. Indian lakh/crore grouping (₹1,23,456) and Western grouping ($1,234.56) are both formatter concerns — the same stored integer renders either way.</p></div>
+        <div class="rule"><div class="rh"><strong>Show the currency effect, don't bury it</strong><h4>Rule 06</h4></div>
+          <p>A fund up 8% in dollars while the rupee weakened 3% is up 11.2% in rupees. Both numbers are true and the app shows both, because one tells you about the fund and the other tells you about your net worth.</p></div>
+      </div>
+      <p>Rates come from a free daily reference feed refreshed by a scheduled job; a manual override exists for the rate a bank actually gave you on a specific remittance, because that is the rate that matters for cost basis, not the mid-market one.</p>
+    </section>
+
+    <!-- 08 -->
+    <section id="abroad">
+      <h2><span class="sn">08</span>Investing abroad, and the paperwork it creates</h2>
+      <p class="lede">Holding foreign assets as an Indian resident creates obligations the workbook has no column for. Capturing them at the moment of the transaction is trivial; reconstructing them in July before a filing deadline is miserable. The app should do the former.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What happens</th><th>What the app captures</th><th>Why it matters later</th></tr></thead>
+          <tbody>
+            <tr><td class="k">You remit money out</td><td>Date, INR amount, USD received, actual bank rate, purpose, TCS collected</td><td>Running total against the LRS annual limit of USD 250,000 per person per year; TCS is nil up to ₹10 lakh a year and 20% above it, and is creditable against your tax — it is a prepayment, not a cost, but only if you have the figure</td></tr>
+            <tr><td class="k">You buy a US stock or ETF</td><td>Lot: units, trade date, price in USD, rate on that date</td><td>Cost basis in rupees is fixed at the buy date. Long-term treatment on foreign shares needs a 24-month holding period, so the lot date decides the tax rate</td></tr>
+            <tr><td class="k">A dividend arrives</td><td>Gross USD, US tax withheld, net received, date</td><td>US withholding for Indian retail investors who have filed a W-8BEN is 25% — the treaty's 15% rate applies to corporate holders with 10%+ voting stock, not individuals. You declare the gross in India and claim the withheld amount as foreign tax credit via Form 67, filed before the return</td></tr>
+            <tr><td class="k">You sell</td><td>FIFO lot match, gain in USD and in INR, holding period</td><td>Foreign shares: 12.5% long-term after 24 months, slab rate short-term. The rupee gain differs from the dollar gain — the app computes both and reports the one the return needs</td></tr>
+            <tr><td class="k">RSUs vest</td><td>Grant, vest date, units, FMV at vest, perquisite value</td><td>Vesting is taxed as salary perquisite at vest; the FMV then becomes the cost basis for the eventual sale. Two different tax events, one dataset</td></tr>
+            <tr><td class="k">The year ends</td><td>Per-instrument initial, peak and closing value, plus income, for the calendar year</td><td>Foreign asset disclosure runs on the calendar year for US assets, not the Indian financial year, and asks for the peak value during that year. This is the number nobody can reconstruct afterwards</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <h4>The unforgiving one</h4>
+        <p>Foreign-asset disclosure is required whether or not the asset produced income, and whether or not you are below any tax threshold — a holding at a loss still has to be declared, and the penalties for omission sit under the black-money legislation rather than ordinary tax law. This is precisely the kind of obligation an app should make automatic: capture the six fields at transaction time, and the year-end report writes itself. Treat the output as a working paper for your CA, not as filed advice — the app organises facts, it does not give tax opinions.</p>
+      </div>
+      <h3>The two you hold, side by side</h3>
+      <p>This household holds both shapes at once — a US index tracked through an Indian fund house, and a US brokerage account holding shares and ETFs directly. They look alike in a portfolio list and are treated oppositely on every line that matters.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th></th><th>Indian feeder tracking a US index</th><th>Direct US brokerage holding</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Bought in</td><td>Rupees, from an Indian AMC</td><td>Dollars, through a US broker</td></tr>
+            <tr><td class="k">Uses remittance allowance</td><td>No</td><td>Yes — counts against the annual LRS limit, and TCS applies above the yearly threshold</td></tr>
+            <tr><td class="k">Foreign-asset disclosure</td><td>No</td><td>Yes — a Schedule FA row per holding, on the calendar year</td></tr>
+            <tr><td class="k">Long-term after</td><td>Per the fund's own category</td><td>24 months</td></tr>
+            <tr><td class="k">Dividends</td><td>Taxed in India only</td><td>25% withheld in the US, gross declared in India, credit claimed via Form 67</td></tr>
+            <tr><td class="k">US estate exposure</td><td>None</td><td>Applies above roughly $60,000 of US-situs assets</td></tr>
+            <tr><td class="k">Lives on</td><td>The mutual funds screen, flagged as dollar exposure</td><td>The equity screen's Abroad block, and the Global screen</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <h4>Peak value is being lost right now</h4>
+        <p>Foreign-asset disclosure asks for the <em>highest</em> value each holding reached during the calendar year, not its closing value — and that figure cannot be reconstructed from a year-end statement. Every month that passes before the app starts snapshotting is a month of peak data gone. Two things follow: the monthly snapshot job belongs in phase 1 rather than later, and for the current year the gap should be backfilled now from broker statements, whose month-end values give a defensible approximation. It is the one piece of this design where delay actually destroys information.</p>
+      </div>
+      <ul class="plain">
+        <li><b>Feeder funds are not foreign assets.</b> An Indian mutual fund investing in US equities is an Indian asset with dollar exposure — no LRS usage, no Schedule FA row, taxed as an Indian fund. Your US Nasdaq 100 index holding sits on this side of the line; a direct Vested or IBKR account sits on the other. The <code>country</code> and <code>exposure_currency</code> fields are what tell them apart.</li>
+        <li><b>Currency of record for foreign brokers is USD.</b> Statements arrive in dollars; the app imports them in dollars and converts for reporting, so a re-import never disagrees with a broker statement.</li>
+        <li><b>Rules change.</b> Rates, thresholds and limits are configuration rows with effective-from dates, not constants in code, so a budget change is a data edit rather than a release.</li>
+      </ul>
+    </section>
+
+    <!-- 09 -->
+    <section id="tax">
+      <h2><span class="sn">09</span>The tax engine</h2>
+      <p class="lede">The app already holds every input a tax computation needs: dated lots, realised sales, dividends with withholding, premiums, and contributions. What it lacks is the arithmetic on top. Done well this is the single highest-value screen in the product — done carelessly it is the most dangerous, so the framing matters: <b>it fills the schedules, it does not file the return.</b></p>
+
+      <div class="callout warn">
+        <h4>What this module is, and is not</h4>
+        <p>It is a working paper: your own numbers, arranged the way a return asks for them, with every assumption visible and every figure traceable to the transaction that produced it. It is not tax advice, not a filing, and not a substitute for your CA — who should be the one to check it. Every output carries that statement, and every computed figure links back to its source rows so a professional can verify rather than trust.</p>
+      </div>
+
+      <h3>Rules live in a table, not in code</h3>
+      <p>Slabs, rates, thresholds, holding periods and exemption limits all change with Budgets — and the law itself has just been rewritten, with the Income-tax Act 2025 taking effect for tax year 2026-27, replacing "previous year" and "assessment year" with a single <em>tax year</em> and renumbering familiar sections (80D becomes 126, 87A becomes 156, 24(b) becomes 22). Rates and capital-gains principles carry over unchanged, but section labels on any report do not.</p>
+      <p>So every rule is a dated row in a <code>tax_rule</code> table with an effective-from and effective-to: slab bands, surcharge steps, cess, rebate, standard deduction, per-section deduction caps, holding periods and capital-gains rates per asset class. A Budget becomes a data edit; a computation for an earlier year keeps using the rules that applied then, which is what makes recomputing a prior year trustworthy.</p>
+
+      <h3>What it computes</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Head</th><th>Fed by</th><th>Rule at tax year 2026-27</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Salary</td><td>Entered, or from Form 16 figures</td><td>Standard deduction ₹75,000 in the new regime, ₹50,000 in the old</td></tr>
+            <tr><td class="k">Capital gains</td><td><b>Derived from lots</b> — no stored gain, ever</td><td>Per asset class, below</td></tr>
+            <tr><td class="k">Other sources</td><td>Interest, Indian dividends, bond coupons, FD accruals</td><td>Slab rate; FD interest taxed as it accrues, not at maturity</td></tr>
+            <tr><td class="k">Foreign income</td><td>US dividends gross, foreign interest</td><td>Slab rate on the gross figure, with credit for tax withheld abroad</td></tr>
+            <tr><td class="k">House property</td><td>Rent, home-loan interest</td><td>Interest deduction available in the old regime</td></tr>
+            <tr><td class="k">Deductions</td><td>PPF, EPF, ELSS, life and health premiums, NPS</td><td>Old regime only, apart from employer NPS; the app knows which of your existing rows qualify</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Capital gains, by asset class</h3>
+      <p>This is where a spreadsheet gives up and where lot-level records pay off. Every rate below is a row in <code>tax_rule</code>, not a constant.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Asset</th><th class="n">Long-term after</th><th class="n">LTCG</th><th class="n">STCG</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Listed equity &amp; equity mutual funds</td><td class="n">12 months</td><td class="n">12.5%</td><td class="n">20%</td><td>First ₹1.25 lakh of long-term gains a year is exempt — an allowance that expires unused</td></tr>
+            <tr><td class="k">Debt funds bought on or after 1 Apr 2023</td><td class="n">—</td><td class="n">—</td><td class="n">Slab</td><td>Always short-term however long they are held; no indexation</td></tr>
+            <tr><td class="k">Gold, gold funds, physical</td><td class="n">24 months</td><td class="n">12.5%</td><td class="n">Slab</td><td>Sovereign gold bonds redeemed with the RBI stay exempt; sold on the market they don't</td></tr>
+            <tr><td class="k">Foreign shares and US ETFs</td><td class="n">24 months</td><td class="n">12.5%</td><td class="n">Slab</td><td>Twice the equity holding period — the reason lot dates matter for your US holdings</td></tr>
+            <tr><td class="k">Unlisted shares</td><td class="n">24 months</td><td class="n">12.5%</td><td class="n">Slab</td><td>No indexation</td></tr>
+            <tr><td class="k">Property</td><td class="n">24 months</td><td class="n">12.5%</td><td class="n">Slab</td><td>Bought before 23 Jul 2024, you may instead choose 20% with indexation — a per-asset election the app should model both ways</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note" style="font-size:13.6px;color:var(--ink-2);max-width:74ch">Property carries two wrinkles the other classes don't, both worth capturing at the moment of sale rather than reconstructing later. The cost basis is not the purchase price alone — stamp duty, registration and capital improvements all add to it, which is exactly why the property record holds them as separate dated fields. And a sale can be sheltered by reinvestment: into another residential property, or into specified bonds within a defined window. Those are elections with deadlines attached, so the app's job is to surface the clock and the amounts, and leave the choice to you and your accountant. A large sale also attracts tax deducted at source by the buyer, which is a credit to claim rather than a cost.</p>
+
+      <h3>The pipeline</h3>
+      <pre class="code"><b>1  Classify</b>     each sale → FIFO lots → holding period → asset class → rule row
+<b>2  Convert</b>       foreign amounts at the prescribed rate, not the market rate <i>(below)</i>
+<b>3  Net</b>           short-term losses against any gains; long-term losses against
+                 long-term gains only; carry forward what remains, for eight years
+<b>4  Exempt</b>        apply the ₹1.25 lakh equity allowance to long-term equity gains
+<b>5  Aggregate</b>     add the other heads; apply deductions the chosen regime permits
+<b>6  Rate</b>          slabs → rebate → surcharge → 4% cess
+<b>7  Credit</b>        subtract foreign tax withheld, capped at the Indian tax on that
+                 same income <i>(Form 67, filed before the return)</i>
+<b>8  Compare</b>       run the whole thing again under the other regime and show both
+<b>9  Schedule</b>      map every figure onto the return's schedules, with source links</pre>
+
+      <h3>Two details most calculators get wrong</h3>
+      <div class="rules">
+        <div class="rule"><div class="rh"><strong>The exchange rate is prescribed</strong><h4>Foreign income</h4></div>
+          <p>Foreign income is not converted at the rate you actually got, nor at today's. The rule specifies the State Bank's telegraphic-transfer buying rate on <b>the last day of the month preceding</b> the month of the event — the sale, for capital gains; receipt or due date, whichever is earlier, for dividends. The app therefore stores two different rates against a foreign transaction: the real one, which is the truth about your money, and the prescribed one, which is the truth for the return. Storing only one makes the other unrecoverable.</p></div>
+        <div class="rule"><div class="rh"><strong>Advance tax has a rhythm</strong><h4>Timing</h4></div>
+          <p>Liability above the threshold is payable in four instalments across the year — 15%, 45%, 75%, 100% cumulative — and interest accrues on shortfalls. Capital gains are the exception: you cannot be expected to have foreseen them, so tax on a gain is due in the instalment following the sale. The app already knows the sale date, so it can tell you what is due and when, which is the difference between a calculator and something useful.</p></div>
+      </div>
+
+      <h3>The US side of a US trade</h3>
+      <ul class="plain">
+        <li><b>Selling is not taxed by the US.</b> A non-resident alien generally pays no US capital gains tax on share sales — the gain is India's to tax, in full, with no credit to claim because nothing was withheld.</li>
+        <li><b>Dividends are taxed by both, then reconciled.</b> 25% withheld at source with a W-8BEN on file, the gross declared in India, the withheld amount claimed as credit — limited to the Indian tax on that income, so if the Indian liability is lower the excess is simply lost.</li>
+        <li><b>Estate exposure is the unadvertised one.</b> US-situs assets — US-listed shares, US-domiciled ETFs, ADRs — above roughly <b>$60,000</b> can attract US estate tax at rates rising toward 40%, and there is no estate-tax treaty with India to soften it. It is not an income-tax matter and no filing surfaces it, which is precisely why an app that knows the size of the holding should show a quiet flag once it crosses the line, and note that Ireland-domiciled equivalents avoid the exposure entirely. Informational, not advice — but nobody should discover this posthumously.</li>
+      </ul>
+
+      <h3>Where it earns its keep</h3>
+      <ul class="plain">
+        <li><b>Regime comparison.</b> Old versus new, computed on your actual figures, with the crossover shown — the one calculation nearly every salaried household redoes badly each year.</li>
+        <li><b>The expiring allowance.</b> "₹1.25 lakh of long-term equity exemption, ₹0 used, 47 days left in the year" is worth more than any chart on the home screen.</li>
+        <li><b>The holding-period clock.</b> A US holding 23 months old is one month from halving its tax rate. Only the lot table knows that.</li>
+        <li><b>Loss inventory.</b> Carried-forward losses expire after eight years and are lost entirely if a return is filed late. Both facts belong on a screen, not in a memory.</li>
+        <li><b>A year-end pack</b> your CA can actually use: computation, capital-gains statement by lot, foreign-asset rows, foreign-tax-credit workings, deduction proofs, and a list of what the app could not determine.</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section id="datain">
+      <h2><span class="sn">10</span>Getting data in</h2>
+      <p class="lede">Two views of the same question. First by asset class — what you actually have to type, and how often. Then by source, ranked by effort-to-value.</p>
+
+      <h3>By what you hold</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What</th><th>How it gets in</th><th>How often you touch it</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Daily expenses</td><td>Quick-add in five seconds · recurring rules auto-post the predictable ones · monthly card and bank CSV with a payee→category rules engine · receipt photo</td><td>Daily for variable spend. EB, DTH, school fee, premiums and SIPs post themselves</td></tr>
+            <tr><td class="k">Indian mutual funds</td><td><b>NAV automatic</b> from AMFI's free daily file. Transactions from a CAMS or KFintech consolidated statement</td><td>Set up once; import a statement every few months</td></tr>
+            <tr><td class="k">Indian stocks</td><td>Broker CSV export or a depository statement. Live quotes are licensed data — a paid broker API only if you want intraday</td><td>An import a month; daily closes arrive on their own</td></tr>
+            <tr><td class="k">Bonds</td><td>Manual once — coupon, period, repay mode, dates, rating. No feed exists for unlisted NBFC paper. Accrual, next coupon and maturity are <b>derived</b></td><td>Once per bond, then never</td></tr>
+            <tr><td class="k">Fixed deposits</td><td>Manual once — principal, rate, start, tenure, compounding. Maturity value and accrued interest are <b>computed</b>, not typed</td><td>Once per deposit</td></tr>
+            <tr><td class="k">EPF</td><td>Manual from the passbook — there is no API. Employer and employee contributions can accrue as a flagged estimate between checks</td><td>Quarterly, when interest is credited</td></tr>
+            <tr><td class="k">PPF</td><td>Contributions via a recurring rule; the balance is <b>computed</b> from the notified rate and the lowest-balance-of-the-month convention</td><td>Reconcile once a year</td></tr>
+            <tr><td class="k">NPS</td><td>Units from your statement of transactions; <b>NAV automatic</b> from the CRA's daily publication</td><td>Set up once; occasional statement check</td></tr>
+            <tr><td class="k">Gold</td><td>Grams entered per purchase; <b>rate automatic</b> on a schedule</td><td>Once per purchase</td></tr>
+            <tr><td class="k">Global holdings</td><td>Broker CSV or an automated broker export. Dividends and withholding arrive in the same file. <b>FX automatic</b>; the prescribed rate for tax is twelve values a year</td><td>An import a month</td></tr>
+            <tr><td class="k">Property, insurance</td><td>Manual — value, cover, premium, renewal date</td><td>Once, then when something changes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <h4>Type the terms once, not the value every month</h4>
+        <p>This is the shift the whole design turns on. The workbook asks you to look up and retype a current value for each row every month, which is why it goes stale. The app asks for the <em>terms</em> — principal, rate, tenure, coupon, units, contribution — and computes the value continuously from them. Fixed deposits, bonds and PPF then never need touching again, and the classes that genuinely change every day (funds, equities, gold, currency) update from a feed. What remains manual is small and infrequent: variable spending, a provident-fund balance a few times a year, and a property valuation when you care to revise it.</p>
+      </div>
+
+      <h3>By source</h3>
+      <p class="lede">Ranked by effort-to-value. Start at the top; the bottom two are worth knowing about but not worth doing.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Source</th><th>Feeds</th><th>How</th><th>Effort</th></tr></thead>
+          <tbody>
+            <tr><td class="k">AMFI NAV feed</td><td>Every Indian MF scheme's current value</td><td>Daily plain-text file keyed by scheme code; scheduled job updates <code>price</code></td><td>Low — do first</td></tr>
+            <tr><td class="k">The app's own template</td><td>Anything, in bulk — holdings, transactions, balances, budgets</td><td>Download a workbook with the right headers and validation, fill it in offline, upload it. Parsed on the device, previewed before it writes, reversible as a batch, and the same shape as the full export so the round trip works both ways</td><td>Low — do first</td></tr>
+            <tr><td class="k">FX reference rates</td><td>USD/INR daily</td><td>Same job, appends one <code>fx_rate</code> row per day</td><td>Low</td></tr>
+            <tr><td class="k">CAMS / KFintech eCAS</td><td>Full MF transaction history across AMCs</td><td>Password-protected PDF emailed on request; parsed into <code>investment_txn</code>. Turns XIRR on for every fund at once</td><td>Low–medium</td></tr>
+            <tr><td class="k">Broker CSV exports</td><td>Zerodha holdings and realised gains; US broker trades and dividends</td><td>Per-broker column mapping, run client-side so statements never leave the device unless you want them stored</td><td>Low</td></tr>
+            <tr><td class="k">Bank statement import</td><td>Expense transactions, salary credits, card bills</td><td>CSV/XLS with a rules engine that learns payee → category</td><td>Medium — biggest daily win</td></tr>
+            <tr><td class="k">Depository CAS</td><td>Demat equity and bond holdings, consolidated</td><td>Monthly PDF; same parser pattern as eCAS</td><td>Medium</td></tr>
+            <tr><td class="k">Gold rate</td><td>22K / 24K per gram</td><td>Scheduled fetch into <code>price</code>, with manual override</td><td>Low</td></tr>
+            <tr><td class="k">Receipt OCR</td><td>Expense entry from a photo</td><td>On-device capture, amount/date/merchant prefilled for confirmation</td><td>Medium</td></tr>
+            <tr><td class="k">Email alert parsing</td><td>Card spends, UPI debits, SIP confirmations</td><td>Forward bank alerts to a dedicated address; regex per sender</td><td>Medium — brittle, high volume</td></tr>
+            <tr><td class="k">Reading transaction SMS</td><td>Card and UPI debits, as many Indian apps do</td><td>The SMS permission is restricted to default messaging apps and a short list of approved uses, so a store-distributed app cannot have it. Forwarded email alerts do the same job within the rules</td><td>Not available</td></tr>
+            <tr><td class="k">Account Aggregator</td><td>Bank, MF, insurance in one consented pull</td><td>Right in principle, but requires registering as a financial information user with a licensed provider — not realistic for a household app</td><td>Not recommended</td></tr>
+            <tr><td class="k">Scraping net banking</td><td>Everything</td><td>Breaks constantly, violates bank terms, and puts credentials somewhere they must never be</td><td>Don't</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <h4>Sequencing that keeps the app honest</h4>
+        <p>Ship manual entry first and make it genuinely fast — imports are accelerants, not prerequisites. Then the NAV and FX jobs (they remove the biggest recurring chore), then eCAS (unlocks XIRR retroactively), then statement import with the rules engine.</p>
+      </div>
+
+      <h3>Prices come through a driver, never a direct call</h3>
+      <p>Nothing in the app fetches a price. A scheduled job asks a <code>price_source</code> driver for a quote and writes the result into the dated <code>price</code> table; every screen reads from that table. The interface is one function — <em>give me the value of this instrument on this date</em> — with a driver per source behind it: the AMFI file, an FX feed, a gold rate, a manual override.</p>
+      <ul class="plain">
+        <li><b>It costs nothing to build this way now</b> — the first two drivers are twenty lines each.</li>
+        <li><b>Clients never call a data vendor.</b> One scheduled fetch serves every user and every device. That is a cost decision today and a licensing one later: market-data terms almost universally forbid passing quotes on to other people, and a per-client fetch is exactly the pattern that breaches them.</li>
+        <li><b>It keeps live pricing an option rather than a rewrite.</b> Daily NAV is genuinely enough for this portfolio, but if you later want intraday values — or if each user connects their own broker and pulls quotes under their own entitlement — that is a new driver, not a new architecture.</li>
+        <li><b>Historical correctness comes free.</b> Because drivers write dated rows and never update them, a snapshot from last March keeps last March's price whatever happens to the feed.</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section id="family">
+      <h2><span class="sn">11</span>Family &amp; access</h2>
+      <p class="lede">One household, several logins, and a clear answer to "who can see the total".</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Role</th><th>Sees</th><th>Can change</th><th>Typical holder</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Owner</td><td>Everything, all members</td><td>Everything, including members and roles</td><td>You</td></tr>
+            <tr><td class="k">Partner</td><td>Everything, all members</td><td>All financial data; cannot remove the owner</td><td>Spouse</td></tr>
+            <tr><td class="k">Contributor</td><td>Own records + household expense totals</td><td>Own expenses and assets only</td><td>Working adult child, parent</td></tr>
+            <tr><td class="k">Viewer</td><td>Household summary only, no account identifiers</td><td>Nothing</td><td>Dependant, advisor</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="plain">
+        <li><b>Sign-up is invite-only.</b> Public registration is disabled. The owner issues an invite; the token is single-use and expires. A finance app with an open sign-up page on a public URL is an invitation to be probed.</li>
+        <li><b>Roles are enforced in the database.</b> Every row carries <code>household_id</code> and an optional <code>member_id</code>, and access is decided by a policy on the table — not by which screen the UI shows.</li>
+        <li><b>Members without logins still exist.</b> Parents whose premiums you pay don't need an account for their policy to sit under their name.</li>
+        <li><b>Members are archived, never deleted.</b> This is the standard pattern and the reason for it is arithmetic: a member's past expenses and holdings are part of the household's financial history, so removing the person would silently change last year's totals and any tax figure computed from them. Archiving sets a status and a date; their name still renders on historical rows, marked as archived; no new record can be assigned to them; and they can be restored. <b>Revoking access is a separate action</b> — sessions killed, invites voided — because someone can stop having a login while their history stays perfectly valid, and someone can leave the household while still needing access to their own past records for a while.</li>
+        <li><b>Erasing a person is not the same as erasing their money.</b> When a genuine deletion is required — someone exercising their right to erasure, or an account being closed — personal identifiers are removed while the financial rows are reattributed to a placeholder member. The household's totals do not move. That distinction is what stops a deletion request from quietly corrupting five years of net-worth history, and it is worth building deliberately rather than discovering when the first request arrives.</li>
+        <li><b>Per-member net worth is a filter</b> over the same tables, so "my portfolio" and "our portfolio" are the same screen.</li>
+        <li><b>A household switcher sits beside the member filter</b>, appearing only when you belong to more than one — the demo household during the build, and later a parents' household if you ever help with theirs. Switching changes everything on screen; nothing is ever aggregated across households.</li>
+      </ul>
+    </section>
+
+    <!-- 11 -->
+    <section id="arch">
+      <h2><span class="sn">12</span>One codebase, three shells</h2>
+      <p class="lede">Hosting on GitHub Pages means there is no server of your own — Pages serves static files and nothing else. That single constraint decides the architecture, and it happens to be the same architecture that gets you into the app stores.</p>
+      <div class="callout warn">
+        <h4>This replaces the earlier recommendation</h4>
+        <p>Revision 1 of this blueprint proposed a server-rendered Next.js app with its own Postgres. That cannot run on GitHub Pages. The app becomes a <b>static single-page bundle</b> that talks directly to a managed backend, and everything the server used to enforce moves into database policies. Nothing about the domain model changes; the security model changes completely, which is why section 15 is the longest one here.</p>
+      </div>
+      <div class="stack-grid">
+        <div class="layer"><h4>App</h4><span class="pick">Vite + React + TypeScript</span><p>A static SPA. No server rendering, no API routes, no build-time secrets. The same bundle is the web app, the desktop app and the mobile app.</p></div>
+        <div class="layer"><h4>Desktop</h4><span class="pick">Tauri 2</span><p>Wraps the bundle in a native window using the OS webview. Single-digit-megabyte installers for Windows, macOS and Linux, code-signed and auto-updating.</p></div>
+        <div class="layer"><h4>Mobile</h4><span class="pick">Capacitor</span><p>Same bundle in a native shell with biometric unlock, push notifications, camera for receipts and secure keychain storage. Produces the .aab and .ipa the stores want.</p></div>
+        <div class="layer"><h4>Data &amp; auth</h4><span class="pick">Managed Postgres + RLS</span><p>The client talks to it directly over HTTPS, authenticated as the logged-in user. Row-level policies are the access-control layer.</p></div>
+        <div class="layer"><h4>Server-side bits</h4><span class="pick">Scheduled functions</span><p>Only what genuinely cannot happen on a device: NAV, gold and FX fetches, the monthly snapshot, invite issuance, reminder dispatch. Section 13 covers what runs where, and why parsing and exports stay on the device.</p></div>
+        <div class="layer"><h4>Offline</h4><span class="pick">IndexedDB + sync queue</span><p>Local cache with optimistic writes and a queue that drains on reconnect. On mobile this is the difference between an app that gets used and one that doesn't.</p></div>
+        <div class="layer"><h4>Live updates</h4><span class="pick">Postgres change streams</span><p>Household-scoped subscriptions over websockets, honouring the same row policies as any query, so an expense logged on one phone appears on the other. Push notifications carry it when the app is backgrounded.</p></div>
+        <div class="layer"><h4>Data access</h4><span class="pick">One thin repository layer</span><p>Every query goes through it; no component talks to the backend client directly. Swapping to a self-hosted instance, or to a different provider, then touches one folder.</p></div>
+        <div class="layer"><h4>UI</h4><span class="pick">Tailwind + shadcn/ui</span><p>Owned components rather than a dependency you fight. Charts hand-drawn in SVG for exact control at small sizes.</p></div>
+        <div class="layer"><h4>Quality</h4><span class="pick">Vitest + Playwright</span><p>Calculation engine unit-tested against workbook figures; Playwright covers entry and import flows; a dedicated suite tests the database policies.</p></div>
+      </div>
+      <ul class="plain">
+        <li><b>Why not Next.js.</b> Its value is on the server, and there is no server. A static export of Next.js buys you nothing Vite doesn't, at a higher build cost.</li>
+        <li><b>Why one bundle for three platforms.</b> The calculation engine, the currency rules and the FIRE projections are written once and behave identically everywhere. A separate native app would mean maintaining two implementations of arithmetic you need to trust.</li>
+        <li><b>Desktop earns its place</b> beyond convenience: the annual chores — importing a year of statements, reconciling, generating reports — are keyboard-and-large-screen work.</li>
+        <li><b>The path to a domain is a DNS change.</b> Static files move anywhere: a CNAME onto Pages, or a lift to any static host if you outgrow it. No code change, because there is no server to move.</li>
+      </ul>
+      <div class="callout">
+        <h4>Five decisions that cost nothing now and a migration later</h4>
+        <p>Each of these is a phase-1 choice, not a future feature. They are here because every one of them is trivial while the app has a single household and genuinely painful once it doesn't — and because together they are what let the same codebase go to an app store without an architectural change.</p>
+        <ul class="plain" style="margin-top:4px">
+          <li><b>Create the backend project in the Mumbai region.</b> Region is fixed at project creation and changing it later is a full migration. Indian financial data should sit in India regardless of who eventually uses the app.</li>
+          <li><b>Separate identity from household membership</b> (section 04), so one person can belong to more than one household.</li>
+          <li><b>Build account deletion and full data export in phase 1.</b> Both are app-store requirements and both are obligations under India's data protection rules. A correct deletion cascade across thirty-six tables is easy to write while the schema is fresh in mind and miserable to retrofit — and an export you can hand someone is also the backup you'd want for yourself.</li>
+          <li><b>Put every price behind a driver</b> (section 10), so the app never calls a data vendor from a client.</li>
+          <li><b>Keep all data access in one repository layer</b>, so self-hosting or changing provider is a folder, not a rewrite.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="work">
+      <h2><span class="sn">13</span>Where the work runs</h2>
+      <p class="lede">The app has no server, and the plan is that it never needs one. That sounds like a limitation until you notice that the demanding jobs here — parsing a statement, computing a tax year, producing the year-end pack — are <em>batch</em> work, not request-and-response. Batch work has places to run that an API doesn't.</p>
+
+      <h3>Three tiers, and what belongs in each</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Runs where</th><th>Does what</th><th>Why there</th></tr></thead>
+          <tbody>
+            <tr><td class="k">The device</td><td>Statement parsing, Excel and PDF export, the tax computation, every what-if</td><td>Instant, free, and the sensitive files never leave the machine</td></tr>
+            <tr><td class="k">Scheduled jobs</td><td>NAV, gold and FX fetches; the monthly valuation snapshot; reminder dispatch</td><td>Must happen whether or not anyone opens the app</td></tr>
+            <tr><td class="k">A CI runner</td><td>The one-off workbook migration; anything long or memory-hungry; nightly encrypted backups</td><td>A full machine for the minutes it is needed, at no cost on a public repository</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The heavy jobs, specifically</h3>
+      <ul class="plain">
+        <li><b>Password-protected consolidated statements.</b> The browser's PDF engine accepts a password and decrypts the file; these statements are digitally generated with real text, so extraction is a layout problem — reading positioned text and rebuilding rows — not character recognition. Doing it on the device means a document listing every folio, your PAN and your address is never uploaded anywhere. That is better than any server-side design, not a compromise with one.</li>
+        <li><b>Excel export.</b> Real multi-sheet workbooks with styling and formulas, generated in the page and saved straight to disk.</li>
+        <li><b>PDF export.</b> A layout library where tables need precise control; for the year-end pack, a properly styled HTML report printed to PDF gives better typography than any library and costs nothing.</li>
+        <li><b>Tier by device, not by feature.</b> A large statement will strain a phone. Imports and the year-end pack belong on the desktop shell, which has real memory and is where that work naturally happens anyway; the phone keeps quick entry and viewing.</li>
+        <li><b>One honest caveat.</b> Statement parsers break when an issuer changes their layout. That is true in every language and on every runtime — it is the hardest single component in this app, and choosing a different stack does not make it easier.</li>
+      </ul>
+
+      <div class="callout">
+        <h4>Why the tax engine is a pure module, not a service</h4>
+        <p>Written as pure functions — figures in, computation out, no database calls — it runs in the page for the interactive parts, where a regime comparison or a what-if slider has to feel instant, and the identical module runs in a scheduled function when a stamped, authoritative figure goes into the year-end pack. One implementation, two places, nothing duplicated and nothing to host. Purity is also the only way to test it properly: a year's worth of fixtures in, expected numbers out, no infrastructure involved.</p>
+      </div>
+
+      <h3>Adding a server later, if you decide to</h3>
+      <p>A JVM service — or any API — becomes worth its cost when credentials must be held somewhere other than a device (broker integrations), or when the app serves people beyond this household. Neither applies yet, and the design keeps the door open rather than walking through it:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Concern</th><th>What the move actually involves</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Database</td><td>Nothing. It is plain Postgres; a server connects to the same tables with an ordinary driver</td></tr>
+            <tr><td class="k">Authentication</td><td>Nothing rebuilt. A standard resource-server configuration validates the tokens already being issued</td></tr>
+            <tr><td class="k">Row policies</td><td>Either bypassed by a service role with authorisation enforced in code, or left in force underneath as a second layer — the better choice</td></tr>
+            <tr><td class="k">The client</td><td>Some repository methods call an API instead of the database. Components never knew the difference, so they don't change</td></tr>
+            <tr><td class="k">Domain</td><td>Site on the domain, API on a subdomain. A CORS setting</td></tr>
+            <tr><td class="k">The tax engine</td><td><b>The one real cost.</b> Either keep running the module as-is in a runtime that speaks its language, or reimplement it — using the original as the reference and the same test fixtures on both sides, so you can prove the two agree before you switch</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Four rules that keep that door open</h3>
+      <ul class="plain">
+        <li><b>No provider types past the repository layer.</b> Components see your own domain objects, never a backend library's response shape.</li>
+        <li><b>Policies do access, not business rules.</b> A policy answers "may this user see this row". The moment a tax rule or a calculation lives inside one, it cannot move anywhere.</li>
+        <li><b>The tax engine stays pure.</b> No I/O, no queries, no clock reads — pass the date in. Portable to any runtime, and testable without one.</li>
+        <li><b>Prefer standard Postgres</b> over provider-specific extensions wherever a standard equivalent exists.</li>
+      </ul>
+      <p>Follow those and adding a server is a weekend of additive work rather than a migration — which is the whole point of deciding now not to have one.</p>
+    </section>
+
+    <!-- 14 -->
+    <section id="db">
+      <h2><span class="sn">14</span>Picking the free database</h2>
+      <p class="lede">A static client needs a backend that provides authentication, authorisation and scheduled jobs, not just storage. That narrows the field considerably.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Option</th><th>Free tier</th><th>Auth &amp; row security</th><th>Catch</th></tr></thead>
+          <tbody>
+            <tr><td class="k pick">Supabase</td><td class="pick">500 MB Postgres, 1 GB files, 5 GB egress, 50k monthly active users, 500k function calls, 2 active projects</td><td class="pick">Built in — Postgres row-level security with the logged-in user's ID, MFA, OAuth</td><td class="pick">Free projects pause after a week of inactivity; wakes on demand or on a scheduled ping</td></tr>
+            <tr><td class="k">Neon</td><td>0.5 GB storage, 100 compute-hours a month, 100 projects, branching</td><td>Postgres RLS available, but you supply the auth service</td><td>Compute scales to zero after 5 minutes; you still need auth, storage and functions from somewhere</td></tr>
+            <tr><td class="k">Turso</td><td>5 GB, 100 databases, 500M row reads and 10M writes a month</td><td>SQLite-family; auth and policies are yours to build</td><td>Excellent for a local-first design with per-household databases; more assembly required</td></tr>
+            <tr><td class="k">Cloudflare D1</td><td>5 GB total, 5M row reads and 100k writes a day</td><td>Access control lives in your Workers code</td><td>Needs Workers in front of it — which means you're writing the server you were trying to avoid</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>Recommendation: Supabase.</b> It is the only one of the four that gives a static client all four things it cannot do for itself — identity, row-level authorisation, file storage and scheduled server-side jobs — without you operating anything. 500 MB is enormous for a household: a decade of daily prices, transactions and snapshots for this portfolio is a few tens of megabytes.</p>
+      <p>The pause-after-inactivity rule is the one real annoyance, and it is solved by the weekly keep-alive job in section 16. Nothing about the schema is Supabase-specific — it is ordinary Postgres, so moving to Neon or a self-hosted instance later is a dump and restore plus swapping the auth provider.</p>
+    </section>
+
+    <!-- 13 -->
+    <section id="security">
+      <h2><span class="sn">15</span>Security</h2>
+      <p class="lede">Publishing a finance app as public static files inverts the usual model: there is no trusted middle tier, the code is readable by anyone, and the database is directly addressable from the internet. That is workable — it is how a great many production apps run — but only if you take the following as non-negotiable.</p>
+
+      <h3>The threat model, honestly</h3>
+      <p>The realistic risks, in order, are: someone gets one family member's credentials; a permissive database policy lets one household read another's rows; a privileged key ends up in the repository; a dependency you didn't audit ships malicious code in a release build. Sophisticated attacks are not the concern. Every measure below targets one of those four.</p>
+
+      <div class="rules">
+        <div class="rule"><div class="rh"><strong>Deny by default in the database</strong><h4>Layer 01</h4></div>
+          <p>Row-level security enabled on every table, with no permissive fallback policy anywhere. A table without an explicit policy returns nothing — that is the desired behaviour, and a new table that someone forgets to write policies for should be inaccessible rather than open. Policies key off the authenticated user's ID resolved to a household membership, so a stolen session can only ever see one household.</p></div>
+        <div class="rule"><div class="rh"><strong>Test the policies like code</strong><h4>Layer 02</h4></div>
+          <p>A test suite that authenticates as each role and asserts what it cannot see: a contributor reading another member's holdings gets zero rows; a viewer attempting an update fails; a user from household B querying household A's tables gets nothing. This suite runs in CI and blocks the deploy. Policy bugs are the single most likely way this app leaks, so they get the same rigour as the tax arithmetic.</p></div>
+        <div class="rule"><div class="rh"><strong>Two keys, and only one of them ships</strong><h4>Layer 03</h4></div>
+          <p>The public client key is designed to be public and is harmless on its own, because it grants nothing that policies don't allow. The privileged service key bypasses every policy and must never appear in the repository, the bundle, a build log, or an Actions secret used at build time. It lives only in the backend's own function environment. Add a CI check that greps the build output for anything resembling it, and rotate on the slightest doubt.</p></div>
+        <div class="rule"><div class="rh"><strong>Strong identity</strong><h4>Layer 04</h4></div>
+          <p>Passkeys where the platform supports them, with password and an authenticator-app code as the fallback. A passkey is bound to the real domain, so a convincing lookalike page cannot use one, and the database holds only a public key — nothing worth stealing. Time-based one-time-password MFA is mandatory on every account, whatever the role — no account on the system is ever protected by a password alone.</p>
+          <p><b>SMS codes are not offered at all.</b> SIM-swap is a live attack, the method has been formally deprecated as an authenticator, and sending transactional messages in India carries registration overhead — more cost and more friction for less security than an app-generated code. Email one-time codes appear only in recovery, never as a way to sign in, because their strength is exactly the strength of the mailbox behind them.</p>
+          <p><b>Federated sign-in is deliberately declined.</b> Signing in with a large provider is secure and convenient, but it makes a third party the gatekeeper to the household's financial records, a suspended account becomes a lockout, and offering one provider on iOS obliges you to offer another. Revisit only if adoption genuinely stalls without it.</p>
+          <p>Sessions are short-lived with rotating refresh tokens, revocable from a device list, and a re-authentication prompt stands before destructive or sensitive actions — deleting a member, exporting the full dataset, changing someone's role.</p></div>
+        <div class="rule"><div class="rh"><strong>No open front door</strong><h4>Layer 05</h4></div>
+          <p>Public sign-up disabled. Accounts are created only by accepting a single-use, expiring invite. This alone removes most automated abuse: the app has no registration endpoint to attack, and a stranger who finds the URL sees only a login screen and can't get past it.</p></div>
+        <div class="rule"><div class="rh"><strong>Harden the page itself</strong><h4>Layer 06</h4></div>
+          <p>A strict content-security policy with no inline scripting, restricting connections to your own backend origin; subresource integrity on anything loaded from a CDN — better still, bundle everything and load nothing externally. Referrer policy set to send no cross-origin referrers, frame-ancestors set to none, and no third-party analytics or tag managers, ever. HTTPS is enforced for you on the Pages domain.</p></div>
+        <div class="rule"><div class="rh"><strong>Minimise what you store</strong><h4>Layer 07</h4></div>
+          <p>Never store bank or broker credentials — no feature may ever require them. Account identifiers keep the last four digits only; nothing in this blueprint's arithmetic needs a full account number. Policy documents and statements go to encrypted object storage behind short-lived signed links, never a public bucket. The data you don't hold cannot be stolen from you.</p></div>
+        <div class="rule"><div class="rh"><strong>Guard the supply chain</strong><h4>Layer 08</h4></div>
+          <p>Committed lockfile and clean installs only. Automated dependency updates with review. A vulnerability scan and static analysis on every pull request. Workflow actions pinned to commit hashes rather than moving tags, workflow permissions set to read-only by default and widened only where a job genuinely needs it, and deployment authenticated by short-lived tokens rather than stored credentials. Branch protection so nothing reaches the default branch without passing all of it.</p></div>
+        <div class="rule"><div class="rh"><strong>Defend the device</strong><h4>Layer 09</h4></div>
+          <p>Auto-lock after inactivity with biometric or PIN re-entry on mobile and desktop. Tokens in the OS keychain on native shells, not in browser storage. Nothing sensitive cached in plain local storage beyond what a session needs. Screenshot suppression on the app-switcher view is a small touch that matters for a screen showing your net worth.</p></div>
+        <div class="rule"><div class="rh"><strong>Plan for being locked out</strong><h4>Layer 10</h4></div>
+          <p>Passkeys make lockout a real risk rather than a theoretical one: lose the phone and the laptop together and there is no forgotten-password path, because there is no password. Three things prevent that becoming permanent. <b>One-time recovery codes</b> issued at enrolment and kept physically — on paper, not in a manager sitting on the same device. <b>A second person holding owner rights</b>, so a locked-out owner is not a locked-out household. And a defined <b>lost-device path</b>: someone else revokes that session from the device list and re-issues an invite, which is why sessions are listed and revocable in the first place. Email one-time codes belong here and only here.</p></div>
+        <div class="rule"><div class="rh"><strong>No superuser account, ever</strong><h4>Layer 11</h4></div>
+          <p>The owner role administers a household and that is the highest privilege the system has. There is deliberately no account that can read across households — such a thing is the leaked-privileged-key threat given a permanent home and a login page pointing at it, and this household does not need one, because you are already the owner of your own data. No developer backdoor either: debug against your own household, or a test one holding fabricated figures.</p>
+          <p>If the app is ever opened to other people and support access becomes genuinely necessary, it is a procedure rather than an account: separate credentials with mandatory MFA, <b>no standing access</b> but time-boxed elevation with a reason recorded first, every action — reads included — written to the audit log, and, wherever possible, visibility of account state and error context rather than financial values, since most support questions never need the numbers. Emergencies get a documented break-glass path requiring two people.</p></div>
+        <div class="rule"><div class="rh"><strong>Log and back up</strong><h4>Layer 12</h4></div>
+          <p>An append-only audit log written by database triggers, not by the client, recording who changed what and when — insertable by the system, updatable by nobody. Nightly encrypted database dumps to storage you control, with a restore rehearsed at least once. The workbook's real strength is that it is one file you can copy; don't lose that property.</p></div>
+      </div>
+
+      <div class="callout">
+        <h4>On the repository being public</h4>
+        <p><b>Repository visibility and site visibility are two different settings.</b> On the free plan, Pages publishes only from a public repository. A paid personal or organisation plan lets you publish from a private one — but the published site stays public either way. Paying hides your source code, not your app. Genuine access control on the site itself exists only on enterprise plans, and is not worth pursuing here: what protects the data is the login and the row policies, never the obscurity of the URL.</p>
+        <p>So plan on a public repository. Treat the source as published from day one — which is fine, because nothing in the ten layers above depends on the code being secret, and it makes the discipline in layers 03 and 08 load-bearing rather than aspirational. Two practical notes: Actions minutes are metered on private repositories and free on public ones, and switching the repository to private later is a settings change plus a plan upgrade, with nothing in the app affected.</p>
+      </div>
+    </section>
+
+    <!-- 14 -->
+    <section id="ship">
+      <h2><span class="sn">16</span>Shipping from Actions</h2>
+      <p class="lede">Five workflows. The first is the deploy; the rest are the ones that keep a free-tier app alive and honest.</p>
+      <pre class="code"><b>.github/workflows/</b>
+  <u>deploy.yml</u>        <i>on push to main → typecheck, unit tests, RLS policy tests,</i>
+                     <i>dependency audit, static analysis → build → publish to Pages</i>
+  <u>preview.yml</u>       <i>on pull request → build + test only, no deploy</i>
+  <u>backup.yml</u>        <i>nightly cron → database dump → encrypt → retain as artifact</i>
+  <u>keepalive.yml</u>     <i>weekly cron → one authenticated read, so the free project</i>
+                     <i>never hits its inactivity pause</i>
+  <u>release.yml</u>       <i>on tag → Tauri desktop installers (three OSes) and,</i>
+                     <i>later, signed mobile bundles for the stores</i></pre>
+      <ul class="plain">
+        <li><b>Configuration, not secrets.</b> The backend URL and public client key are build-time configuration — they end up in the bundle regardless, so they are repository variables, not secrets. No secret is needed to build this app at all, which is exactly the property you want.</li>
+        <li><b>The deploy gate is the security gate.</b> Policy tests, audit and static analysis run before the publish step and fail the workflow. A deploy that skips them is a deploy that could publish an open database.</li>
+        <li><b>Pages limits are generous for this</b> — the practical constraints are a site size around a gigabyte, a soft monthly bandwidth allowance, and a cap of a few builds an hour. A finance app for one family is nowhere near any of them.</li>
+        <li><b>Desktop releases</b> build on all three runner operating systems in one job matrix and attach installers to the GitHub release. Signing certificates are the one place real secrets appear, and they belong in environment-scoped secrets with required approval.</li>
+        <li><b>Store submissions come later</b> and need the paid developer accounts, but nothing about the code changes: the same bundle, wrapped, with a store listing and a privacy declaration. Building the mobile artefacts in CI from the start means that day is a form-filling exercise rather than a porting exercise.</li>
+      </ul>
+    </section>
+
+    <!-- 15 -->
+    <section id="migration">
+      <h2><span class="sn">17</span>First run</h2>
+      <p class="lede">Nothing is migrated from the existing workbook — it is a <b>reference for structure, not a source of data</b>. Every real figure is entered fresh, by one of two routes: a guided setup for entering as you go, or a template workbook you fill in and upload when you would rather do it all at once in Excel. Both produce the same thing: a correct opening position on a single known date.</p>
+
+      <h3>What the workbook still gives you</h3>
+      <ul class="plain">
+        <li><b>The category list.</b> All 33 expense names and their Fixed/Variable split are seeded as defaults, because that vocabulary is the household's and is worth keeping.</li>
+        <li><b>The asset taxonomy</b> — the nine classes the NetWorth sheet rolls up become the app's classes.</li>
+        <li><b>The FIRE parameters</b> — 25×, 30×, 50× and 6% inflation as the starting profile.</li>
+        <li><b>The field lists</b> for bonds, deposits and policies, which is where the sheet was already more thorough than most apps.</li>
+      </ul>
+
+      <h3>Guided setup, in the order that makes the first number correct</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Step</th><th>What you enter</th><th>Why here</th></tr></thead>
+          <tbody>
+            <tr><td class="k">1 · Household</td><td>Base currency, tax year start, members and their relationships</td><td>Everything else hangs off a household and a member</td></tr>
+            <tr><td class="k">2 · The opening date</td><td>One date — the position everything is measured from</td><td>A single as-of date is the thing the workbook never had. Pick it, then value everything as at that date rather than whenever you get to each screen</td></tr>
+            <tr><td class="k">3 · Accounts and cash</td><td>Bank and card balances, the emergency fund</td><td>Quick, and it makes the first net-worth figure feel real</td></tr>
+            <tr><td class="k">4 · Investments</td><td>Funds, equity, bonds, deposits, retirement, gold, crypto — units or amounts, and cost basis where you know it</td><td>Cost basis can be filled in later; current value is what the opening position needs</td></tr>
+            <tr><td class="k">5 · Property and liabilities</td><td>Each property with its full cost basis; loans and card balances</td><td>Net worth is wrong without both sides</td></tr>
+            <tr><td class="k">6 · Protection</td><td>Policies with cover, premium and renewal dates</td><td>Populates the calendar immediately, which is the first thing that will feel useful</td></tr>
+            <tr><td class="k">7 · Income and budgets</td><td>Salary and its structure, other income, and a planned amount per category</td><td>Unlocks the tax engine and the cover-adequacy read, and turns the categories into envelopes</td></tr>
+            <tr><td class="k">8 · Targets</td><td>An allocation profile, the FIRE inputs, the SIP step-up assumption</td><td>Drift and projection need a target to measure against</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Steps 1 to 5 produce a usable app. Six to eight can wait a week without the headline number being wrong — the setup should say so rather than presenting eight steps as a wall.</p>
+
+      <h3>The other route: fill in a sheet and upload it</h3>
+      <p>Entering fifty holdings through a form is miserable, and a spreadsheet is genuinely the better tool for bulk data entry — so the app hands you one. <b>Download template</b> produces a workbook with a sheet per entity, the correct headers already in place, dropdown validation on every field that has fixed options, an instructions sheet, and two or three clearly-marked example rows showing the expected shape. You fill it in at your own pace, offline, in the tool you already know, and upload it.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Stage</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Parse</td><td>Read on the device — the workbook is never uploaded anywhere. Amounts accept the way people actually type them: ₹ signs, lakh grouping, commas, blanks</td></tr>
+            <tr><td class="k">Match</td><td>Names are resolved to existing records where possible — a scheme name to an instrument, a category name to a category, a member's name to a member — and anything ambiguous is raised rather than guessed</td></tr>
+            <tr><td class="k">Preview</td><td><b>Nothing is written until you have seen it.</b> A row-by-row summary of what will be created and changed, with problems listed by sheet, row and column, each saying what is wrong rather than just that something is</td></tr>
+            <tr><td class="k">Commit</td><td>All of a sheet or none of it, once the preview is clean. The batch is recorded, so an import that turns out to be wrong can be reversed as a unit instead of unpicked row by row</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="plain">
+        <li><b>Re-uploading must not duplicate.</b> Each template row carries a reference key, so uploading a corrected sheet updates the rows it matches instead of creating a second copy of your portfolio. This is the single most important detail in the whole feature, and the one most bulk importers get wrong.</li>
+        <li><b>The template and the export are the same shape.</b> "Export everything" produces a workbook in exactly the format the uploader accepts. That symmetry is worth designing in deliberately, because it turns three separate things into one mechanism: a bulk-entry path, a bulk-<em>edit</em> path — export, fix a hundred rows in Excel, upload — and a backup you can read and restore without the app existing.</li>
+        <li><b>Not just for setup.</b> The same upload handles a year of transactions, a monthly balance refresh, or a batch of new holdings. It is a permanent route into the app, not a migration tool that gets deleted after phase one.</li>
+        <li><b>The template carries a version.</b> When the schema gains a column, old templates are either upgraded on read or rejected with a clear message — never parsed by position and silently misread.</li>
+      </ul>
+
+      <div class="callout">
+        <h4>Definition of done for phase 1</h4>
+        <p>The old test was "the app matches the workbook to the rupee". With no import, that test is gone and needs replacing. The new one: <b>enter the opening position, take a snapshot, and have a second person independently add up the same accounts and arrive at the same net worth.</b> Then leave it a month and check that the month-end snapshot, the month's transactions and the opening figure reconcile — closing equals opening plus contributions plus change in value minus spending. If that identity doesn't hold, something in the ledger is wrong, and it is far cheaper to find out in month one than in year three.</p>
+      </div>
+    </section>
+
+    <!-- 16 -->
+    <section id="roadmap">
+      <h2><span class="sn">18</span>Roadmap</h2>
+      <p class="lede">Each phase ends with something you would actually use. Phase one alone already beats the workbook.</p>
+      <div class="phases">
+        <div class="phase now">
+          <div class="ph"><h3>Phase 1 — Parity, with history</h3><span class="when">Foundation</span></div>
+          <p>Schema with currency on every amount and identity split from household membership, row-level policies and their test suite, invite-only auth with MFA, backend project created in the Mumbai region. Guided first-run setup that produces a dated opening position. Manual entry for every asset class including property with its full cost basis, all of it through the repository layer. Net worth, allocation, monthly snapshot job, prices behind their driver. Expense categories as budgets over a transaction ledger with quick-add. FIRE screen with the live inflation ladder. Light and dark themes and privacy mode from the first screen, since retrofitting a theme is far worse than starting with one. Account deletion and data export. <b>The demo household comes first</b>, seeded before the real one exists — it is where the app is exercised and improved, what you show the family when asking them to join, and the thing that proves the row policies hold with two households in one database before any real figure depends on them. The real household is created once the app has earned it. Deploying to Pages from Actions from the first commit.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 2 — The phone and the desktop</h3><span class="when">Adoption</span></div>
+          <p>Capacitor and Tauri shells off the same bundle, biometric unlock, offline queue, push reminders, unified calendar, recurring auto-post. Member logins and roles so the household uses it rather than watching you use it, with the guided tour on first run — the demo they were shown and the app they now hold should feel like the same thing. Privacy mode wired to the app switcher. This phase decides whether the ledger stays current.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 3 — Two currencies and the world</h3><span class="when">Global</span></div>
+          <p>Daily FX job, dual-currency display, native-versus-rupee returns, the Global screen: foreign holdings, RSU vesting, dividends net of withholding, LRS and TCS running totals, and calendar-year foreign-asset rows accumulating quietly in the background. <b>Not optional in this household</b> — there is a live US brokerage account alongside the Indian feeder, so the disclosure obligations are real from day one rather than something a future account might trigger. The peak-value capture that feeds them starts in phase 1 with the snapshot job, because that number cannot be recovered afterwards.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 4 — Stop typing</h3><span class="when">Automation</span></div>
+          <p>NAV and gold jobs, eCAS parser, broker and bank statement import with the payee rules engine. XIRR and lot-level capital gains switch on for every holding with a complete ledger.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 5 — The tax engine</h3><span class="when">Highest value</span></div>
+          <p>Rules loaded as dated data, the computation pipeline, and the old-versus-new regime comparison. Capital gains derived from the lots that phase 4's imports filled in — which is why this phase follows that one rather than leading. Then the live prompts that make it worth opening: unused equity allowance, holding-period clock, carried-forward losses, advance-tax instalments. Foreign tax credit workings and the year-end pack for your accountant.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 6 — Decisions and reports</h3><span class="when">Depth</span></div>
+          <p>Goals beyond FIRE, coast-FIRE and scenario compare, rebalancing against target weights, bond maturity ladder, loan prepayment analysis, insurance cover-gap. Then the reporting layer: tax-year and calendar-year, Excel and PDF export.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 7 — Domain and stores</h3><span class="when">When ready</span></div>
+          <p>Custom domain pointed at the same static build. Paid developer accounts, store listings, privacy declarations, signed builds from the release workflow, and a beta track for the family before anything goes public. No rewrite — the artefacts have been building in CI since phase two.</p>
+        </div>
+        <div class="phase">
+          <div class="ph"><h3>Phase 8 — opening it to everyone</h3><span class="when">Optional, and mostly not code</span></div>
+          <p>If the app is ever offered publicly, the architecture holds: multi-tenancy, policy-based authorisation and a static bundle are already in place. What changes is roughly fifteen percent of the front end and a great deal of everything else. Section 19 sets out what that involves — read it before committing, not after.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 17 -->
+    <section id="public">
+      <h2><span class="sn">19</span>If it ever goes public</h2>
+      <p class="lede">A family tool and a consumer product are the same code and different undertakings. Nothing here needs deciding now — it is recorded so that the phase-1 choices above make sense, and so the day you consider it you are reading a checklist rather than discovering a problem.</p>
+
+      <h3>What actually changes in the code</h3>
+      <p>Invite-only sign-up becomes open registration with email verification and abuse controls — the one deliberate reversal of a security decision, compensated by rate limiting and bot defences. Onboarding and empty states, because new users arrive with nothing. Consent and privacy screens. A crash reporter. Account deletion and export, already built in phase 1. The domain model, the calculation engine and the currency rules are untouched.</p>
+
+      <h3>What the stores require</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Requirement</th><th>Detail</th><th>Watch out for</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Play developer account</td><td>One-off fee, then listing, content rating, data safety form and a privacy policy URL</td><td>A <em>personal</em> account opened after November 2023 must run a closed test with <b>12 testers opted in continuously for 14 days</b> before it can even apply for production, and a gap resets the clock. Organisation accounts are exempt. Start this early or register as an organisation — it is a calendar constraint, not a workload one</td></tr>
+            <tr><td class="k">Apple developer account</td><td>Annual fee, App Review, privacy labels, in-app account deletion</td><td>The genuine rejection risk is the minimum-functionality rule: a wrapped web page gets refused. Biometric unlock, push, camera receipt capture and offline entry are what make it a real app — they are in phase 2 for that reason, so keep them</td></tr>
+            <tr><td class="k">Both</td><td>Age rating, encryption export declaration, support contact, update cadence</td><td>Target-API deadlines move every year; a published app that stops being updated eventually stops being listed</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What the law requires</h3>
+      <ul class="plain">
+        <li><b>India's data protection regime is mid-rollout.</b> The rules notified in 2025 run an eighteen-month phased implementation: soft enforcement through late 2026, with full adjudication and penalties from May 2027. A public launch lands inside that window, so the obligations are not theoretical — a consent notice, a named grievance officer with published contact details, breach reporting, and automated deletion and retention workflows.</li>
+        <li><b>Stay out of advice.</b> Everything the app says should describe what is, not prescribe what to do. Organising someone's own figures is not regulated; telling them what to buy or how much cover to hold moves toward investment-adviser registration. The cover-gap and lever screens need to read as arithmetic with its assumptions on display.</li>
+        <li><b>Tax outputs are working papers.</b> Label them as material for a professional to check, never as a filed position.</li>
+        <li><b>Terms and a privacy policy</b> that actually describe what the app does with data — which, in this design, is very little, and that is worth saying plainly.</li>
+      </ul>
+
+      <h3>Saying what is true about privacy</h3>
+      <p class="lede">This app has an unusually good privacy story — and it is <em>not</em> the story most privacy-marketing tells. The temptation is to reach for the familiar claim: offline, on-device, no servers. That claim is false here, and it is exactly the kind of sentence that ends up in a store data-safety declaration, where being wrong gets an app removed rather than merely embarrassed.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>The usual claim</th><th>True of this design?</th></tr></thead>
+          <tbody>
+            <tr><td class="k">100% offline</td><td><b>No.</b> A static client talking to a hosted database over the network</td></tr>
+            <tr><td class="k">Data never leaves your device</td><td><b>No.</b> It lives in a managed Postgres instance in India</td></tr>
+            <tr><td class="k">No accounts</td><td><b>No.</b> Invite-only accounts are the whole point of a family app</td></tr>
+            <tr><td class="k">No servers</td><td><b>No.</b> There is a server; it just isn't one you operate</td></tr>
+            <tr><td class="k">No data collection</td><td><b>Misleading.</b> Nothing is collected <em>about</em> the user, but their financial records are certainly stored</td></tr>
+            <tr><td class="k">No tracking</td><td><b>Yes</b> — no analytics of any kind, by invariant</td></tr>
+            <tr><td class="k">No ads</td><td><b>Yes</b></td></tr>
+            <tr><td class="k">Your data under your control</td><td><b>Largely.</b> Full export, real deletion, ordinary Postgres you could self-host — on a third party's infrastructure today</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The honest version is stronger anyway, because every clause survives scrutiny:</p>
+      <div class="callout">
+        <h4>Privacy statement — every sentence defensible</h4>
+        <p><em>Your data, in India, with nobody watching. No ads, no trackers, no analytics of any kind — not even our own. We never ask for your bank or broker passwords, and never will. Statements you import are read on your device and never uploaded. Account numbers are stored as the last four digits only. Your data lives in Indian data centres, protected by database-level access rules that are tested on every release, and you can export all of it to a spreadsheet or delete it entirely whenever you like. The code is open for anyone to inspect.</em></p>
+      </div>
+      <p>Each of those maps to a decision made earlier rather than a promise added later: the no-analytics invariant, the ban on credential storage, statement parsing on the device in section 13, last-four identifiers in section 15, the Mumbai region, the policy suite that gates the deploy, the export and deletion built in phase 1, and a public repository.</p>
+
+      <h3>Two routes to a stronger claim, and what they cost</h3>
+      <ul class="plain">
+        <li><b>Genuinely local-only</b> would earn the offline claim outright — and would remove the reason this app exists. One device, no family members on their own phones, no sync. Building sync back means a server, which is where you started. This is the same trade examined when the architecture was chosen, decided the same way.</li>
+        <li><b>End-to-end encryption</b> is the real middle path: data still syncs, but the client encrypts before upload and the server holds only ciphertext, so <em>we cannot read your data</em> becomes literally true. The costs are concrete. A scheduled job cannot compute values it cannot read — which kills the monthly snapshot, and with it the peak-value capture that foreign-asset disclosure depends on. Key recovery becomes unforgiving: lose the key and the data is gone, with no reset possible by design. For a household app with one maintainer, the disclosure loss alone makes this a poor trade. Worth knowing it exists; not worth building.</li>
+      </ul>
+
+      <div class="callout warn">
+        <h4>Check privacy copy more carefully than any other text</h4>
+        <p>Marketing language about privacy is the easiest thing in this project to generate and the most dangerous to wave through — fluent, confident, and wrong in ways that read as reassuring. Whenever a README, a landing page, a store listing or an onboarding screen makes a claim about data, check it clause by clause against the table above. Every other kind of mistake in this app is a bug; this one is a misrepresentation.</p>
+      </div>
+
+      <h3>What it costs and what security becomes</h3>
+      <p>The free tier is a household, not a userbase. A paid backend plan removes the storage and egress ceilings and the inactivity pause, and adds point-in-time recovery — which you want the moment the data is not only yours. Add the two store fees and a domain.</p>
+      <p>The security posture in section 15 does not change in kind, only in rigour: the policy test suite becomes non-negotiable, a penetration test precedes launch, monitoring and alerting stop being optional, secrets rotate on a schedule, a responsible-disclosure address is published, and an incident-response plan exists because breach notification is now a legal duty rather than good manners.</p>
+
+      <h3>Live data at public scale</h3>
+      <p>Sync between users and devices scales without redesign — change streams are already household-scoped and already policy-enforced. Live <em>market</em> prices are the constraint, and it is commercial rather than technical: exchange data is licensed, and broker APIs are issued per user with terms that generally forbid passing quotes to anyone else. The two lawful routes are a data vendor with a redistribution licence, or each user connecting their own broker and pulling under their own entitlement. Both are new drivers behind the interface in section 10, which is the entire reason that interface exists.</p>
+    </section>
+
+    <!-- 20 -->
+    <section id="trust">
+      <h2><span class="sn">20</span>Earning trust</h2>
+      <p class="lede">Security and trust are different problems. The design in section 15 makes the app safe; none of it makes anyone <em>believe</em> it is safe. The principle that closes the gap is to <b>reduce how much trust is required</b> rather than to make more promises: every claim is something a person must take on faith, and every structural choice is something they can check. Shift weight from the first to the second and hesitation falls away on its own.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What a user would otherwise have to take on faith</th><th>What replaces it</th></tr></thead>
+          <tbody>
+            <tr><td class="k">"They don't track me"</td><td>A public repository with no analytics dependency to find</td></tr>
+            <tr><td class="k">"My data is safe from other households"</td><td>An access-policy test suite that blocks the deploy, with its results published per release</td></tr>
+            <tr><td class="k">"They can't read my documents"</td><td>Documents encrypted on the device before upload</td></tr>
+            <tr><td class="k">"The owner isn't reading my expenses"</td><td>Private entries the owner's queries cannot return, and an audit log that shows what was read</td></tr>
+            <tr><td class="k">"I can leave whenever I want"</td><td>A full export offered before any real data is entered, and a self-hosting guide</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Private entries — the hesitation closest to home</h3>
+      <p>The first person who will quietly hold back is not a stranger. In a household where the owner sees everything, a spouse or an adult child has a standing reason to enter a little less than the truth — and a ledger with polite omissions is worse than no ledger at all, because it looks complete.</p>
+      <p>So any member can mark a transaction, an account, an income entry or a document as <b>personal</b>. It counts in their own figures and in household aggregates; the line-item detail is returned to nobody else, the owner included.</p>
+      <pre class="code"><b>Column</b>   visibility  <i>enum ('household','personal')  default 'household'</i>
+         on expense_txn, account, income_entry, document, holding
+
+<b>Policy</b>   using (
+           household_id = current_household()
+           and ( visibility = 'household'
+                 or member_id = current_member() )
+         )
+
+<b>Totals</b>  a security-definer function reads across both and returns
+         <i>sums only</i> — never rows — so household figures stay correct
+         for everyone while detail stays with its owner</pre>
+      <ul class="plain">
+        <li><b>The aggregate is the subtle part.</b> Household totals must include private amounts or the numbers disagree between members, which is worse than the problem being solved. A security-definer function is the standard way: it reads what the caller cannot and returns only the sum.</li>
+        <li><b>An honest limitation, and how to blunt it.</b> If a total is visible and only one entry is private, the private amount can be recovered by subtraction. So private amounts roll into a single <em>Personal</em> line per member rather than into fine-grained category totals — others learn that ₹18,400 of a member's spending was personal, and nothing about what it was. State this in the interface rather than letting someone discover it.</li>
+        <li><b>Make the feature visible.</b> A member should see "4 of your entries are private" on their own screen. A privacy control nobody can observe working is indistinguishable from one that does nothing.</li>
+        <li><b>The cost is real.</b> This touches every policy and every aggregate query, and it is the one item in this section that is not cheap. It is still worth it: completeness is the premise of the whole app, and this is what makes completeness safe to offer.</li>
+      </ul>
+
+      <h3>Encrypt what is never computed on</h3>
+      <p>Full end-to-end encryption was rejected in section 19 for a specific reason — a scheduled job cannot compute values it cannot read, which would cost the monthly snapshot and with it the peak-value capture that foreign-asset disclosure needs. That argument applies only to fields the server must read. It does not apply to most of what people are actually nervous about.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Encrypt on the device</th><th>Why it is safe to</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Uploaded documents</td><td>Policy PDFs and consolidated statements are stored and handed back, never parsed server-side — parsing already happens on the device</td></tr>
+            <tr><td class="k">Account identifiers</td><td>Displayed, never computed on</td></tr>
+            <tr><td class="k">Notes and payee names</td><td>Read by humans, not by jobs</td></tr>
+            <tr><td class="k">Policy and plan numbers</td><td>Reference data only</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Amounts, dates, units and currencies stay readable, because the snapshot job, the price driver and the tax engine need them. The result is a claim that is both strong and literally true: <b>uploaded documents cannot be read by the server, by construction</b> — and uploading a statement carrying folio numbers and a PAN is the single most frightening action in this app.</p>
+      <p><b>The hard part is keys, not ciphers.</b> A household data key, wrapped once per member with a key derived from their credential, stored in a <code>member_key</code> table; unwrapped in the client on sign-in and held only in memory. The recovery codes from layer 10 must also wrap a copy, or a forgotten password becomes permanently lost documents. Design that path first and test it before shipping the feature — encryption whose recovery story is an afterthought destroys more data than it protects.</p>
+
+      <h3>Show, don't tell</h3>
+      <ul class="plain">
+        <li><b>A "Where your data is" screen</b>, not a policy document. Which region holds it, what is stored, what never leaves the device, what runs on a schedule and when it last ran — in plain sentences, each linking to the file in the public repository that makes it true. A status page rather than a promise.</li>
+        <li><b>Show the audit log to members, including reads by the owner.</b> The audit table already exists for accountability; exposing it converts it into something better. If a spouse can see that her salary entry was viewed, the conversation stops being "please trust me" and becomes "check for yourself." Very few consumer apps do this, and here it costs almost nothing.</li>
+        <li><b>Publish what the tests proved.</b> Each release notes how many access-policy assertions ran and passed. It turns an invisible discipline into a number people can watch over time.</li>
+      </ul>
+
+      <h3>Prove the exit before asking for the entry</h3>
+      <ul class="plain">
+        <li><b>Offer the full export during setup</b>, before any real figure has been entered. Someone who has already seen the door open walks in far more readily than someone promised a key later.</li>
+        <li><b>Deletion issues a receipt</b> — what was removed, what was reattributed to a placeholder to keep household history intact, and when.</li>
+        <li><b>Publish the self-hosting guide.</b> Nothing says "you are not held hostage" as convincingly as documented instructions for leaving. It costs a page, and the schema is ordinary Postgres precisely so that page can exist.</li>
+      </ul>
+
+      <h3>An invitation someone can actually consent to</h3>
+      <p>The invite screen should say, before acceptance and in plain language, what the inviter will be able to see, what the new member can keep private, and what their role allows. "Venkat will see your expense totals but not entries you mark personal" is a materially different proposition from "join this household", and it is the moment when informed consent is either obtained or skipped. A role change later notifies the affected member — silent shifts in who can see what are how trust dies quietly.</p>
+
+      <h3>Small things that quietly cost trust</h3>
+      <ul class="plain">
+        <li><b>Request no permission you don't visibly need.</b> No contacts, no location, no SMS. An unexplained permission prompt undoes a page of careful privacy copy.</li>
+        <li><b>Never put figures in a notification or an email.</b> "Your card bill is due" — not the amount. Lock screens are read by whoever is nearby.</li>
+        <li><b>Nothing phones home on launch.</b> No availability ping, no version beacon, no warm-up request.</li>
+        <li><b>If crash reporting is ever added, scrub the payload or make it opt-in.</b> One stack trace carrying a balance undoes everything above.</li>
+        <li><b>Add SECURITY.md with a disclosure address now</b>, not at launch. It is free, and it signals that scrutiny is expected rather than feared.</li>
+      </ul>
+
+      <div class="callout">
+        <h4>Where to start</h4>
+        <p>Private entries first, because they unblock family adoption and everything else builds on the trust they create. Then document encryption, which is cheap and removes the scariest single action. Then the "Where your data is" screen and export-during-setup, which are both small. The visible audit log is the one nobody will ask for and the one worth building anyway — it is what turns this whole section from something told into something shown.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <span>Family Finance Buddy — blueprint revision 6, drawn from MyFinancial_25_26_Template.xlsx</span>
+    <span class="mono">10 sheets → 36 tables → 17 screens → 3 shells</span>
+  </div>
+</footer>

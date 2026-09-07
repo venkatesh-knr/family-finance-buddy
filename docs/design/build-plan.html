@@ -1,0 +1,348 @@
+<title>Family Finance Buddy Build Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F1F4F7; --surface:#FFFFFF; --surface-2:#F7F9FB;
+    --ink:#151B24; --ink-2:#3D4855; --muted:#68758A;
+    --line:#DCE3EB; --line-strong:#C3CDD9;
+    --brass:#9A6F14; --brass-soft:#F3E9D2;
+    --teal:#0D7466; --teal-soft:#DCEFEA;
+    --coral:#B0463A; --coral-soft:#F8E5E1;
+    --indigo:#39537F; --indigo-soft:#E3EAF5;
+    --radius:10px; --maxw:1080px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0D1117; --surface:#151C25; --surface-2:#1A222D;
+      --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+      --line:#26303C; --line-strong:#38434F;
+      --brass:#D9AC4C; --brass-soft:#312712;
+      --teal:#48BBA6; --teal-soft:#0F2B28;
+      --coral:#E08475; --coral-soft:#331915;
+      --indigo:#8FAEDC; --indigo-soft:#171F2E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1117; --surface:#151C25; --surface-2:#1A222D;
+    --ink:#E7EDF4; --ink-2:#C2CDDA; --muted:#8D9BAC;
+    --line:#26303C; --line-strong:#38434F;
+    --brass:#D9AC4C; --brass-soft:#312712;
+    --teal:#48BBA6; --teal-soft:#0F2B28;
+    --coral:#E08475; --coral-soft:#331915;
+    --indigo:#8FAEDC; --indigo-soft:#171F2E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:16px;line-height:1.62}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.08em .34em;font-size:.86em}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+
+  header.mast{border-bottom:1px solid var(--line);background:var(--surface)}
+  .mast-inner{max-width:var(--maxw);margin:0 auto;padding:42px 22px 32px;display:grid;gap:16px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);margin:0}
+  h1{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:clamp(32px,5vw,50px);line-height:1.07;margin:0;letter-spacing:-.015em}
+  .stand{font-size:17px;color:var(--ink-2);max-width:64ch;margin:0}
+
+  main{display:grid;gap:50px;padding:38px 0 80px}
+  section{display:grid;gap:16px}
+  h2{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:28px;margin:0;letter-spacing:-.01em;display:flex;gap:13px;align-items:baseline}
+  h2 .sn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--brass);flex:none}
+  h3{font-size:15px;font-weight:600;margin:0}
+  p{margin:0;max-width:70ch}
+  .lede{font-size:16.5px;color:var(--ink-2);max-width:66ch}
+  ul.plain{margin:0;padding-left:1.15em;display:grid;gap:7px;max-width:70ch}
+  ul.plain li::marker{color:var(--line-strong)}
+  h4{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:500}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.6px;min-width:540px}
+  th{text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+     color:var(--muted);padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+  td{padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+  tbody tr:last-child td{border-bottom:none}
+  td.k{color:var(--ink);font-weight:600;white-space:nowrap}
+
+  .stages{display:grid;border-left:2px solid var(--line)}
+  .stage{padding:0 0 28px 24px;position:relative;display:grid;gap:10px}
+  .stage:last-child{padding-bottom:0}
+  .stage::before{content:"";position:absolute;left:-8px;top:5px;width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--line-strong)}
+  .stage.now::before{background:var(--brass);border-color:var(--brass)}
+  .sh{display:flex;flex-wrap:wrap;gap:11px;align-items:baseline}
+  .sh h3{font-size:16px}
+  .sh .when{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .stage p{font-size:14.4px;color:var(--ink-2)}
+  .stage ul{margin:0;padding-left:1.1em;display:grid;gap:5px;font-size:14.2px;color:var(--ink-2);max-width:68ch}
+  .gate{border-left:2px solid var(--teal);padding:6px 0 6px 12px;font-size:13.8px;color:var(--ink-2);background:var(--teal-soft);border-radius:0 6px 6px 0;padding-right:12px}
+  .gate b{color:var(--teal)}
+
+  .callout{border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:8px;background:var(--surface);padding:15px 17px;display:grid;gap:7px}
+  .callout h4{color:var(--brass)}
+  .callout p{font-size:14.4px;color:var(--ink-2)}
+  .callout.warn{border-left-color:var(--coral)}
+  .callout.warn h4{color:var(--coral)}
+
+  pre.code{font-family:"IBM Plex Mono",monospace;font-size:12.6px;line-height:1.62;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px 18px;overflow-x:auto;margin:0;color:var(--ink-2);white-space:pre-wrap}
+  pre.code b{color:var(--ink);font-weight:600}
+  pre.code i{color:var(--muted);font-style:normal}
+
+  .models{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .mcard{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 17px;display:grid;gap:9px}
+  .mcard.op{border-color:var(--brass)}
+  .mcard h3{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600}
+  .mcard.op h3{color:var(--brass)}
+  .mcard ul{margin:0;padding-left:1.1em;display:grid;gap:5px;font-size:13.6px;color:var(--ink-2)}
+
+  footer{border-top:1px solid var(--line);background:var(--surface)}
+  .foot{max-width:var(--maxw);margin:0 auto;padding:24px 22px;font-size:12.6px;color:var(--muted)}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="mast">
+  <div class="mast-inner">
+    <p class="eyebrow">Family Finance Buddy · build plan</p>
+    <h1>Skeleton first, then breadth</h1>
+    <p class="stand">The instinct is to attack the risky parts first. Here that would be wrong — the three flagged risks all have contained fallbacks and none of them would change the architecture. The one thing that <em>would</em> change everything is whether a static page, a database enforcing its own access rules, and a phone can be made to work together at all. That gets proved in week one, on a single expense row.</p>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+
+  <!-- 01 -->
+  <section>
+    <h2><span class="sn">01</span>Why not risk-first</h2>
+    <p class="lede">A spike is worth doing early when failure would change the design. Measured against that test, the three risks flagged earlier don't qualify — and one unflagged thing does.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Risk</th><th>If it fails</th><th>Design impact</th><th>Do it</th></tr></thead>
+        <tbody>
+          <tr><td class="k">CAS parser</td><td>Lots and transaction history are entered by hand or from broker CSVs</td><td>None — the fallback is already the phase-1 behaviour</td><td>Phase 4, when it matters</td></tr>
+          <tr><td class="k">Passkeys in native shells</td><td>Password + authenticator only</td><td>None — that path is mandatory anyway</td><td>Phase 2, before the shells ship</td></tr>
+          <tr><td class="k">Row-policy performance</td><td>Add indexes, rewrite a policy predicate</td><td>None — a tuning problem</td><td>Watch from stage 2 onward</td></tr>
+          <tr><td class="k">The stack itself</td><td>Static hosting, database-enforced access, live sync and CI don't hold together</td><td><b>Total</b> — everything changes</td><td><b>Week one</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>So: a <b>walking skeleton</b>. One vertical slice through every layer of the architecture, carrying one trivial feature, deployed for real. It is unglamorous and it is the only week where a bad result saves you months.</p>
+  </section>
+
+  <!-- 02 -->
+  <section>
+    <h2><span class="sn">02</span>The stages</h2>
+    <p class="lede">Each stage ends at a gate you can objectively pass or fail. Timings assume evenings and weekends, not full days — halve them if you have clear runs.</p>
+
+    <div class="stages">
+
+      <div class="stage now">
+        <div class="sh"><h3>Stage 0 — Irreversible choices</h3><span class="when">Half a day · no code</span></div>
+        <ul>
+          <li>Create the Supabase project <b>in the Mumbai region</b>. This one cannot be changed later without a migration.</li>
+          <li>Create the GitHub repository, public, with branch protection on the default branch.</li>
+          <li>Enable Pages, deploying from Actions.</li>
+          <li>Write <code>CLAUDE.md</code> before any code exists — see section 04.</li>
+          <li>Drop the blueprint into <code>docs/</code> as markdown so it can be read rather than re-explained.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> an empty page is live on the Pages URL, deployed by a workflow rather than by hand.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 1 — Walking skeleton</h3><span class="when">Week 1 · the only real spike</span></div>
+        <p>One table, one screen, one login, deployed. Resist every temptation to add a second feature.</p>
+        <ul>
+          <li>Vite + React + TypeScript, Tailwind, the design tokens from the prototype.</li>
+          <li><code>household</code>, <code>member</code>, <code>user_account</code>, <code>membership</code>, <code>expense_txn</code> — five tables, with row-level security enabled and deny-by-default.</li>
+          <li>Email + password + authenticator sign-in. Invite-only. One invite issued to your own second account.</li>
+          <li>The repository layer, with exactly two methods: list expenses, add an expense.</li>
+          <li>Live updates subscribed to the household channel.</li>
+          <li>Deploy workflow to Pages. Installable as a PWA.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> sign in on the laptop, add an expense, and watch it appear on your phone's home-screen app without a refresh. Then sign in as a second account belonging to a different household and confirm you see <em>nothing</em>. If either half fails, stop and reconsider the architecture rather than working around it.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 2 — Schema, policies, and the test that guards them</h3><span class="when">Week 2</span></div>
+        <ul>
+          <li>All 35 tables as versioned migrations, with the money columns as integers and every amount carrying a currency.</li>
+          <li>Row policies on every table, resolving through membership, deny-by-default with no permissive fallback anywhere.</li>
+          <li><b>The policy test suite</b> — authenticate as each role and assert what it cannot see, cannot update, cannot reach across households. Wire it into the deploy workflow as a blocking gate now, while it is cheap.</li>
+          <li>The audit-log triggers, since retrofitting them across 35 tables is miserable.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> policy tests green, and the deploy genuinely fails when you deliberately break one.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 3 — The demo household</h3><span class="when">Week 3</span></div>
+        <p>Your development environment and your first deliverable are the same thing.</p>
+        <ul>
+          <li>Seed script producing a full fabricated household — and built to <b>exercise edge cases</b>: a loss-making sale, a carried-forward loss, lots either side of the twenty-four-month line, a matured bond, an unused category, a stale valuation, a foreign dividend with withholding.</li>
+          <li>Household and member switchers. The demo badge.</li>
+          <li>Reset-and-reseed, so you can break it freely.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> you can switch between two households and nothing leaks between them; reset restores a known state.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 4 — The screens you will use daily</h3><span class="when">Weeks 4–6</span></div>
+        <ul>
+          <li>Expenses: quick-add, category management, budgets, the ledger, recurring rules.</li>
+          <li>Net worth and allocation, with the monthly snapshot job running from the start — it is capturing peak values you cannot recover later.</li>
+          <li>Investments hub, mutual funds, equity with its India and Abroad blocks.</li>
+          <li>Themes, privacy mode and accessibility built in as you go, not bolted on. Retrofitting text scaling is far worse than starting with it.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> a full week of your real spending logged in the demo household without the entry flow annoying you. If it annoys you, fix that before building anything else — it is the whole project's failure mode.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 5 — The rest of the surface</h3><span class="when">Weeks 7–9</span></div>
+        <ul>
+          <li>Property with its cost basis, bonds and deposits, retirement, protection, liabilities, the calendar.</li>
+          <li>Export in both formats, and the template upload with its preview-before-commit flow.</li>
+          <li>FIRE with the live projection.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> export everything, edit a hundred rows in Excel, upload it back, and land in the same state. That round trip proves the whole import path.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 6 — Onto the devices</h3><span class="when">Weeks 10–11</span></div>
+        <ul>
+          <li>Capacitor and Tauri shells. Biometric unlock, offline queue, push reminders.</li>
+          <li>Verify passkeys inside the shells — and fall back gracefully if they misbehave.</li>
+        </ul>
+        <div class="gate"><b>Gate —</b> your family can install it and add an expense without being talked through it.</div>
+      </div>
+
+      <div class="stage">
+        <div class="sh"><h3>Stage 7 — Real data</h3><span class="when">When it has earned it</span></div>
+        <p>Create the real household and enter the opening position. The demo stays as a permanent sandbox. Then the roadmap's later phases — currencies and the Global screen, imports, the tax engine — with real figures to test against.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section>
+    <h2><span class="sn">03</span>Working with Claude Code</h2>
+    <p class="lede">Six practices that matter more on this project than on a typical one, because it is long-lived, single-maintainer, and carries arithmetic that must be right.</p>
+    <ul class="plain">
+      <li><b>Write <code>CLAUDE.md</code> first and keep it short.</b> It is read at the start of every session and is the only thing standing between you and slow architectural drift. Invariants, not tutorials.</li>
+      <li><b>Put the blueprint in the repo.</b> A markdown copy under <code>docs/</code> means you can say "per the spec, build the expenses screen" instead of re-describing it every time, and the answer will match what you decided months earlier.</li>
+      <li><b>Work in vertical slices.</b> "Build the expenses screen end to end, repository through UI" produces something you can judge. "Build all the repository methods" produces a pile you cannot.</li>
+      <li><b>Demand the test first for anything numeric.</b> The tax engine, XIRR, currency conversion, the FIRE projection — write fixtures with known answers before the implementation. Plausible-looking arithmetic that is subtly wrong is the single most expensive failure mode in this app, and it is exactly what fluent code generation is prone to.</li>
+      <li><b>Never accept a row policy without a test that proves it denies.</b> Same reasoning, higher stakes.</li>
+      <li><b>One concern per commit, and plan before anything touching more than a few files.</b> Small reversible steps beat large correct-looking ones.</li>
+    </ul>
+    <div class="callout warn">
+      <h4>The one habit to hold</h4>
+      <p>You are the reviewer, and on a personal finance app the consequences of not reading the code are yours alone. Read every migration, every policy, and every line of the calculation engine. Skim the screens if you like — a misaligned card is visible, a wrong long-term-gains threshold is not.</p>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section>
+    <h2><span class="sn">04</span>The CLAUDE.md to start with</h2>
+    <p class="lede">Invariants that, if quietly violated, cost far more to unpick later than to state now.</p>
+    <pre class="code"><b># Family Finance Buddy</b>
+
+Family finance app. Static SPA on GitHub Pages + Supabase.
+Full spec in docs/blueprint.md — read it before proposing design changes.
+
+<b>## Invariants — do not violate without discussing first</b>
+
+- Money is <b>integer minor units</b> (paise, cents). Never floats. Format at the edge only.
+- Every amount carries a <b>currency</b>. Store native, derive base on read. Never overwrite the original.
+- Exchange rates are <b>dated rows, never updated</b>. Convert at the transaction's own date.
+- All queries go through <b>the repository layer</b>. No Supabase types past it, ever.
+- Row-level security is the security boundary. <b>Deny by default.</b> No policy without a test that proves it denies.
+- Policies do <b>access</b>, not business rules.
+- The tax engine is <b>pure functions</b>. No I/O, no queries, no clock reads — pass the date in.
+- Prices are written by a <b>driver</b> into the dated price table. Clients never call a data vendor.
+- All period boundaries are <b>IST</b>, whatever the device says. Timestamps stored UTC.
+- The <b>service key</b> never appears in the repo, the bundle, a log, or a build. The repo is public.
+- Members and categories are <b>archived, never deleted</b>. Deletes are soft.
+- Capital gains are <b>derived from lots</b>. Never store a gain.
+
+<b>## Conventions</b>
+
+- Vertical slices, not layers. One concern per commit.
+- Tests before implementation for anything arithmetic.
+- Respect OS text size to 200%. Never encode meaning in colour alone.
+
+<b>## Not in scope</b>
+
+- No bank credentials, ever. No screen-scraping. No SMS parsing.
+- No global superuser account. No developer backdoor.</pre>
+  </section>
+
+  <!-- 05 -->
+  <section>
+    <h2><span class="sn">05</span>Which model, for what</h2>
+    <p class="lede">Use both, chosen by the cost of being subtly wrong rather than by the size of the task.</p>
+    <div class="models">
+      <div class="mcard op">
+        <h3>Opus — to decide</h3>
+        <ul>
+          <li>Schema and migration design</li>
+          <li>Row policies and the test suite that guards them</li>
+          <li>The tax engine, XIRR, currency conversion</li>
+          <li>The statement parser, when you get to it</li>
+          <li>Debugging anything that has already resisted one attempt</li>
+          <li>Any change touching many files at once</li>
+        </ul>
+      </div>
+      <div class="mcard">
+        <h3>Sonnet — to build</h3>
+        <ul>
+          <li>Screens, forms, tables, charts</li>
+          <li>Repository methods against a settled schema</li>
+          <li>Tests written from a spec you have already fixed</li>
+          <li>Styling, theming, accessibility passes</li>
+          <li>Refactors with a clear target</li>
+          <li>Seed data and fixtures</li>
+        </ul>
+      </div>
+    </div>
+    <p><b>The rule of thumb: Opus decides, Sonnet builds.</b> When the specification is unambiguous and a mistake would be visible immediately, Sonnet is the right tool and the faster loop matters more than the margin. When you are still deciding what the specification should be, or when an error would be silent and expensive — money arithmetic, a security policy, a tax threshold — the deliberation is worth paying for.</p>
+    <p>Most of this build is the second column. The parts that are not are exactly the parts you would least like to get wrong, which is a convenient alignment: the expensive model is needed rarely, and precisely where it earns its cost.</p>
+  </section>
+
+  <!-- 06 -->
+  <section>
+    <h2><span class="sn">06</span>The first session</h2>
+    <p class="lede">Something to paste once the repository exists and <code>CLAUDE.md</code> is in it.</p>
+    <pre class="code">Read docs/blueprint.md sections 12 and 13 for the architecture, and
+CLAUDE.md for the invariants.
+
+Build the walking skeleton only — one vertical slice, nothing extra:
+
+1. Vite + React + TypeScript + Tailwind, with the design tokens in
+   docs/tokens.md.
+2. Supabase migrations for household, member, user_account, membership
+   and expense_txn. RLS enabled on all five, deny by default, policies
+   resolving through membership.
+3. A policy test that signs in as a member of household B and asserts
+   zero rows from household A. Wire it into CI as a blocking check.
+4. Email + password + TOTP auth. Invite-only: no public sign-up route.
+5. A repository layer with exactly two methods — listExpenses and
+   addExpense. No Supabase types leave that layer.
+6. One screen: a list and a quick-add field.
+7. A realtime subscription so a second device updates without refresh.
+8. A GitHub Actions workflow that typechecks, tests, and deploys to Pages.
+
+Stop there. Do not add a second table, a second screen, or a chart.
+Show me the migration and the policies before writing the UI.</pre>
+    <div class="callout">
+      <h4>What "done" looks like at the end of week one</h4>
+      <p>An app on your phone's home screen where you can type ₹120 for vegetables and see it appear on your laptop a second later — and a second account that provably cannot see it. Nothing else. That single week retires the only risk that could invalidate everything else in the blueprint, and every stage after it is ordinary construction.</p>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<footer>
+  <div class="foot">Family Finance Buddy — build plan, companion to the blueprint (19 sections) and the prototype.</div>
+</footer>
