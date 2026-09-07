@@ -24,6 +24,13 @@ create table public.expense_txn (
   method        text        check (method in ('cash', 'card', 'upi', 'netbanking', 'auto_debit', 'other')),
   note          text        check (length(note) <= 500),
 
+  -- "A member can mark an entry private. Private entries are visible only to
+  -- the member who created them." (§20) Household is the default because a
+  -- shared ledger that hid things by accident would be worse than one that
+  -- never hid anything.
+  visibility    text        not null default 'household'
+                            check (visibility in ('household', 'personal')),
+
   -- Deletes are soft everywhere. There is no delete grant and no delete policy
   -- on this table, so a hard delete is impossible from a client even by mistake.
   voided_at     timestamptz,
@@ -63,6 +70,14 @@ create index expense_txn_member_idx on public.expense_txn (member_id);
 create trigger expense_txn_touch_updated_at
   before update on public.expense_txn
   for each row execute function app.touch_updated_at();
+
+create trigger expense_txn_audit
+  after insert or update or delete on public.expense_txn
+  for each row execute function app.write_audit();
+
+-- The visibility policy filters on these two together on every read.
+create index expense_txn_household_visibility_idx
+  on public.expense_txn (household_id, visibility, member_id);
 
 alter table public.expense_txn enable row level security;
 alter table public.expense_txn force row level security;

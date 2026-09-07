@@ -1,6 +1,6 @@
 {
   "name": "Family Finance Buddy",
-  "short_name": "Finance Buddy",
+  "short_name": "Family Finance Buddy",
   "description": "Expenses, investments, property and tax for one household.",
   "id": "./",
   "start_url": "./",

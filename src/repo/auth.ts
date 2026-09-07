@@ -178,7 +178,10 @@ export async function beginTotpEnrolment(): Promise<TotpEnrolment> {
     const { data, error } = await client.auth.mfa.enroll({
       factorType: 'totp',
       // What the authenticator app shows beside the code.
-      issuer: 'Finance Buddy',
+      // In full, like everywhere else a person reads it. An authenticator
+      // app lists this beside the code, and a name nobody recognises is a
+      // name nobody dares delete when they are tidying up.
+      issuer: 'Family Finance Buddy',
     });
     if (error !== null) throw describeAuthError('starting enrolment', error);
 

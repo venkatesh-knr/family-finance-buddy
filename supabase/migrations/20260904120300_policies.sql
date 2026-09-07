@@ -75,7 +75,10 @@ create policy expense_txn_select_same_household
   on public.expense_txn
   for select
   to authenticated
-  using (household_id in (select app.household_ids()));
+  using (
+    household_id in (select app.household_ids())
+    and (visibility = 'household' or member_id = app.current_member_id(household_id))
+  );
 
 comment on policy expense_txn_select_same_household on public.expense_txn is
   'Household-wide read for every role in this slice. Narrowing contributor and viewer reads is a later slice.';

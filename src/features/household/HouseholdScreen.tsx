@@ -431,7 +431,7 @@ function appUrl(): string {
 function invitationText(code: string, validForDays: number): string {
   const expires = new Date(Date.now() + validForDays * 86_400_000);
   return [
-    'You have been invited to our Finance Buddy household.',
+    'You have been invited to our Family Finance Buddy household.',
     '',
     `Open: ${appUrl()}`,
     `Code: ${code}`,
@@ -514,7 +514,7 @@ function IssuedCode({
             type="button"
             onClick={() => {
               void navigator
-                .share({ title: 'Finance Buddy invitation', text: message })
+                .share({ title: 'Family Finance Buddy invitation', text: message })
                 .catch(() => {
                   // Dismissing the share sheet rejects. Nothing to report.
                 });
@@ -543,7 +543,7 @@ function IssuedCode({
         */}
         <a
           className="btn btn-quiet"
-          href={`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Finance Buddy invitation')}&body=${encodeURIComponent(message)}`}
+          href={`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Family Finance Buddy invitation')}&body=${encodeURIComponent(message)}`}
           target="_blank"
           rel="noreferrer noopener"
         >

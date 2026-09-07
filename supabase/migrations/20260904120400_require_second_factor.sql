@@ -64,3 +64,13 @@ create policy require_second_factor
 
 comment on policy require_second_factor on public.expense_txn is
   'A password alone reads nothing. Restrictive, so it narrows every other policy rather than widening any.';
+
+-- The log shadows those tables and must be no easier to reach than they are.
+-- A password alone reading the audit log would read the values it records.
+create policy require_second_factor
+  on public.audit_log
+  as restrictive
+  for all
+  to authenticated
+  using (app.has_second_factor())
+  with check (app.has_second_factor());

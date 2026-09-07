@@ -58,6 +58,10 @@ create trigger household_touch_updated_at
   before update on public.household
   for each row execute function app.touch_updated_at();
 
+create trigger household_audit
+  after insert or update or delete on public.household
+  for each row execute function app.write_audit();
+
 alter table public.household enable row level security;
 alter table public.household force row level security;
 
@@ -96,6 +100,10 @@ create trigger member_touch_updated_at
   before update on public.member
   for each row execute function app.touch_updated_at();
 
+create trigger member_audit
+  after insert or update or delete on public.member
+  for each row execute function app.write_audit();
+
 alter table public.member enable row level security;
 alter table public.member force row level security;
 
@@ -125,6 +133,10 @@ create unique index user_account_email_key on public.user_account (lower(email))
 create trigger user_account_touch_updated_at
   before update on public.user_account
   for each row execute function app.touch_updated_at();
+
+create trigger user_account_audit
+  after insert or update or delete on public.user_account
+  for each row execute function app.write_audit();
 
 alter table public.user_account enable row level security;
 alter table public.user_account force row level security;
@@ -190,6 +202,10 @@ create index membership_household_id_idx
 create trigger membership_touch_updated_at
   before update on public.membership
   for each row execute function app.touch_updated_at();
+
+create trigger membership_audit
+  after insert or update or delete on public.membership
+  for each row execute function app.write_audit();
 
 alter table public.membership enable row level security;
 alter table public.membership force row level security;
