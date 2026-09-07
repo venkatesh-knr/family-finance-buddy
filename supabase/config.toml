@@ -63,10 +63,21 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
-# Specifies an ordered list of seed files to load during db reset.
-# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+# Off, deliberately.
+#
+# `db reset` seeds whichever database it just reset, and it does not
+# distinguish a local stack from the linked hosted project. The demo seed
+# creates a sign-in whose password is committed to this public repository, so
+# with this enabled a `db reset --linked` puts a publicly known account on the
+# live project — which is exactly what happened once.
+#
+# There is no flag that means "only locally", so the safety has to be that
+# nothing seeds unless a person asks for it by name:
+#
+#     npm run db:seed:local
+#
+# which refuses to run against anything but a local database.
+enabled = false
 sql_paths = ["./seed/demo_household.sql"]
 
 [db.network_restrictions]

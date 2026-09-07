@@ -192,6 +192,77 @@
     font-size: 12.5px;
   }
 
+  /*
+   * A caveat on a figure, not an error.
+   *
+   * These say the same two things every time: a number is qualified, and here
+   * is the list of reasons why. The reasons are what made the old version a
+   * wall — thirty-five category names set in mono, coloured like a failure,
+   * pushing the figure they qualify off the top of the screen. So the sentence
+   * stays and the list folds away behind it: the caveat is the part that
+   * changes what you believe about the number, and the names are what you go
+   * looking for once you have decided to act.
+   *
+   * The rule is carried by the glyph and the words, never by the hue alone.
+   */
+  .notice {
+    border-left: 3px solid currentcolor;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 11px;
+  }
+
+  /*
+   * An incomplete plan is a gap, not a loss. Coral is spent for overspend and
+   * for a figure that is wrong; brass is the plan colour, and an unbudgeted
+   * category is exactly a hole in the plan. Spending the loudest colour on the
+   * commonest state is how a warning stops being read.
+   */
+  .notice-gap {
+    background: var(--brass-soft);
+    color: var(--brass);
+  }
+
+  /* Reserved for a figure that is actually wrong — a peak below the true one. */
+  .notice-due {
+    background: var(--coral-soft);
+    color: var(--coral);
+  }
+
+  .notice-toggle {
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /*
+   * Names, not numbers. The old list was set in the mono face, which widened
+   * every name and made a paragraph of them read like data. These are labels.
+   * No max-height: nothing here clips at 200% text, and the list is behind a
+   * disclosure already, so it is only ever on screen because somebody asked.
+   */
+  .notice-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 7px;
+  }
+
+  .notice-names > li {
+    background: var(--surface);
+    border: 1px solid currentcolor;
+    border-radius: var(--radius-pill);
+    color: inherit;
+    padding: 2px 9px;
+  }
+
   /* Wide content scrolls inside its own container; the page body never does. */
   .scroll-x {
     overflow-x: auto;

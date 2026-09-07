@@ -87,6 +87,12 @@ jobs:
       - name: No privileged key in the build output
         run: bash scripts/check-no-secret-key.sh dist
 
+      # A rule can be correct in base.css and absent from the stylesheet that
+      # ships, because Tailwind drops component rules whose class name it
+      # cannot find written out in the source. That shipped once, silently.
+      - name: Component classes survived the build
+        run: bash scripts/check-component-classes.sh dist
+
       - name: Upload the site
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v4

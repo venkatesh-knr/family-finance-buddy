@@ -20,7 +20,7 @@ import type {
 import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/types.ts';
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
-import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -97,17 +97,14 @@ function AnnualSummary({
       </dl>
 
       {annual.unplanned.length > 0 && (
-        <p
-          className="mt-3.5 rounded px-2.5 py-2 text-caption"
-          style={{ background: 'var(--coral-soft)', color: 'var(--coral)' }}
-        >
-          <span aria-hidden="true">▲</span>{' '}
-          {annual.unplanned.length === 1
-            ? '1 category has no planned figure'
-            : `${String(annual.unplanned.length)} categories have no planned figure`}
-          , so this total is a floor rather than an estimate:{' '}
-          <span className="num">{annual.unplanned.join(', ')}</span>
-        </p>
+        <div className="mt-3.5">
+          <Notice names={annual.unplanned} namesLabel="Which ones">
+            {annual.unplanned.length === 1
+              ? '1 category has no planned figure'
+              : `${String(annual.unplanned.length)} categories have no planned figure`}
+            , so this total is a floor rather than an estimate.
+          </Notice>
+        </div>
       )}
 
       <p className="note mt-3.5">
