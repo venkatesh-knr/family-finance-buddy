@@ -180,8 +180,92 @@ function EyeIcon({ crossed }: { crossed: boolean }) {
 
 export type PillTone = 'own' | 'ok' | 'due' | 'neutral';
 
+/**
+ * Tone classes written out in full, never assembled.
+ *
+ * Tailwind decides what to keep by scanning the source for literal class
+ * names, so a class built as `pill-${tone}` is a class it never sees — and
+ * every one of these rules was being dropped from the production stylesheet.
+ * Pills shipped with the base style and no colour at all. Nothing in the type
+ * system or the tests could catch it: the CSS is correct, the component is
+ * correct, and the class simply is not in the built file.
+ *
+ * A lookup keyed by the same union is the cheapest fix that cannot rot — add a
+ * tone and the compiler demands its class here, where the scanner will read it.
+ */
+const PILL_CLASS: Record<PillTone, string> = {
+  own: 'pill-own',
+  ok: 'pill-ok',
+  due: 'pill-due',
+  neutral: 'pill-neutral',
+};
+
 export function Pill({ tone = 'neutral', children }: { tone?: PillTone; children: ReactNode }) {
-  return <span className={`pill pill-${tone}`}>{children}</span>;
+  return <span className={`pill ${PILL_CLASS[tone]}`}>{children}</span>;
+}
+
+/**
+ * A caveat on a figure, with its reasons folded away.
+ *
+ * Two of these existed already and both had the same fault: the sentence that
+ * qualifies the number was buried under the list of reasons for it. Thirty-five
+ * category names, set in the mono face and coloured like a failure, pushed the
+ * figure they were about off the screen — so the caveat was least readable
+ * exactly when it applied to most things.
+ *
+ * The split is by what each part is for. The sentence changes what you believe
+ * about the number and is always shown. The names are what you go looking for
+ * once you have decided to act, and are one click away.
+ *
+ * A native <details> rather than a hand-rolled toggle: it is keyboard
+ * reachable, it announces its own state, and it survives find-in-page, which a
+ * div listening for clicks does not.
+ */
+type NoticeTone = 'gap' | 'due';
+
+/** Written out for the same reason as PILL_CLASS above: the scanner reads source, not intent. */
+const NOTICE_CLASS: Record<NoticeTone, string> = {
+  gap: 'notice-gap',
+  due: 'notice-due',
+};
+
+export function Notice({
+  tone = 'gap',
+  children,
+  names,
+  namesLabel = 'Show them',
+}: {
+  /** `gap` for something unplanned, `due` for a figure that is actually wrong. */
+  tone?: NoticeTone;
+  /** The sentence. Always visible, because it is the part that qualifies the number. */
+  children: ReactNode;
+  /** The reasons, folded away. Omit for a caveat that has nothing to enumerate. */
+  names?: readonly string[];
+  namesLabel?: string;
+}) {
+  const hasNames = names !== undefined && names.length > 0;
+
+  return (
+    <div className={`notice ${NOTICE_CLASS[tone]} text-caption`}>
+      {/* The glyph is what stops this meaning anything by colour alone. */}
+      <span aria-hidden="true">▲</span>
+      <div className="min-w-0">
+        <span>{children}</span>
+        {hasNames && (
+          <details>
+            <summary className="notice-toggle mt-1.5">
+              {namesLabel} ({names.length})
+            </summary>
+            <ul className="notice-names">
+              {names.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**

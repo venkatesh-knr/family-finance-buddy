@@ -12,7 +12,7 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
 export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
@@ -194,14 +194,15 @@ function HoldingCard({
 function MissingMonths({ months }: { months: readonly string[] }) {
   const label = months.length === 1 ? '1 month has no reading' : `${String(months.length)} months have no reading`;
 
+  // `due` rather than `gap`: an unrecorded month does not leave the peak
+  // incomplete, it leaves it WRONG, and wrong on a Schedule FA disclosure is a
+  // different kind of problem from a category nobody has budgeted yet (§606).
   return (
-    <p
-      className="mt-3 rounded px-2.5 py-2 text-caption"
-      style={{ background: 'var(--coral-soft)', color: 'var(--coral)' }}
-    >
-      <span aria-hidden="true">▲</span> {label}, so this peak is a lower bound, not the figure:{' '}
-      <span className="num">{months.join(', ')}</span>
-    </p>
+    <div className="mt-3">
+      <Notice tone="due" names={months} namesLabel="Which months">
+        {label}, so this peak is a lower bound, not the figure.
+      </Notice>
+    </div>
   );
 }
 
