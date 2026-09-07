@@ -1,10 +1,13 @@
 # Family Finance Buddy
 
-**Names.** Product name: *Family Finance Buddy*, and that is what the app calls itself —
-the header, the sign-in screen and the browser tab all say it in full. *Finance Buddy* is
-the short form, kept for places with no room for the whole thing: the home-screen icon
-label, where anything longer is truncated by the launcher. Slug for the repo, package and
-Supabase project: `family-finance-buddy`.
+**Name.** The app is called **Family Finance Buddy**, in full, everywhere it appears to a
+person — the header, the sign-in screen, the browser tab, the PWA manifest `name` *and*
+`short_name`, the iOS home-screen title, notifications, emails, invitations, the README and
+any store listing. There is no short form. Do not introduce one, and do not shorten it to
+fit — if a label is tight, let the platform truncate rather than inventing a variant.
+
+The only lowercase, hyphenated form is the technical slug, used for the repository, the npm
+package and the Supabase project: `family-finance-buddy`.
 
 Family finance app for an Indian household. Tracks expenses, investments across nine asset
 classes, property, insurance, liabilities, FIRE targets, and Indian + US taxes.
@@ -14,9 +17,11 @@ GitHub Actions, talking directly to Supabase (Postgres + Auth + RLS + Storage + 
 functions) in the **Mumbai** region. Tauri wraps the same bundle for desktop, Capacitor for
 mobile. There is no server of our own and none planned.
 
-**Read `docs/blueprint.md` before proposing any design change.** It is the full 19-section
-specification. `docs/tokens.md` is the design system. Both are authoritative — if something
-here conflicts with them, ask rather than choosing.
+**Read `docs/blueprint.md` before proposing any design change.** It is the full 20-section
+specification. `docs/tokens.md` is the design system. `docs/build-plan.md` gives the staged
+order of work and the gate each stage must pass — check it before starting something, so
+later-phase work doesn't get pulled forward ahead of its foundation. All three are
+authoritative; if something here conflicts with them, ask rather than choosing.
 
 ---
 
@@ -53,6 +58,12 @@ here conflicts with them, ask rather than choosing.
   variables, not secrets — they are in the shipped JavaScript either way.
 - No bank or broker credentials are ever stored. Account identifiers keep last four digits
   only.
+- **Every table holding household data gets its audit trigger in the same migration that
+  creates the table** — never in a later one. `audit_log` is append-only: insertable by
+  trigger only, updatable by nobody, deletable by nobody. Adding one trigger to a new table
+  is trivial; retrofitting audit across a schema that already has thirty of them is a day
+  nobody enjoys. The log records reads as well as writes on tables carrying personal detail,
+  because section 20 shows it to members — including reads by the owner.
 
 **Calculation**
 - The tax engine and every financial calculation are **pure functions**. No I/O, no queries,

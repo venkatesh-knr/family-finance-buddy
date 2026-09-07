@@ -1,6 +1,6 @@
-# From one workbook to *Finance Buddy*
+# From one workbook to *Family Finance Buddy*
 
-*Product blueprint · revision 5 · FY 2025–26*
+*Product blueprint · revision 6 · FY 2025–26*
 
 MyFinancial_25_26_Template.xlsx already knows what matters — ten sheets covering expenses, nine asset classes, FIRE targets and a net-worth roll-up. This is the plan to turn it into an app that runs on desktop and phone, ships from GitHub Actions on a free database, holds rupees and dollars side by side, works out what you owe in tax, and is built to be attacked.
 
@@ -8,9 +8,11 @@ MyFinancial_25_26_Template.xlsx already knows what matters — ten sheets coveri
 
 ---
 
-> Specification for **Family Finance Buddy** (short form: *Finance Buddy*; slug:
-> `family-finance-buddy`). Read `CLAUDE.md` for the invariants that
-> must not be violated, and `docs/tokens.md` for the design system.
+> Specification for **Family Finance Buddy**. That is the name in full, everywhere it
+> appears to a person — there is no short form. The slug for the repo, package and
+> Supabase project is `family-finance-buddy`.
+> Read `CLAUDE.md` for the invariants that must not be violated, and `docs/tokens.md`
+> for the design system.
 > Generated from the blueprint artifact — edit there, or edit here and keep both in step.
 
 ## Contents
@@ -34,6 +36,7 @@ MyFinancial_25_26_Template.xlsx already knows what matters — ten sheets coveri
 17. [First run](#17-first-run)
 18. [Roadmap](#18-roadmap)
 19. [If it ever goes public](#19-if-it-ever-goes-public)
+20. [Earning trust](#20-earning-trust)
 
 ---
 
@@ -160,7 +163,7 @@ Eight rules that settle the arguments before they start.
 
 ## 04. Domain model
 
-Thirty-five tables in seven modules. Every sheet column lands in exactly one of them; the additions are history, ledger, currency, dates, ownership, tax rules and the foreign-asset paperwork.
+Thirty-six tables in seven modules. Every sheet column lands in exactly one of them; the additions are history, ledger, currency, dates, ownership, tax rules and the foreign-asset paperwork.
 
 **Module: Household** (Identity)
 
@@ -171,6 +174,8 @@ Thirty-five tables in seven modules. Every sheet column lands in exactly one of 
 - `user_account` — auth_user_id, email, mfa_enrolled, last_seen_at — an identity, deliberately holding no household of its own
 
 - `membership` — user_account_id, household_id, member_id, role — the join that lets one person belong to several households
+
+- `member_key` — member_id, wrapped_household_key, wrap_method, rotated_at — the household document key, wrapped per member and per recovery code
 
 - `invite` — household_id, email, role, token_hash, expires_at, accepted_at
 
@@ -256,7 +261,7 @@ Thirty-five tables in seven modules. Every sheet column lands in exactly one of 
 
 ## 05. Screens
 
-Fourteen screens. Chips in teal are capabilities the spreadsheet has no equivalent for. A currency toggle sits in the top bar on every one of them.
+Seventeen screens. Chips in teal are capabilities the spreadsheet has no equivalent for. A currency toggle sits in the top bar on every one of them.
 
 **Home — net worth** `/`
 
@@ -346,6 +351,30 @@ The year's computation follows from it: income by head, capital gains derived fr
 
 _Old vs new regime · Gains by lot · Unused ₹1.25L allowance · Holding-period clock · Advance tax due · Salary & income input · Foreign tax credit_
 
+**Profile** `/me`
+
+Everything that is *yours* rather than the household's, reached from your avatar in the top bar. Your name, relation and colour. Your sign-in: which passkeys are registered, whether an authenticator is enrolled, how many recovery codes remain. Your active sessions as a device list, each revocable — the practical answer to a lost phone.
+
+Then the personal slice of the trust design from section 20: how many of your entries are private, your own audit log showing what was read and by whom, your income entries which stay yours, and an export of just your records. Your role is shown read-only with what it permits spelled out, so nobody has to guess. Notification preferences live here too, because which reminders you want is a personal matter — as is leaving the household or deleting your account.
+
+_Sign-in methods · Devices & sessions · Recovery codes · Your audit log · Your private entries · Your notifications · Export just mine_
+
+**Settings** `/settings`
+
+Two clearly separated groups, because conflating them is how apps end up asking permission to change a theme.
+
+**This device** — no permission needed, nobody else affected: theme (light, dark, follow system), display currency, number grouping (lakh and crore, or international), privacy-mode default, auto-lock delay, biometric unlock, and which screen the app opens on.
+
+**This household** — owner and partner only, and visible as read-only to everyone else so the rules are never a mystery: household name, base currency, tax-year start, members and invitations, the category list, the allocation profile and its target weights, the emergency-fund target, the FIRE inputs, recurring rules, price sources and their schedule, reminder lead times per event type, and the day of the month the snapshot runs. Data lives here as well: template download, upload, full export, the demo household's reset, and deletion.
+
+_Device vs household split · Theme & currency · Number grouping · Categories · Targets & FIRE inputs · Reminder lead times · Demo reset_
+
+**Privacy & data** `/privacy`
+
+Not a policy document — a status page. Which region holds your data, what is stored, what never leaves the device, which scheduled jobs exist and when each last ran. Each statement links to the file in the public repository that makes it true. Alongside it: your own audit log, including reads by the household owner; a count of your private entries; a one-tap full export; and deletion with a receipt.
+
+_Where your data lives · Your audit log · Private entry count · Export everything · Delete with receipt_
+
 **Reports** `/reports`
 
 Two calendars, because India needs both: the April–March tax year for domestic reporting, and the January–December calendar year that foreign-asset disclosure uses. FY spend by category, the year-end pack for your accountant, and an export back to Excel for anyone who still wants the sheet.
@@ -374,17 +403,33 @@ Drift needs something to drift from. Rather than inventing weights, the app ship
 
 > Six months of expenses held deliberately in cash is a *reserve*, not a portfolio position — but almost every allocation view lumps it into "cash" and then reports a permanent overweight, nagging you about money you are holding on purpose. So the app carries an emergency-fund target as its own figure, excludes it from the drift calculation, and tracks it separately against a months-of-expenses goal the expense screen already knows how to compute. Only cash above that reserve counts as an allocation decision.
 
+### The shell: what earns a place in the top bar
+
+A top bar accumulates. Every control that has nowhere obvious to live ends up there, and on a phone it becomes a row of icons nobody can name. One rule prevents it: **the top bar carries only what you change while reading a screen.** Everything else belongs in Profile if it is about you, or Settings if it is about the app.
+
+| Control | Lives | Because |
+|---|---|---|
+| Household switcher | Top bar, only when you belong to more than one | Changes everything on screen; hidden entirely for the common case of one household |
+| Member filter | Top bar | A view filter — "ours" versus "mine" is a question you ask *of* the screen you are on |
+| Privacy mode | Top bar | Must be one tap from anywhere; a hidden panic button is not a panic button |
+| Your avatar | Top bar | The door to Profile, and the answer to "who am I signed in as" |
+| Display currency | Settings, with a quick toggle in the profile menu | A preference occasionally flipped, not a control operated continuously |
+| Theme | Settings | Set once, then forgotten |
+| "Valued as of" | The home screen, beside net worth | Information about a figure, not a control — it belongs next to what it qualifies |
+
+That leaves four items on a phone, one of which usually hides. The test for anything proposed later: would you reach for it *while* reading a screen, or before you started? Only the first kind earns the space.
+
 ### Across every screen
 
 Five things belong to the shell rather than to any one screen, and they are worth specifying once rather than rediscovering them twelve times.
 
 **Currency** — _₹ / $_
 
-The display toggle from section 07. Native figures stay native; the base currency governs every total.
+Set in Settings, flipped quickly from the profile menu — see the shell rule above. The display toggle from section 07. Native figures stay native; the base currency governs every total.
 
 **Theme** — _Light · dark · system_
 
-Three states, defaulting to whatever the device is set to, remembered per device. Dark is not an inverted stylesheet: it needs its own palette, because the semantic colours carry meaning here — a gain and a loss must stay clearly distinguishable, and stay legible for the substantial minority of men with red-green colour vision deficiency, which is why the design pairs green with teal-blue rather than relying on hue alone. Charts read their colours from the same tokens as everything else, so a screenshot taken in either theme is readable.
+Chosen in Settings, per device. Three states, defaulting to whatever the device is set to, remembered per device. Dark is not an inverted stylesheet: it needs its own palette, because the semantic colours carry meaning here — a gain and a loss must stay clearly distinguishable, and stay legible for the substantial minority of men with red-green colour vision deficiency, which is why the design pairs green with teal-blue rather than relying on hue alone. Charts read their colours from the same tokens as everything else, so a screenshot taken in either theme is readable.
 
 **Privacy mode** — _Hide the numbers_
 
@@ -826,7 +871,7 @@ Hosting on GitHub Pages means there is no server of your own — Pages serves st
 
 > - **Separate identity from household membership** (section 04), so one person can belong to more than one household.
 
-> - **Build account deletion and full data export in phase 1.** Both are app-store requirements and both are obligations under India's data protection rules. A correct deletion cascade across thirty-five tables is easy to write while the schema is fresh in mind and miserable to retrofit — and an export you can hand someone is also the backup you'd want for yourself.
+> - **Build account deletion and full data export in phase 1.** Both are app-store requirements and both are obligations under India's data protection rules. A correct deletion cascade across thirty-six tables is easy to write while the schema is fresh in mind and miserable to retrofit — and an export you can hand someone is also the backup you'd want for yourself.
 
 > - **Put every price behind a driver** (section 10), so the app never calls a data vendor from a client.
 
@@ -1110,6 +1155,39 @@ Invite-only sign-up becomes open registration with email verification and abuse 
 
 - **Terms and a privacy policy** that actually describe what the app does with data — which, in this design, is very little, and that is worth saying plainly.
 
+### Saying what is true about privacy
+
+This app has an unusually good privacy story — and it is *not* the story most privacy-marketing tells. The temptation is to reach for the familiar claim: offline, on-device, no servers. That claim is false here, and it is exactly the kind of sentence that ends up in a store data-safety declaration, where being wrong gets an app removed rather than merely embarrassed.
+
+| The usual claim | True of this design? |
+|---|---|
+| 100% offline | **No.** A static client talking to a hosted database over the network |
+| Data never leaves your device | **No.** It lives in a managed Postgres instance in India |
+| No accounts | **No.** Invite-only accounts are the whole point of a family app |
+| No servers | **No.** There is a server; it just isn't one you operate |
+| No data collection | **Misleading.** Nothing is collected *about* the user, but their financial records are certainly stored |
+| No tracking | **Yes** — no analytics of any kind, by invariant |
+| No ads | **Yes** |
+| Your data under your control | **Largely.** Full export, real deletion, ordinary Postgres you could self-host — on a third party's infrastructure today |
+
+The honest version is stronger anyway, because every clause survives scrutiny:
+
+> **Privacy statement — every sentence defensible**
+
+> *Your data, in India, with nobody watching. No ads, no trackers, no analytics of any kind — not even our own. We never ask for your bank or broker passwords, and never will. Statements you import are read on your device and never uploaded. Account numbers are stored as the last four digits only. Your data lives in Indian data centres, protected by database-level access rules that are tested on every release, and you can export all of it to a spreadsheet or delete it entirely whenever you like. The code is open for anyone to inspect.*
+
+Each of those maps to a decision made earlier rather than a promise added later: the no-analytics invariant, the ban on credential storage, statement parsing on the device in section 13, last-four identifiers in section 15, the Mumbai region, the policy suite that gates the deploy, the export and deletion built in phase 1, and a public repository.
+
+### Two routes to a stronger claim, and what they cost
+
+- **Genuinely local-only** would earn the offline claim outright — and would remove the reason this app exists. One device, no family members on their own phones, no sync. Building sync back means a server, which is where you started. This is the same trade examined when the architecture was chosen, decided the same way.
+
+- **End-to-end encryption** is the real middle path: data still syncs, but the client encrypts before upload and the server holds only ciphertext, so *we cannot read your data* becomes literally true. The costs are concrete. A scheduled job cannot compute values it cannot read — which kills the monthly snapshot, and with it the peak-value capture that foreign-asset disclosure depends on. Key recovery becomes unforgiving: lose the key and the data is gone, with no reset possible by design. For a household app with one maintainer, the disclosure loss alone makes this a poor trade. Worth knowing it exists; not worth building.
+
+> **Check privacy copy more carefully than any other text**
+
+> Marketing language about privacy is the easiest thing in this project to generate and the most dangerous to wave through — fluent, confident, and wrong in ways that read as reassuring. Whenever a README, a landing page, a store listing or an onboarding screen makes a claim about data, check it clause by clause against the table above. Every other kind of mistake in this app is a bug; this one is a misrepresentation.
+
 ### What it costs and what security becomes
 
 The free tier is a household, not a userbase. A paid backend plan removes the storage and egress ceilings and the inactivity pause, and adds point-in-time recovery — which you want the moment the data is not only yours. Add the two store fees and a domain.
@@ -1119,3 +1197,95 @@ The security posture in section 15 does not change in kind, only in rigour: the 
 ### Live data at public scale
 
 Sync between users and devices scales without redesign — change streams are already household-scoped and already policy-enforced. Live *market* prices are the constraint, and it is commercial rather than technical: exchange data is licensed, and broker APIs are issued per user with terms that generally forbid passing quotes to anyone else. The two lawful routes are a data vendor with a redistribution licence, or each user connecting their own broker and pulling under their own entitlement. Both are new drivers behind the interface in section 10, which is the entire reason that interface exists.
+
+## 20. Earning trust
+
+Security and trust are different problems. The design in section 15 makes the app safe; none of it makes anyone *believe* it is safe. The principle that closes the gap is to **reduce how much trust is required** rather than to make more promises: every claim is something a person must take on faith, and every structural choice is something they can check. Shift weight from the first to the second and hesitation falls away on its own.
+
+| What a user would otherwise have to take on faith | What replaces it |
+|---|---|
+| "They don't track me" | A public repository with no analytics dependency to find |
+| "My data is safe from other households" | An access-policy test suite that blocks the deploy, with its results published per release |
+| "They can't read my documents" | Documents encrypted on the device before upload |
+| "The owner isn't reading my expenses" | Private entries the owner's queries cannot return, and an audit log that shows what was read |
+| "I can leave whenever I want" | A full export offered before any real data is entered, and a self-hosting guide |
+
+### Private entries — the hesitation closest to home
+
+The first person who will quietly hold back is not a stranger. In a household where the owner sees everything, a spouse or an adult child has a standing reason to enter a little less than the truth — and a ledger with polite omissions is worse than no ledger at all, because it looks complete.
+
+So any member can mark a transaction, an account, an income entry or a document as **personal**. It counts in their own figures and in household aggregates; the line-item detail is returned to nobody else, the owner included.
+
+```
+Column   visibility  enum ('household','personal')  default 'household'
+         on expense_txn, account, income_entry, document, holding
+
+Policy   using (
+           household_id = current_household()
+           and ( visibility = 'household'
+                 or member_id = current_member() )
+         )
+
+Totals  a security-definer function reads across both and returns
+         sums only — never rows — so household figures stay correct
+         for everyone while detail stays with its owner
+```
+
+- **The aggregate is the subtle part.** Household totals must include private amounts or the numbers disagree between members, which is worse than the problem being solved. A security-definer function is the standard way: it reads what the caller cannot and returns only the sum.
+
+- **An honest limitation, and how to blunt it.** If a total is visible and only one entry is private, the private amount can be recovered by subtraction. So private amounts roll into a single *Personal* line per member rather than into fine-grained category totals — others learn that ₹18,400 of a member's spending was personal, and nothing about what it was. State this in the interface rather than letting someone discover it.
+
+- **Make the feature visible.** A member should see "4 of your entries are private" on their own screen. A privacy control nobody can observe working is indistinguishable from one that does nothing.
+
+- **The cost is real.** This touches every policy and every aggregate query, and it is the one item in this section that is not cheap. It is still worth it: completeness is the premise of the whole app, and this is what makes completeness safe to offer.
+
+### Encrypt what is never computed on
+
+Full end-to-end encryption was rejected in section 19 for a specific reason — a scheduled job cannot compute values it cannot read, which would cost the monthly snapshot and with it the peak-value capture that foreign-asset disclosure needs. That argument applies only to fields the server must read. It does not apply to most of what people are actually nervous about.
+
+| Encrypt on the device | Why it is safe to |
+|---|---|
+| Uploaded documents | Policy PDFs and consolidated statements are stored and handed back, never parsed server-side — parsing already happens on the device |
+| Account identifiers | Displayed, never computed on |
+| Notes and payee names | Read by humans, not by jobs |
+| Policy and plan numbers | Reference data only |
+
+Amounts, dates, units and currencies stay readable, because the snapshot job, the price driver and the tax engine need them. The result is a claim that is both strong and literally true: **uploaded documents cannot be read by the server, by construction** — and uploading a statement carrying folio numbers and a PAN is the single most frightening action in this app.
+
+**The hard part is keys, not ciphers.** A household data key, wrapped once per member with a key derived from their credential, stored in a `member_key` table; unwrapped in the client on sign-in and held only in memory. The recovery codes from layer 10 must also wrap a copy, or a forgotten password becomes permanently lost documents. Design that path first and test it before shipping the feature — encryption whose recovery story is an afterthought destroys more data than it protects.
+
+### Show, don't tell
+
+- **A "Where your data is" screen**, not a policy document. Which region holds it, what is stored, what never leaves the device, what runs on a schedule and when it last ran — in plain sentences, each linking to the file in the public repository that makes it true. A status page rather than a promise.
+
+- **Show the audit log to members, including reads by the owner.** The audit table already exists for accountability; exposing it converts it into something better. If a spouse can see that her salary entry was viewed, the conversation stops being "please trust me" and becomes "check for yourself." Very few consumer apps do this, and here it costs almost nothing.
+
+- **Publish what the tests proved.** Each release notes how many access-policy assertions ran and passed. It turns an invisible discipline into a number people can watch over time.
+
+### Prove the exit before asking for the entry
+
+- **Offer the full export during setup**, before any real figure has been entered. Someone who has already seen the door open walks in far more readily than someone promised a key later.
+
+- **Deletion issues a receipt** — what was removed, what was reattributed to a placeholder to keep household history intact, and when.
+
+- **Publish the self-hosting guide.** Nothing says "you are not held hostage" as convincingly as documented instructions for leaving. It costs a page, and the schema is ordinary Postgres precisely so that page can exist.
+
+### An invitation someone can actually consent to
+
+The invite screen should say, before acceptance and in plain language, what the inviter will be able to see, what the new member can keep private, and what their role allows. "Venkat will see your expense totals but not entries you mark personal" is a materially different proposition from "join this household", and it is the moment when informed consent is either obtained or skipped. A role change later notifies the affected member — silent shifts in who can see what are how trust dies quietly.
+
+### Small things that quietly cost trust
+
+- **Request no permission you don't visibly need.** No contacts, no location, no SMS. An unexplained permission prompt undoes a page of careful privacy copy.
+
+- **Never put figures in a notification or an email.** "Your card bill is due" — not the amount. Lock screens are read by whoever is nearby.
+
+- **Nothing phones home on launch.** No availability ping, no version beacon, no warm-up request.
+
+- **If crash reporting is ever added, scrub the payload or make it opt-in.** One stack trace carrying a balance undoes everything above.
+
+- **Add SECURITY.md with a disclosure address now**, not at launch. It is free, and it signals that scrutiny is expected rather than feared.
+
+> **Where to start**
+
+> Private entries first, because they unblock family adoption and everything else builds on the trust they create. Then document encryption, which is cheap and removes the scariest single action. Then the "Where your data is" screen and export-during-setup, which are both small. The visible audit log is the one nobody will ask for and the one worth building anyway — it is what turns this whole section from something told into something shown.
