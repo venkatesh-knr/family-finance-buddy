@@ -184,6 +184,26 @@ export function BudgetVsActual({
 
   const anySpending = rows.some((row) => row.spent.minor > 0n);
 
+  /**
+   * Rows worth reading first, and rows worth keeping.
+   *
+   * A category with nothing spent against it says the same thing as every
+   * other one in that state, and there are usually far more of them than of
+   * the rows somebody can act on. Splitting them is not hiding them — both
+   * halves are in the totals above, and the fold says how many and how much
+   * they were planned at.
+   */
+  const shown = useMemo(
+    () => ordered.filter((row) => row.planned !== null || row.spent.minor > 0n),
+    [ordered],
+  );
+  const moving = useMemo(() => shown.filter((row) => row.spent.minor > 0n), [shown]);
+  const untouched = useMemo(() => shown.filter((row) => row.spent.minor === 0n), [shown]);
+  const untouchedPlanned = useMemo(
+    () => money(untouched.reduce((sum, row) => sum + (row.planned?.minor ?? 0n), 0n), currency),
+    [untouched, currency],
+  );
+
   return (
     <Card
       title="Budget vs actual"
@@ -248,12 +268,41 @@ export function BudgetVsActual({
           </dl>
 
           <ul className="row-separated">
-            {ordered
-              .filter((row) => row.planned !== null || row.spent.minor > 0n)
-              .map((row) => (
-                <ComparisonRow key={row.categoryId ?? 'none'} row={row} privacy={privacy} />
-              ))}
+            {moving.map((row) => (
+              <ComparisonRow key={row.categoryId ?? 'none'} row={row} privacy={privacy} />
+            ))}
           </ul>
+
+          {moving.length === 0 && (
+            <p className="note">Nothing spent against a category yet this {period === 'month' ? 'month' : 'year'}.</p>
+          )}
+
+          {/*
+            The untouched categories, folded.
+            
+            A household with thirty-three categories and spending in five was
+            showing twenty-eight identical rows reading zero, pace 0.00,
+            behind — which buried the five rows that meant something under a
+            wall of rows that did not. They are still here, and still counted
+            in the totals above; they are just not the first thing the screen
+            says. "Behind" on a category nobody has spent in yet is not news.
+          */}
+          {untouched.length > 0 && (
+            <details className="mt-2.5">
+              <summary className="notice-toggle">
+                {untouched.length} {untouched.length === 1 ? 'category has' : 'categories have'} nothing
+                spent yet
+                {untouchedPlanned.minor > 0n && (
+                  <> · {formatMoney(untouchedPlanned, { privacy })} planned</>
+                )}
+              </summary>
+              <ul className="row-separated">
+                {untouched.map((row) => (
+                  <ComparisonRow key={row.categoryId ?? 'none'} row={row} privacy={privacy} />
+                ))}
+              </ul>
+            </details>
+          )}
 
           <p className="note mt-3.5">
             Pace is what has been spent against how much of{' '}
