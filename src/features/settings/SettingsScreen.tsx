@@ -156,6 +156,16 @@ export function SettingsScreen({
         <HouseholdScreen householdId={householdId} />
       </section>
 
+      <Card title="Expense categories">
+        <p className="note">
+          Categories and their budgeted figures are managed together on the Expenses screen,
+          because they are the same decision: naming a category and saying what it should cost are
+          one thought, and separating them would mean two screens to set one envelope. The
+          household-wide parts of that — nesting, reordering, archiving policy — move here when
+          they exist.
+        </p>
+      </Card>
+
       <Card title="Not here yet">
         <p className="note">
           Number grouping, auto-lock, biometric unlock, the opening screen, allocation profile,

@@ -15,6 +15,7 @@ import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/t
 import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
+import { ExpensePlanning } from '../plan/PlanScreen.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
@@ -79,6 +80,13 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
         currency={listing.household.baseCurrency}
         privacy={privacy}
       />
+
+      {/*
+        The plan, beneath the comparison that judges it. Ordered so the screen
+        reads as a question and then its workings: what did we mean to spend,
+        how are we doing, what is the plan made of, and finally every line.
+      */}
+      <ExpensePlanning privacy={privacy} householdId={householdId} />
 
       <ExpenseList
         listing={listing}

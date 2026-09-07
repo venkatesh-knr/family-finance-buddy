@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
-import { PlanScreen } from '../features/plan/PlanScreen.tsx';
+import { FireScreen } from '../features/plan/PlanScreen.tsx';
 import { ProfileScreen } from '../features/profile/ProfileScreen.tsx';
 import { SettingsScreen } from '../features/settings/SettingsScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
@@ -36,7 +36,7 @@ import { AccountMenu } from './AccountMenu.tsx';
  * to change how the working places behave, and a tab for each would give them
  * the same weight as the ledger.
  */
-type Screen = 'plan' | 'expenses' | 'holdings' | 'profile' | 'settings';
+type Screen = 'expenses' | 'holdings' | 'fire' | 'profile' | 'settings';
 
 /**
  * Still no router. Two screens and a gate does not justify the dependency, the
@@ -44,9 +44,9 @@ type Screen = 'plan' | 'expenses' | 'holdings' | 'profile' | 'settings';
  * of what is needed. A router arrives when a URL has to be shareable.
  */
 const SCREENS: readonly (readonly [Screen, string])[] = [
-  ['plan', 'Plan'],
   ['expenses', 'Expenses'],
   ['holdings', 'Holdings'],
+  ['fire', 'FIRE'],
 ];
 
 export function App() {
@@ -220,7 +220,7 @@ function SignedIn({
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
-        {screen === 'plan' && <PlanScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'fire' && <FireScreen privacy={privacy} householdId={householdId} />}
         {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} />}
         {screen === 'settings' && (
           <SettingsScreen

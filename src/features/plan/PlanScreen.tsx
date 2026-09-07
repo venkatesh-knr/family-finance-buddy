@@ -25,7 +25,62 @@ import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
 
-export function PlanScreen({
+/**
+ * The planning cards, which now live on Expenses.
+ *
+ * There was a Plan tab holding four cards, and it turned out they answered two
+ * different questions. Three of them ask "what do we intend to spend, and did
+ * we": the annual total, the category envelopes, and the loans and policies.
+ * That last one belongs here rather than in a screen about debt, because the
+ * annual total already counts it — a commitment leaves the account like any
+ * other outgoing, and a plan that omitted it would understate the year.
+ *
+ * The fourth asks when work becomes optional, which is not an expense question
+ * at all. It has its own screen below.
+ */
+export function ExpensePlanning({
+  privacy,
+  householdId,
+}: {
+  privacy: boolean;
+  householdId: string | null;
+}) {
+  const plan = usePlan(householdId);
+
+  if (plan.loading) return <p className="note py-4.5">Loading…</p>;
+  // No JoinHousehold here: this renders inside Expenses, which has already
+  // handled that case. Two invitations on one screen would be one too many.
+  if (plan.noHousehold) return null;
+  if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
+  if (plan.listing === null) return null;
+
+  const editable = canPlan(plan.listing.viewer.role);
+
+  return (
+    <>
+      <AnnualSummary plan={plan} privacy={privacy} />
+      <Categories plan={plan} privacy={privacy} editable={editable} />
+      <Commitments plan={plan} privacy={privacy} editable={editable} />
+
+      {!editable && (
+        <p className="note">
+          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
+          set it. Recording what was spent and deciding what to spend are different rights, and the
+          database enforces the difference rather than this screen.
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * When work becomes optional.
+ *
+ * Its own screen because it is its own question. Sitting above the category
+ * envelopes it looked like another budgeting card; it is the one number the
+ * budgeting is for.
+ */
+export function FireScreen({
   privacy,
   householdId,
 }: {
@@ -39,22 +94,14 @@ export function PlanScreen({
   if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
   if (plan.listing === null) return null;
 
-  const editable = canPlan(plan.listing.viewer.role);
-
   return (
     <div className="flex flex-col gap-4.5">
-      <AnnualSummary plan={plan} privacy={privacy} />
       <FireCard plan={plan} privacy={privacy} />
-      <Categories plan={plan} privacy={privacy} editable={editable} />
-      <Commitments plan={plan} privacy={privacy} editable={editable} />
-
-      {!editable && (
-        <p className="note">
-          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
-          set it. Recording what was spent and deciding what to spend are different rights, and the
-          database enforces the difference rather than this screen.
-        </p>
-      )}
+      <p className="note">
+        The target comes from the annual expense on the Expenses screen, so a figure set there
+        moves this. Goals, and the projection against real contributions, arrive with the fuller
+        FIRE screen.
+      </p>
     </div>
   );
 }
