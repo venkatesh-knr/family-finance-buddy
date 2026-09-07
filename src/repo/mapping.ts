@@ -25,6 +25,7 @@ import {
   MEMBER_COLOURS,
   PAYMENT_METHODS,
   VALUATION_SOURCES,
+  VISIBILITIES,
   type Expense,
   type Holding,
   type Household,
@@ -35,6 +36,7 @@ import {
   type ExpenseCategory,
   type Quantity,
   type Valuation,
+  type Visibility,
 } from './types.ts';
 
 function requireIsoDate(value: unknown, field: string): IsoDate {
@@ -116,6 +118,11 @@ export function toExpense(raw: unknown, membersById: ReadonlyMap<string, Member>
     method: methodRaw === null ? null : requireOneOf<PaymentMethod>(methodRaw, PAYMENT_METHODS, 'expense_txn.method'),
     note: optionalString(row['note'], 'expense_txn.note'),
     isVoided: optionalString(row['voided_at'], 'expense_txn.voided_at') !== null,
+    visibility: requireOneOf<Visibility>(
+      requireString(row['visibility'], 'expense_txn.visibility'),
+      VISIBILITIES,
+      'expense_txn.visibility',
+    ),
   };
 }
 

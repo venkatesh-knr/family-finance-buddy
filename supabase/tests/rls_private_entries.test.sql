@@ -27,7 +27,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(24);
+select plan(28);
 
 -- ============================================================== the fixture
 --
@@ -316,6 +316,75 @@ select is_empty(
   $q$ select entry_count from public.my_private_entry_count(
         'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee') where entry_count > 0 $q$,
   'and learns nothing from the count function either'
+);
+
+
+-- ================== editing is not a second way in (4)
+--
+-- The select policy and the update policy are separate, and Postgres treats
+-- them separately. Without the visibility test on BOTH, an owner could set
+-- visibility = 'household' on a row they were never allowed to read, and then
+-- read it — leaving the select policy looking correct while it is walked
+-- around. These four are the reason that test is duplicated onto the update.
+
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to '55555555-5555-4555-8555-555555555555';
+set local request.jwt.claims   to '{"sub":"55555555-5555-4555-8555-555555555555","role":"authenticated","aal":"aal2"}';
+
+with attempted as (
+  update public.expense_txn
+     set visibility = 'household'
+   where id = 'e0000000-0000-4000-8000-00000000e004'
+  returning 1
+)
+select is(
+  (select count(*)::int from attempted),
+  0,
+  'the owner cannot unhide a partner private expense by editing it'
+);
+
+with attempted as (
+  update public.expense_txn
+     set payee = 'edited by the owner'
+   where id = 'e0000000-0000-4000-8000-00000000e004'
+  returning 1
+)
+select is(
+  (select count(*)::int from attempted),
+  0,
+  'nor edit it at all — a row you cannot read is a row you cannot write'
+);
+
+-- Privacy is a decision about your own record. An owner marking somebody
+-- else's entry private would hide it from the owner and leave the member with
+-- an entry they never chose to conceal.
+select throws_ok(
+  $q$ update public.expense_txn
+         set visibility = 'personal'
+       where id = 'e0000000-0000-4000-8000-00000000e002' $q$,
+  '42501'::char(5),
+  null::text,
+  'and cannot make another member entry private on their behalf'
+);
+
+-- The positive case, or the policy is just a wall. A member owns the decision
+-- about their own row and can change their mind.
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to '66666666-6666-4666-8666-666666666666';
+set local request.jwt.claims   to '{"sub":"66666666-6666-4666-8666-666666666666","role":"authenticated","aal":"aal2"}';
+
+with changed as (
+  update public.expense_txn
+     set visibility = 'household'
+   where id = 'e0000000-0000-4000-8000-00000000e004'
+  returning 1
+)
+select is(
+  (select count(*)::int from changed),
+  1,
+  'the member whose entry it is can make it shared again'
 );
 
 -- ================================================= signed out sees none (1)

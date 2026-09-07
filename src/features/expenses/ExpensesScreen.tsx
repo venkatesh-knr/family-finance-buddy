@@ -118,6 +118,16 @@ function QuickAdd({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /**
+   * Private, and off by default (§20).
+   *
+   * "A shared ledger is the premise of the app"; a form that remembered the
+   * tick would slowly turn one into something else without anybody deciding
+   * to. So it resets after every entry, and privacy is a choice made per
+   * entry rather than a mode somebody is left in.
+   */
+  const [personal, setPersonal] = useState(false);
+
   const currency = listing.household.baseCurrency;
 
   const submit = useCallback(
@@ -150,16 +160,18 @@ function QuickAdd({
           date,
           amount: money(minor, currency),
           payee: payee.trim() === '' ? null : payee.trim(),
+          visibility: personal ? 'personal' : 'household',
         });
         setAmount('');
         setPayee('');
+        setPersonal(false);
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not save that.');
       } finally {
         setBusy(false);
       }
     },
-    [amount, categoryId, currency, date, listing.household.id, memberId, onAdd, payee],
+    [amount, categoryId, currency, date, listing.household.id, memberId, onAdd, payee, personal],
   );
 
   return (
@@ -244,6 +256,29 @@ function QuickAdd({
         <Button type="submit" disabled={busy || amount.trim() === ''}>
           {busy ? 'Saving…' : 'Add'}
         </Button>
+
+        {/*
+          Offered only when filing under your own name. A private entry is
+          readable by the member it belongs to, so marking somebody else's
+          entry private would hide it from them and from you both — the
+          database would accept it and nobody could ever read it again.
+        */}
+        {memberId === listing.viewer.memberId && (
+          <label className="flex w-full items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={personal}
+              onChange={(event) => {
+                setPersonal(event.target.checked);
+              }}
+            />
+            <span className="text-caption" style={{ color: 'var(--ink-2)' }}>
+              <strong>Keep this private</strong> — only you will see it. The amount still counts
+              in the household total, shown to everyone else as one figure without the detail.
+            </span>
+          </label>
+        )}
       </form>
 
       {problem !== null && (
@@ -376,6 +411,13 @@ function StackedRow({ expense, privacy }: { expense: ExpenseRow; privacy: boolea
         <MemberTag member={expense.member} />
         {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
         {expense.isVoided && <Pill tone="due">Voided</Pill>}
+        {/*
+          A row reaching this screen at all means the caller may read it, so a
+          personal one here is always the caller's own. "A privacy control
+          nobody can observe working is indistinguishable from one that does
+          nothing" (§20) — this is where it is observed.
+        */}
+        {expense.visibility === 'personal' && <Pill tone="own">Private</Pill>}
       </div>
     </li>
   );
@@ -411,6 +453,12 @@ function Row({ expense, privacy }: { expense: ExpenseRow; privacy: boolean }) {
           <>
             {' '}
             <Pill tone="due">Voided</Pill>
+          </>
+        )}
+        {expense.visibility === 'personal' && (
+          <>
+            {' '}
+            <Pill tone="own">Private</Pill>
           </>
         )}
       </td>

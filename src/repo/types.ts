@@ -19,6 +19,18 @@ export type MemberColour = 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'c6' | 'c7';
 
 export type PaymentMethod = 'cash' | 'card' | 'upi' | 'netbanking' | 'auto_debit' | 'other';
 
+/**
+ * Who may see one entry (§20).
+ *
+ * `household` is the default and the premise of the app; `personal` means the
+ * member who owns it sees the row and everyone else sees only its contribution
+ * to a total. Two values, not a scale: anything finer would be a promise the
+ * policies cannot keep.
+ */
+export type Visibility = 'household' | 'personal';
+
+export const VISIBILITIES: readonly Visibility[] = ['household', 'personal'];
+
 export const HOUSEHOLD_ROLES: readonly HouseholdRole[] = [
   'owner',
   'partner',
@@ -109,6 +121,11 @@ export interface Expense {
   readonly method: PaymentMethod | null;
   readonly note: string | null;
   readonly isVoided: boolean;
+  /**
+   * Always `household` on a row that came from somebody else — a personal one
+   * of theirs never arrives here at all. On your own rows it is what you set.
+   */
+  readonly visibility: Visibility;
 }
 
 /**
@@ -163,6 +180,8 @@ export interface NewExpense {
   readonly payee?: string | null;
   readonly method?: PaymentMethod | null;
   readonly note?: string | null;
+  /** Omitted means `household`, matching the column default rather than guessing. */
+  readonly visibility?: Visibility;
 }
 
 export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'other';

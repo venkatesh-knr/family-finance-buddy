@@ -16,6 +16,7 @@ const row = {
   method: 'upi',
   note: null,
   voided_at: null,
+  visibility: 'household',
 };
 
 describe('toExpense', () => {
@@ -29,6 +30,7 @@ describe('toExpense', () => {
     expect(expense.method).toBe('upi');
     expect(expense.note).toBeNull();
     expect(expense.isVoided).toBe(false);
+    expect(expense.visibility).toBe('household');
   });
 
   it('keeps a foreign amount in its own currency', () => {
@@ -53,6 +55,23 @@ describe('toExpense', () => {
     expect(() => toExpense({ ...row, txn_date: '2026-04-05T00:00:00Z' }, membersById)).toThrow(
       /calendar date/,
     );
+  });
+
+  it('reads a private row as private', () => {
+    const expense = toExpense({ ...row, visibility: 'personal' }, membersById);
+    expect(expense.visibility).toBe('personal');
+  });
+
+  it('refuses a row with no visibility at all, rather than assuming it is shared', () => {
+    // A missing column means the select list is wrong, and defaulting to
+    // 'household' would render somebody's private entry as a shared one — a
+    // disclosure produced by being helpful about a bug.
+    const { visibility: _omitted, ...withoutVisibility } = row;
+    expect(() => toExpense(withoutVisibility, membersById)).toThrow(/visibility/);
+  });
+
+  it('refuses a visibility we do not know', () => {
+    expect(() => toExpense({ ...row, visibility: 'secret' }, membersById)).toThrow(/not one of/);
   });
 
   it('refuses a payment method we do not know', () => {

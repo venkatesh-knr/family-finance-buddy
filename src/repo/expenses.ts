@@ -116,7 +116,7 @@ export async function listExpenses(
     .from('expense_txn')
     // amount_minor::text — a bigint over 2^53 would otherwise arrive as a
     // lossy double. See the note in holdings.ts.
-    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility')
     .eq('household_id', household.id)
     .order('txn_date', { ascending: false })
     .order('created_at', { ascending: false })
@@ -179,8 +179,12 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
       payee: expense.payee ?? null,
       method: expense.method ?? null,
       note: expense.note ?? null,
+      // Sent explicitly rather than left to the column default, so what the
+      // person ticked is what the row says — a default is the right value in
+      // the schema and the wrong thing to rely on at a seam.
+      visibility: expense.visibility ?? 'household',
     })
-    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility')
     .single();
 
   if (result.error !== null) throw asRepositoryError(result.error);
