@@ -229,19 +229,14 @@ export async function listPlan(options: {
   };
 }
 
-/** True when this household has nothing to plan with yet. */
-export function needsStarterCategories(plan: PlanListing): boolean {
-  return plan.categories.length === 0;
-}
-
-export async function seedStarterCategories(householdId: Uuid): Promise<number> {
-  const client = supabase();
-  const result = await client.rpc('seed_starter_categories', {
-    target_household_id: householdId,
-  });
-  if (result.error !== null) throw asRepositoryError(result.error);
-  return typeof result.data === 'number' ? result.data : 0;
-}
+/*
+ * seed_starter_categories is deliberately no longer called.
+ *
+ * It inserted thirty-six categories copied from one household's workbook, and
+ * the screen now offers a grouped catalogue to choose from instead. The
+ * database function still exists and is harmless; dropping it belongs in a
+ * migration of its own rather than smuggled into a UI change.
+ */
 
 export interface BudgetInput {
   readonly householdId: Uuid;
@@ -290,6 +285,35 @@ export async function addCategory(input: {
     sort_order: input.sortOrder,
   });
   if (result.error !== null) throw asRepositoryError(result.error);
+}
+
+/**
+ * Several categories at once, as chosen from the suggestion list.
+ *
+ * One insert rather than a loop of them: a partial set is worse than none.
+ * Somebody who ticks eleven boxes and gets seven categories has to work out
+ * which four are missing, and the four that failed are indistinguishable from
+ * four they never ticked.
+ */
+export async function addCategories(input: {
+  householdId: Uuid;
+  items: readonly { name: string; nature: CategoryNature }[];
+  /** Where to start numbering, so a second batch lands after the first. */
+  fromSortOrder: number;
+}): Promise<number> {
+  if (input.items.length === 0) return 0;
+
+  const client = supabase();
+  const rows = input.items.map((item, index) => ({
+    household_id: input.householdId,
+    name: item.name.trim(),
+    nature: item.nature,
+    sort_order: input.fromSortOrder + index * 10,
+  }));
+
+  const result = await client.from('expense_category').insert(rows);
+  if (result.error !== null) throw asRepositoryError(result.error);
+  return rows.length;
 }
 
 /**

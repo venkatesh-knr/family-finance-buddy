@@ -20,6 +20,7 @@ import type {
 import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/types.ts';
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
 import { Button, Card, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
@@ -407,7 +408,7 @@ function Categories({
 
   return (
     <Card
-      title="Categories"
+      title="Spending plan"
       collapsible
       // Folded to begin with once the list is long enough to push everything
       // else off the screen. Three dozen rows above the loans card means the
@@ -433,19 +434,10 @@ function Categories({
       {rows.length === 0 ? (
         <div className="flex flex-col gap-3">
           <p className="note">
-            No categories yet. The workbook&rsquo;s list is a starting point — add, rename, reorder
-            and archive them freely afterwards.
+            Nothing here yet. Pick the ones this household actually spends on — the rest can be
+            added later, and anything missing goes in by name below.
           </p>
-          {editable && (
-            <Button
-              type="button"
-              onClick={() => {
-                void plan.seed();
-              }}
-            >
-              Start from the standard list
-            </Button>
-          )}
+          {editable && <SuggestionPicker plan={plan} existing={[]} />}
         </div>
       ) : (
         <div className="flex flex-col gap-4.5">
@@ -472,7 +464,24 @@ function Categories({
         </div>
       )}
 
-      {editable && rows.length > 0 && <NewCategory onAdd={plan.createCategory} />}
+      {editable && rows.length > 0 && (
+        <>
+          <NewCategory onAdd={plan.createCategory} />
+
+          {/*
+            Folded, because a household that has already set this up is not
+            looking for suggestions — but one that thought of something later
+            should not have to remember the exact name themselves. Anything
+            already here is filtered out of the list rather than offered again.
+          */}
+          <details className="mt-3.5">
+            <summary className="notice-toggle">Add from the suggestions</summary>
+            <div className="mt-3">
+              <SuggestionPicker plan={plan} existing={rows.map((row) => row.name)} />
+            </div>
+          </details>
+        </>
+      )}
     </Card>
   );
 }
@@ -616,6 +625,124 @@ function BudgetField({
         }}
       />
     </label>
+  );
+}
+
+/**
+ * The suggestion list, as checkboxes.
+ *
+ * It replaces a single button that inserted thirty-six categories in one go.
+ * That button was quick and it was also a decision made on somebody else's
+ * behalf: a household without a scooty got an "Insurance Scooty" envelope and
+ * had to go and archive it, and twenty-two untouched categories is what that
+ * looks like a month later.
+ *
+ * Nothing is ticked to begin with. A pre-ticked list is the same imposition
+ * with an extra step, and the whole point is that the household says which of
+ * these it actually spends on.
+ */
+function SuggestionPicker({
+  plan,
+  existing,
+}: {
+  plan: ReturnType<typeof usePlan>;
+  existing: readonly string[];
+}) {
+  const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  // Compared case-insensitively and trimmed, because "Fuel" and "fuel " are
+  // the same envelope to a person and two rows to the database.
+  const taken = useMemo(
+    () => new Set(existing.map((name) => name.trim().toLowerCase())),
+    [existing],
+  );
+
+  const toggle = (name: string) => {
+    setChosen((was) => {
+      const next = new Set(was);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const submit = async () => {
+    const items = CATEGORY_CATALOGUE.flatMap((group) =>
+      group.items.filter((item) => chosen.has(item.name)),
+    );
+    if (items.length === 0) return;
+
+    setBusy(true);
+    setProblem(null);
+    try {
+      await plan.addSuggested(items);
+      setChosen(new Set());
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'Could not add those.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      {CATEGORY_CATALOGUE.map((group) => {
+        const available = group.items.filter((item) => !taken.has(item.name.toLowerCase()));
+        if (available.length === 0) return null;
+
+        return (
+          <div key={group.group} className="flex flex-col gap-1.5">
+            <span className="micro-label">{group.group}</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {available.map((item) => (
+                <label key={item.name} className="flex items-center gap-1.5 text-caption">
+                  <input
+                    type="checkbox"
+                    checked={chosen.has(item.name)}
+                    onChange={() => {
+                      toggle(item.name);
+                    }}
+                  />
+                  <span style={{ color: 'var(--ink)' }}>{item.name}</span>
+                  {item.nature === 'fixed' && <Pill tone="own">compulsory</Pill>}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" disabled={busy || chosen.size === 0} onClick={() => void submit()}>
+          {busy
+            ? 'Adding…'
+            : chosen.size === 0
+              ? 'Choose some to add'
+              : `Add ${String(chosen.size)} ${chosen.size === 1 ? 'category' : 'categories'}`}
+        </Button>
+        {chosen.size > 0 && (
+          <button
+            type="button"
+            className="note underline"
+            onClick={() => {
+              setChosen(new Set());
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {problem !== null && <Problem>{problem}</Problem>}
+
+      <p className="note">
+        Marked <strong>compulsory</strong> where the spend arrives whether or not anybody decides
+        to — a fee, a premium, a bill. It is a starting guess: the same name is a commitment in
+        one household and a choice in another, and it is editable afterwards.
+      </p>
+    </div>
   );
 }
 

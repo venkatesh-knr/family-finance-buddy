@@ -16,16 +16,21 @@ import {
 import { fireBaseYear, fireLadder, type LadderStep } from '../../domain/fire.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
 import {
+  addCategories,
   addCategory,
   addLiability,
   addPolicy,
   archiveCategory,
   listPlan,
   renameCategory,
-  seedStarterCategories,
   setBudget,
 } from '../../repo/planning.ts';
-import { NoHouseholdError, type Budget, type PlanListing } from '../../repo/types.ts';
+import {
+  NoHouseholdError,
+  type Budget,
+  type CategoryNature,
+  type PlanListing,
+} from '../../repo/types.ts';
 
 /** The tax year containing a given IST date. April starts a new one. */
 export function taxYearOf(today: string): number {
@@ -64,7 +69,7 @@ export interface PlanState {
 }
 
 export function usePlan(householdId: string | null): PlanState & {
-  seed: () => Promise<void>;
+  addSuggested: (items: readonly { name: string; nature: CategoryNature }[]) => Promise<number>;
   saveBudget: (categoryId: string, cadence: 'monthly' | 'yearly', planned: bigint) => Promise<void>;
   createCategory: (name: string, nature: 'fixed' | 'variable') => Promise<void>;
   setArchived: (categoryId: string, archived: boolean) => Promise<void>;
@@ -218,9 +223,20 @@ export function usePlan(householdId: string | null): PlanState & {
     problem,
     noHousehold,
     reload: () => void load(),
-    seed: async () => {
-      if (listing === null) return;
-      await after(seedStarterCategories(listing.household.id));
+    addSuggested: async (items) => {
+      if (listing === null) return 0;
+      // Numbered after whatever is already there, so a second batch does not
+      // interleave itself through the first.
+      const highest = listing.categories.reduce((top, c) => Math.max(top, c.sortOrder), 0);
+      let added = 0;
+      await after(
+        addCategories({ householdId: listing.household.id, items, fromSortOrder: highest + 10 }).then(
+          (count) => {
+            added = count;
+          },
+        ),
+      );
+      return added;
     },
     saveBudget: async (categoryId, cadence, planned) => {
       if (listing === null) return;
