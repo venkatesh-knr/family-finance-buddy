@@ -25,15 +25,40 @@
 -- for a figure that matters. Every amount is in integer minor units — paise.
 
 
+-- Writing a row into auth.users by hand means owning every column GoTrue
+-- reads, not only the ones this fixture cares about.
+--
+-- Four of its token columns carry no database default — confirmation_token,
+-- recovery_token, email_change and email_change_token_new — so an insert that
+-- names a tidy subset of columns leaves exactly those null. GoTrue scans them
+-- into Go strings, which cannot hold null, and the account then fails to load
+-- at all: sign-in and the dashboard both answer "Database error loading user",
+-- and the row cannot even be deleted through the API that refuses to read it.
+-- An empty string is what GoTrue means by "no token outstanding"; null is not
+-- the same thing.
+--
+-- The four added later — email_change_token_current, phone_change,
+-- phone_change_token, reauthentication_token — do default to ''. They are
+-- listed anyway, because which four have defaults is a property of whichever
+-- GoTrue version a project happens to run, and is not worth depending on.
+--
+-- They are listed explicitly rather than left to defaults, because the whole
+-- failure was a column nobody listed.
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password,
-   email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+   email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+   confirmation_token, recovery_token, email_change,
+   email_change_token_new, email_change_token_current,
+   phone_change, phone_change_token, reauthentication_token)
 values
   ('00000000-0000-0000-0000-000000000000',
    'd0000000-0000-4000-8000-000000000001',
    'authenticated', 'authenticated', 'owner@finance-buddy.test',
    extensions.crypt('DemoHousehold!2026', extensions.gen_salt('bf')),
-   now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}')
+   now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}',
+   '', '', '',
+   '', '',
+   '', '', '')
 on conflict (id) do nothing;
 
 -- user_account is created by the on_auth_user_created trigger; pin its id so
