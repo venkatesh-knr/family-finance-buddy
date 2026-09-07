@@ -178,7 +178,12 @@ function EyeIcon({ crossed }: { crossed: boolean }) {
   );
 }
 
-export type PillTone = 'own' | 'ok' | 'due' | 'neutral';
+/**
+ * Five, as docs/tokens.md:179 defines them. `warn` was missing until Settings
+ * needed it — brass, for something worth noticing that is not yet wrong.
+ * Coral is spent on wrong.
+ */
+export type PillTone = 'own' | 'ok' | 'warn' | 'due' | 'neutral';
 
 /**
  * Tone classes written out in full, never assembled.
@@ -196,6 +201,7 @@ export type PillTone = 'own' | 'ok' | 'due' | 'neutral';
 const PILL_CLASS: Record<PillTone, string> = {
   own: 'pill-own',
   ok: 'pill-ok',
+  warn: 'pill-warn',
   due: 'pill-due',
   neutral: 'pill-neutral',
 };

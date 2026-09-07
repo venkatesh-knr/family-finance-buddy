@@ -28,8 +28,10 @@ BUILD_DIR="${1:-dist}"
 # The components map the union to a literal string precisely so Tailwind can
 # read it; this proves the mapping is still doing its job.
 REQUIRED=(
-  pill-own pill-ok pill-due pill-neutral
+  pill-own pill-ok pill-warn pill-due pill-neutral
   notice notice-gap notice-due notice-names notice-toggle
+  setgrp setrow grouphead
+  avatar menu mhead mitem mitem-quiet iconbtn
 )
 
 if [ ! -d "${BUILD_DIR}" ]; then

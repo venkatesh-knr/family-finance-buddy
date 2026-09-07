@@ -98,6 +98,11 @@
     color: var(--teal);
   }
 
+  .pill-warn {
+    background: var(--brass-soft);
+    color: var(--brass);
+  }
+
   .pill-due {
     background: var(--coral-soft);
     color: var(--coral);
@@ -261,6 +266,172 @@
     border-radius: var(--radius-pill);
     color: inherit;
     padding: 2px 9px;
+  }
+
+  /*
+   * Settings rows.
+   *
+   * A label, the reason it exists, and its current value — in that order,
+   * because a setting nobody can explain is a setting nobody should change.
+   * The description is not decoration: half of these have consequences that
+   * are invisible until months later, like which calendar a tax year uses.
+   */
+  .setgrp {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .setrow {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 13px 16px;
+  }
+
+  .setrow:last-child {
+    border-bottom: none;
+  }
+
+  .setrow .sk {
+    color: var(--ink);
+    font-size: 13.6px;
+    font-weight: 600;
+  }
+
+  .setrow .sd {
+    color: var(--muted);
+    font-size: 12.2px;
+    margin-top: 2px;
+  }
+
+  .setrow .sv {
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 12.6px;
+  }
+
+  .grouphead {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    justify-content: space-between;
+    margin-bottom: 9px;
+  }
+
+  .grouphead h2 {
+    font-size: 14.5px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .grouphead .who {
+    color: var(--muted);
+    font-size: 11.8px;
+  }
+
+  /*
+   * A switch in the top bar. Icon and word together: the glyph alone would
+   * mean nothing on first sight, and nothing in this app means anything by
+   * one signal.
+   */
+  .iconbtn {
+    align-items: center;
+    background: var(--surface-3);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-size: 12.5px;
+    gap: 6px;
+    padding: 5px 11px;
+  }
+
+  .iconbtn[aria-pressed='true'] {
+    background: var(--indigo-soft);
+    border-color: var(--indigo);
+    color: var(--indigo);
+    font-weight: 600;
+  }
+
+  /* The account control, and the menu behind it. */
+  .avatar {
+    align-items: center;
+    background: var(--indigo-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    color: var(--indigo);
+    cursor: pointer;
+    display: flex;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .menu {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    overflow: hidden;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 7px);
+    z-index: 20;
+  }
+
+  .mhead {
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 11px 14px;
+  }
+
+  .mhead b {
+    color: var(--ink);
+    font-size: 13px;
+    /* An address is long and a menu is narrow; wrapping beats truncating,
+       because the domain is the half that distinguishes two accounts. */
+    overflow-wrap: anywhere;
+  }
+
+  .mhead span {
+    color: var(--muted);
+    font-size: 11.8px;
+    text-transform: capitalize;
+  }
+
+  .mitem {
+    background: none;
+    border: 0;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    padding: 10px 14px;
+    text-align: left;
+  }
+
+  .mitem:hover,
+  .mitem:focus-visible {
+    background: var(--surface-3);
+  }
+
+  .mitem-quiet {
+    border-top: 1px solid var(--line);
+    color: var(--muted);
   }
 
   /* Wide content scrolls inside its own container; the page body never does. */
