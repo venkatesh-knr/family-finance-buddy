@@ -40,7 +40,9 @@ const SOURCES = [
  */
 function codeOnly(path, text) {
   if (!path.endsWith('.md')) return [text];
-  return [...text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)].map((m) => m[1]);
+  // \r? because a CRLF checkout would otherwise match no fences at all — and
+  // this check has already once reported success on nothing.
+  return [...text.matchAll(/```[a-z]*\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
 }
 
 /**
