@@ -1,13 +1,29 @@
 -- Family Finance Buddy — demo household fixture.
 --
--- Loaded by `supabase db reset` into the LOCAL stack only. It never runs
--- against a hosted project, and the login below exists only on your machine.
+-- LOCAL ONLY, and now enforced rather than asserted.
+--
+-- This file used to say it never runs against a hosted project. That was not
+-- true: `supabase db reset --linked` seeds whatever it just reset, and it once
+-- put the sign-in below — whose password is committed to a public repository
+-- — onto the live project. A comment is not a control.
+--
+-- So it is no longer reachable by accident. Automatic seeding is off in
+-- config.toml, and the only supported way to load this file is
+--
+--     npm run db:seed:local
+--
+-- whose connection string names the local stack and cannot be pointed at
+-- anything else. That is the whole control: not a check inside the file that
+-- tries to work out where it is — a hosted project answers from a private
+-- address just as a local one does, so such a check passes exactly where it
+-- most needs to fail — but a command that can only reach one database.
 --
 --   email     owner@finance-buddy.test
 --   password  DemoHousehold!2026
 --
 -- The household is marked `demo`, not `real`, so nothing here can be mistaken
 -- for a figure that matters. Every amount is in integer minor units — paise.
+
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password,
