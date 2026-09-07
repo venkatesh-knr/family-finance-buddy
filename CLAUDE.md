@@ -97,6 +97,15 @@ authoritative; if something here conflicts with them, ask rather than choosing.
   projection, FD and bond accrual. Fixtures with known answers first.
 - One concern per commit. Plan before touching more than a few files.
 - Show migrations and policies for review before building UI on top of them.
+- **The design and the code move together, in whichever order they move.** A
+  screen added to `docs/design/prototype.html` gets a row in
+  `docs/design/conformance.md` saying when it will be built; a screen built in
+  `src/` updates its row in the same commit. `npm run check:design` enforces the
+  mechanical half — every designed screen accounted for, every claim of "built"
+  naming a path that exists — and gates the deploy. Whether a screen actually
+  *looks* like its mock is a person with both open; the check only stops the
+  ledger becoming fiction. Deliberate departures go in that file's Departures
+  table with the reason, so they are decisions rather than drift.
 - Respect OS text size to 200%; no fixed-height container holds text.
 - **Never encode meaning in colour alone** — a gain carries a sign or arrow as well as a hue.
 - Charts read colours from tokens, never literals, or they break in one theme.

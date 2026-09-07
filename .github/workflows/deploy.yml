@@ -51,8 +51,8 @@ jobs:
       # The design and the code restate one palette in four files. This is the
       # only part of "does the app match the design" a machine can answer, so
       # it answers that part and leaves the rest to a person reading both.
-      - name: Design tokens agree with docs/tokens.md
-        run: npm run check:tokens
+      - name: Design and code still describe each other
+        run: npm run check:design
 
       - name: Unit tests
         run: npm run test:unit

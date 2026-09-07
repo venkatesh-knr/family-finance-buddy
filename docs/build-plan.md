@@ -9,6 +9,30 @@ The instinct is to attack the risky parts first. Here that would be wrong — th
 
 ---
 
+## 00. Where this stands
+
+Kept current in the repository so this file is worth reading from either side.
+`docs/design/conformance.md` is the screen-by-screen version, and CI fails when
+it stops describing the code.
+
+| Stage | State | What is outstanding |
+|---|---|---|
+| 0 — Irreversible choices | done | — |
+| 1 — Walking skeleton | done | — |
+| 2 — Schema, policies, tests | done | 18 migrations, 84 policy assertions gating the deploy, audit triggers on every table |
+| 3 — The demo household | **partial** | Switcher and demo badge done. The seed exercising edge cases is not written, and reset-and-reseed is now a household-scoped operation to design rather than `db reset`. |
+| 4 — Screens you use daily | **in progress** | Expenses, spending plan and holdings built. Overview, allocation and the monthly snapshot job are not. |
+| 5 — The rest of the surface | not started | Property, global, tax, calendar, reports, read-auditing |
+| 6 — Onto the devices | not started | — |
+| 7 — Real data | not started | — |
+
+Two things cut across the stages and are worth stating once. Section 20's
+private entries are built end to end for expenses — the control, the policies,
+the audit rule and the security-definer totals — but the cross-member cases have
+only ever run against fixtures, because the live household has one member. And
+the generated app icons do not match the recommended concept; that is its own
+piece of work and blocks nothing.
+
 ## 01. Why not risk-first
 
 A spike is worth doing early when failure would change the design. Measured against that test, the three risks flagged earlier don't qualify — and one unflagged thing does.
