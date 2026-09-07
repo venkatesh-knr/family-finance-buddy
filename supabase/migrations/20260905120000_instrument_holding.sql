@@ -56,6 +56,15 @@ create table public.instrument (
   constraint instrument_household_id_id_key unique (household_id, id)
 );
 
+-- Deliberately no `visibility` column here, though `holding` has one.
+--
+-- An instrument is the thing itself, shared by everyone in the household who
+-- holds it — which is why the composite key can guarantee a holding and its
+-- instrument belong to the same household. Making it per-member to hide it
+-- would undo that, and buy little: what leaks is that somebody owns VTI, not
+-- how much or whose. §20 protects the line-item detail, and the detail lives
+-- in `holding` and `valuation_snapshot`, both of which are covered.
+
 comment on column public.instrument.exposure_currency is
   'What the value tracks, which is not always what it is priced in. See §293.';
 comment on column public.instrument.is_foreign_asset is
