@@ -66,7 +66,13 @@ export function daysElapsedIn(
 
 // ─── the comparison ───────────────────────────────────────────────────────
 
-export type PaceState = 'unplanned' | 'under' | 'on-track' | 'over';
+/**
+ * `private` is never returned by paceState — it is not a judgement about a
+ * rate. It marks a line that is a sum and nothing else, and it exists as a
+ * state so a screen cannot label it "no plan", which would read as an
+ * oversight somebody should go and fix.
+ */
+export type PaceState = 'unplanned' | 'under' | 'on-track' | 'over' | 'private';
 
 /**
  * The rate of spending against the rate of time.
@@ -120,8 +126,39 @@ export interface CategoryActual {
   readonly spent: Money;
 }
 
+/**
+ * Another member's private spending, as one figure (§20).
+ *
+ * This is the whole of what the database will say about it. There is no
+ * category here and no way to ask for one: "If a total is visible and only one
+ * entry is private, the private amount can be recovered by subtraction. So
+ * private amounts roll into a single Personal line per member rather than into
+ * fine-grained category totals."
+ *
+ * The member's name travels with it because the alternative is a total that
+ * does not add up for any visible reason, and an unexplained gap invites more
+ * suspicion than a line that says plainly whose it is and declines to elaborate.
+ */
+export interface PersonalTotal {
+  readonly memberId: string;
+  readonly memberName: string;
+  readonly total: Money;
+}
+
 export interface BudgetComparison {
+  /**
+   * What this row is, rather than what it is missing.
+   *
+   * `uncategorised` and `personal` both have no category and no plan, and
+   * telling them apart by their nulls would be guesswork: one is spending
+   * nobody has filed yet, the other is spending nobody may see. They are
+   * ordered, labelled and worded differently, so the distinction is carried
+   * explicitly.
+   */
+  readonly kind: 'category' | 'uncategorised' | 'personal';
   readonly categoryId: string | null;
+  /** Set only on a personal line: whose it is. */
+  readonly memberId: string | null;
   readonly name: string;
   readonly nature: 'fixed' | 'variable' | null;
   readonly planned: Money | null;
@@ -135,10 +172,16 @@ export interface BudgetComparison {
 export function compareToBudget(options: {
   readonly planned: readonly CategoryPlanned[];
   readonly actuals: readonly CategoryActual[];
+  /**
+   * Other members' private sums. Omitted where privacy is not in play — a
+   * fixture, a test, a screen that has not asked for them yet — which is not
+   * the same as "nobody has any": an empty array says that.
+   */
+  readonly personal?: readonly PersonalTotal[];
   readonly daysElapsed: number;
   readonly daysInPeriod: number;
 }): readonly BudgetComparison[] {
-  const { planned, actuals, daysElapsed, daysInPeriod } = options;
+  const { planned, actuals, personal = [], daysElapsed, daysInPeriod } = options;
 
   const currency =
     planned.find((p) => p.planned !== null)?.planned?.currency ??
@@ -157,7 +200,9 @@ export function compareToBudget(options: {
     const pace = budgetPace(category.planned, spent, daysElapsed, daysInPeriod);
 
     return {
+      kind: 'category',
       categoryId: category.categoryId,
+      memberId: null,
       name: category.name,
       nature: category.nature,
       planned: category.planned,
@@ -175,7 +220,9 @@ export function compareToBudget(options: {
   const uncategorised = spentByCategory.get(null);
   if (uncategorised !== undefined && uncategorised !== 0n) {
     rows.push({
+      kind: 'uncategorised',
       categoryId: null,
+      memberId: null,
       name: 'Uncategorised',
       nature: null,
       planned: null,
@@ -183,6 +230,28 @@ export function compareToBudget(options: {
       remaining: null,
       pace: null,
       state: 'unplanned',
+    });
+  }
+
+  // One line per member, and only for a member who actually has something.
+  //
+  // A zero row would be worse than no row twice over: it is noise, and read
+  // carefully it discloses that a member has no private spending — which is
+  // itself a fact about them they did not choose to publish.
+  for (const entry of personal) {
+    if (entry.total.minor === 0n) continue;
+
+    rows.push({
+      kind: 'personal',
+      categoryId: null,
+      memberId: entry.memberId,
+      name: `Personal — ${entry.memberName}`,
+      nature: null,
+      planned: null,
+      spent: entry.total,
+      remaining: null,
+      pace: null,
+      state: 'private',
     });
   }
 

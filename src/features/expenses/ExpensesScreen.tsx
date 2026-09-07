@@ -27,6 +27,7 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
     liveDetail,
     noHousehold,
     budgets,
+    personalSpend,
     fy,
     today,
     add,
@@ -68,6 +69,11 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
         categories={listing.categories}
         budgets={budgets}
         expenses={listing.expenses}
+        members={listing.members}
+        // Null means the sums could not be read, which is not the same as
+        // nobody having any. The card says which it is rather than showing a
+        // total that might be short by an unknown amount.
+        personalSpend={personalSpend}
         today={today}
         fy={fy}
         currency={listing.household.baseCurrency}

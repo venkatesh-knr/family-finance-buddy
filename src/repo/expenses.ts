@@ -15,7 +15,9 @@
  */
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { istCalendarDate } from '../lib/dates.ts';
+import { istCalendarDate, type IsoDate } from '../lib/dates.ts';
+import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
+import { money } from '../lib/money.ts';
 import { supabase } from './client.ts';
 import { toExpense, toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
@@ -24,6 +26,7 @@ import {
   type ExpenseListing,
   type Member,
   type NewExpense,
+  type PersonalSpend,
   type Uuid,
 } from './types.ts';
 
@@ -280,6 +283,60 @@ export function subscribeToExpenses(
     cancelled = true;
     if (channel !== null) void client.removeChannel(channel);
   };
+}
+
+/**
+ * What everyone else in the household spent privately, between two dates.
+ *
+ * The one read in this file that does not go through a table. It cannot: the
+ * rows are hidden from the caller by policy, which is the point, so the sum
+ * comes from a security-definer function that reads past that policy and
+ * returns only totals. Section 20 requires both halves — "household totals
+ * must include private amounts or the numbers disagree between members" and
+ * "the line-item detail is returned to nobody else, the owner included."
+ *
+ * The caller's own private spending is deliberately absent. They can already
+ * read those rows and this screen already counts them under their real
+ * categories; adding them here would count them twice.
+ *
+ * Failing is not the same as empty, and this must not be caught and flattened
+ * into []. A household with private spending would then quietly show a total
+ * that is too low, which is the exact failure the function exists to prevent.
+ */
+export async function listPersonalSpend(options: {
+  householdId: Uuid;
+  from: IsoDate;
+  to: IsoDate;
+}): Promise<readonly PersonalSpend[]> {
+  const client = supabase();
+
+  // Named arguments, not positional: PostgREST resolves a function by
+  // parameter name, and a positional call would not find it at all.
+  const { data, error } = await client.rpc('personal_expense_totals', {
+    target_household_id: options.householdId,
+    from_date: options.from,
+    to_date: options.to,
+  });
+
+  if (error !== null) throw asRepositoryError(error);
+  if (data === null) return [];
+  if (!Array.isArray(data)) {
+    throw new MalformedRowError('personal_expense_totals', 'did not return a set of rows');
+  }
+
+  return data.map((row: unknown) => {
+    const record = requireRecord(row, 'personal_expense_totals');
+    return {
+      memberId: requireString(record['member_id'], 'personal_expense_totals.member_id'),
+      // toBigIntExact refuses a figure too large to have survived JSON rather
+      // than rounding it, so a sum that cannot be trusted throws instead of
+      // quietly understating a household total by a few paise.
+      total: money(
+        toBigIntExact(record['total_minor'], 'personal_expense_totals.total_minor'),
+        requireString(record['currency'], 'personal_expense_totals.currency'),
+      ),
+    };
+  });
 }
 
 /** Today, in Kolkata, as the quick-add form's default. */

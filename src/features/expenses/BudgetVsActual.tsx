@@ -19,11 +19,18 @@ import {
   type BudgetComparison,
   type CategoryActual,
   type CategoryPlanned,
+  type PersonalTotal,
 } from '../../domain/budget.ts';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
-import type { Budget, Expense, ExpenseCategory } from '../../repo/types.ts';
-import { Card, Pill } from '../../ui/primitives.tsx';
+import type {
+  Budget,
+  Expense,
+  ExpenseCategory,
+  Member,
+  PersonalSpendPeriods,
+} from '../../repo/types.ts';
+import { Card, Notice, Pill } from '../../ui/primitives.tsx';
 
 type Period = 'month' | 'year';
 
@@ -31,6 +38,8 @@ export function BudgetVsActual({
   categories,
   budgets,
   expenses,
+  members,
+  personalSpend,
   today,
   fy,
   currency,
@@ -39,6 +48,14 @@ export function BudgetVsActual({
   categories: readonly ExpenseCategory[];
   budgets: readonly Budget[];
   expenses: readonly Expense[];
+  members: readonly Member[];
+  /**
+   * Other members' private sums. Absent from `expenses` by policy, not by
+   * accident. Null when they could not be read — which the card must say,
+   * because the difference between "nobody has any" and "we could not tell"
+   * is the difference between a total that is right and one that is short.
+   */
+  personalSpend: PersonalSpendPeriods | null;
   today: string;
   fy: number;
   currency: string;
@@ -90,19 +107,65 @@ export function BudgetVsActual({
       .map((expense) => ({ categoryId: expense.categoryId, spent: expense.amount }));
   }, [expenses, bounds]);
 
+  /**
+   * The private sums, given the member names this screen already has.
+   *
+   * The database returns an id and a figure; a name is not its business, and
+   * joining it there would have made the function return more than a total.
+   */
+  // The sums for the period actually on screen. Reading the year's figures
+  // into a month's comparison would put twelve months of private spending
+  // against one month of plan.
+  const spendForPeriod = useMemo(
+    () => (personalSpend === null ? null : period === 'month' ? personalSpend.month : personalSpend.year),
+    [personalSpend, period],
+  );
+
+  const personal = useMemo<readonly PersonalTotal[]>(() => {
+    if (spendForPeriod === null) return [];
+    const nameOf = new Map(members.map((member) => [member.id, member.displayName]));
+    return spendForPeriod
+      .filter((entry) => entry.total.currency === currency)
+      .map((entry) => ({
+        memberId: entry.memberId,
+        // A member who has left the household still has spending in its
+        // history — archived, never deleted — and an unnamed line is worse
+        // than a plainly former one.
+        memberName: nameOf.get(entry.memberId) ?? 'A former member',
+        total: entry.total,
+      }));
+  }, [spendForPeriod, members, currency]);
+
+  // Private spending in another currency cannot be added to this total, and
+  // must not be silently dropped either: the figure would be too low with
+  // nothing on screen saying so. Converting it here would invent a rate at the
+  // display edge, which is the one thing this app never does with money.
+  const otherCurrencies = useMemo(
+    () => [
+      ...new Set(
+        (spendForPeriod ?? []).filter((e) => e.total.currency !== currency).map((e) => e.total.currency),
+      ),
+    ],
+    [spendForPeriod, currency],
+  );
+
   const rows = useMemo(
-    () => compareToBudget({ planned, actuals, daysElapsed, daysInPeriod }),
-    [planned, actuals, daysElapsed, daysInPeriod],
+    () => compareToBudget({ planned, actuals, personal, daysElapsed, daysInPeriod }),
+    [planned, actuals, personal, daysElapsed, daysInPeriod],
   );
 
   // Whatever is over comes first, then the rest by what has been spent. A list
   // in category order buries the one row worth acting on.
   const ordered = useMemo(() => {
+    // Private lines sort last on purpose. Nothing can be done about them —
+    // there is no plan to compare and no detail to look into — so they belong
+    // below every row somebody could actually act on.
     const rank: Record<BudgetComparison['state'], number> = {
       over: 0,
       'on-track': 1,
       under: 2,
       unplanned: 3,
+      private: 4,
     };
     return [...rows].sort(
       (a, b) => rank[a.state] - rank[b.state] || Number(b.spent.minor - a.spent.minor),
@@ -200,6 +263,32 @@ export function BudgetVsActual({
             {period === 'month' &&
               ' A yearly figure is not counted here: a school fee is not a twelfth of itself each month.'}
           </p>
+
+          {personal.length > 0 && (
+            <p className="note mt-2">
+              A <strong>private</strong> line is one member's own spending, counted in the total and
+              shown as a single figure. The detail is theirs; the total is the household's.
+            </p>
+          )}
+
+          {personalSpend === null && (
+            <div className="mt-2.5">
+              <Notice tone="due">
+                Private spending could not be read just now, so this total may be short. It is not
+                that nobody has any — that would show as a line of its own.
+              </Notice>
+            </div>
+          )}
+
+          {otherCurrencies.length > 0 && (
+            <div className="mt-2.5">
+              <Notice names={otherCurrencies} namesLabel="Which currencies">
+                Some private spending is in another currency and is not in this total, which is
+                therefore low. Adding it would need a rate, and a total is not the place to invent
+                one.
+              </Notice>
+            </div>
+          )}
         </>
       )}
     </Card>
@@ -211,6 +300,9 @@ const TONE: Record<BudgetComparison['state'], 'ok' | 'due' | 'neutral' | 'own'> 
   'on-track': 'ok',
   under: 'neutral',
   unplanned: 'neutral',
+  // `own` is the attribution colour, which is what this line is: a figure
+  // belonging to somebody. It is not a warning and must not look like one.
+  private: 'own',
 };
 
 const LABEL: Record<BudgetComparison['state'], string> = {
@@ -218,6 +310,10 @@ const LABEL: Record<BudgetComparison['state'], string> = {
   'on-track': 'on track',
   under: 'behind',
   unplanned: 'no plan',
+  // Not "no plan". This is counted, deliberate, and nothing for anyone else to
+  // go and fix; a label implying an oversight would invite exactly the asking
+  // that the feature exists to make unnecessary.
+  private: 'private',
 };
 
 function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boolean }) {

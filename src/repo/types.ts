@@ -124,6 +124,36 @@ export interface ExpenseListing {
   readonly categories: readonly ExpenseCategory[];
 }
 
+/**
+ * What another member spent privately in a period — the sum, and nothing else.
+ *
+ * There is no category, no date and no payee on this, and none can be asked
+ * for: the database function that produces it takes no argument that would
+ * return a breakdown. "If a total is visible and only one entry is private,
+ * the private amount can be recovered by subtraction. So private amounts roll
+ * into a single Personal line per member." (§20)
+ *
+ * One entry per member per currency, because a sum of two currencies is not a
+ * number. Collapsing them here would invent an exchange rate at the seam,
+ * which is the one place this app never does arithmetic.
+ */
+export interface PersonalSpend {
+  readonly memberId: Uuid;
+  readonly total: Money;
+}
+
+/**
+ * The private sums for both periods the comparison offers.
+ *
+ * Fetched as a pair rather than derived from one another, because they cannot
+ * be: a month is not a twelfth of a year, and narrowing a year's total to a
+ * month would need the dates the function deliberately does not return.
+ */
+export interface PersonalSpendPeriods {
+  readonly month: readonly PersonalSpend[];
+  readonly year: readonly PersonalSpend[];
+}
+
 export interface NewExpense {
   readonly householdId: Uuid;
   readonly memberId: Uuid;

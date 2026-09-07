@@ -11,12 +11,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addExpense,
   listExpenses,
+  listPersonalSpend,
   subscribeToExpenses,
   type LiveStatus,
 } from '../../repo/expenses.ts';
+import { monthBounds, taxYearBounds } from '../../domain/budget.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
-import { NoHouseholdError, type Budget, type ExpenseListing, type NewExpense } from '../../repo/types.ts';
+import {
+  NoHouseholdError,
+  type Budget,
+  type ExpenseListing,
+  type NewExpense,
+  type PersonalSpendPeriods,
+} from '../../repo/types.ts';
 
 export interface ExpensesState {
   readonly listing: ExpenseListing | null;
@@ -35,6 +43,14 @@ export interface ExpensesState {
   readonly noHousehold: boolean;
   /** The plan for this tax year, so the ledger can be held against it. */
   readonly budgets: readonly Budget[];
+  /**
+   * Other members' private sums for the year (§20).
+   *
+   * Null, not empty, when the figure could not be fetched. An empty array
+   * means "nobody has anything private"; null means "we do not know", and a
+   * total built on the first when the truth is the second is quietly wrong.
+   */
+  readonly personalSpend: PersonalSpendPeriods | null;
   readonly fy: number;
   readonly today: string;
 }
@@ -49,6 +65,10 @@ export function useExpenses(householdId: string | null): ExpensesState & {
   const [problem, setProblem] = useState<string | null>(null);
   const [noHousehold, setNoHousehold] = useState(false);
   const [budgets, setBudgets] = useState<readonly Budget[]>([]);
+  const [personalSpend, setPersonalSpend] = useState<PersonalSpendPeriods | null>({
+    month: [],
+    year: [],
+  });
   const [live, setLive] = useState<LiveStatus>('connecting');
 
   // Read once at the edge; every calculation below takes it as an argument.
@@ -83,6 +103,31 @@ export function useExpenses(householdId: string | null): ExpensesState & {
       } catch {
         if (mine === generation.current) setBudgets([]);
       }
+
+      // The private sums, for BOTH periods the card can show.
+      //
+      // Not one and then narrowed: a month cannot be derived from a year here,
+      // because the function returns a sum and deliberately no dates to narrow
+      // it by. Deriving it would mean either a twelfth of the year, which is
+      // not what anybody spent, or asking for the detail that must not be
+      // returned. So the question is asked twice.
+      //
+      // Allowed to fail on its own, like the plan, but NOT flattened to empty:
+      // a household total that silently drops private spending is the failure
+      // section 20 exists to prevent, so the unknown travels as null and the
+      // card says which it is.
+      try {
+        const year = taxYearBounds(fy);
+        const month = monthBounds(today);
+        const [forMonth, forYear] = await Promise.all([
+          listPersonalSpend({ householdId: next.household.id, from: month.start, to: month.end }),
+          listPersonalSpend({ householdId: next.household.id, from: year.start, to: year.end }),
+        ]);
+        if (mine === generation.current) setPersonalSpend({ month: forMonth, year: forYear });
+      } catch {
+        if (mine === generation.current) setPersonalSpend(null);
+      }
+
     } catch (error) {
       if (mine === generation.current) {
         if (error instanceof NoHouseholdError) {
@@ -98,7 +143,7 @@ export function useExpenses(householdId: string | null): ExpensesState & {
         setRefreshing(false);
       }
     }
-  }, [householdId, fy]);
+  }, [householdId, fy, today]);
 
   useEffect(() => {
     void load(false);
@@ -147,6 +192,7 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     liveDetail,
     noHousehold,
     budgets,
+    personalSpend,
     fy,
     today,
     add,
