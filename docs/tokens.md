@@ -102,7 +102,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 
 ```css
 --font-display: "Newsreader", Georgia, "Times New Roman", serif;
---font-ui:      "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+--font-ui:      "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 --font-mono:    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 ```
 

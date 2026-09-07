@@ -15,6 +15,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:policies": "supabase test db",
+    "check:tokens": "node scripts/check-design-tokens.mjs",
     "db:reset": "supabase db reset",
     "db:seed:local": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/seed/demo_household.sql"
   },
