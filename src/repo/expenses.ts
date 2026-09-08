@@ -17,7 +17,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { istCalendarDate, type IsoDate } from '../lib/dates.ts';
 import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
-import { money } from '../lib/money.ts';
+import { money, type Money } from '../lib/money.ts';
 import { supabase } from './client.ts';
 import { toExpense, toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
@@ -28,6 +28,7 @@ import {
   type NewExpense,
   type PersonalSpend,
   type Uuid,
+  type Visibility,
 } from './types.ts';
 
 /** Roles that may record anything. A viewer may not, and the database agrees. */
@@ -287,6 +288,91 @@ export function subscribeToExpenses(
     cancelled = true;
     if (channel !== null) void client.removeChannel(channel);
   };
+}
+
+/**
+ * Correct an entry.
+ *
+ * "Transactions are freely editable until a figure has been relied upon (a
+ * frozen snapshot, a completed tax year, a generated report) — after that,
+ * void and re-enter." Nothing in this schema marks a period as relied upon
+ * yet, so everything is still editable and the rule is honoured by offering
+ * voiding beside editing rather than by refusing.
+ *
+ * Only the fields given are touched. Attribution is not among them: moving a
+ * spend to another member is a different act from correcting its amount, and
+ * a form that quietly allowed it would let a contributor's entry be
+ * reassigned by somebody who cannot file for others.
+ */
+export async function updateExpense(input: {
+  id: Uuid;
+  date?: IsoDate;
+  amount?: Money;
+  payee?: string | null;
+  categoryId?: Uuid | null;
+  visibility?: Visibility;
+}): Promise<void> {
+  const client = supabase();
+
+  if (input.amount !== undefined && input.amount.minor <= 0n) {
+    throw new Error('An expense is a positive amount.');
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (input.date !== undefined) patch['txn_date'] = input.date;
+  if (input.amount !== undefined) {
+    patch['amount_minor'] = input.amount.minor.toString();
+    patch['currency'] = input.amount.currency;
+  }
+  if (input.payee !== undefined) patch['payee'] = input.payee;
+  if (input.categoryId !== undefined) patch['category_id'] = input.categoryId;
+  if (input.visibility !== undefined) patch['visibility'] = input.visibility;
+
+  if (Object.keys(patch).length === 0) return;
+
+  const result = await client.from('expense_txn').update(patch).eq('id', input.id).select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+
+  // An update the policy refuses matches no row and reports no error, which
+  // would look exactly like success. Say so instead.
+  if ((result.data ?? []).length === 0) {
+    throw new Error('That entry is not yours to change.');
+  }
+}
+
+/**
+ * Void an entry rather than delete it.
+ *
+ * "Deletes are soft everywhere." There is no delete grant on this table and no
+ * delete policy, so a hard delete is impossible from a client even by mistake
+ * — this is the only way an entry stops counting, and it stays on the ledger
+ * afterwards where anybody can see it was voided.
+ */
+export async function voidExpense(id: Uuid): Promise<void> {
+  const client = supabase();
+
+  const { data: user, error: userError } = await client.auth.getUser();
+  if (userError !== null) throw asRepositoryError(userError);
+
+  const account = await client
+    .from('user_account')
+    .select('id')
+    .eq('auth_user_id', user.user?.id ?? '')
+    .single();
+  if (account.error !== null) throw asRepositoryError(account.error);
+
+  // Both columns or neither: the table has a check constraint saying so,
+  // because a voided_at with nobody attached is an entry that stopped
+  // counting and nobody admits to.
+  const result = await client
+    .from('expense_txn')
+    .update({ voided_at: new Date().toISOString(), voided_by: (account.data as { id: string }).id })
+    .eq('id', id)
+    .select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if ((result.data ?? []).length === 0) {
+    throw new Error('That entry is not yours to void.');
+  }
 }
 
 /**

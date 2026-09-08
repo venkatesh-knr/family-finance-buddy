@@ -384,6 +384,41 @@ export async function setLiabilityBalance(input: {
   if (result.error !== null) throw asRepositoryError(result.error);
 }
 
+/**
+ * Set the household's FIRE assumptions.
+ *
+ * One row, one answer. These were per-device state, which meant a couple
+ * planning together saw two different targets; writing them to the household
+ * is what makes the number common to both.
+ *
+ * Owner and partner only, enforced by the policy rather than here — this
+ * translates the refusal into a sentence rather than deciding it.
+ */
+export async function setFireSettings(input: {
+  householdId: Uuid;
+  multiplier?: number;
+  inflationPct?: number;
+  yearsAhead?: number;
+}): Promise<void> {
+  const client = supabase();
+
+  const patch: Record<string, unknown> = {};
+  if (input.multiplier !== undefined) patch['fire_multiplier'] = input.multiplier;
+  if (input.inflationPct !== undefined) patch['fire_inflation_pct'] = input.inflationPct;
+  if (input.yearsAhead !== undefined) patch['fire_years_ahead'] = input.yearsAhead;
+  if (Object.keys(patch).length === 0) return;
+
+  const result = await client
+    .from('household')
+    .update(patch)
+    .eq('id', input.householdId)
+    .select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if ((result.data ?? []).length === 0) {
+    throw new Error('Only an owner or partner can change the household target.');
+  }
+}
+
 export async function addLiability(input: {
   householdId: Uuid;
   name: string;

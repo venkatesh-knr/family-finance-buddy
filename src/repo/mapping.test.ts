@@ -115,11 +115,15 @@ describe('toHousehold', () => {
         base_currency: 'INR',
         display_currency: 'INR',
         fy_start_month: 4,
+        fire_multiplier: '30.00',
+        fire_inflation_pct: '7.00',
+        fire_years_ahead: 15,
       }),
     ).toEqual({
       id: 'h-1',
       name: 'Demo household',
       kind: 'demo',
+      fire: { multiplier: '30.00', inflationPct: '7.00', yearsAhead: 15 },
       baseCurrency: 'INR',
       displayCurrency: 'INR',
       fyStartMonth: 4,
@@ -289,6 +293,21 @@ describe('household kind', () => {
 
   it('carries real through', () => {
     expect(toHousehold(real).kind).toBe('real');
+  });
+
+  it('falls back to the common assumptions when a row predates the columns', () => {
+    // A household row read by an older client, or before the migration ran.
+    // Defaults rather than a throw: the FIRE card is not worth failing a whole
+    // screen load over, and the household row itself carries the same numbers.
+    const household = toHousehold({
+      id: 'h-2',
+      name: 'Old household',
+      kind: 'real',
+      base_currency: 'INR',
+      display_currency: 'INR',
+      fy_start_month: 4,
+    });
+    expect(household.fire).toEqual({ multiplier: '25', inflationPct: '6', yearsAhead: 10 });
   });
 
   it('refuses a kind it does not know rather than guessing', () => {

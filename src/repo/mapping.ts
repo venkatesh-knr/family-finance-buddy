@@ -70,6 +70,13 @@ export function toHousehold(raw: unknown): Household {
     baseCurrency: requireString(row['base_currency'], 'household.base_currency'),
     displayCurrency: requireString(row['display_currency'], 'household.display_currency'),
     fyStartMonth,
+    fire: {
+      // Strings, because they arrive from numeric columns and a ratio's
+      // precision is the reason those columns are numeric.
+      multiplier: String(row['fire_multiplier'] ?? '25'),
+      inflationPct: String(row['fire_inflation_pct'] ?? '6'),
+      yearsAhead: Number(row['fire_years_ahead'] ?? 10),
+    },
   };
 }
 

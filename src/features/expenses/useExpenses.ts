@@ -13,6 +13,8 @@ import {
   listExpenses,
   listPersonalSpend,
   subscribeToExpenses,
+  updateExpense,
+  voidExpense,
   type LiveStatus,
 } from '../../repo/expenses.ts';
 import { monthBounds, taxYearBounds } from '../../domain/budget.ts';
@@ -57,6 +59,8 @@ export interface ExpensesState {
 
 export function useExpenses(householdId: string | null): ExpensesState & {
   add: (expense: NewExpense) => Promise<void>;
+  edit: (patch: Parameters<typeof updateExpense>[0]) => Promise<void>;
+  discard: (id: string) => Promise<void>;
   reload: () => void;
 } {
   const [listing, setListing] = useState<ExpenseListing | null>(null);
@@ -168,6 +172,25 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     );
   }, [loadedHouseholdId, load]);
 
+  // Both re-read afterwards rather than patching the list in place. The change
+  // stream will also fire, but not necessarily first, and a correction that
+  // does not visibly take is worse than one that takes slowly.
+  const edit = useCallback(
+    async (patch: Parameters<typeof updateExpense>[0]) => {
+      await updateExpense(patch);
+      await load(true);
+    },
+    [load],
+  );
+
+  const discard = useCallback(
+    async (id: string) => {
+      await voidExpense(id);
+      await load(true);
+    },
+    [load],
+  );
+
   const add = useCallback(
     async (expense: NewExpense) => {
       await addExpense(expense);
@@ -196,6 +219,8 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     fy,
     today,
     add,
+    edit,
+    discard,
     reload,
   };
 }

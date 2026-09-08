@@ -39,47 +39,19 @@ const MULTIPLIERS = [25, 30, 50];
  * The fourth asks when work becomes optional, which is not an expense question
  * at all. It has its own screen below.
  */
-export function ExpensePlanning({
-  privacy,
-  householdId,
-}: {
-  privacy: boolean;
-  householdId: string | null;
-}) {
-  const plan = usePlan(householdId);
-
-  if (plan.loading) return <p className="note py-4.5">Loading…</p>;
-  // No JoinHousehold here: this renders inside Expenses, which has already
-  // handled that case. Two invitations on one screen would be one too many.
-  if (plan.noHousehold) return null;
-  if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
-  if (plan.listing === null) return null;
-
-  const editable = canPlan(plan.listing.viewer.role);
-
-  return (
-    <>
-      <AnnualSummary plan={plan} privacy={privacy} />
-      <Categories plan={plan} privacy={privacy} editable={editable} />
-      <Commitments plan={plan} privacy={privacy} editable={editable} />
-
-      {!editable && (
-        <p className="note">
-          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
-          set it. Recording what was spent and deciding what to spend are different rights, and the
-          database enforces the difference rather than this screen.
-        </p>
-      )}
-    </>
-  );
-}
-
 /**
- * When work becomes optional.
+ * When work becomes optional — and the whole chain that produces the number.
  *
- * Its own screen because it is its own question. Sitting above the category
- * envelopes it looked like another budgeting card; it is the one number the
- * budgeting is for.
+ * Every term is here, in the order somebody would ask about them: the target,
+ * then the annual expense it is a multiple of, then the envelopes and
+ * commitments that annual expense is the sum of. Nothing on this screen is
+ * asserted; each card is the working for the one above it.
+ *
+ * Drilling down rather than building up. An earlier arrangement put the
+ * inputs first and the target last, which reads well as an argument and badly
+ * as a screen: somebody opening FIRE wants the number, and having to scroll
+ * past three cards of detail to reach it puts the workings in the way of the
+ * result. Headline first, evidence beneath.
  */
 export function FireScreen({
   privacy,
@@ -95,14 +67,22 @@ export function FireScreen({
   if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
   if (plan.listing === null) return null;
 
+  const editable = canPlan(plan.listing.viewer.role);
+
   return (
     <div className="flex flex-col gap-4.5">
       <FireCard plan={plan} privacy={privacy} />
-      <p className="note">
-        The target comes from the annual expense on the Expenses screen, so a figure set there
-        moves this. Goals, and the projection against real contributions, arrive with the fuller
-        FIRE screen.
-      </p>
+      <AnnualSummary plan={plan} privacy={privacy} startOpen />
+      <Categories plan={plan} privacy={privacy} editable={editable} />
+      <Commitments plan={plan} privacy={privacy} editable={editable} />
+
+      {!editable && (
+        <p className="note">
+          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
+          set it. Recording what was spent and deciding what to spend are different rights, and the
+          database enforces the difference rather than this screen.
+        </p>
+      )}
     </div>
   );
 }
@@ -111,9 +91,12 @@ export function FireScreen({
 function AnnualSummary({
   plan,
   privacy,
+  startOpen = false,
 }: {
   plan: ReturnType<typeof usePlan>;
   privacy: boolean;
+  /** Open on FIRE, where it is the workings; folded anywhere it is an aside. */
+  startOpen?: boolean;
 }) {
   const { annual, fy } = plan;
 
@@ -136,7 +119,7 @@ function AnnualSummary({
       // still says the total in its summary, which is the part anybody
       // scrolling past actually wanted.
       collapsible
-      defaultOpen={false}
+      defaultOpen={startOpen}
       summary={`${formatMoney(annual.total, { privacy })} planned this year.`}
       aside={<span className="note">FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}</span>}
     >
@@ -241,6 +224,19 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
             rise {inflationPct}% a year
+          </p>
+
+          {/*
+            The sum, written out. It is the whole reason the annual total sits
+            above this card rather than on another screen: every term here is
+            a figure the reader can see and change, so the target stops being
+            something the app asserts and becomes something it shows.
+          */}
+          <p className="note mt-2.5">
+            <span className="num">{formatMoney(annual.total, { privacy })}</span> a year, ×{' '}
+            {multiplier}, compounded at {inflationPct}% for{' '}
+            {target.year - (ladder[0]?.year ?? target.year)}{' '}
+            {target.year - (ladder[0]?.year ?? target.year) === 1 ? 'year' : 'years'}.
           </p>
         </div>
       )}

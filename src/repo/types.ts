@@ -70,6 +70,19 @@ export interface Household {
   readonly displayCurrency: string;
   /** 4 for the Indian tax year. */
   readonly fyStartMonth: number;
+  /**
+   * The FIRE assumptions, which belong to the household and not to a phone.
+   *
+   * They were React state until now, so two members of one household saw two
+   * different targets and neither survived a refresh. A couple planning to
+   * retire together need one number.
+   */
+  readonly fire: {
+    /** How many years of spending the target is. A decimal string: it is a ratio. */
+    readonly multiplier: string;
+    readonly inflationPct: string;
+    readonly yearsAhead: number;
+  };
 }
 
 export interface Member {
