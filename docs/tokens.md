@@ -139,6 +139,17 @@ Every figure in a column must align. Proportional digits in a money table is a b
 Respect the OS text size **up to 200%**. No fixed-height container may hold text. Test at
 200% before calling any screen done — parents will use this app.
 
+**The sizes above are stated in px because that is what they measure at the default 16px
+root. They are declared in `rem`**, in `tailwind.config.js` and `src/styles/base.css`, and
+that is not a detail: a px font-size ignores the browser and OS text setting completely.
+This app shipped that way for weeks — doubling the root font size changed nothing on any
+screen — and the rule above was satisfied on paper and not in fact. Anything sized in px
+is not participating.
+
+The same reasoning applies to a box that holds text. `.avatar` was a fixed 32px circle
+around a letter; at 200% the letter outgrew it. It is sized in `em` now, so it follows
+whatever the text does.
+
 ---
 
 ## 4. Spacing and shape

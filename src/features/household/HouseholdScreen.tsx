@@ -489,7 +489,7 @@ function IssuedCode({
             background: 'var(--surface-2)',
             border: '1px solid var(--line-strong)',
             color: 'var(--ink)',
-            fontSize: '19px',
+            fontSize: '1.1875rem',
             letterSpacing: '0.16em',
           }}
         >

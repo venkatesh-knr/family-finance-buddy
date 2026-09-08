@@ -50,16 +50,19 @@ export default {
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       // The type scale from docs/tokens.md §3, verbatim.
+      // rem, not px, so a reader who sets their browser or OS text size to
+      // 200% actually gets it. The comment beside each is the size at the
+      // default 16px root, which is what docs/tokens.md's table states.
       fontSize: {
-        hero: ['clamp(32px, 6vw, 48px)', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
-        title: ['22px', { lineHeight: '1.25', letterSpacing: '-0.01em' }],
-        'card-title': ['14.5px', { lineHeight: '1.35' }],
-        body: ['15px', { lineHeight: '1.55' }],
-        stat: ['17px', { lineHeight: '1.3' }],
-        cell: ['13.4px', { lineHeight: '1.45' }],
-        caption: ['12.5px', { lineHeight: '1.45' }],
-        micro: ['10.5px', { lineHeight: '1.4', letterSpacing: '0.13em' }],
-        pill: ['9.5px', { lineHeight: '1.4', letterSpacing: '0.1em' }],
+        hero: ['clamp(1.4375rem, 5vw, 2.125rem)', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
+        title: ['1.375rem', { lineHeight: '1.25', letterSpacing: '-0.01em' }],
+        'card-title': ['0.90625rem', { lineHeight: '1.35' }],
+        body: ['0.9375rem', { lineHeight: '1.55' }],
+        stat: ['1.0625rem', { lineHeight: '1.3' }],
+        cell: ['0.8375rem', { lineHeight: '1.45' }],
+        caption: ['0.78125rem', { lineHeight: '1.45' }],
+        micro: ['0.65625rem', { lineHeight: '1.4', letterSpacing: '0.13em' }],
+        pill: ['0.59375rem', { lineHeight: '1.4', letterSpacing: '0.1em' }],
       },
       // The 8px base with 2px steps where density demands it (§4).
       spacing: {

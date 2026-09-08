@@ -14,7 +14,7 @@
     background: var(--bg);
     color: var(--ink-2);
     font-family: var(--font-ui);
-    font-size: 15px;
+    font-size: 0.9375rem;
     line-height: 1.55;
     margin: 0;
   }
@@ -63,14 +63,14 @@
   .card-title {
     color: var(--ink);
     font-family: var(--font-ui);
-    font-size: 14.5px;
+    font-size: 0.90625rem;
     font-weight: 600;
   }
 
   .micro-label {
     color: var(--muted);
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 0.65625rem;
     font-weight: 500;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -80,7 +80,7 @@
     border-radius: var(--radius-pill);
     display: inline-block;
     font-family: var(--font-mono);
-    font-size: 9.5px;
+    font-size: 0.59375rem;
     font-weight: 500;
     letter-spacing: 0.1em;
     padding: 3px 9px;
@@ -119,7 +119,7 @@
     border-radius: 7px;
     color: var(--ink);
     font-family: var(--font-ui);
-    font-size: 15px;
+    font-size: 0.9375rem;
     padding: 7px 10px;
     width: 100%;
   }
@@ -138,7 +138,7 @@
     border-radius: 7px;
     cursor: pointer;
     font-family: var(--font-ui);
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     padding: 8px 14px;
   }
@@ -176,7 +176,7 @@
     color: var(--muted);
     cursor: pointer;
     font-family: var(--font-ui);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     font-weight: 500;
     padding: 4px 10px;
   }
@@ -194,7 +194,7 @@
 
   .note {
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   /*
@@ -298,20 +298,20 @@
 
   .setrow .sk {
     color: var(--ink);
-    font-size: 13.6px;
+    font-size: 0.85rem;
     font-weight: 600;
   }
 
   .setrow .sd {
     color: var(--muted);
-    font-size: 12.2px;
+    font-size: 0.7625rem;
     margin-top: 2px;
   }
 
   .setrow .sv {
     color: var(--ink-2);
     font-family: var(--font-mono);
-    font-size: 12.6px;
+    font-size: 0.7875rem;
   }
 
   .grouphead {
@@ -324,14 +324,14 @@
   }
 
   .grouphead h2 {
-    font-size: 14.5px;
+    font-size: 0.90625rem;
     font-weight: 600;
     margin: 0;
   }
 
   .grouphead .who {
     color: var(--muted);
-    font-size: 11.8px;
+    font-size: 0.7375rem;
   }
 
   /*
@@ -348,7 +348,7 @@
     cursor: pointer;
     display: flex;
     font: inherit;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     gap: 6px;
     padding: 5px 11px;
   }
@@ -367,14 +367,14 @@
   .app-title {
     color: var(--ink);
     font-family: var(--font-display);
-    font-size: 17px;
+    font-size: 1.0625rem;
     font-weight: 500;
     letter-spacing: -0.01em;
   }
 
   @media (min-width: 520px) {
     .app-title {
-      font-size: 22px;
+      font-size: 1.375rem;
     }
   }
 
@@ -399,11 +399,13 @@
     cursor: pointer;
     display: flex;
     font-family: var(--font-ui);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
-    height: 32px;
+    /* em, so the circle grows with the letter inside it. A fixed 32px box
+       clips the initial the moment somebody scales their text up. */
+    height: 2.4em;
     justify-content: center;
-    width: 32px;
+    width: 2.4em;
   }
 
   .menu {
@@ -431,7 +433,7 @@
 
   .mhead b {
     color: var(--ink);
-    font-size: 13px;
+    font-size: 0.8125rem;
     /* An address is long and a menu is narrow; wrapping beats truncating,
        because the domain is the half that distinguishes two accounts. */
     overflow-wrap: anywhere;
@@ -439,7 +441,7 @@
 
   .mhead span {
     color: var(--muted);
-    font-size: 11.8px;
+    font-size: 0.7375rem;
     text-transform: capitalize;
   }
 
@@ -473,7 +475,7 @@
    */
   .figure {
     font-family: var(--font-mono);
-    font-size: clamp(23px, 5vw, 34px);
+    font-size: clamp(1.4375rem, 5vw, 2.125rem);
     font-variant-numeric: tabular-nums;
     font-weight: 600;
     letter-spacing: -0.02em;
@@ -495,7 +497,7 @@
   .stat > .v {
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 17px;
+    font-size: 1.0625rem;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
   }
@@ -533,7 +535,7 @@
     align-items: center;
     border-radius: var(--radius-pill);
     display: inline-flex;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     gap: 6px;
     padding: 3px 9px;
@@ -573,7 +575,7 @@
     border-bottom: 1px solid var(--line);
     color: var(--muted);
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 0.65625rem;
     font-weight: 500;
     letter-spacing: 0.13em;
     padding: 7px 10px;
