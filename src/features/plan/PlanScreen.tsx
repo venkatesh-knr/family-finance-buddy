@@ -21,7 +21,7 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -138,10 +138,10 @@ function AnnualSummary({
       </p>
 
       <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
-        <Figure label="Categories" amount={annual.bySource.category} privacy={privacy} />
-        <Figure label="Loans" amount={annual.bySource.liability} privacy={privacy} />
-        <Figure label="Policies" amount={annual.bySource.policy} privacy={privacy} />
-        <Figure label="Compulsory" amount={annual.compulsory} privacy={privacy} />
+        <Stat label="Categories">{formatMoney(annual.bySource.category, { privacy })}</Stat>
+        <Stat label="Loans">{formatMoney(annual.bySource.liability, { privacy })}</Stat>
+        <Stat label="Policies">{formatMoney(annual.bySource.policy, { privacy })}</Stat>
+        <Stat label="Compulsory">{formatMoney(annual.compulsory, { privacy })}</Stat>
       </dl>
 
       {annual.unplanned.length > 0 && (
@@ -164,24 +164,6 @@ function AnnualSummary({
   );
 }
 
-function Figure({
-  label,
-  amount,
-  privacy,
-}: {
-  label: string;
-  amount: { minor: bigint; currency: string };
-  privacy: boolean;
-}) {
-  return (
-    <div>
-      <dt className="micro-label">{label}</dt>
-      <dd className="num" style={{ color: 'var(--ink-2)' }}>
-        {formatMoney(amount, { privacy })}
-      </dd>
-    </div>
-  );
-}
 
 /**
  * The target, and what it becomes as prices rise.

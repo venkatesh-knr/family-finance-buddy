@@ -21,7 +21,7 @@ it stops describing the code.
 | 1 — Walking skeleton | done | — |
 | 2 — Schema, policies, tests | done | 18 migrations, 84 policy assertions gating the deploy, audit triggers on every table |
 | 3 — The demo household | **partial** | Switcher, demo badge and the edge-case seed (`supabase/seed/demo_edge_cases.sql`) done. Reset-and-reseed is still to design: it is now a household-scoped operation rather than `db reset`. Four listed cases — a loss-making sale, a carried-forward loss, lots either side of twenty-four months, a foreign dividend — wait on `lot`, `disposal`, `dividend` and `tax_rule`, which do not exist. |
-| 4 — Screens you use daily | **in progress** | Expenses, spending plan and holdings built. Overview, allocation and the monthly snapshot job are not. |
+| 4 — Screens you use daily | **in progress** | Expenses, spending plan and holdings built. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), and the four missing primitives now exist. Overview and allocation are not built. Automatic valuation waits on the `price` table and its driver — the job carries readings that were taken and values nothing it was not told. |
 | 5 — The rest of the surface | not started | Property, global, tax, calendar, reports, read-auditing |
 | 6 — Onto the devices | not started | — |
 | 7 — Real data | not started | — |

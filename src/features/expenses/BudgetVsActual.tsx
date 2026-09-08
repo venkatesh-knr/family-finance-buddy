@@ -30,7 +30,7 @@ import type {
   Member,
   PersonalSpendPeriods,
 } from '../../repo/types.ts';
-import { Card, Notice, Pill } from '../../ui/primitives.tsx';
+import { Card, Notice, Pill, Stat } from '../../ui/primitives.tsx';
 
 type Period = 'month' | 'year';
 
@@ -231,40 +231,22 @@ export function BudgetVsActual({
       ) : (
         <>
           <dl className="mb-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
-            <div>
-              <dt className="micro-label">Planned</dt>
-              <dd className="num" style={{ color: 'var(--ink)' }}>
-                {formatMoney(totals.planned, { privacy })}
-              </dd>
-            </div>
-            <div>
-              <dt className="micro-label">Spent</dt>
-              <dd className="num" style={{ color: 'var(--ink)' }}>
-                {formatMoney(totals.spent, { privacy })}
-              </dd>
-            </div>
-            <div>
-              <dt className="micro-label">
-                {totals.spent.minor > totals.planned.minor ? 'Over by' : 'Left'}
-              </dt>
-              <dd
-                className="num"
-                style={{
-                  color:
-                    totals.spent.minor > totals.planned.minor ? 'var(--coral)' : 'var(--teal)',
-                }}
-              >
-                {formatMoney(
+            <Stat label="Planned">{formatMoney(totals.planned, { privacy })}</Stat>
+            <Stat label="Spent">{formatMoney(totals.spent, { privacy })}</Stat>
+            <Stat
+              label={totals.spent.minor > totals.planned.minor ? 'Over by' : 'Left'}
+              tone={totals.spent.minor > totals.planned.minor ? 'loss' : 'gain'}
+            >
+              {formatMoney(
                   money(
                     totals.spent.minor > totals.planned.minor
                       ? totals.spent.minor - totals.planned.minor
                       : totals.planned.minor - totals.spent.minor,
                     currency,
                   ),
-                  { privacy },
-                )}
-              </dd>
-            </div>
+                { privacy },
+              )}
+            </Stat>
           </dl>
 
           <ul className="row-separated">

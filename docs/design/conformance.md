@@ -50,10 +50,10 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 | setting-row | component | built | `src/styles/base.css` — `.setgrp` `.setrow` `.grouphead` |
 | account-menu | component | built | `src/app/AccountMenu.tsx` |
 | icon-button | component | built | `src/styles/base.css` — `.iconbtn` |
-| stat-tile | component | not-built | Hand-rolled in three places; needed properly by Overview |
-| progress-bar | component | not-built | `docs/tokens.md` §182 defines it; needed by allocation and envelopes |
-| table | component | not-built | Each screen repeats its own `Th`; wants a shared scroll wrapper |
-| delta-chip | component | not-built | Rise or fall against a previous figure; needed by Overview |
+| stat-tile | component | built | `src/ui/primitives.tsx` — `Stat`, a dt/dd pair so the label and figure stay paired |
+| progress-bar | component | built | `src/ui/primitives.tsx` — `Bar`; flips to coral past target, requires an accessible label |
+| table | component | built | `src/ui/primitives.tsx` — `Table`, with the scroll wrapper the page body must never need |
+| delta-chip | component | built | `src/ui/primitives.tsx` — `Delta`; the arrow carries the direction, the hue agrees |
 | sample-bar | component | not-built | The prototype's banner marking illustrative figures |
 
 ## Departures

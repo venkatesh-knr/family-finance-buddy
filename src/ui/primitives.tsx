@@ -211,6 +211,132 @@ export function Pill({ tone = 'neutral', children }: { tone?: PillTone; children
 }
 
 /**
+ * A figure with a label over it (docs/tokens.md §5).
+ *
+ * Three screens hand-rolled this before it was a primitive, and the label
+ * ended up three slightly different sizes. `tone` is not decoration: a change
+ * that matters is signed as well as coloured, because "never encode meaning in
+ * colour alone" and a green number is nothing to somebody who cannot see green.
+ *
+ * Renders a dt/dd pair, so it belongs inside a <dl>.
+ */
+export function Stat({
+  label,
+  children,
+  tone = 'plain',
+}: {
+  label: string;
+  children: ReactNode;
+  /** `plain` for a quantity; gain and loss for a figure that moved. */
+  tone?: 'plain' | 'gain' | 'loss';
+}) {
+  // dt/dd inside a wrapping div, which HTML5 allows and which keeps the label
+  // and its figure explicitly paired for a screen reader. Belongs inside a
+  // <dl>; a bare div would look identical and say less.
+  return (
+    <div className="stat">
+      <dt className="micro-label">{label}</dt>
+      <dd className={tone === 'gain' ? 'v pos' : tone === 'loss' ? 'v neg' : 'v'}>{children}</dd>
+    </div>
+  );
+}
+
+/**
+ * A bar against a target.
+ *
+ * Past the target it turns coral and stops growing, because a full bar and an
+ * overflowing one must not look the same — the overflow is the whole news.
+ * `label` is required and not optional: a bar with no accessible name is a
+ * decoration that screen readers announce as nothing.
+ */
+export function Bar({
+  value,
+  target,
+  label,
+  colour,
+}: {
+  value: number;
+  target: number;
+  label: string;
+  /** A token name for a segment that is not measured against a target. */
+  colour?: string;
+}) {
+  const over = target > 0 && value > target;
+  const pct = target <= 0 ? 0 : Math.min(100, (value / target) * 100);
+
+  return (
+    <div
+      className="track"
+      role="img"
+      aria-label={
+        target > 0
+          ? `${label}: ${String(Math.round((value / target) * 100))}% of target${over ? ', over' : ''}`
+          : label
+      }
+    >
+      <i
+        style={{
+          width: `${String(pct)}%`,
+          background: colour ?? (over ? 'var(--coral)' : 'var(--teal)'),
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * A change against a previous figure.
+ *
+ * The arrow carries the direction and the colour agrees with it. `flat` is a
+ * real state and looks like neither: no change is not a small gain.
+ */
+type DeltaDirection = 'up' | 'down' | 'flat';
+
+/**
+ * Written out, for the reason PILL_CLASS is. I assembled this one as
+ * `delta-${direction}` and the class guard failed the build on the same day —
+ * which is the whole argument for the guard existing.
+ */
+const DELTA_CLASS: Record<DeltaDirection, string> = {
+  up: 'delta-up',
+  down: 'delta-down',
+  flat: 'delta-flat',
+};
+
+export function Delta({
+  direction,
+  children,
+}: {
+  direction: DeltaDirection;
+  children: ReactNode;
+}) {
+  const glyph = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '—';
+  return (
+    <span className={`delta ${DELTA_CLASS[direction]}`}>
+      <span aria-hidden="true">{glyph}</span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+/**
+ * A table that scrolls inside itself.
+ *
+ * Two screens repeat their own header cell and their own wrapper; this is
+ * those, once. The wrapper is the point as much as the styling — wide content
+ * scrolls in its own container so the page body never scrolls sideways.
+ */
+export function Table({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <div className="tbl-wrap">
+      <table className="tbl" aria-label={label}>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+/**
  * A caveat on a figure, with its reasons folded away.
  *
  * Two of these existed already and both had the same fault: the sentence that
