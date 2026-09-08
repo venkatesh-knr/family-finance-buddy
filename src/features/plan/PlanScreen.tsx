@@ -59,7 +59,6 @@ export function ExpensePlanning({
 
   return (
     <>
-      <AnnualSummary plan={plan} privacy={privacy} />
       <Categories plan={plan} privacy={privacy} editable={editable} />
       <Commitments plan={plan} privacy={privacy} editable={editable} />
 
@@ -97,11 +96,18 @@ export function FireScreen({
 
   return (
     <div className="flex flex-col gap-4.5">
+      {/*
+        The derivation first, then the number it derives. Reading downward:
+        what the year costs, what multiple of it you want, what that comes to.
+        Each step is on screen, which is the difference between a figure you
+        can check and one you have to believe.
+      */}
+      <AnnualSummary plan={plan} privacy={privacy} startOpen />
       <FireCard plan={plan} privacy={privacy} />
       <p className="note">
-        The target comes from the annual expense on the Expenses screen, so a figure set there
-        moves this. Goals, and the projection against real contributions, arrive with the fuller
-        FIRE screen.
+        The figures the annual total is built from — the category envelopes, the loans and the
+        policies — are set on the Expenses screen, beside the spending they are compared against.
+        Goals, and the projection against real contributions, arrive with the fuller FIRE screen.
       </p>
     </div>
   );
@@ -111,9 +117,12 @@ export function FireScreen({
 function AnnualSummary({
   plan,
   privacy,
+  startOpen = false,
 }: {
   plan: ReturnType<typeof usePlan>;
   privacy: boolean;
+  /** Open on FIRE, where it is the workings; folded anywhere it is an aside. */
+  startOpen?: boolean;
 }) {
   const { annual, fy } = plan;
 
@@ -136,7 +145,7 @@ function AnnualSummary({
       // still says the total in its summary, which is the part anybody
       // scrolling past actually wanted.
       collapsible
-      defaultOpen={false}
+      defaultOpen={startOpen}
       summary={`${formatMoney(annual.total, { privacy })} planned this year.`}
       aside={<span className="note">FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}</span>}
     >
@@ -241,6 +250,19 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
             rise {inflationPct}% a year
+          </p>
+
+          {/*
+            The sum, written out. It is the whole reason the annual total sits
+            above this card rather than on another screen: every term here is
+            a figure the reader can see and change, so the target stops being
+            something the app asserts and becomes something it shows.
+          */}
+          <p className="note mt-2.5">
+            <span className="num">{formatMoney(annual.total, { privacy })}</span> a year, ×{' '}
+            {multiplier}, compounded at {inflationPct}% for{' '}
+            {target.year - (ladder[0]?.year ?? target.year)}{' '}
+            {target.year - (ladder[0]?.year ?? target.year) === 1 ? 'year' : 'years'}.
           </p>
         </div>
       )}
