@@ -140,7 +140,7 @@ export function PasswordField({
             setRevealed((on) => !on);
           }}
         >
-          <EyeIcon crossed={revealed} />
+          <EyeIcon crossed={!revealed} />
         </button>
       </span>
 
@@ -156,12 +156,20 @@ export function PasswordField({
 /**
  * Drawn inline rather than pulled from an icon set: two paths do not justify a
  * dependency, and `currentColor` means it follows the token in either theme.
+ *
+ * `crossed` is the *state*, not the action — a struck eye means the thing is
+ * hidden right now. That reading has to be the same everywhere the glyph
+ * appears, or the same picture means opposite things two screens apart.
+ *
+ * Sized in `em` rather than pixels so it grows with the text around it. A
+ * 17px icon beside 200%-scaled words is the sort of detail that only shows up
+ * on somebody else's device.
  */
-function EyeIcon({ crossed }: { crossed: boolean }) {
+export function EyeIcon({ crossed }: { crossed: boolean }) {
   return (
     <svg
-      width="17"
-      height="17"
+      width="1.15em"
+      height="1.15em"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

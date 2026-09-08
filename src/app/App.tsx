@@ -21,7 +21,7 @@ import { SettingsScreen } from '../features/settings/SettingsScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
-import { Card, Problem } from '../ui/primitives.tsx';
+import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
 import { HIDE_AMOUNTS_BY_DEFAULT, useDevicePreference } from './preferences.ts';
@@ -183,7 +183,13 @@ function SignedIn({
               setPrivacy((on) => !on);
             }}
           >
-            <span aria-hidden="true">{privacy ? '●●●' : '₹'}</span>
+            {/*
+              A struck eye for hidden, an open one for shown — the same
+              reading as the password field, and a picture of the thing the
+              switch does. The rupee sign that was here said "money", not
+              "hidden", and it sat wrong beside a Latin word at any size.
+            */}
+            <EyeIcon crossed={privacy} />
             {/*
               The words go on a narrow screen and the icon carries it, with the
               button's own label doing the work a sighted user gets from

@@ -34,7 +34,7 @@ import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { NoHouseholdError, type HoldingListing } from '../../repo/types.ts';
-import { Button, Card, Delta, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
 const KIND_LABEL: Record<string, string> = {
@@ -240,7 +240,7 @@ export function OverviewScreen({
               aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
               onClick={onPrivacy}
             >
-              <span aria-hidden="true">{privacy ? '●●●' : '₹'}</span>
+              <EyeIcon crossed={privacy} />
             </button>
           </span>
         }
