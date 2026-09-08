@@ -53,3 +53,24 @@ export function isIsoDate(value: string): boolean {
 export function formatIsoDate(value: IsoDate): string {
   return DISPLAY_DATE.format(new Date(`${value}T00:00:00Z`));
 }
+
+/**
+ * Whole days from one calendar date to another, `to` minus `from`.
+ *
+ * Both are calendar dates, so both anchor at UTC midnight and the answer is
+ * exact: no clock, no zone, no daylight saving to lose an hour to. A holding
+ * period measured in hours would give a different answer depending on where
+ * the reader was sitting.
+ *
+ * What it deliberately does not do is decide whether that period is long or
+ * short. "Tax rules — slabs, rates, thresholds, holding periods — are dated
+ * rows in `tax_rule`, not constants in code": twelve months for listed equity
+ * and twenty-four for unlisted are rules that have changed and will change
+ * again, and a prior year has to recompute on the rule that applied then. This
+ * returns the number; `tax_rule` says what it means.
+ */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((b - a) / 86400000);
+}
