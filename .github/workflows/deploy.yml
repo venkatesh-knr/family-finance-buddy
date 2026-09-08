@@ -54,6 +54,12 @@ jobs:
       - name: Design and code still describe each other
         run: npm run check:design
 
+      # Cheap, and before anything needs a container: a fixture id with a
+      # letter outside a–f is rejected only once a database is up, and that
+      # mistake has cost this repository four CI rounds.
+      - name: SQL fixture ids are valid UUIDs
+        run: npm run check:sql
+
       - name: Unit tests
         run: npm run test:unit
 
