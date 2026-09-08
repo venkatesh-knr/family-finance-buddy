@@ -31,8 +31,8 @@ REQUIRED=(
   pill-own pill-ok pill-warn pill-due pill-neutral
   notice notice-gap notice-due notice-names notice-toggle
   setgrp setrow grouphead
-  avatar menu mhead mitem mitem-quiet iconbtn
-  stat track delta delta-up delta-down delta-flat
+  avatar menu mhead mitem mitem-quiet iconbtn app-title hide-narrow
+  stat track delta delta-up delta-down delta-flat figure
   tbl tbl-wrap num-col
 )
 

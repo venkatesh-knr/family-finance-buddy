@@ -115,7 +115,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 
 | Role | Size | Weight | Face | Notes |
 |---|---|---|---|---|
-| Hero figure (net worth) | `clamp(32px, 6vw, 48px)` | 600 | mono | `letter-spacing:-.02em` |
+| Hero figure (net worth) | `clamp(23px, 5vw, 34px)` | 600 | mono | `letter-spacing:-.02em`. Lowered from `clamp(32px, 6vw, 48px)`: at 32px a lakh figure with a symbol filled a 375px screen edge to edge, and a number that large reads as a headline rather than a fact. |
 | Page title | 22px | 500 | display | `-.01em` |
 | Section title (doc) | 25–30px | 500 | display | `text-wrap:balance` |
 | Card title | 14.5px | 600 | ui | |

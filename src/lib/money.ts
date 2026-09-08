@@ -109,12 +109,38 @@ export interface FormatMoneyOptions {
    * a blur is recoverable from a screenshot and this needs to survive one.
    */
   readonly privacy?: boolean;
+  /**
+   * Keep `.00` on a whole amount.
+   *
+   * Off by default, because most figures in a household ledger are whole
+   * rupees and two zeros after every one of them is noise that crowds a phone
+   * screen. An amount with actual paise always keeps them — this drops a
+   * fraction that says nothing, never one that does.
+   *
+   * Worth turning on for a column of figures that must align digit for digit,
+   * where a ragged right edge costs more than the zeros do.
+   */
+  readonly alwaysShowMinorUnits?: boolean;
 }
 
 export function formatMoney(value: Money, options: FormatMoneyOptions = {}): string {
+  const exponent = minorUnitExponent(value.currency);
+  const negative = value.minor < 0n;
+  const digits = (negative ? -value.minor : value.minor).toString().padStart(exponent + 1, '0');
+  const whole = digits.slice(0, digits.length - exponent);
+  const minorPart = exponent === 0 ? '' : digits.slice(digits.length - exponent);
+
+  // A whole amount loses its zeros unless somebody asked to keep them. Paise
+  // that exist are always shown: this drops a fraction that says nothing, and
+  // never one that does.
+  const isWhole = minorPart === '' || /^0+$/.test(minorPart);
+  const fractionDigits = isWhole && options.alwaysShowMinorUnits !== true ? 0 : exponent;
+
   const formatter = new Intl.NumberFormat(LOCALE, {
     style: 'currency',
     currency: value.currency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   });
 
   if (options.privacy === true) {
@@ -126,11 +152,7 @@ export function formatMoney(value: Money, options: FormatMoneyOptions = {}): str
     return `${symbol}•••••`;
   }
 
-  const exponent = minorUnitExponent(value.currency);
-  const negative = value.minor < 0n;
-  const digits = (negative ? -value.minor : value.minor).toString().padStart(exponent + 1, '0');
-  const whole = digits.slice(0, digits.length - exponent);
-  const fraction = exponent === 0 ? '' : `.${digits.slice(digits.length - exponent)}`;
+  const fraction = minorPart === '' ? '' : `.${minorPart}`;
 
   // The string goes to Intl as a string, so a large figure is never squeezed
   // through a double on the way to being displayed.

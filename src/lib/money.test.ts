@@ -89,8 +89,25 @@ describe('formatMoney', () => {
     expect(formatMoney(money(1299n, 'USD'))).toBe('$12.99');
   });
 
-  it('formats zero minor units', () => {
-    expect(formatMoney(money(0n, 'INR'))).toBe('₹0.00');
+  it('drops the zeros from a whole amount, because they say nothing', () => {
+    expect(formatMoney(money(0n, 'INR'))).toBe('₹0');
+    expect(formatMoney(money(10750000n, 'INR'))).toBe('₹1,07,500');
+  });
+
+  it('keeps paise that actually exist', () => {
+    // The distinction that makes dropping the zeros safe: a fraction is hidden
+    // only when it carries no information.
+    expect(formatMoney(money(10750050n, 'INR'))).toBe('₹1,07,500.50');
+    expect(formatMoney(money(1n, 'INR'))).toBe('₹0.01');
+  });
+
+  it('keeps them anyway when a column has to align digit for digit', () => {
+    expect(formatMoney(money(0n, 'INR'), { alwaysShowMinorUnits: true })).toBe('₹0.00');
+    expect(formatMoney(money(10750000n, 'INR'), { alwaysShowMinorUnits: true })).toBe('₹1,07,500.00');
+  });
+
+  it('drops them on a negative whole amount too, sign intact', () => {
+    expect(formatMoney(money(-250000n, 'INR'))).toBe('-₹2,500');
   });
 
   it('formats a currency with no minor unit', () => {

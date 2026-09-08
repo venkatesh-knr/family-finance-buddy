@@ -166,7 +166,12 @@ export function SettingsScreen({
         </p>
       </Card>
 
-      <Card title="Not here yet">
+      <Card
+        title="Not here yet"
+        collapsible
+        defaultOpen={false}
+        summary="What this screen will hold as the things behind each row get built."
+      >
         <p className="note">
           Number grouping, auto-lock, biometric unlock, the opening screen, allocation profile,
           price sources, the monthly snapshot and the export flows all belong on this screen. Each

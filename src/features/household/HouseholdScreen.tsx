@@ -321,7 +321,14 @@ function IssueInvite({
   );
 
   return (
-    <Card title="Invite someone">
+    <Card
+      title="Invite someone"
+      // Twice a year, at most. Open by default it put a seven-field form
+      // between the reader and the member list they came for.
+      collapsible
+      defaultOpen={false}
+      summary="Open to create a single-use, expiring invitation."
+    >
       {issued !== null ? (
         <IssuedCode code={issued.code} validForDays={issued.validForDays} onDone={onDismiss} />
       ) : (

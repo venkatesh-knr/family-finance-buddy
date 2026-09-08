@@ -227,12 +227,8 @@ export function OverviewScreen({
         {worth.ok ? (
           <>
             <p
-              className="num"
-              style={{
-                color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)',
-                fontSize: '32px',
-                lineHeight: 1.15,
-              }}
+              className="figure"
+              style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
             >
               {formatMoney(worth.amount, { privacy })}
             </p>
@@ -311,7 +307,7 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {totals.map((total) => (
               <div key={total.currency}>
-                <p className="num" style={{ color: 'var(--ink)', fontSize: '28px', lineHeight: 1.15 }}>
+                <p className="figure" style={{ color: 'var(--ink)' }}>
                   {formatMoney(total.value, { privacy })}
                 </p>
                 <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">

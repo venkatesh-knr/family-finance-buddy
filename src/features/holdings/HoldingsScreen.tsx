@@ -369,7 +369,16 @@ function AddHolding({
   );
 
   return (
-    <Card title="Add a holding" aside={<span className="note">{listing.household.name}</span>}>
+    <Card
+      title="Add a holding"
+      // Folded by default. A holding is added a handful of times a year and
+      // read every week, so the form was costing a screen of scrolling on
+      // every visit to pay for something almost nobody was there to do.
+      collapsible
+      defaultOpen={false}
+      summary="Open to record a new instrument and position."
+      aside={<span className="note">{listing.household.name}</span>}
+    >
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {

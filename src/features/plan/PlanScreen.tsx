@@ -131,9 +131,16 @@ function AnnualSummary({
   return (
     <Card
       title="Annual expense"
+      // A figure you consult, not one you work in — and five cards of
+      // consulting sat between quick add and the ledger on a phone. Folded, it
+      // still says the total in its summary, which is the part anybody
+      // scrolling past actually wanted.
+      collapsible
+      defaultOpen={false}
+      summary={`${formatMoney(annual.total, { privacy })} planned this year.`}
       aside={<span className="note">FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}</span>}
     >
-      <p className="num" style={{ color: 'var(--ink)', fontSize: '28px', lineHeight: 1.15 }}>
+      <p className="figure" style={{ color: 'var(--ink)' }}>
         {formatMoney(annual.total, { privacy })}
       </p>
 
@@ -228,7 +235,7 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
     >
       {target !== undefined && (
         <div className="mb-4.5">
-          <p className="num" style={{ color: 'var(--ink)', fontSize: '28px', lineHeight: 1.15 }}>
+          <p className="figure" style={{ color: 'var(--ink)' }}>
             {formatMoney(target.target, { privacy })}
           </p>
           <p className="note">
@@ -801,7 +808,9 @@ function Commitments({
     <Card
       title="Loans and policies"
       collapsible
-      defaultOpen={count <= 8}
+      // Closed unless there is nothing to see. These are set once a year and
+      // read rarely, and open they pushed the ledger below three screens.
+      defaultOpen={count === 0}
       summary={count === 0 ? 'None yet.' : `${String(count)} recorded.`}
     >
       <p className="note mb-3">

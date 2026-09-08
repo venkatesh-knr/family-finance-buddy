@@ -137,7 +137,10 @@ export function HouseholdSwitcher() {
 
   if (memberships.length < 2) {
     return (
-      <span className="flex items-center gap-2">
+      // shrink-0 and nowrap because this sits in a row that scrolls: without
+      // them it wraps to two lines inside the scroller and makes the whole
+      // nav taller, which is the thing the scroller was for.
+      <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
         <span className="note">{current.household.name}</span>
         <DemoBadge kind={current.household.kind} />
       </span>
@@ -145,7 +148,7 @@ export function HouseholdSwitcher() {
   }
 
   return (
-    <label className="flex items-center gap-2">
+    <label className="flex shrink-0 items-center gap-2 whitespace-nowrap">
       <span className="micro-label">Household</span>
       <select
         className="field w-auto"

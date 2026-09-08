@@ -155,7 +155,13 @@ function SignedIn({
         className="inset-safe-top inset-safe-x mb-4.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5"
         style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
       >
-        <h1 className="text-title">Family Finance Buddy</h1>
+        {/*
+          The name in full, never shortened — "if a label is tight, let the
+          platform truncate rather than inventing a variant". So it shrinks and
+          then ellipses rather than becoming "FFB". min-w-0 is what lets it
+          truncate at all inside a flex row.
+        */}
+        <h1 className="app-title min-w-0 truncate">Family Finance Buddy</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           {/*
@@ -167,12 +173,19 @@ function SignedIn({
             type="button"
             className="iconbtn"
             aria-pressed={privacy}
+            aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
             onClick={() => {
               setPrivacy((on) => !on);
             }}
           >
             <span aria-hidden="true">{privacy ? '●●●' : '₹'}</span>
-            <span>{privacy ? 'Amounts hidden' : 'Amounts shown'}</span>
+            {/*
+              The words go on a narrow screen and the icon carries it, with the
+              button's own label doing the work a sighted user gets from
+              context. Two words here were the difference between one header
+              row and two.
+            */}
+            <span className="hide-narrow">{privacy ? 'Amounts hidden' : 'Amounts shown'}</span>
           </button>
 
           {/*
@@ -197,8 +210,14 @@ function SignedIn({
         </div>
       </header>
 
-      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app flex-wrap items-center justify-between gap-3">
-        <div className="segmented" role="group" aria-label="Screen">
+      {/*
+        Scrolls sideways rather than wrapping. Five tabs plus a household
+        switcher took two rows on a phone, and a second row of chrome costs
+        more than a scroll that most people never need — the first tabs are
+        the ones they want.
+      */}
+      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app items-center justify-between gap-3 scroll-x">
+        <div className="segmented shrink-0" role="group" aria-label="Screen">
           {SCREENS.map(([id, label]) => (
             <button
               key={id}
