@@ -18,6 +18,7 @@ import { istCalendarDate } from '../../lib/dates.ts';
 import {
   addCategories,
   addCategory,
+  setFireSettings,
   addLiability,
   addPolicy,
   archiveCategory,
@@ -86,9 +87,18 @@ export function usePlan(householdId: string | null): PlanState & {
   const [today] = useState(() => istCalendarDate(new Date()));
   const fy = useMemo(() => taxYearOf(today), [today]);
 
-  const [multiplier, setMultiplier] = useState(25);
-  const [inflationPct, setInflationPct] = useState(6);
-  const [yearsAhead, setYearsAhead] = useState(10);
+  /**
+   * Seeded from the household and written back to it.
+   *
+   * Local state as well, so a click moves the ladder immediately rather than
+   * after a round trip — but the household row is the answer, and the next
+   * load takes it from there. These were local-only until now, which meant
+   * two members of one household saw two different targets and neither
+   * survived a refresh.
+   */
+  const [multiplier, setMultiplierState] = useState(25);
+  const [inflationPct, setInflationPctState] = useState(6);
+  const [yearsAhead, setYearsAheadState] = useState(10);
 
   const generation = useRef(0);
 
@@ -98,6 +108,9 @@ export function usePlan(householdId: string | null): PlanState & {
       const next = await listPlan(householdId === null ? { fy } : { householdId, fy });
       if (mine === generation.current) {
         setListing(next);
+        setMultiplierState(Number(next.household.fire.multiplier));
+        setInflationPctState(Number(next.household.fire.inflationPct));
+        setYearsAheadState(next.household.fire.yearsAhead);
         setProblem(null);
         setNoHousehold(false);
       }
@@ -204,6 +217,48 @@ export function usePlan(householdId: string | null): PlanState & {
       await load();
     },
     [load],
+  );
+
+  /**
+   * Persisting is deliberately quiet.
+   *
+   * A refusal here means a viewer moved a control they should not have been
+   * shown, which is a screen bug rather than something to interrupt somebody
+   * mid-thought with. The figure on their screen still moved; the next load
+   * puts it back to the household's answer, which is the honest correction.
+   */
+  const persist = useCallback(
+    (patch: { multiplier?: number; inflationPct?: number; yearsAhead?: number }) => {
+      if (listing === null) return;
+      void setFireSettings({ householdId: listing.household.id, ...patch }).catch(() => {
+        /* the reload after the next change restores what the household says */
+      });
+    },
+    [listing],
+  );
+
+  const setMultiplier = useCallback(
+    (next: number) => {
+      setMultiplierState(next);
+      persist({ multiplier: next });
+    },
+    [persist],
+  );
+
+  const setInflationPct = useCallback(
+    (next: number) => {
+      setInflationPctState(next);
+      persist({ inflationPct: next });
+    },
+    [persist],
+  );
+
+  const setYearsAhead = useCallback(
+    (next: number) => {
+      setYearsAheadState(next);
+      persist({ yearsAhead: next });
+    },
+    [persist],
   );
 
   return {
