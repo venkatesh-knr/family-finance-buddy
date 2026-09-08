@@ -252,7 +252,15 @@ function SignedIn({
             onHideAmountsByDefault={onHideAmountsByDefault}
           />
         )}
-        {screen === 'overview' && <OverviewScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'overview' && (
+          <OverviewScreen
+            privacy={privacy}
+            onPrivacy={() => {
+              setPrivacy((on) => !on);
+            }}
+            householdId={householdId}
+          />
+        )}
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
         {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
       </main>

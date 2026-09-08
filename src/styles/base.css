@@ -607,6 +607,63 @@
     padding: 9px 10px;
   }
 
+  /*
+   * An asset-class row: a colour, a name with its share beneath, and the
+   * figures right-aligned.
+   *
+   * It replaced a bar chart. A bar shows one thing — relative size — and a
+   * phone row can show four in the same height: what it is, what share it is,
+   * what it is worth and what it has done. The colour keeps the link to the
+   * palette a chart would have used, so the class keeps its identity when a
+   * donut arrives.
+   */
+  .alloc-row {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 11px 0;
+  }
+
+  .alloc-row:last-child {
+    border-bottom: none;
+  }
+
+  .alloc-dot {
+    border-radius: 50%;
+    flex: none;
+    height: 0.7em;
+    width: 0.7em;
+  }
+
+  .alloc-name {
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .alloc-share {
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 1px;
+  }
+
+  .alloc-figures {
+    display: grid;
+    gap: 2px;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .alloc-value {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   /* Wide content scrolls inside its own container; the page body never does. */
   .scroll-x {
     overflow-x: auto;

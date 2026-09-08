@@ -124,6 +124,16 @@ export interface AllocationRow {
   readonly value: Money;
   /** Of the valued total in this currency. 0…1, and never NaN. */
   readonly share: number;
+  /** What was paid for the holdings in this class that have been valued. */
+  readonly invested: Money;
+  /** value − invested. Negative is a loss, and shown as one. */
+  readonly gain: Money;
+  /**
+   * Gain as a fraction of cost, or null when nothing was paid — a class with
+   * no recorded cost has no return, and 0% would be a claim rather than an
+   * absence.
+   */
+  readonly returnOnCost: number | null;
 }
 
 export function allocationByKind(options: {
@@ -132,7 +142,7 @@ export function allocationByKind(options: {
   readonly currency: string;
 }): readonly AllocationRow[] {
   const latest = latestValuationPerHolding(options.valuations);
-  const byKind = new Map<string, bigint>();
+  const byKind = new Map<string, { value: bigint; invested: bigint }>();
   let total = 0n;
 
   for (const holding of options.holdings) {
@@ -140,7 +150,10 @@ export function allocationByKind(options: {
     const reading = latest.get(holding.id);
     if (reading === undefined) continue;
 
-    byKind.set(holding.kind, (byKind.get(holding.kind) ?? 0n) + reading.amount.minor);
+    const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n };
+    bucket.value += reading.amount.minor;
+    bucket.invested += holding.cost?.minor ?? 0n;
+    byKind.set(holding.kind, bucket);
     total += reading.amount.minor;
   }
 
@@ -152,11 +165,14 @@ export function allocationByKind(options: {
     // A kind worth nothing has no share of anything. It was read, and read as
     // zero — which is worth saying, but on the attention list rather than as a
     // 0.0% row that adds a line to a chart and no information to it.
-    .filter(([, minor]) => minor !== 0n)
-    .map(([kind, minor]) => ({
+    .filter(([, b]) => b.value !== 0n)
+    .map(([kind, b]) => ({
       kind,
-      value: money(minor, options.currency),
-      share: Number(minor) / Number(total),
+      value: money(b.value, options.currency),
+      share: Number(b.value) / Number(total),
+      invested: money(b.invested, options.currency),
+      gain: money(b.value - b.invested, options.currency),
+      returnOnCost: b.invested === 0n ? null : Number(b.value - b.invested) / Number(b.invested),
     }))
     .sort((a, b) => b.share - a.share);
 }

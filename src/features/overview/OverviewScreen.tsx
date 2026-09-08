@@ -34,7 +34,7 @@ import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { NoHouseholdError, type HoldingListing } from '../../repo/types.ts';
-import { Bar, Button, Card, Delta, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Delta, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
 const KIND_LABEL: Record<string, string> = {
@@ -51,9 +51,17 @@ const SERIES = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)',
 
 export function OverviewScreen({
   privacy,
+  onPrivacy,
   householdId,
 }: {
   privacy: boolean;
+  /**
+   * The same switch as the one in the top bar, offered again beside the
+   * figure it hides. That is where somebody is looking when they decide they
+   * want it covered, and asking them to go back up to the chrome to do it is
+   * the sort of small friction that means it never gets used.
+   */
+  onPrivacy: () => void;
   householdId: string | null;
 }) {
   const [listing, setListing] = useState<HoldingListing | null>(null);
@@ -222,7 +230,20 @@ export function OverviewScreen({
 
       <Card
         title="Net worth"
-        aside={asOf === null ? undefined : <span className="note">as at {asOf}</span>}
+        aside={
+          <span className="flex items-center gap-2.5">
+            {asOf !== null && <span className="note">as at {asOf}</span>}
+            <button
+              type="button"
+              className="iconbtn"
+              aria-pressed={privacy}
+              aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
+              onClick={onPrivacy}
+            >
+              <span aria-hidden="true">{privacy ? '●●●' : '₹'}</span>
+            </button>
+          </span>
+        }
       >
         {worth.ok ? (
           <>
@@ -366,21 +387,33 @@ export function OverviewScreen({
         if (rows.length === 0) return null;
         return (
           <Card key={total.currency} title="Allocation" aside={<span className="note">{total.currency}</span>}>
-            <ul className="flex flex-col gap-2.5">
+            <ul>
               {rows.map((row, index) => (
-                <li key={row.kind} className="flex flex-col gap-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2.5">
-                    <span style={{ color: 'var(--ink)' }}>{KIND_LABEL[row.kind] ?? row.kind}</span>
-                    <span className="num note">
-                      {formatMoney(row.value, { privacy })} · {(row.share * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <Bar
-                    value={row.share}
-                    target={1}
-                    label={`${KIND_LABEL[row.kind] ?? row.kind}, ${(row.share * 100).toFixed(1)} per cent`}
-                    colour={SERIES[index % SERIES.length] ?? 'var(--c1)'}
+                <li key={row.kind} className="alloc-row">
+                  <span
+                    className="alloc-dot"
+                    aria-hidden="true"
+                    style={{ background: SERIES[index % SERIES.length] ?? 'var(--c1)' }}
                   />
+                  <span className="min-w-0">
+                    <span className="alloc-name">{KIND_LABEL[row.kind] ?? row.kind}</span>
+                    <span className="alloc-share block">
+                      {(row.share * 100).toFixed(1)}% of what is valued
+                    </span>
+                  </span>
+                  <span className="alloc-figures">
+                    <span className="alloc-value">{formatMoney(row.value, { privacy })}</span>
+                    {/*
+                      A return only where a cost was recorded. Null is not 0% —
+                      one is silence about a figure nobody entered, the other
+                      is a claim that it has gone nowhere.
+                    */}
+                    {row.returnOnCost !== null && (
+                      <Delta direction={row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'}>
+                        {(row.returnOnCost * 100).toFixed(1)}%
+                      </Delta>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

@@ -34,6 +34,7 @@ REQUIRED=(
   avatar menu mhead mitem mitem-quiet iconbtn app-title hide-narrow
   stat track delta delta-up delta-down delta-flat figure
   tbl tbl-wrap num-col
+  alloc-row alloc-dot alloc-name alloc-share alloc-figures alloc-value
 )
 
 if [ ! -d "${BUILD_DIR}" ]; then

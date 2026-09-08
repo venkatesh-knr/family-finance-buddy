@@ -30,7 +30,7 @@ import type {
   Member,
   PersonalSpendPeriods,
 } from '../../repo/types.ts';
-import { Card, Notice, Pill, Stat } from '../../ui/primitives.tsx';
+import { Bar, Card, Notice, Pill, Stat } from '../../ui/primitives.tsx';
 
 type Period = 'month' | 'year';
 
@@ -366,6 +366,20 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
           )}
         </span>
       </div>
+
+      {/*
+        docs/tokens.md §182: a bar against its target, flipping to coral past
+        it. Spent against planned is the one relationship on this row that a
+        number states and a shape shows — you can see an overspend before you
+        have read anything.
+      */}
+      {row.planned !== null && row.planned.minor > 0n && (
+        <Bar
+          value={Number(row.spent.minor)}
+          target={Number(row.planned.minor)}
+          label={`${row.name}: spent against plan`}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
         {row.pace !== null && (

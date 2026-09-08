@@ -196,6 +196,36 @@ describe('allocationByKind', () => {
     expect(rows[0]?.share).toBe(1);
   });
 
+  it('carries what each class cost and what that has become', () => {
+    const rows = allocationByKind({
+      holdings: [
+        holding({ id: 'h1', kind: 'equity', cost: inr(40_000) }),
+        holding({ id: 'h2', kind: 'bond', cost: inr(60_000) }),
+      ],
+      valuations: [
+        reading('h1', '2026-08-31', inr(52_000)),
+        reading('h2', '2026-08-31', inr(57_000)),
+      ],
+      currency: 'INR',
+    });
+
+    const bond = rows.find((r) => r.kind === 'bond');
+    expect(bond?.invested.minor).toBe(6_000_000n);
+    expect(bond?.gain.minor).toBe(-300_000n);
+    expect(bond?.returnOnCost).toBeCloseTo(-0.05, 6);
+  });
+
+  it('has no return to report for a class with no recorded cost', () => {
+    // Null, not 0%. Zero would be a claim about performance; this is silence
+    // about a cost nobody entered.
+    const rows = allocationByKind({
+      holdings: [holding({ id: 'h1', kind: 'equity', cost: null })],
+      valuations: [reading('h1', '2026-08-31', inr(10_000))],
+      currency: 'INR',
+    });
+    expect(rows[0]?.returnOnCost).toBeNull();
+  });
+
   it('gives no shares at all when nothing has been valued', () => {
     // Dividing by a total of zero would be Infinity or NaN dressed as a
     // percentage, and a chart would draw it.
