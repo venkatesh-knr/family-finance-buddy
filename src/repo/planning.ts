@@ -9,6 +9,7 @@
  */
 
 import { supabase } from './client.ts';
+import type { IsoDate } from '../lib/dates.ts';
 import {
   MalformedRowError,
   optionalString,
@@ -42,8 +43,21 @@ const CAN_PLAN: readonly string[] = ['owner', 'partner'];
 
 const CATEGORY_COLUMNS = 'id, name, nature, parent_id, is_essential, sort_order, status';
 const BUDGET_COLUMNS = 'id, category_id, fy, cadence, period, planned_minor::text, currency, member_id';
-const LIABILITY_COLUMNS = 'id, name, kind, instalment_minor::text, currency, cadence, member_id, status';
+const LIABILITY_COLUMNS =
+  'id, name, kind, instalment_minor::text, currency, cadence, member_id, status, outstanding_minor::text, outstanding_as_of';
 const POLICY_COLUMNS = 'id, name, kind, premium_minor::text, currency, cadence, member_id, status';
+
+/**
+ * What is still owed, or null.
+ *
+ * Null and zero are different facts here and the screen shows them
+ * differently: nobody has said, versus it is paid off.
+ */
+function outstandingOf(row: Record<string, unknown>, currency: string): Money | null {
+  const raw = row['outstanding_minor'];
+  if (raw === null || raw === undefined) return null;
+  return money(toBigIntExact(raw, 'liability.outstanding_minor'), currency);
+}
 
 function toBudget(raw: unknown): Budget {
   const row = requireRecord(raw, 'budget');
@@ -189,6 +203,8 @@ export async function listPlan(options: {
       cadence: c.cadence,
       memberId: c.memberId,
       isClosed: c.closed,
+      outstanding: outstandingOf(row, c.amount?.currency ?? 'INR'),
+      outstandingAsOf: optionalString(row['outstanding_as_of'], 'liability.outstanding_as_of') as IsoDate | null,
     };
   });
 
@@ -342,6 +358,29 @@ export async function renameCategory(id: Uuid, name: string): Promise<void> {
     .from('expense_category')
     .update({ name: name.trim() })
     .eq('id', id);
+  if (result.error !== null) throw asRepositoryError(result.error);
+}
+
+/**
+ * Restate what is owed on a liability, as at a date.
+ *
+ * The date is not optional. A balance without one silently ages into a wrong
+ * figure, and the column constraint refuses the pair anyway — better to be
+ * refused here, with a sentence, than by an error code.
+ */
+export async function setLiabilityBalance(input: {
+  id: Uuid;
+  outstanding: Money;
+  asOf: IsoDate;
+}): Promise<void> {
+  const client = supabase();
+  const result = await client
+    .from('liability')
+    .update({
+      outstanding_minor: input.outstanding.minor.toString(),
+      outstanding_as_of: input.asOf,
+    })
+    .eq('id', input.id);
   if (result.error !== null) throw asRepositoryError(result.error);
 }
 

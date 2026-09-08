@@ -346,6 +346,13 @@ export interface Liability {
   readonly cadence: CommitmentCadence;
   readonly memberId: Uuid | null;
   readonly isClosed: boolean;
+  /**
+   * What is still owed. Null means nobody has said — which is not nothing
+   * owed, and net worth has to tell those two apart.
+   */
+  readonly outstanding: Money | null;
+  /** The date that balance was true. A balance without one ages into a wrong figure. */
+  readonly outstandingAsOf: IsoDate | null;
 }
 
 export type PolicyKind =

@@ -27,6 +27,10 @@ import {
   type ValuationInput,
 } from '../../domain/networth.ts';
 import { closeMonth, listHoldings } from '../../repo/holdings.ts';
+import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
+import { listPlan } from '../../repo/planning.ts';
+import { netWorth } from '../../domain/fx.ts';
+import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { NoHouseholdError, type HoldingListing } from '../../repo/types.ts';
@@ -58,6 +62,10 @@ export function OverviewScreen({
   const [noHousehold, setNoHousehold] = useState(false);
   const [closing, setClosing] = useState(false);
   const [closed, setClosed] = useState<{ carried: number; unread: number } | null>(null);
+  const [rates, setRates] = useState<readonly FxRate[]>([]);
+  const [debts, setDebts] = useState<readonly { amount: import('../../lib/money.ts').Money; name: string; asOf: string }[]>([]);
+  const [newRate, setNewRate] = useState('');
+  const [savingRate, setSavingRate] = useState(false);
 
   // Read once at the edge. Every calculation below takes it as an argument.
   const [today] = useState(() => istCalendarDate(new Date()));
@@ -65,16 +73,37 @@ export function OverviewScreen({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setListing(await listHoldings(householdId === null ? {} : { householdId }));
+      const next = await listHoldings(householdId === null ? {} : { householdId });
+      setListing(next);
       setProblem(null);
       setNoHousehold(false);
+
+      // Rates and debts separately, and neither may take the screen down. The
+      // asset figures stand on their own; these only add the conversion and
+      // the subtraction on top of them.
+      const [rateResult, planResult] = await Promise.allSettled([
+        listRates(next.household.id),
+        listPlan({ householdId: next.household.id, fy: Number(today.slice(0, 4)) }),
+      ]);
+      setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
+      setDebts(
+        planResult.status === 'fulfilled'
+          ? planResult.value.liabilities
+              .filter((l) => !l.isClosed && l.outstanding !== null)
+              .map((l) => ({
+                amount: l.outstanding as import('../../lib/money.ts').Money,
+                name: l.name,
+                asOf: l.outstandingAsOf ?? '',
+              }))
+          : [],
+      );
     } catch (error) {
       if (error instanceof NoHouseholdError) setNoHousehold(true);
       else setProblem(error instanceof Error ? error.message : 'Could not load the overview.');
     } finally {
       setLoading(false);
     }
-  }, [householdId]);
+  }, [householdId, today]);
 
   useEffect(() => {
     void load();
@@ -123,6 +152,49 @@ export function OverviewScreen({
     return end.toISOString().slice(0, 10);
   }, [today]);
 
+  const base = listing?.household.baseCurrency ?? 'INR';
+
+  /**
+   * Assets minus debt, in the household's own currency — or a refusal naming
+   * the rates it lacks. Converted at the date of the latest reading rather
+   * than today, because that is the date the figures are true on.
+   */
+  const worth = useMemo(() => {
+    return netWorth({
+      // One amount per currency, already summed. Converting the totals rather
+      // than each holding is the same arithmetic with fewer roundings.
+      assets: totals.map((t) => t.value),
+      debts: debts.map((d) => d.amount),
+      base,
+      rates,
+      on: asOf ?? today,
+    });
+  }, [totals, debts, base, rates, asOf, today]);
+
+  const saveRate = useCallback(
+    async (pair: { base: string; quote: string }) => {
+      if (listing === null) return;
+      setSavingRate(true);
+      setProblem(null);
+      try {
+        await addRate({
+          householdId: listing.household.id,
+          base: pair.base,
+          quote: pair.quote,
+          rate: newRate,
+          asOf: asOf ?? today,
+        });
+        setNewRate('');
+        await load();
+      } catch (error) {
+        setProblem(error instanceof Error ? error.message : 'Could not save that rate.');
+      } finally {
+        setSavingRate(false);
+      }
+    },
+    [listing, newRate, asOf, today, load],
+  );
+
   const canClose = listing?.viewer.role === 'owner' || listing?.viewer.role === 'partner';
 
   const close = useCallback(async () => {
@@ -147,6 +219,78 @@ export function OverviewScreen({
   return (
     <div className="flex flex-col gap-4.5">
       {problem !== null && <Problem>{problem}</Problem>}
+
+      <Card
+        title="Net worth"
+        aside={asOf === null ? undefined : <span className="note">as at {asOf}</span>}
+      >
+        {worth.ok ? (
+          <>
+            <p
+              className="num"
+              style={{
+                color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)',
+                fontSize: '32px',
+                lineHeight: 1.15,
+              }}
+            >
+              {formatMoney(worth.amount, { privacy })}
+            </p>
+            <p className="note mt-2">
+              Everything owned, converted at the rate for {asOf ?? today}, less everything owed.
+              {debts.length === 0 && ' No outstanding balances have been recorded, so nothing is subtracted.'}
+            </p>
+          </>
+        ) : (
+          <Notice tone="due" names={worth.missing.map((m) => `${m.base} to ${m.quote}`)} namesLabel="Which rates">
+            There is no single figure until every currency can be converted. Rather than show a
+            total that quietly leaves the unconvertible holdings out, this says which rates are
+            missing — a number short by an amount nobody can see is worse than no number.
+          </Notice>
+        )}
+
+        {!worth.ok && canClose && (
+          <div className="mt-3.5 flex flex-wrap items-end gap-3">
+            <div className="w-[160px]">
+              <Field
+                label={`1 ${worth.missing[0]?.base ?? ''} in ${worth.missing[0]?.quote ?? ''}`}
+                numeric
+                inputMode="decimal"
+                placeholder="88.45"
+                value={newRate}
+                onChange={(event) => {
+                  setNewRate(event.target.value);
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              disabled={savingRate || newRate.trim() === '' || worth.missing[0] === undefined}
+              onClick={() => {
+                const pair = worth.missing[0];
+                if (pair !== undefined) void saveRate(pair);
+              }}
+            >
+              {savingRate ? 'Saving…' : `Record for ${asOf ?? today}`}
+            </Button>
+            <p className="note w-full">
+              Recorded against {asOf ?? today} and used only for figures on or after it. An earlier
+              total keeps the rate it was converted at, so last year does not move because the rupee
+              did today.
+            </p>
+          </div>
+        )}
+
+        {debts.length > 0 && (
+          <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
+            {debts.map((debt) => (
+              <Stat key={debt.name} label={debt.name} tone="loss">
+                {formatMoney(debt.amount, { privacy })}
+              </Stat>
+            ))}
+          </dl>
+        )}
+      </Card>
 
       <Card
         title="Assets"
@@ -214,10 +358,9 @@ export function OverviewScreen({
         */}
         <div className="mt-3.5">
           <Notice>
-            This is assets, not net worth. Debt is not subtracted, because a liability records its
-            instalment and not its outstanding balance yet; and each currency is totalled on its own,
-            because converting them needs dated exchange rates this app does not hold. Both arrive
-            with the tables that can hold them.
+            Totalled per currency, untouched by any rate. The converted figure is above; these are
+            what each holding is actually worth in what it is actually priced in, which is the
+            number that does not move when a rate is corrected.
           </Notice>
         </div>
       </Card>
