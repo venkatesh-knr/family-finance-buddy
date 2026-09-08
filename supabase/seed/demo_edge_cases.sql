@@ -247,7 +247,7 @@ begin
   returning id into v_inst_gold;
 
   insert into public.holding (household_id, member_id, instrument_id, quantity, cost_minor, opened_on)
-  values (v_household, v_owner, v_inst_us, 12.5, 210000, make_date(v_cy - 2, 3, 14))
+  values (v_household, v_owner, v_inst_us, 12.5, 3400000, make_date(v_cy - 2, 3, 14))
   returning id into v_hold_us;
 
   -- A matured bond: still held, no longer growing, and the thing the calendar

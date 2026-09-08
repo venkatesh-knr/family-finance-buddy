@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
+import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { FireScreen } from '../features/plan/PlanScreen.tsx';
 import { ProfileScreen } from '../features/profile/ProfileScreen.tsx';
@@ -36,7 +37,7 @@ import { AccountMenu } from './AccountMenu.tsx';
  * to change how the working places behave, and a tab for each would give them
  * the same weight as the ledger.
  */
-type Screen = 'expenses' | 'holdings' | 'fire' | 'profile' | 'settings';
+type Screen = 'overview' | 'expenses' | 'holdings' | 'fire' | 'profile' | 'settings';
 
 /**
  * Still no router. Two screens and a gate does not justify the dependency, the
@@ -44,6 +45,7 @@ type Screen = 'expenses' | 'holdings' | 'fire' | 'profile' | 'settings';
  * of what is needed. A router arrives when a URL has to be shareable.
  */
 const SCREENS: readonly (readonly [Screen, string])[] = [
+  ['overview', 'Overview'],
   ['expenses', 'Expenses'],
   ['holdings', 'Holdings'],
   ['fire', 'FIRE'],
@@ -231,6 +233,7 @@ function SignedIn({
             onHideAmountsByDefault={onHideAmountsByDefault}
           />
         )}
+        {screen === 'overview' && <OverviewScreen privacy={privacy} householdId={householdId} />}
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
         {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
       </main>

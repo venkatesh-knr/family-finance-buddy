@@ -11,6 +11,8 @@
  */
 
 import { supabase } from './client.ts';
+import { requireRecord } from '../lib/guards.ts';
+import type { IsoDate } from '../lib/dates.ts';
 import { toHolding, toInstrument, toMember, toValuation } from './mapping.ts';
 import {
   NoHouseholdError,
@@ -209,6 +211,40 @@ export async function recordValuation(input: NewValuation): Promise<void> {
   );
 
   if (result.error !== null) throw asRepositoryError(result.error);
+}
+
+/**
+ * Carry this month's readings to the month end.
+ *
+ * Deliberately a button and not something the app does on load. It writes
+ * rows, and a screen that quietly writes rows is harder to trust than one that
+ * says what it is about to do — which matters more here than usual, because
+ * the whole argument for this app is that you can check what it did.
+ *
+ * Returns what it carried and, more usefully, how many holdings it could not
+ * read at all: those are the ones whose peak for the year is now permanently a
+ * lower bound.
+ */
+export async function closeMonth(input: {
+  householdId: Uuid;
+  monthEnd: IsoDate;
+}): Promise<{ carried: number; unread: number }> {
+  const client = supabase();
+
+  const { data, error } = await client.rpc('close_month', {
+    target_household_id: input.householdId,
+    month_end: input.monthEnd,
+  });
+
+  if (error !== null) throw asRepositoryError(error);
+
+  // A set-returning function comes back as an array of one row.
+  const row = Array.isArray(data) ? data[0] : data;
+  const record = requireRecord(row, 'close_month');
+  return {
+    carried: Number(record['carried'] ?? 0),
+    unread: Number(record['unread'] ?? 0),
+  };
 }
 
 interface ProviderError {

@@ -22,7 +22,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 
 | Item | Kind | Status | Where / why |
 |---|---|---|---|
-| overview | screen | not-built | Stage 4 — net worth, allocation, member attribution, needs-attention |
+| overview | screen | partial | `src/features/overview` — assets per currency, allocation by kind, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution, and net worth itself — see Departures |
 | expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, spending plan, ledger |
 | investments | screen | partial | `src/features/holdings` — holdings and valuations; no fund/equity breakdown, no India/Abroad split |
 | property | screen | not-built | Stage 5 |
@@ -72,4 +72,6 @@ not a gap — if one of these is revisited, change it here first.
 | Loans and policies | a Protection & debt screen | on Expenses | The annual-expense total already counts them. Filing them under debt splits one arithmetic across two screens. |
 | Category list | thirty-six names from one workbook | a grouped catalogue, nothing pre-ticked | A household without a scooty should not inherit an "Insurance Scooty" envelope. |
 | Envelopes with no spending | every category listed | folded behind a count | Twenty-eight rows reading "₹0.00 · behind" buried the rows worth acting on. |
+| "Net worth" headline | assets minus debt, one figure | "Assets", per currency | `liability` records an instalment, not an outstanding balance, and there is no `fx_rate` table. One figure would be wrong by the size of the mortgage and would pick a rate nobody chose. |
+| Allocation donut | an SVG donut with a legend | horizontal bars | The bar primitive exists and the donut does not. The donut arrives with the charting work; the shares are the same either way. |
 | Failure states | none — a mock has no loading, empty, offline or denied states | all four, throughout | Not a departure so much as the part a mock cannot show. Do not drop them to match it. |
