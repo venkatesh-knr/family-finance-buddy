@@ -286,7 +286,20 @@ export function BudgetVsActual({
             </details>
           )}
 
+          {/*
+            Where the other half of every row on this card comes from. The
+            planned figures are set on FIRE, because they are also what the
+            FIRE target is a multiple of — but somebody looking at an
+            overspend here should not have to work out where to go and change
+            it.
+          */}
           <p className="note mt-3.5">
+            The planned figures come from the spending plan on <strong>FIRE</strong>, where they
+            are also what the retirement target is a multiple of. Change one there and both this
+            comparison and that target move.
+          </p>
+
+          <p className="note mt-2">
             Pace is what has been spent against how much of{' '}
             {period === 'month' ? 'the month' : 'the year'} has passed — {formatIsoDate(bounds.start)}{' '}
             to {formatIsoDate(bounds.end)}. Above 1.0 means a category is ahead of the calendar, which

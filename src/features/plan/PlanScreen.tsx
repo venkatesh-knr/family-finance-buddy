@@ -39,46 +39,19 @@ const MULTIPLIERS = [25, 30, 50];
  * The fourth asks when work becomes optional, which is not an expense question
  * at all. It has its own screen below.
  */
-export function ExpensePlanning({
-  privacy,
-  householdId,
-}: {
-  privacy: boolean;
-  householdId: string | null;
-}) {
-  const plan = usePlan(householdId);
-
-  if (plan.loading) return <p className="note py-4.5">Loading…</p>;
-  // No JoinHousehold here: this renders inside Expenses, which has already
-  // handled that case. Two invitations on one screen would be one too many.
-  if (plan.noHousehold) return null;
-  if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
-  if (plan.listing === null) return null;
-
-  const editable = canPlan(plan.listing.viewer.role);
-
-  return (
-    <>
-      <Categories plan={plan} privacy={privacy} editable={editable} />
-      <Commitments plan={plan} privacy={privacy} editable={editable} />
-
-      {!editable && (
-        <p className="note">
-          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
-          set it. Recording what was spent and deciding what to spend are different rights, and the
-          database enforces the difference rather than this screen.
-        </p>
-      )}
-    </>
-  );
-}
-
 /**
- * When work becomes optional.
+ * When work becomes optional — and the whole chain that produces the number.
  *
- * Its own screen because it is its own question. Sitting above the category
- * envelopes it looked like another budgeting card; it is the one number the
- * budgeting is for.
+ * Every term is here, in the order somebody would ask about them: the target,
+ * then the annual expense it is a multiple of, then the envelopes and
+ * commitments that annual expense is the sum of. Nothing on this screen is
+ * asserted; each card is the working for the one above it.
+ *
+ * Drilling down rather than building up. An earlier arrangement put the
+ * inputs first and the target last, which reads well as an argument and badly
+ * as a screen: somebody opening FIRE wants the number, and having to scroll
+ * past three cards of detail to reach it puts the workings in the way of the
+ * result. Headline first, evidence beneath.
  */
 export function FireScreen({
   privacy,
@@ -94,21 +67,22 @@ export function FireScreen({
   if (plan.problem !== null && plan.listing === null) return <Problem>{plan.problem}</Problem>;
   if (plan.listing === null) return null;
 
+  const editable = canPlan(plan.listing.viewer.role);
+
   return (
     <div className="flex flex-col gap-4.5">
-      {/*
-        The derivation first, then the number it derives. Reading downward:
-        what the year costs, what multiple of it you want, what that comes to.
-        Each step is on screen, which is the difference between a figure you
-        can check and one you have to believe.
-      */}
-      <AnnualSummary plan={plan} privacy={privacy} startOpen />
       <FireCard plan={plan} privacy={privacy} />
-      <p className="note">
-        The figures the annual total is built from — the category envelopes, the loans and the
-        policies — are set on the Expenses screen, beside the spending they are compared against.
-        Goals, and the projection against real contributions, arrive with the fuller FIRE screen.
-      </p>
+      <AnnualSummary plan={plan} privacy={privacy} startOpen />
+      <Categories plan={plan} privacy={privacy} editable={editable} />
+      <Commitments plan={plan} privacy={privacy} editable={editable} />
+
+      {!editable && (
+        <p className="note">
+          Your role is <strong>{plan.listing.viewer.role}</strong>, which can read the plan but not
+          set it. Recording what was spent and deciding what to spend are different rights, and the
+          database enforces the difference rather than this screen.
+        </p>
+      )}
     </div>
   );
 }
