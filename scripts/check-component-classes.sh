@@ -32,6 +32,7 @@ REQUIRED=(
   notice notice-gap notice-due notice-names notice-toggle
   setgrp setrow grouphead
   avatar menu mhead mitem mitem-quiet iconbtn app-title hide-narrow
+  bottom-nav bottom-nav-glyph pb-nav hide-wide hide-narrow-flex
   stat track delta delta-up delta-down delta-flat figure
   tbl tbl-wrap num-col
   alloc-row alloc-dot alloc-name alloc-share alloc-figures alloc-value

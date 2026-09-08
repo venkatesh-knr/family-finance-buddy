@@ -64,6 +64,7 @@ not a gap — if one of these is revisited, change it here first.
 | What | The prototype | The app | Why |
 |---|---|---|---|
 | Pill radius | 3px | 100px | `docs/tokens.md` §158 says 100px and is the source of truth. The mock disagrees with it. |
+| Primary navigation | a top tab strip at every width | a bottom bar on phones, the top strip above 640px | Taken from the reference app. A thumb reaches the bottom of a phone and does not reach the top, and moving it there let the top strip go on narrow screens — which is where two rows of chrome came from. A bottom bar on a wide screen is a long way from where the eye already is, so it stops at the breakpoint. |
 | Tab semantics | 10 × `role="tab"`, no `tabpanel`, no `aria-controls` | `role="group"` + `aria-pressed` | An incomplete ARIA tab pattern announces a promise it does not keep. Ours is honest about what it is. |
 | Household switcher | absent | in the shell, beside the tabs | The demo/real split is core to §1057 and Stage 3; the mock does not model two households. |
 | Identity in the top bar | avatar only | avatar only | Adopted. The app previously printed the email on every screen — an address in every screenshot. |

@@ -378,6 +378,75 @@
     }
   }
 
+  /*
+   * The bottom bar (phones only).
+   *
+   * Fixed to the bottom with the safe-area inset added to its padding rather
+   * than a fixed height, so it clears a gesture bar without ever clipping its
+   * own labels when somebody scales their text up.
+   */
+  .bottom-nav {
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    bottom: 0;
+    display: flex;
+    left: 0;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-top: 6px;
+    position: fixed;
+    right: 0;
+    z-index: 30;
+  }
+
+  .bottom-nav button {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    font-family: var(--font-ui);
+    font-size: 0.6875rem;
+    gap: 2px;
+    /* A thumb target, and the minimum anybody should have to aim at. */
+    min-height: 44px;
+    padding: 4px 2px;
+  }
+
+  .bottom-nav button[aria-pressed='true'] {
+    color: var(--brass);
+    font-weight: 600;
+  }
+
+  .bottom-nav-glyph {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  /* Shown only on a phone; the mirror of hide-narrow. */
+  .hide-wide {
+    display: flex;
+  }
+
+  @media (min-width: 640px) {
+    .hide-wide {
+      display: none;
+    }
+  }
+
+  /* A flex row that disappears on a phone, where the bottom bar replaces it. */
+  .hide-narrow-flex {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .hide-narrow-flex {
+      display: flex;
+    }
+  }
+
   /* Text that gives way before the layout does. */
   .hide-narrow {
     display: none;
@@ -687,5 +756,33 @@
 
   .inset-safe-bottom {
     padding-bottom: max(44px, env(safe-area-inset-bottom));
+  }
+
+  /*
+   * Room for the fixed bar.
+   *
+   * It has to come after .inset-safe-bottom and not before: both set
+   * padding-bottom in the same layer, so the later one wins, and the earlier
+   * version of this rule was silently losing to 44px while the bar is 57px
+   * tall. Content was sliding underneath it.
+   *
+   * The value clears the bar and its safe-area inset together, because on a
+   * phone with a gesture bar those stack.
+   */
+  .pb-nav {
+    /*
+     * rem, not px. The bar's own height comes from its text, so it grows with
+     * the reader's text size — 57px at the default, 91px at 200% — and a
+     * fixed 72px cleared it at one size and not the other. Caught by testing
+     * at 200%, which is the second time in this file that px has quietly
+     * failed the same way.
+     */
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .pb-nav {
+      padding-bottom: max(44px, env(safe-area-inset-bottom));
+    }
   }
 }

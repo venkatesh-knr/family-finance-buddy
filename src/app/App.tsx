@@ -44,11 +44,16 @@ type Screen = 'overview' | 'expenses' | 'holdings' | 'fire' | 'profile' | 'setti
  * Pages base-path handling and a 404 fallback; a segmented control is the whole
  * of what is needed. A router arrives when a URL has to be shareable.
  */
-const SCREENS: readonly (readonly [Screen, string])[] = [
-  ['overview', 'Overview'],
-  ['expenses', 'Expenses'],
-  ['holdings', 'Holdings'],
-  ['fire', 'FIRE'],
+/**
+ * The glyph is for the bottom bar on a phone, where a label alone is too
+ * small to aim at. It never appears without its word: an icon on its own is a
+ * guess, and this app is used by people who did not choose it.
+ */
+const SCREENS: readonly (readonly [Screen, string, string])[] = [
+  ['overview', 'Overview', '◉'],
+  ['expenses', 'Expenses', '₹'],
+  ['holdings', 'Holdings', '◧'],
+  ['fire', 'FIRE', '△'],
 ];
 
 export function App() {
@@ -217,7 +222,12 @@ function SignedIn({
         the ones they want.
       */}
       <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app items-center justify-between gap-3 scroll-x">
-        <div className="segmented shrink-0" role="group" aria-label="Screen">
+        {/*
+          Hidden on a phone, where the bar at the bottom does this job under
+          somebody's thumb. Kept above the breakpoint because a bottom bar on a
+          wide screen is a long way from where the eye already is.
+        */}
+        <div className="segmented shrink-0 hide-narrow-flex" role="group" aria-label="Screen">
           {SCREENS.map(([id, label]) => (
             <button
               key={id}
@@ -240,7 +250,7 @@ function SignedIn({
         <HouseholdSwitcher />
       </nav>
 
-      <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app">
+      <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app pb-nav">
         {screen === 'fire' && <FireScreen privacy={privacy} householdId={householdId} />}
         {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} />}
         {screen === 'settings' && (
@@ -264,6 +274,41 @@ function SignedIn({
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
         {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
       </main>
+
+      {/*
+        The bottom bar, on phones only.
+        
+        Every native finance app puts navigation here and they are right to:
+        a thumb reaches the bottom of a phone and does not reach the top. It
+        also lets the strip above it disappear on narrow screens, which is
+        where the two rows of chrome came from in the first place.
+        
+        role="group" with aria-pressed rather than a tablist, for the same
+        reason the top strip is: an incomplete ARIA tab pattern announces a
+        promise it does not keep. Profile and Settings stay in the account
+        menu; five destinations in a bar is one more than a thumb can aim at.
+      */}
+      <nav className="bottom-nav hide-wide" role="group" aria-label="Screen">
+        {SCREENS.map(([id, label, glyph]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={screen === id}
+            onClick={() => {
+              setScreen(id);
+              // Back to the top: arriving halfway down a screen you have not
+              // seen before is disorienting, and the bar is most used to
+              // start something rather than to resume it.
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            <span aria-hidden="true" className="bottom-nav-glyph">
+              {glyph}
+            </span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
