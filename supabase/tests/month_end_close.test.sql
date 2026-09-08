@@ -23,25 +23,33 @@ values
    '{"provider":"email","providers":["email"]}', '{}'),
   ('00000000-0000-0000-0000-000000000000', 'bbbb2222-2222-4222-8222-222222222222',
    'authenticated', 'authenticated', 'viewer@demo.test', 'x', now(), now(), now(),
+   '{"provider":"email","providers":["email"]}', '{}'),
+  ('00000000-0000-0000-0000-000000000000', 'cccc3333-3333-4333-8333-333333333333',
+   'authenticated', 'authenticated', 'contributor@demo.test', 'x', now(), now(), now(),
    '{"provider":"email","providers":["email"]}', '{}');
 
 update public.user_account set id = 'cccc0000-0000-4000-8000-00000000ac01'
   where auth_user_id = 'aaaa1111-1111-4111-8111-111111111111';
 update public.user_account set id = 'cccc0000-0000-4000-8000-00000000ac02'
   where auth_user_id = 'bbbb2222-2222-4222-8222-222222222222';
+update public.user_account set id = 'cccc0000-0000-4000-8000-00000000ac03'
+  where auth_user_id = 'cccc3333-3333-4333-8333-333333333333';
 
 insert into public.household (id, name, kind) values
   ('dddd0000-0000-4000-8000-00000000d001', 'Closing house', 'demo');
 
 insert into public.member (id, household_id, display_name, colour) values
   ('eeee0000-0000-4000-8000-00000000e001', 'dddd0000-0000-4000-8000-00000000d001', 'Owner', 'c1'),
-  ('eeee0000-0000-4000-8000-00000000e002', 'dddd0000-0000-4000-8000-00000000d001', 'Looker', 'c2');
+  ('eeee0000-0000-4000-8000-00000000e002', 'dddd0000-0000-4000-8000-00000000d001', 'Looker', 'c2'),
+  ('eeee0000-0000-4000-8000-00000000e003', 'dddd0000-0000-4000-8000-00000000d001', 'Filer', 'c3');
 
 insert into public.membership (user_account_id, household_id, member_id, role) values
   ('cccc0000-0000-4000-8000-00000000ac01', 'dddd0000-0000-4000-8000-00000000d001',
    'eeee0000-0000-4000-8000-00000000e001', 'owner'),
   ('cccc0000-0000-4000-8000-00000000ac02', 'dddd0000-0000-4000-8000-00000000d001',
-   'eeee0000-0000-4000-8000-00000000e002', 'viewer');
+   'eeee0000-0000-4000-8000-00000000e002', 'viewer'),
+  ('cccc0000-0000-4000-8000-00000000ac03', 'dddd0000-0000-4000-8000-00000000d001',
+   'eeee0000-0000-4000-8000-00000000e003', 'contributor');
 
 insert into public.instrument (id, household_id, name, kind, currency, exposure_currency) values
   ('ffff0000-0000-4000-8000-00000000f001', 'dddd0000-0000-4000-8000-00000000d001',
@@ -160,20 +168,22 @@ select is(
   'a person who closes the month is recorded as the author of what it wrote'
 );
 
--- The system path writes no author at all, and the policy that lets it through
--- is the only way an unattributed row can be created. A signed-in caller
--- always has auth.uid(), so this policy can never be their route in.
+-- A contributor may record a reading and may not close a month. Closing writes
+-- figures the household will rely on for disclosure, which is a different kind
+-- of act from entering one.
 reset role;
-select is(
-  (select count(*)::int from pg_policies
-    where schemaname = 'public'
-      and tablename = 'valuation_snapshot'
-      and policyname = 'valuation_snapshot_insert_by_the_close_job'
-      and qual is null
-      and with_check like '%auth.uid() IS NULL%'),
-  1,
-  'the system insert path exists and is gated on there being no session at all'
+set local role authenticated;
+set local request.jwt.claim.sub to 'cccc3333-3333-4333-8333-333333333333';
+set local request.jwt.claims   to '{"sub":"cccc3333-3333-4333-8333-333333333333","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ select * from public.close_month('dddd0000-0000-4000-8000-00000000d001', date '2026-06-30') $q$,
+  '42501'::char(5),
+  null::text,
+  'a contributor can record a reading but cannot close a month'
 );
+
+reset role;
 
 select * from finish();
 
