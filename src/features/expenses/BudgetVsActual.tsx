@@ -400,8 +400,18 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
             )}
           </span>
         )}
-        {row.categoryId === null && (
+        {/*
+          Keyed on kind, not on a null category. A personal line has no
+          category either, and telling somebody to go and file another
+          member's private spending is advice that is both wrong and
+          impossible to act on — the rows are not theirs to see, let alone
+          categorise.
+        */}
+        {row.kind === 'uncategorised' && (
           <span className="note">file these under a category to compare them</span>
+        )}
+        {row.kind === 'personal' && (
+          <span className="note">their detail, your total</span>
         )}
       </div>
     </li>
