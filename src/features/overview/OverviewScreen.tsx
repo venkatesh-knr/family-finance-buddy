@@ -1,17 +1,20 @@
 /**
  * Overview — what the household owns, and what the app has not been told.
  *
- * The prototype calls this screen "Net worth". It is not called that here, and
- * the difference is not modesty. Net worth is assets minus debt converted to
- * one currency, and this schema can do neither yet: `liability` records an
- * instalment rather than an outstanding balance, and there is no `fx_rate`
- * table to convert a dollar holding into rupees. A headline reading "Net
- * worth" would be wrong by the size of the mortgage and would silently pick an
- * exchange rate nobody chose.
+ * This screen showed assets per currency for a long time, and refused the
+ * words "net worth", because the schema could not honour them: `liability`
+ * recorded an instalment rather than an outstanding balance, and there was no
+ * `fx_rate` table to turn a dollar holding into rupees. A headline reading
+ * "net worth" would have been wrong by the size of the mortgage and would have
+ * picked an exchange rate nobody chose.
  *
- * So it says what it can stand behind — assets, per currency — and names the
- * two things missing. That is a screen you can trust with the next figure it
- * shows you; the other kind is not.
+ * Both landed in `20260908130000_fx_rate_and_liability_balance.sql`, so the
+ * headline is now the real thing. The refusal survives in a different form:
+ * `netWorth` returns the figure or the list of rates it is missing, never a
+ * total with the unconvertible parts quietly dropped, and a liability with no
+ * recorded balance is subtracted from nothing rather than guessed at. The
+ * screen still says what it has not been told — it just says it beside a
+ * number now rather than in place of one.
  *
  * The second half of the screen is the part that actually decays. "Every month
  * that passes before the app starts snapshotting is a month of peak data

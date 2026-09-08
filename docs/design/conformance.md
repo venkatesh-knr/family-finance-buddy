@@ -22,14 +22,14 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 
 | Item | Kind | Status | Where / why |
 |---|---|---|---|
-| overview | screen | partial | `src/features/overview` — assets per currency, allocation by kind, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution, and net worth itself — see Departures |
-| expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, spending plan, ledger |
+| overview | screen | partial | `src/features/overview` — net worth, assets per currency, allocation by kind, rate entry, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution |
+| expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, the ledger and its editor. The spending plan moved to FIRE — see Departures |
 | investments | screen | partial | `src/features/holdings` — holdings and valuations; no fund/equity breakdown, no India/Abroad split |
 | property | screen | not-built | Stage 5 |
 | global | screen | not-built | Stage 5 — needs FX and the currency work |
-| fire | screen | partial | `src/features/plan` — target and ladder; no goals, no projection against real contributions |
+| fire | screen | partial | `src/features/plan` — annual expense, the spending plan and the commitments it is built from, target and ladder. No goals, and no projection against real contributions |
 | tax | screen | not-built | Stage 5 — needs the tax engine and `tax_rule` rows |
-| protection | screen | partial | `src/features/plan` — loans and policies live on Expenses, not a screen of their own; see Departures |
+| protection | screen | partial | `src/features/plan` — loans and policies live on FIRE, not a screen of their own; see Departures |
 | calendar | screen | not-built | Stage 5 |
 | reports | screen | not-built | Stage 5 — export, template upload |
 | profile | screen | built | `src/features/profile` — identity, private-entry count, recent activity |
@@ -69,10 +69,10 @@ not a gap — if one of these is revisited, change it here first.
 | Household switcher | absent | in the shell, beside the tabs | The demo/real split is core to §1057 and Stage 3; the mock does not model two households. |
 | Identity in the top bar | avatar only | avatar only | Adopted. The app previously printed the email on every screen — an address in every screenshot. |
 | Currency control | in the avatar menu *and* Settings | neither, yet | Two controls for one setting drift apart. It lands in Settings alone when multi-currency is built. |
-| Categories | in Settings, separate from budgets | with their budgets, on Expenses | Naming a category and saying what it should cost is one thought; splitting them means two screens to set one envelope. |
-| Loans and policies | a Protection & debt screen | on Expenses | The annual-expense total already counts them. Filing them under debt splits one arithmetic across two screens. |
+| Categories | in Settings, separate from budgets | with their budgets, in the spending plan on FIRE | Naming a category and saying what it should cost is one thought; splitting them means two screens to set one envelope. Both then sit where the annual expense is derived. |
+| Loans and policies | a Protection & debt screen | on FIRE | The annual-expense total already counts them, and that total is the FIRE number's first input. Filing them under debt splits one arithmetic across two screens. |
 | Category list | thirty-six names from one workbook | a grouped catalogue, nothing pre-ticked | A household without a scooty should not inherit an "Insurance Scooty" envelope. |
 | Envelopes with no spending | every category listed | folded behind a count | Twenty-eight rows reading "₹0.00 · behind" buried the rows worth acting on. |
-| "Net worth" headline | assets minus debt, one figure | "Assets", per currency | `liability` records an instalment, not an outstanding balance, and there is no `fx_rate` table. One figure would be wrong by the size of the mortgage and would pick a rate nobody chose. |
+| Refusing a total | one figure, always | the figure, or the rates it is missing | *Resolved as a departure* — `20260908130000` added `fx_rate` and `liability.outstanding_minor`, so the headline is net worth as designed. What is kept is the refusal underneath it: a total that cannot be converted honestly comes back as the missing pairs rather than a number short by the dollar holdings. |
 | Allocation donut | an SVG donut with a legend | a row per class: colour, name, share, value, return | Taken from the reference app rather than from the mock. A bar or an arc shows one thing — relative size — where a row of the same height shows four, and on a phone that is the difference between a picture and an answer. The colours are still the chart palette in order, so a class keeps its identity when the donut arrives beside it. |
 | Failure states | none — a mock has no loading, empty, offline or denied states | all four, throughout | Not a departure so much as the part a mock cannot show. Do not drop them to match it. |
