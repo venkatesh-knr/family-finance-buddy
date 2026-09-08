@@ -32,6 +32,8 @@ REQUIRED=(
   notice notice-gap notice-due notice-names notice-toggle
   setgrp setrow grouphead
   avatar menu mhead mitem mitem-quiet iconbtn
+  stat track delta delta-up delta-down delta-flat
+  tbl tbl-wrap num-col
 )
 
 if [ ! -d "${BUILD_DIR}" ]; then
