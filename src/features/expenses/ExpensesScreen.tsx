@@ -12,7 +12,7 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Button, Card, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { ExpensePlanning } from '../plan/PlanScreen.tsx';
@@ -351,22 +351,29 @@ function ExpenseList({
             ))}
           </ul>
 
-          <div className="hidden scroll-x sm:block">
-            <table className="w-full border-collapse text-cell">
+          {/*
+            The shared Table primitive rather than a hand-rolled one: it
+            carries the header styling, the hairline rows and the scroll
+            wrapper that keeps the page body from ever scrolling sideways.
+          */}
+          <div className="hidden sm:block">
+            <Table label="Recent expenses">
               <thead>
                 <tr>
-                  <Th>Date</Th>
-                  <Th>Payee</Th>
-                  <Th>Member</Th>
-                  <Th align="right">Amount</Th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Payee</th>
+                  <th scope="col">Member</th>
+                  <th scope="col" className="num-col">
+                    Amount
+                  </th>
                 </tr>
               </thead>
-              <tbody className="row-separated">
+              <tbody>
                 {expenses.map((expense) => (
                   <Row key={expense.id} expense={expense} privacy={privacy} />
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         </>
       )}
@@ -428,22 +435,6 @@ function StackedRow({ expense, privacy }: { expense: ExpenseRow; privacy: boolea
         {expense.visibility === 'personal' && <Pill tone="own">Private</Pill>}
       </div>
     </li>
-  );
-}
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      scope="col"
-      className="micro-label px-2.5 py-2"
-      style={{
-        background: 'var(--surface-2)',
-        borderBottom: '1px solid var(--line)',
-        textAlign: align,
-      }}
-    >
-      {children}
-    </th>
   );
 }
 

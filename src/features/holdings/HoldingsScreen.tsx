@@ -12,11 +12,52 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
+
+type SortBy = 'value' | 'name' | 'member';
 
 export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
   const { listing, rows, year, setYear, today, loading, problem, add, record } = useHoldings(householdId);
+  const [sortBy, setSortBy] = useState<SortBy>('value');
+
+  /**
+   * Totals per currency, on the same terms as Overview: never summed across
+   * currencies, and a holding nobody has read is absent rather than zero.
+   */
+  const totals = useMemo(() => {
+    const byCurrency = new Map<string, { value: bigint; invested: bigint; unread: number }>();
+    for (const row of rows) {
+      const currency = row.holding.instrument.currency;
+      const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0 };
+      bucket.invested += row.holding.cost?.minor ?? 0n;
+      if (row.latest === null) bucket.unread += 1;
+      else bucket.value += row.latest.amountMinor;
+      byCurrency.set(currency, bucket);
+    }
+    return [...byCurrency.entries()].map(([currency, b]) => ({ currency, ...b }));
+  }, [rows]);
+
+  // Biggest first by default: on a list of twenty, the largest position is
+  // almost always the one the question is about.
+  const ordered = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.holding.instrument.name.localeCompare(b.holding.instrument.name);
+      }
+      if (sortBy === 'member') {
+        return (
+          a.holding.member.displayName.localeCompare(b.holding.member.displayName) ||
+          a.holding.instrument.name.localeCompare(b.holding.instrument.name)
+        );
+      }
+      const av = a.latest?.amountMinor ?? -1n;
+      const bv = b.latest?.amountMinor ?? -1n;
+      return bv > av ? 1 : bv < av ? -1 : 0;
+    });
+    return copy;
+  }, [rows, sortBy]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 
@@ -35,8 +76,42 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
     <div className="flex flex-col gap-4.5">
       {canWrite && <AddHolding listing={listing} onAdd={add} />}
 
+      {totals.length > 0 && (
+        <Card title="Portfolio" aside={<span className="note">latest readings</span>}>
+          <div className="flex flex-col gap-4.5">
+            {totals.map((total) => {
+              const gain = total.value - total.invested;
+              return (
+                <div key={total.currency}>
+                  <p className="figure" style={{ color: 'var(--ink)' }}>
+                    {formatMoney(money(total.value, total.currency), { privacy })}
+                  </p>
+                  <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
+                    <Stat label="Invested">
+                      {formatMoney(money(total.invested, total.currency), { privacy })}
+                    </Stat>
+                    <Stat label={gain < 0n ? 'Total loss' : 'Total return'} tone={gain < 0n ? 'loss' : 'gain'}>
+                      {formatMoney(money(gain, total.currency), { privacy })}
+                    </Stat>
+                    {total.unread > 0 && (
+                      <Stat label="Unread">
+                        {total.unread} {total.unread === 1 ? 'holding' : 'holdings'}
+                      </Stat>
+                    )}
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+          <p className="note mt-3.5">
+            Each currency on its own, and a holding nobody has read is not in these figures at all
+            — counting it as zero would make the total look complete while being short.
+          </p>
+        </Card>
+      )}
+
       <Card
-        title="Holdings"
+        title={rows.length === 0 ? 'Holdings' : `Holdings (${String(rows.length)})`}
         aside={
           <label className="flex items-center gap-2">
             <span className="micro-label">Peak for</span>
@@ -62,19 +137,39 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
             end — that reading is the only way the year&rsquo;s peak can ever be known.
           </p>
         ) : (
-          <div className="flex flex-col gap-4.5">
-            {rows.map((row) => (
-              <HoldingCard
-                key={row.holding.id}
-                row={row}
-                listing={listing}
-                privacy={privacy}
-                today={today}
-                canWrite={canWrite}
-                onRecord={record}
-              />
-            ))}
-          </div>
+          <>
+            <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+              <span className="micro-label">Sort</span>
+              <span className="segmented" role="group" aria-label="Sort holdings">
+                {(['value', 'name', 'member'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={sortBy === option}
+                    onClick={() => {
+                      setSortBy(option);
+                    }}
+                  >
+                    {option === 'value' ? 'Largest' : option === 'name' ? 'Name' : 'Member'}
+                  </button>
+                ))}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-4.5">
+              {ordered.map((row) => (
+                <HoldingCard
+                  key={row.holding.id}
+                  row={row}
+                  listing={listing}
+                  privacy={privacy}
+                  today={today}
+                  canWrite={canWrite}
+                  onRecord={record}
+                />
+              ))}
+            </div>
+          </>
         )}
       </Card>
 
