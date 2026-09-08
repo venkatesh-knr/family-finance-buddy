@@ -65,7 +65,13 @@ insert into public.instrument (id, household_id, name, kind, currency, exposure_
   ('be550000-0000-4000-8000-00000000f001', 'bc330000-0000-4000-8000-00000000e001',
    'Shared fund', 'mutual_fund', 'INR', 'INR'),
   ('be550000-0000-4000-8000-00000000f002', 'bc330000-0000-4000-8000-00000000e001',
-   'Quiet fund', 'mutual_fund', 'INR', 'INR');
+   'Quiet fund', 'mutual_fund', 'INR', 'INR'),
+  -- Only ever held the pre-lots way, for the cost-source assertion at the end.
+  -- Its own instrument because a holding is unique per member and instrument:
+  -- a second holding of the shared fund for the same member is not a thing the
+  -- schema allows, and rightly so.
+  ('be550000-0000-4000-8000-00000000f003', 'bc330000-0000-4000-8000-00000000e001',
+   'Fund from the old sheet', 'mutual_fund', 'INR', 'INR');
 
 -- One household holding, and one the partner has marked personal. The second
 -- is the interesting one: the owner administers this household and still must
@@ -256,7 +262,7 @@ select is(
 
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, cost_minor)
 values ('bf660000-0000-4000-8000-00000000b003', 'bc330000-0000-4000-8000-00000000e001',
-        'bd440000-0000-4000-8000-00000000c001', 'be550000-0000-4000-8000-00000000f001', 7, 70000);
+        'bd440000-0000-4000-8000-00000000c001', 'be550000-0000-4000-8000-00000000f003', 7, 70000);
 
 select is(
   public.holding_cost_source('bf660000-0000-4000-8000-00000000b003'),
