@@ -73,6 +73,12 @@ jobs:
       - name: Policy tests
         run: supabase test db
 
+      # The seed is a long hand-written INSERT script against a schema that
+      # keeps moving, and nothing else in the pipeline loads it. Run it at a
+      # throwaway household and check the awkward cases actually landed.
+      - name: The demo seed still fits the schema
+        run: bash scripts/check-demo-seed.sh
+
       - name: Stop the stack
         if: always()
         run: supabase stop --no-backup
