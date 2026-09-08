@@ -15,9 +15,12 @@ import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/t
 import { Button, Card, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
+import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
+  const [editing, setEditing] = useState<ExpenseRow | null>(null);
+
   const {
     listing,
     loading,
@@ -28,6 +31,8 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
     noHousehold,
     budgets,
     personalSpend,
+    edit,
+    discard,
     fy,
     today,
     add,
@@ -80,8 +85,28 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
         privacy={privacy}
       />
 
+      {editing !== null && (
+        <EditExpense
+          key={editing.id}
+          expense={editing}
+          listing={listing}
+          onSave={async (patch: ExpensePatch) => {
+            await edit(patch);
+            setEditing(null);
+          }}
+          onVoid={async () => {
+            await discard(editing.id);
+            setEditing(null);
+          }}
+          onCancel={() => {
+            setEditing(null);
+          }}
+        />
+      )}
+
       <ExpenseList
         listing={listing}
+        onEdit={listing.viewer.canRecord ? setEditing : null}
         privacy={privacy}
         refreshing={refreshing}
         live={live}
@@ -301,12 +326,15 @@ function ExpenseList({
   refreshing,
   live,
   liveDetail,
+  onEdit,
 }: {
   listing: ExpenseListing;
   privacy: boolean;
   refreshing: boolean;
   live: LiveStatus;
   liveDetail: string | null;
+  /** Null for a viewer, who may read every entry and correct none. */
+  onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
   const { expenses } = listing;
 
@@ -339,7 +367,7 @@ function ExpenseList({
           */}
           <ul className="row-separated sm:hidden">
             {expenses.map((expense) => (
-              <StackedRow key={expense.id} expense={expense} privacy={privacy} />
+              <StackedRow key={expense.id} expense={expense} privacy={privacy} onEdit={onEdit} />
             ))}
           </ul>
 
@@ -362,7 +390,7 @@ function ExpenseList({
               </thead>
               <tbody>
                 {expenses.map((expense) => (
-                  <Row key={expense.id} expense={expense} privacy={privacy} />
+                  <Row key={expense.id} expense={expense} privacy={privacy} onEdit={onEdit} />
                 ))}
               </tbody>
             </Table>
@@ -401,7 +429,15 @@ function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: str
  * tabular figures so a column of them still lines up. Everything else drops to
  * a second line rather than competing for width.
  */
-function StackedRow({ expense, privacy }: { expense: ExpenseRow; privacy: boolean }) {
+function StackedRow({
+  expense,
+  privacy,
+  onEdit,
+}: {
+  expense: ExpenseRow;
+  privacy: boolean;
+  onEdit: ((expense: ExpenseRow) => void) | null;
+}) {
   return (
     <li className="flex flex-col gap-1 py-2.5" style={expense.isVoided ? { opacity: 0.55 } : undefined}>
       <div className="flex items-baseline justify-between gap-3">
@@ -425,12 +461,36 @@ function StackedRow({ expense, privacy }: { expense: ExpenseRow; privacy: boolea
           nothing" (§20) — this is where it is observed.
         */}
         {expense.visibility === 'personal' && <Pill tone="own">Private</Pill>}
+        {/*
+          Not offered on a voided entry. Voiding is the end of a row's life:
+          "after that, void and re-enter", so the next step is a new entry
+          rather than an edit to a dead one.
+        */}
+        {onEdit !== null && !expense.isVoided && (
+          <button
+            type="button"
+            className="note underline"
+            onClick={() => {
+              onEdit(expense);
+            }}
+          >
+            Correct
+          </button>
+        )}
       </div>
     </li>
   );
 }
 
-function Row({ expense, privacy }: { expense: ExpenseRow; privacy: boolean }) {
+function Row({
+  expense,
+  privacy,
+  onEdit,
+}: {
+  expense: ExpenseRow;
+  privacy: boolean;
+  onEdit: ((expense: ExpenseRow) => void) | null;
+}) {
   const foreign = expense.amount.currency !== 'INR';
 
   return (
@@ -450,6 +510,24 @@ function Row({ expense, privacy }: { expense: ExpenseRow; privacy: boolean }) {
           <>
             {' '}
             <Pill tone="own">Private</Pill>
+          </>
+        )}
+        {/*
+          Not offered on a voided entry: voiding is the end of a row's life,
+          and the next step is a new entry rather than an edit to a dead one.
+        */}
+        {onEdit !== null && !expense.isVoided && (
+          <>
+            {' '}
+            <button
+              type="button"
+              className="note underline"
+              onClick={() => {
+                onEdit(expense);
+              }}
+            >
+              Correct
+            </button>
           </>
         )}
       </td>
