@@ -9,7 +9,13 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
-import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
+import {
+  formatMoney,
+  isKnownCurrency,
+  knownCurrencyCodes,
+  money,
+  parseAmountToMinor,
+} from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
@@ -482,6 +488,13 @@ function AddHolding({
         return;
       }
 
+      // The selects cannot offer a bad code, but a runtime without ICU falls
+      // back to the shape test and would let one through again.
+      if (!isKnownCurrency(currency) || !isKnownCurrency(exposure)) {
+        setProblem('Choose real currencies. Both must be ISO codes like INR or USD.');
+        return;
+      }
+
       setBusy(true);
       try {
         await onAdd({
@@ -566,32 +579,51 @@ function AddHolding({
           </select>
         </label>
 
-        <div className="w-full sm:w-[92px] sm:shrink-0">
-          <Field
-            label="Currency"
-            numeric
-            maxLength={3}
-            required
+        {/*
+          Chosen, not typed. These were free-text three-character boxes, and a
+          testing round put "ABC" in one: three capitals is what the shape test
+          asks for, and the field asked for three capitals. A list cannot
+          produce a currency that does not exist.
+        */}
+        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
+          <span className="micro-label">Priced in</span>
+          <select
+            className="field"
             value={currency}
             onChange={(event) => {
-              setCurrency(event.target.value.toUpperCase());
+              setCurrency(event.target.value);
             }}
-          />
-        </div>
+          >
+            <CurrencyOptions />
+          </select>
+        </label>
 
-        <div className="w-full sm:w-[104px] sm:shrink-0">
-          <Field
-            label="Tracks"
-            numeric
-            maxLength={3}
-            required
-            hint="Exposure"
+        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
+          <span className="micro-label">
+            Tracks
+            {/*
+              The distinction that made the two boxes look broken beside each
+              other: an Indian feeder fund is priced in rupees and moves with
+              the dollar, so these are genuinely two answers and neither
+              follows from the other.
+            */}
+            <Caveat tone="info" label="What Tracks means, and how it differs from Priced in">
+              What the value actually follows. An Indian fund tracking a US index is priced in INR
+              and tracks USD — its rupee value moves when the dollar does. A US stock bought
+              directly is USD and USD. Leave it the same as the currency unless the two genuinely
+              differ.
+            </Caveat>
+          </span>
+          <select
+            className="field"
             value={exposure}
             onChange={(event) => {
-              setExposure(event.target.value.toUpperCase());
+              setExposure(event.target.value);
             }}
-          />
-        </div>
+          >
+            <CurrencyOptions />
+          </select>
+        </label>
 
         <div className="w-full sm:w-[120px] sm:shrink-0">
           <Field
@@ -652,5 +684,38 @@ function AddHolding({
         </span>
       </label>
     </Card>
+  );
+}
+
+/**
+ * Every currency this runtime knows, with the two this household actually uses
+ * first.
+ *
+ * A hundred and sixty codes in alphabetical order is a list, not a chooser —
+ * INR and USD are the answer almost every time, so they go where the thumb
+ * already is, and the rest follow for the once a year they do not.
+ */
+function CurrencyOptions() {
+  const all = knownCurrencyCodes();
+  const common = ['INR', 'USD'].filter((code) => all.length === 0 || all.includes(code));
+  const rest = all.filter((code) => !common.includes(code));
+
+  return (
+    <>
+      {common.map((code) => (
+        <option key={code} value={code}>
+          {code}
+        </option>
+      ))}
+      {rest.length > 0 && (
+        <optgroup label="Everything else">
+          {rest.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </>
   );
 }
