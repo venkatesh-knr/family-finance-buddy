@@ -15,9 +15,10 @@
  */
 
 import { supabase } from './client.ts';
-import { requireRecord } from '../lib/guards.ts';
+import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import { toDisposal, toHolding, toInstrument, toLot, toMember, toValuation } from './mapping.ts';
+import { money } from '../lib/money.ts';
 import {
   NoHouseholdError,
   type Disposal,
@@ -26,6 +27,7 @@ import {
   type Lot,
   type Member,
   type NewHolding,
+  type PersonalHoldingTotal,
   type NewValuation,
   type Uuid,
   type Valuation,
@@ -298,4 +300,50 @@ function asRepositoryError(error: ProviderError): Error {
     return new Error('That already exists — check whether it has been recorded once already.');
   }
   return new Error(error.message);
+}
+
+/**
+ * Other members' personal holdings, one sum each.
+ *
+ * The half of §20 the holding policy promised and nothing delivered until
+ * `20260911120000`: without this, every asset total in the app is short by
+ * whatever the rest of the household holds privately, and two members looking
+ * at "what we are worth" see different figures.
+ *
+ * Failing is not the same as empty, and must not be flattened into `[]`. A
+ * household with private holdings would then show a total that is too low —
+ * the exact failure the function exists to prevent, silently.
+ */
+export async function listPersonalHoldingTotals(
+  householdId: Uuid,
+): Promise<readonly PersonalHoldingTotal[]> {
+  const client = supabase();
+
+  // Named argument: PostgREST resolves a function by parameter name, and a
+  // positional call would not find it at all.
+  const { data, error } = await client.rpc('personal_holding_totals', {
+    target_household_id: householdId,
+  });
+
+  if (error !== null) throw asRepositoryError(error);
+  if (data === null) return [];
+  if (!Array.isArray(data)) {
+    throw new MalformedRowError('personal_holding_totals', 'did not return a set of rows');
+  }
+
+  return data.map((row: unknown) => {
+    const record = requireRecord(row, 'personal_holding_totals');
+    const unvalued = record['unvalued'];
+    return {
+      memberId: requireString(record['member_id'], 'personal_holding_totals.member_id'),
+      // Refuses a figure too large to have survived JSON rather than rounding
+      // it: a sum that cannot be trusted throws instead of understating a
+      // household total by a few paise.
+      total: money(
+        toBigIntExact(record['total_minor'], 'personal_holding_totals.total_minor'),
+        requireString(record['currency'], 'personal_holding_totals.currency'),
+      ),
+      unvalued: typeof unvalued === 'number' ? unvalued : 0,
+    };
+  });
 }

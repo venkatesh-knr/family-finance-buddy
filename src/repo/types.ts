@@ -320,6 +320,21 @@ export interface Disposal {
 export const DISPOSAL_KINDS = ['sale', 'redemption', 'maturity', 'transfer', 'gift'] as const;
 export type DisposalKind = (typeof DISPOSAL_KINDS)[number];
 
+/**
+ * One member's personal holdings, as a single figure.
+ *
+ * Never a breakdown, and the shape is the guarantee: there is nowhere to put
+ * a holding or an asset class. "If a total is visible and only one entry is
+ * private, the private amount can be recovered by subtraction" — a per-class
+ * version of this would hand the subtraction back.
+ */
+export interface PersonalHoldingTotal {
+  readonly memberId: Uuid;
+  readonly total: Money;
+  /** How many of them have never been valued, so a screen can say the sum is short. */
+  readonly unvalued: number;
+}
+
 export interface NewLot {
   readonly householdId: Uuid;
   readonly holdingId: Uuid;
