@@ -21,7 +21,7 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -679,7 +679,24 @@ function SuggestionPicker({
 
         return (
           <div key={group.group} className="flex flex-col gap-1.5">
-            <span className="micro-label">{group.group}</span>
+            <span className="micro-label">
+              {group.group}
+              {/*
+                Said where the choice is made, not in a note somebody scrolls
+                past. A loan and a policy already reach the annual expense from
+                their own rows below; a budget on the matching category as well
+                would count the commitment twice and inflate the FIRE target by
+                every loan the household has.
+              */}
+              {group.group === 'Loans and premiums' && (
+                <Caveat tone="info" label="What these categories are for">
+                  For recording what actually left the account. The plan already counts your loans
+                  and policies from their own rows further down this screen, so leave these without
+                  a budget — giving one a budget as well would count the same commitment twice and
+                  push the FIRE target up by it.
+                </Caveat>
+              )}
+            </span>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               {available.map((item) => (
                 <label key={item.name} className="flex items-center gap-1.5 text-caption">

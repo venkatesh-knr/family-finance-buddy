@@ -109,6 +109,38 @@ export const CATEGORY_CATALOGUE: readonly SuggestionGroup[] = [
     ],
   },
   {
+    /*
+     * The group a testing round found missing entirely.
+     *
+     * An EMI and a premium leave the bank like any other spend, and there was
+     * nowhere to file either — no loan category at all, and only the two
+     * insurances that happen to sit under Health and Transport. So the payment
+     * could be made and not recorded, which is the one thing a ledger must not
+     * make easy.
+     *
+     * These are for recording what left the account. They are NOT how a loan
+     * or a policy reaches the annual expense: that comes from the loan and
+     * policy rows themselves, on FIRE. Budgeting one of these as well would
+     * count the same commitment twice and inflate the FIRE target by every
+     * loan the household has — which is why the chooser says so out loud.
+     *
+     * No "credit card repayment" here, deliberately. Paying a card settles
+     * spending that was already recorded when it happened; filing the
+     * repayment as an expense too would double every card purchase.
+     */
+    group: 'Loans and premiums',
+    items: [
+      { name: 'Home loan', nature: 'fixed' },
+      { name: 'Vehicle loan', nature: 'fixed' },
+      { name: 'Personal loan', nature: 'fixed' },
+      { name: 'Education loan', nature: 'fixed' },
+      { name: 'Gold loan', nature: 'fixed' },
+      { name: 'Life insurance', nature: 'fixed' },
+      { name: 'Term insurance', nature: 'fixed' },
+      { name: 'Home insurance', nature: 'fixed' },
+    ],
+  },
+  {
     group: 'Occasional',
     items: [
       { name: 'Travel and holidays', nature: 'variable' },
