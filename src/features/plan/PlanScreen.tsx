@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
+import { exactMoney, formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import type {
   CommitmentCadence,
   LiabilityKind,
@@ -120,11 +120,15 @@ function AnnualSummary({
       // scrolling past actually wanted.
       collapsible
       defaultOpen={startOpen}
-      summary={`${formatMoney(annual.total, { privacy })} planned this year.`}
+      summary={`${formatMoney(annual.total, { privacy, compact: true })} planned this year.`}
       aside={<span className="note">FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}</span>}
     >
-      <p className="figure" style={{ color: 'var(--ink)' }}>
-        {formatMoney(annual.total, { privacy })}
+      <p
+        className="figure"
+        style={{ color: 'var(--ink)' }}
+        title={exactMoney(annual.total, privacy) ?? undefined}
+      >
+        {formatMoney(annual.total, { privacy, compact: true })}
       </p>
 
       <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
@@ -218,8 +222,12 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
     >
       {target !== undefined && (
         <div className="mb-4.5">
-          <p className="figure" style={{ color: 'var(--ink)' }}>
-            {formatMoney(target.target, { privacy })}
+          <p
+            className="figure"
+            style={{ color: 'var(--ink)' }}
+            title={exactMoney(target.target, privacy) ?? undefined}
+          >
+            {formatMoney(target.target, { privacy, compact: true })}
           </p>
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices

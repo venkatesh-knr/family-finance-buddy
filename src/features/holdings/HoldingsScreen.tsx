@@ -10,6 +10,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
+  exactMoney,
   formatMoney,
   isKnownCurrency,
   knownCurrencyCodes,
@@ -95,8 +96,12 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
               const gain = total.value - total.invested;
               return (
                 <div key={total.currency}>
-                  <p className="figure" style={{ color: 'var(--ink)' }}>
-                    {formatMoney(money(total.value, total.currency), { privacy })}
+                  <p
+                    className="figure"
+                    style={{ color: 'var(--ink)' }}
+                    title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
+                  >
+                    {formatMoney(money(total.value, total.currency), { privacy, compact: true })}
                   </p>
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">

@@ -35,7 +35,7 @@ import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
-import { formatMoney } from '../../lib/money.ts';
+import { exactMoney, formatMoney } from '../../lib/money.ts';
 import {
   NoHouseholdError,
   type HoldingListing,
@@ -357,8 +357,12 @@ export function OverviewScreen({
             <p
               className="figure"
               style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
+              // The unabbreviated figure, for anybody who wants the digits.
+              // Null under privacy: a tooltip that gives away what the bullets
+              // hide would make the whole mode decorative.
+              title={exactMoney(worth.amount, privacy) ?? undefined}
             >
-              {formatMoney(worth.amount, { privacy })}
+              {formatMoney(worth.amount, { privacy, compact: true })}
               {/*
                 Both of these qualify this number and neither is decoration, so
                 they ride on it rather than under the card.
@@ -485,8 +489,12 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {totals.map((total) => (
               <div key={total.currency}>
-                <p className="figure" style={{ color: 'var(--ink)' }}>
-                  {formatMoney(total.value, { privacy })}
+                <p
+                  className="figure"
+                  style={{ color: 'var(--ink)' }}
+                  title={exactMoney(total.value, privacy) ?? undefined}
+                >
+                  {formatMoney(total.value, { privacy, compact: true })}
                   {total.unvalued > 0 && (
                     <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                       {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never
