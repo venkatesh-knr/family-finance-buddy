@@ -39,7 +39,7 @@ A spike is worth doing early when failure would change the design. Measured agai
 
 | Risk | If it fails | Design impact | Do it |
 |---|---|---|---|
-| CAS parser | Lots and transaction history are entered by hand or from broker CSVs | None — the fallback is already the phase-1 behaviour | Phase 4, when it matters |
+| CAS parser | Lots and transaction history are entered by hand or from broker CSVs | None — the fallback is already the phase-1 behaviour | Stage 5, ahead of bank and card import — see the eCAS entry there. The fallback it names is now real rather than hypothetical: `lot` and `disposal` exist and can be entered by hand, which is exactly why parsing them can wait and also why it is worth doing |
 | Passkeys in native shells | Password + authenticator only | None — that path is mandatory anyway | Phase 2, before the shells ship |
 | Row-policy performance | Add indexes, rewrite a policy predicate | None — a tuning problem | Watch from stage 2 onward |
 | The stack itself | Static hosting, database-enforced access, live sync and CI don't hold together | **Total** — everything changes | **Week one** |
@@ -124,6 +124,40 @@ Your development environment and your first deliverable are the same thing.
 
 - Export in both formats, and the template upload with its preview-before-commit flow.
 
+- **eCAS import — and it comes first among the imports.** A CAMS or KFintech
+  consolidated statement is the full mutual-fund transaction history across every
+  AMC; a depository CAS is the same for demat equity and bonds (blueprint §778,
+  §781). Both are password-protected PDFs, both are digitally generated with real
+  text, so extraction is a layout problem — reading positioned text and rebuilding
+  rows — not character recognition.
+
+  **Parsed on the device, never uploaded.** A consolidated statement lists every
+  folio, the PAN and the address. "Doing it on the device means a document listing
+  every folio, your PAN and your address is never uploaded anywhere. That is better
+  than any server-side design, not a compromise with one" (§894). The browser's own
+  PDF engine takes the password and decrypts the file, so this needs no service and
+  no key of ours — which is also the only reason it is possible at all in an
+  architecture with no server.
+
+  **It is worth more now than when it was specified.** §260: "the ledger fills in
+  behind it as SIPs post and CAS files import, and the moment a holding has a
+  complete ledger, XIRR and lot-level capital gains turn on for it." That ledger is
+  `lot` and `disposal`, which landed in `20260910120000`, and `src/domain/lots.ts`
+  already derives the parcels. eCAS is how those tables get filled in bulk rather
+  than one purchase at a time — every SIP instalment is a lot, so a household three
+  years into a monthly SIP has a hundred-odd rows nobody will ever type.
+
+  Ordering, from §791: "Ship manual entry first and make it genuinely fast — imports
+  are accelerants, not prerequisites. Then the NAV and FX jobs … then eCAS (unlocks
+  XIRR retroactively), then statement import with the rules engine." Manual entry is
+  built and so are lots; the NAV driver is the `price` table still outstanding from
+  stage 4. **eCAS goes ahead of bank and card import**, which the note below was
+  written without saying.
+
+  The de-duplication requirement below applies here with more force, not less: a CAS
+  covers a date range somebody will re-request and re-import, and a doubled SIP is a
+  doubled cost basis and a wrong capital gain years later.
+
 - **Statement import, bank and credit card both.** "Import beats typing" (blueprint §158),
   and the entry flow is the project's stated failure mode — a month of card spending
   typed by hand is where somebody stops using this.
@@ -149,8 +183,9 @@ Your development environment and your first deliverable are the same thing.
   description, hashed — recorded against the row so a re-import recognises what
   it has already seen.
 
-  A card statement is the more valuable of the two, because it is where the
-  discretionary spending is. It also settles a question the category catalogue
+  A card statement is the more valuable of the two *for spending*, because it is
+  where the discretionary money goes — though eCAS above outranks both, and the
+  blueprint's own sequencing says so. It also settles a question the category catalogue
   raised: **a card repayment is never an expense.** The purchases were recorded
   when they happened, so filing the repayment too would double every one of
   them — which is why there is no "credit card repayment" category and why the
