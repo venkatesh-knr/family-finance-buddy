@@ -22,6 +22,7 @@ import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
 import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
+import { useScreen, type Screen } from './useScreen.ts';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
 import { HIDE_AMOUNTS_BY_DEFAULT, useDevicePreference } from './preferences.ts';
@@ -37,12 +38,14 @@ import { AccountMenu } from './AccountMenu.tsx';
  * to change how the working places behave, and a tab for each would give them
  * the same weight as the ledger.
  */
-type Screen = 'overview' | 'expenses' | 'holdings' | 'fire' | 'profile' | 'settings';
 
 /**
- * Still no router. Two screens and a gate does not justify the dependency, the
- * Pages base-path handling and a 404 fallback; a segmented control is the whole
- * of what is needed. A router arrives when a URL has to be shareable.
+ * Still no router — but the screen is in the URL now, and Back works.
+ *
+ * It was React state, which meant no history entries at all: pressing Back
+ * from any screen left the app. On Android, where Back is the primary
+ * navigation gesture, that is not a rough edge. See `useScreen.ts` for why a
+ * hash rather than a path, and why sixty lines there is still not a router.
  */
 /**
  * The glyph is for the bottom bar on a phone, where a label alone is too
@@ -65,7 +68,7 @@ export function App() {
   // to read something should not quietly rewrite what the device does next
   // time it opens.
   const [privacy, setPrivacy] = useState(hideByDefault);
-  const [screen, setScreen] = useState<Screen>('expenses');
+  const { screen, setScreen } = useScreen();
 
   const refreshAuth = useCallback(async () => {
     try {
