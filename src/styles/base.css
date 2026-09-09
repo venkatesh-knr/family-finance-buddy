@@ -236,6 +236,75 @@
     color: var(--coral);
   }
 
+  /*
+   * A caveat marker, and the panel it opens.
+   *
+   * Sized in em so it grows with the figure beside it rather than staying a
+   * fixed dot next to 200%-scaled text. The tap area is padded out past the
+   * glyph: a 14px circle is not a touch target, and this is a phone app.
+   *
+   * The panel is a block inside an inline wrapper, so it drops below the line
+   * it belongs to instead of forcing the figure to reflow around it.
+   */
+  .caveat-wrap {
+    display: inline;
+  }
+
+  .caveat-mark {
+    align-items: center;
+    background: none;
+    border: 1px solid currentcolor;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.6875em;
+    font-weight: 700;
+    height: 1.45em;
+    justify-content: center;
+    line-height: 1;
+    margin-inline-start: 0.4em;
+    min-width: 1.45em;
+    padding: 0;
+    position: relative;
+    vertical-align: middle;
+  }
+
+  /* The hit area, not the ring. 44px is the floor and the circle is not it. */
+  .caveat-mark::after {
+    content: '';
+    position: absolute;
+    inset: -0.85em;
+  }
+
+  .caveat-mark[aria-expanded='true'] {
+    background: currentcolor;
+  }
+
+  .caveat-mark[aria-expanded='true'] > span {
+    color: var(--surface);
+  }
+
+  /* A figure that is wrong. The triangle carries it as much as the coral. */
+  .caveat-warn {
+    color: var(--coral);
+  }
+
+  /* Worth knowing about a figure that is right. A circle, and the plan colour. */
+  .caveat-info {
+    color: var(--brass);
+  }
+
+  .caveat-panel {
+    background: var(--surface-2);
+    border-left: 3px solid currentcolor;
+    border-radius: 4px;
+    color: var(--ink-2);
+    display: block;
+    margin-top: 7px;
+    padding: 7px 10px;
+  }
+
   .notice-toggle {
     background: none;
     border: 0;

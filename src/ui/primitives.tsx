@@ -409,6 +409,74 @@ export function Notice({
 }
 
 /**
+ * A caveat that travels with the number it qualifies.
+ *
+ * The screens had grown a block of prose under every figure. Each sentence
+ * earned its place once and none of them earn it fifteen times on one screen:
+ * a wall of coloured paragraphs is read as decoration, and the one that
+ * actually mattered goes down with the rest.
+ *
+ * So the sentence folds behind a marker sitting immediately after the figure.
+ * Three things that has to get right, and they are the reason this is a
+ * primitive rather than a `title` attribute:
+ *
+ *   It opens on tap. A hover tooltip does not exist on a phone, and this app
+ *   is used on one.
+ *
+ *   The trigger says what it is. An icon alone announces nothing, so the
+ *   button carries a real label and `aria-expanded`, and the panel is
+ *   associated with it.
+ *
+ *   The marker is visible before it is opened. That is the whole point of
+ *   attaching it to the figure: a number wearing one is visibly not a plain
+ *   number, so somebody who never taps still knows not to read it as clean.
+ *   Hiding a caveat behind an icon nobody notices would leave a false figure
+ *   looking tidy, which is worse than the clutter it replaced.
+ *
+ * `warn` is a figure that is actually wrong — a peak below the true one.
+ * `info` is something worth knowing about a figure that is right. The shapes
+ * differ, not only the hue: "never encode meaning in colour alone".
+ */
+export function Caveat({
+  tone = 'info',
+  label,
+  children,
+}: {
+  tone?: 'warn' | 'info';
+  /** What the marker means, for anybody who cannot see the shape. */
+  label: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+
+  return (
+    <span className="caveat-wrap">
+      <button
+        type="button"
+        className={`caveat-mark ${tone === 'warn' ? 'caveat-warn' : 'caveat-info'}`}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={open ? `${label} — hide` : label}
+        onClick={() => {
+          setOpen((was) => !was);
+        }}
+      >
+        <span aria-hidden="true">{tone === 'warn' ? '▲' : 'i'}</span>
+      </button>
+
+      {/*
+        Hidden rather than unmounted, so the panel the button points at exists
+        for assistive technology whether or not it is on screen.
+      */}
+      <span id={panelId} className="caveat-panel text-caption" hidden={!open}>
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/**
  * An error worth reading. Carries a word as well as a hue — nothing in this app
  * means anything by colour alone.
  */

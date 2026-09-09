@@ -27,7 +27,7 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import type { HoldingRow } from './useHoldings.ts';
 
 export function CostAndGains({
@@ -62,17 +62,20 @@ export function CostAndGains({
     <div className="mt-3.5 border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
       <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
-          <dt className="micro-label">
-            Cost of units held{' '}
-            {cost.source === 'holding' && (
-              <Pill tone="warn">from the sheet</Pill>
-            )}
-          </dt>
+          <dt className="micro-label">Cost of units held</dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {cost.amount === null ? (
               <span className="note">not recorded</span>
             ) : (
               formatMoney(cost.amount, { privacy })
+            )}
+            {cost.source === 'holding' && cost.amount !== null && (
+              <Caveat tone="info" label="Where this cost figure came from">
+                This is the single cost figure entered for the whole position, not a cost derived
+                from purchases. A gain cannot be computed from it, because it does not say which
+                units cost what. Record the purchases and this figure is replaced by their
+                arithmetic.
+              </Caveat>
             )}
           </dd>
         </div>
@@ -105,32 +108,19 @@ export function CostAndGains({
                 </span>
               </>
             )}
+            {shortfalls.length > 0 && (
+              <Caveat tone="warn" label="Why part of a sale is missing from this figure">
+                {shortfalls.length === 1 ? 'A sale has' : `${String(shortfalls.length)} sales have`}{' '}
+                more units than the recorded purchases account for
+                {shortfalls.some((entry) => entry.reason === 'currency-mismatch') &&
+                  ', or were made in a different currency from the purchase'}
+                . No gain is shown for the uncovered part: costing it at zero would read as a
+                hundred-percent gain and put a tax bill on this screen that nobody owes.
+              </Caveat>
+            )}
           </dd>
         </div>
       </dl>
-
-      {cost.source === 'holding' && cost.amount !== null && (
-        <div className="mt-3">
-          <Notice tone="gap">
-            This is the single cost figure entered for the whole position, not a cost derived from
-            purchases. A gain cannot be computed from it, because it does not say which units cost
-            what. Record the purchases and this figure is replaced by their arithmetic.
-          </Notice>
-        </div>
-      )}
-
-      {shortfalls.length > 0 && (
-        <div className="mt-3">
-          <Notice tone="due">
-            {shortfalls.length === 1 ? 'A sale has' : `${String(shortfalls.length)} sales have`}{' '}
-            more units than the recorded purchases account for
-            {shortfalls.some((s) => s.reason === 'currency-mismatch') &&
-              ', or were made in a different currency from the purchase'}
-            . No gain is shown for the uncovered part: costing it at zero would read as a
-            hundred-percent gain and put a tax bill on this screen that nobody owes.
-          </Notice>
-        </div>
-      )}
 
       <button
         type="button"

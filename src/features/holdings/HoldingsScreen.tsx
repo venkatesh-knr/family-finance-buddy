@@ -13,7 +13,7 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
@@ -272,13 +272,22 @@ function HoldingCard({
                 {peak.peakDate !== null && (
                   <span className="note">{formatIsoDate(peak.peakDate)}</span>
                 )}
+                {/*
+                  On the figure, not under the card. A peak taken across months
+                  that were never read is too low, and too low on a disclosure
+                  is a wrong figure rather than a missing one — so the number
+                  itself has to carry the mark, or somebody reads it as clean.
+                */}
+                {peak.missingMonths.length > 0 && (
+                  <Caveat tone="warn" label={`Why this ${String(peak.year)} peak is a lower bound`}>
+                    <MissingMonths months={peak.missingMonths} />
+                  </Caveat>
+                )}
               </>
             )}
           </dd>
         </div>
       </dl>
-
-      {peak.missingMonths.length > 0 && <MissingMonths months={peak.missingMonths} />}
 
       {canWrite && (
         <RecordReading
@@ -322,15 +331,19 @@ function HoldingCard({
 function MissingMonths({ months }: { months: readonly string[] }) {
   const label = months.length === 1 ? '1 month has no reading' : `${String(months.length)} months have no reading`;
 
-  // `due` rather than `gap`: an unrecorded month does not leave the peak
-  // incomplete, it leaves it WRONG, and wrong on a Schedule FA disclosure is a
-  // different kind of problem from a category nobody has budgeted yet (§606).
+  // The months are named rather than counted, because naming them is what lets
+  // somebody go and find the readings. They live inside the caveat now: the
+  // mark on the figure says the number is a lower bound, and this says why and
+  // which months to go looking for.
   return (
-    <div className="mt-3">
-      <Notice tone="due" names={months} namesLabel="Which months">
-        {label}, so this peak is a lower bound, not the figure.
-      </Notice>
-    </div>
+    <>
+      <span>{label}, so this peak is a lower bound, not the figure.</span>
+      <ul className="notice-names">
+        {months.map((month) => (
+          <li key={month}>{month}</li>
+        ))}
+      </ul>
+    </>
   );
 }
 
