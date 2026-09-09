@@ -60,7 +60,7 @@ insert into public.instrument (id, household_id, name, kind, currency, exposure_
   ('de550000-0000-4000-8000-00000000f001', 'dc330000-0000-4000-8000-00000000e001',
    'Quiet fund', 'mutual_fund', 'INR', 'INR'),
   ('de550000-0000-4000-8000-00000000f002', 'dc330000-0000-4000-8000-00000000e001',
-   'Quiet gold', 'gold', 'INR', 'INR'),
+   'Quiet bond', 'bond', 'INR', 'INR'),
   ('de550000-0000-4000-8000-00000000f003', 'dc330000-0000-4000-8000-00000000e001',
    'Shared fund', 'mutual_fund', 'INR', 'INR'),
   ('de550000-0000-4000-8000-00000000f004', 'dc330000-0000-4000-8000-00000000e001',
