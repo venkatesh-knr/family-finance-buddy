@@ -9,6 +9,7 @@
  */
 
 import type { IsoDate } from '../lib/dates.ts';
+import type { AssetClass } from '../domain/tax-rules.ts';
 import type { Money } from '../lib/money.ts';
 
 export type Uuid = string;
@@ -223,6 +224,15 @@ export interface Instrument {
   readonly exposureCurrency: string;
   /** Schedule FA classification. A recorded decision, never inferred. */
   readonly isForeignAsset: boolean;
+  /**
+   * Which capital-gains rules apply, or null for "not classified".
+   *
+   * Not derivable from `kind`: a mutual fund is equity or debt depending on
+   * what it holds, and a gold ETF is neither. Null means the app declines to
+   * say whether a gain is long or short term, which is better than a default
+   * that is right for most instruments and silently wrong for the rest.
+   */
+  readonly taxAssetClass: AssetClass | null;
   readonly isArchived: boolean;
 }
 

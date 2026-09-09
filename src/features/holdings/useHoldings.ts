@@ -20,6 +20,8 @@ import { money, type Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
+import { listTaxRules } from '../../repo/taxRules.ts';
+import type { TaxRule } from '../../domain/tax-rules.ts';
 import type {
   Holding,
   HoldingListing,
@@ -72,8 +74,17 @@ export function useHoldings(householdId: string | null): {
    * listing again.
    */
   reload: () => Promise<void>;
+  taxRules: readonly TaxRule[];
 } {
   const [listing, setListing] = useState<HoldingListing | null>(null);
+  /**
+   * The dated rules, loaded once.
+   *
+   * Failing here must not take the screen down: every figure above is true
+   * without them, and all that is lost is the long/short label — which then
+   * simply is not shown, rather than being guessed at.
+   */
+  const [taxRules, setTaxRules] = useState<readonly TaxRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -88,8 +99,10 @@ export function useHoldings(householdId: string | null): {
     const mine = ++generation.current;
     try {
       const next = await listHoldings(householdId === null ? {} : { householdId });
+      const rules = await listTaxRules().catch(() => []);
       if (mine === generation.current) {
         setListing(next);
+        setTaxRules(rules);
         setProblem(null);
       }
     } catch (error) {
@@ -220,5 +233,6 @@ export function useHoldings(householdId: string | null): {
     recordLot,
     recordSale,
     reload: load,
+    taxRules,
   };
 }

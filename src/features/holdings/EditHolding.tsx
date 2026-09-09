@@ -49,6 +49,7 @@ export function EditHolding({
   const [currency, setCurrency] = useState(holding.instrument.currency);
   const [exposure, setExposure] = useState(holding.instrument.exposureCurrency);
   const [isForeign, setIsForeign] = useState(holding.instrument.isForeignAsset);
+  const [assetClass, setAssetClass] = useState<string>(holding.instrument.taxAssetClass ?? '');
   const [quantity, setQuantity] = useState(() => formatQuantity(parseQuantity(holding.quantity)));
   const [cost, setCost] = useState(() =>
     holding.cost === null ? '' : toAmountInput(holding.cost.minor, holding.cost.currency),
@@ -108,6 +109,7 @@ export function EditHolding({
         // disabled-looking field cannot become a write.
         ...(hasHistory ? {} : { currency, exposureCurrency: exposure }),
         isForeignAsset: isForeign,
+        taxAssetClass: assetClass,
       },
     };
 
@@ -122,7 +124,7 @@ export function EditHolding({
     }
   }, [
     cost, currency, exposure, hasHistory, holding.id, holding.instrument.id, isForeign, isMine,
-    kind, name, onDone, openedOn, personal, quantity, symbol,
+    assetClass, kind, name, onDone, openedOn, personal, quantity, symbol,
   ]);
 
   return (
@@ -241,6 +243,40 @@ export function EditHolding({
             }}
           >
             {currencyOptions}
+          </select>
+        </label>
+
+        <label className="flex w-full sm:w-[170px] sm:shrink-0 flex-col gap-1.5">
+          <span className="micro-label">
+            Taxed as
+            {/*
+              Asked, not inferred. A mutual fund is equity or debt according to
+              what it holds and a gold ETF is neither, so `kind` cannot answer
+              this — and getting it wrong changes the holding period, the rate
+              and the figure.
+            */}
+            <Caveat tone="info" label="Why this is asked rather than worked out">
+              The holding period and the rate follow from this, and it cannot be read off the kind:
+              a mutual fund is equity or debt depending on what it holds, and a gold fund is
+              neither. Left unset, the app declines to say whether a gain is long or short term
+              rather than guessing.
+            </Caveat>
+          </span>
+          <select
+            className="field"
+            value={assetClass}
+            onChange={(event) => {
+              setAssetClass(event.target.value);
+            }}
+          >
+            <option value="">Not set</option>
+            <option value="listed_equity">Listed equity</option>
+            <option value="equity_fund">Equity mutual fund</option>
+            <option value="debt_fund">Debt fund</option>
+            <option value="gold">Gold</option>
+            <option value="foreign_equity">Foreign shares or ETF</option>
+            <option value="unlisted_equity">Unlisted shares</option>
+            <option value="property">Property</option>
           </select>
         </label>
 

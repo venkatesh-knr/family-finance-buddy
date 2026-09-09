@@ -35,6 +35,7 @@ import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import type { HoldingRow } from './useHoldings.ts';
+import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
 
 export function CostAndGains({
   row,
@@ -46,6 +47,7 @@ export function CostAndGains({
   onSale,
   onEditLot,
   onEditSale,
+  taxRules,
 }: {
   row: HoldingRow;
   listing: HoldingListing;
@@ -56,6 +58,7 @@ export function CostAndGains({
   onSale: (sale: NewDisposal) => Promise<void>;
   onEditLot: (id: string, patch: { quantity: string; costMinor: bigint; acquiredOn: string }) => Promise<void>;
   onEditSale: (id: string, patch: { quantity: string; proceedsMinor: bigint; disposedOn: string }) => Promise<void>;
+  taxRules: readonly TaxRule[];
 }) {
   const [open, setOpen] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
@@ -163,6 +166,8 @@ export function CostAndGains({
           canWrite={canWrite}
           onEditLot={onEditLot}
           onEditSale={onEditSale}
+          taxRules={taxRules}
+          assetClass={holding.instrument.taxAssetClass}
         />
       )}
 
@@ -221,6 +226,8 @@ function Workings({
   canWrite,
   onEditLot,
   onEditSale,
+  taxRules,
+  assetClass,
 }: {
   lots: readonly Lot[];
   sales: readonly Disposal[];
@@ -230,6 +237,8 @@ function Workings({
   canWrite: boolean;
   onEditLot: (id: string, patch: { quantity: string; costMinor: bigint; acquiredOn: string }) => Promise<void>;
   onEditSale: (id: string, patch: { quantity: string; proceedsMinor: bigint; disposedOn: string }) => Promise<void>;
+  taxRules: readonly TaxRule[];
+  assetClass: AssetClass | null;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -328,12 +337,21 @@ function Workings({
                       {percentOfCost(parcel.gain.minor, parcel.cost.minor) ?? '—'}
                     </td>
                     {/*
-                      Days, not "long term" or "short term". The threshold is a
-                      dated rule that has moved and will move again, and a prior
-                      year must recompute on the rule that applied then — so it
-                      lives in tax_rule, which does not exist yet.
+                      The days are the arithmetic; the label is the rule. It is
+                      looked up against the SALE's date, so a parcel sold under
+                      an older regime keeps that regime's threshold — and where
+                      no rule covers the date, or the instrument has no asset
+                      class, nothing is claimed at all.
                     */}
-                    <td className="num py-1 text-right">{String(parcel.heldDays)} d</td>
+                    <td className="num py-1 text-right">
+                      {String(parcel.heldDays)} d
+                      <Held
+                        rules={taxRules}
+                        assetClass={assetClass}
+                        acquiredOn={parcel.acquiredOn}
+                        disposedOn={parcel.disposedOn}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -652,4 +670,65 @@ function toAmountInput(minor: bigint, currency: string): string {
   const digits = (negative ? -minor : minor).toString().padStart(exponent + 1, '0');
   if (exponent === 0) return digits;
   return `${digits.slice(0, digits.length - exponent)}.${digits.slice(digits.length - exponent)}`;
+}
+
+/**
+ * Long term, short term, or nothing at all.
+ *
+ * Nothing at all is a real answer here and the common one at first: the rules
+ * before 23 July 2024 are not seeded, and an instrument's asset class is asked
+ * rather than guessed. In both cases the app declines rather than applying a
+ * rule that does not cover the sale — a plausible wrong term is worse than a
+ * blank, because a blank prompts a question and a wrong label does not.
+ *
+ * The authority rides along, so a figure somebody's accountant queries can be
+ * traced to the section it came from rather than argued about.
+ */
+function Held({
+  rules,
+  assetClass,
+  acquiredOn,
+  disposedOn,
+}: {
+  rules: readonly TaxRule[];
+  assetClass: AssetClass | null;
+  acquiredOn: string;
+  disposedOn: string;
+}) {
+  const result = classify(rules, { assetClass, acquiredOn, disposedOn });
+
+  if (!result.known) {
+    return (
+      <>
+        {' '}
+        <Caveat
+          tone="info"
+          label={
+            result.reason === 'unclassified-asset'
+              ? 'Why the term is not shown: the asset class is not set'
+              : 'Why the term is not shown: no rule covers this date'
+          }
+        >
+          {result.reason === 'unclassified-asset'
+            ? 'This holding has no tax asset class set, and the treatment depends on it — a fund is equity or debt according to what it holds, not what kind of wrapper it is. Set it in "Correct this holding" and the term appears here.'
+            : 'No rule in the table covers this sale date, so the app will not say whether this is long or short term. Applying the current rule to an older sale would give a confident, wrong answer. Only the regime from 23 July 2024 is loaded; earlier years are added when somebody needs them.'}
+        </Caveat>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {' '}
+      <Pill tone={result.term === 'long' ? 'ok' : 'neutral'}>
+        {result.term === 'long' ? 'Long' : 'Short'}
+      </Pill>
+      <Caveat tone="info" label={`Which rule made this ${result.term} term`}>
+        Long term after {result.months} months for this asset class, so a sale on{' '}
+        {formatIsoDate(disposedOn)} of units held from {formatIsoDate(acquiredOn)} is{' '}
+        {result.term} term. Source: {result.authority}. This is not tax advice, and not a
+        substitute for your accountant.
+      </Caveat>
+    </>
+  );
 }
