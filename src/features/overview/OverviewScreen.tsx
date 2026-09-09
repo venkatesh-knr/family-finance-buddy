@@ -29,14 +29,18 @@ import {
   type HoldingInput,
   type ValuationInput,
 } from '../../domain/networth.ts';
-import { closeMonth, listHoldings } from '../../repo/holdings.ts';
+import { closeMonth, listHoldings, listPersonalHoldingTotals } from '../../repo/holdings.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
-import { formatMoney } from '../../lib/money.ts';
-import { NoHouseholdError, type HoldingListing } from '../../repo/types.ts';
+import { exactMoney, formatMoney } from '../../lib/money.ts';
+import {
+  NoHouseholdError,
+  type HoldingListing,
+  type PersonalHoldingTotal,
+} from '../../repo/types.ts';
 import { Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -74,9 +78,42 @@ export function OverviewScreen({
   const [closing, setClosing] = useState(false);
   const [closed, setClosed] = useState<{ carried: number; unread: number } | null>(null);
   const [rates, setRates] = useState<readonly FxRate[]>([]);
-  const [debts, setDebts] = useState<readonly { amount: import('../../lib/money.ts').Money; name: string; asOf: string }[]>([]);
+  const [debts, setDebts] = useState<
+    readonly {
+      amount: import('../../lib/money.ts').Money;
+      name: string;
+      /** Null is a household debt — everybody's, so it stays in a personal view too. */
+      memberId: string | null;
+      asOf: string;
+    }[]
+  >([]);
   const [newRate, setNewRate] = useState('');
   const [savingRate, setSavingRate] = useState(false);
+
+  /**
+   * Whose figures these are.
+   *
+   * 'household' is everything the family owns; 'mine' is one member's own
+   * share of it. Two questions people genuinely ask separately — "are we on
+   * track" and "what is mine" — and answering only the first made the second
+   * arithmetic somebody did in their head.
+   *
+   * Not persisted. Which one you want depends on what you opened the app to
+   * find out, not on a preference, and a remembered scope is how somebody
+   * reads a personal figure believing it is the household one.
+   */
+  const [scope, setScope] = useState<'household' | 'mine'>('household');
+
+  /**
+   * Other members' personal holdings, as one sum each.
+   *
+   * The household figure is short without these — a personal holding is
+   * invisible to everybody but its member, so the assets the client can add up
+   * are only part of what the family owns. This is the definer function that
+   * returns the sums and never the rows.
+   */
+  const [personalTotals, setPersonalTotals] = useState<readonly PersonalHoldingTotal[]>([]);
+  const [personalTotalsFailed, setPersonalTotalsFailed] = useState(false);
 
   // Read once at the edge. Every calculation below takes it as an argument.
   const [today] = useState(() => istCalendarDate(new Date()));
@@ -92,9 +129,10 @@ export function OverviewScreen({
       // Rates and debts separately, and neither may take the screen down. The
       // asset figures stand on their own; these only add the conversion and
       // the subtraction on top of them.
-      const [rateResult, planResult] = await Promise.allSettled([
+      const [rateResult, planResult, personalResult] = await Promise.allSettled([
         listRates(next.household.id),
         listPlan({ householdId: next.household.id, fy: Number(today.slice(0, 4)) }),
+        listPersonalHoldingTotals(next.household.id),
       ]);
       setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
       setDebts(
@@ -104,10 +142,18 @@ export function OverviewScreen({
               .map((l) => ({
                 amount: l.outstanding as import('../../lib/money.ts').Money,
                 name: l.name,
+                memberId: l.memberId,
                 asOf: l.outstandingAsOf ?? '',
               }))
           : [],
       );
+
+      // A failure here is not an empty result, and the difference is the whole
+      // point: silently treating it as "no private holdings" would show a
+      // household total short by an amount nobody can see. So it is recorded
+      // and said on the figure.
+      setPersonalTotals(personalResult.status === 'fulfilled' ? personalResult.value : []);
+      setPersonalTotalsFailed(personalResult.status === 'rejected');
     } catch (error) {
       if (error instanceof NoHouseholdError) setNoHousehold(true);
       else setProblem(error instanceof Error ? error.message : 'Could not load the overview.');
@@ -120,28 +166,39 @@ export function OverviewScreen({
     void load();
   }, [load]);
 
+  const mine = listing?.viewer.memberId ?? null;
+
   const holdings = useMemo<readonly HoldingInput[]>(
     () =>
-      (listing?.holdings ?? []).map((h) => ({
-        id: h.id,
-        memberId: h.member.id,
-        memberName: h.member.displayName,
-        kind: h.instrument.kind,
-        currency: h.instrument.currency,
-        cost: h.cost,
-        isArchived: h.isArchived,
-      })),
-    [listing],
+      (listing?.holdings ?? [])
+        .filter((h) => scope === 'household' || h.member.id === mine)
+        .map((h) => ({
+          id: h.id,
+          memberId: h.member.id,
+          memberName: h.member.displayName,
+          kind: h.instrument.kind,
+          currency: h.instrument.currency,
+          cost: h.cost,
+          isArchived: h.isArchived,
+        })),
+    [listing, scope, mine],
   );
 
   const valuations = useMemo<readonly ValuationInput[]>(
-    () =>
-      (listing?.valuations ?? []).map((v) => ({
-        holdingId: v.holdingId,
-        date: v.date,
-        amount: v.amount,
-      })),
-    [listing],
+    () => {
+      // Kept in step with the holdings above. A reading whose holding has been
+      // filtered out is not a smaller number, it is a number for something not
+      // on screen — and assetTotals would count it.
+      const shown = new Set(holdings.map((h) => h.id));
+      return (listing?.valuations ?? [])
+        .filter((v) => shown.has(v.holdingId))
+        .map((v) => ({
+          holdingId: v.holdingId,
+          date: v.date,
+          amount: v.amount,
+        }));
+    },
+    [listing, holdings],
   );
 
   const totals = useMemo(() => assetTotals({ holdings, valuations }), [holdings, valuations]);
@@ -170,17 +227,43 @@ export function OverviewScreen({
    * the rates it lacks. Converted at the date of the latest reading rather
    * than today, because that is the date the figures are true on.
    */
+  const shownDebts = useMemo(
+    () =>
+      // A debt with no member is the household's, so it belongs in both views.
+      // Filtering it out of a personal one would make somebody's own figure
+      // better than it is by the size of the mortgage.
+      debts.filter((d) => scope === 'household' || d.memberId === null || d.memberId === mine),
+    [debts, scope, mine],
+  );
+
+  /**
+   * What the client cannot see, added back.
+   *
+   * Only in the household view, and only other members' — the caller's own
+   * personal holdings are already rows in `holdings` above, and adding the sum
+   * as well would count them twice.
+   */
+  const hiddenAssets = useMemo(
+    () => (scope === 'household' ? personalTotals : []),
+    [scope, personalTotals],
+  );
+
+  const hiddenUnvalued = useMemo(
+    () => hiddenAssets.reduce((sum, entry) => sum + entry.unvalued, 0),
+    [hiddenAssets],
+  );
+
   const worth = useMemo(() => {
     return netWorth({
       // One amount per currency, already summed. Converting the totals rather
       // than each holding is the same arithmetic with fewer roundings.
-      assets: totals.map((t) => t.value),
-      debts: debts.map((d) => d.amount),
+      assets: [...totals.map((t) => t.value), ...hiddenAssets.map((entry) => entry.total)],
+      debts: shownDebts.map((d) => d.amount),
       base,
       rates,
       on: asOf ?? today,
     });
-  }, [totals, debts, base, rates, asOf, today]);
+  }, [totals, hiddenAssets, shownDebts, base, rates, asOf, today]);
 
   const saveRate = useCallback(
     async (pair: { base: string; quote: string }) => {
@@ -234,7 +317,28 @@ export function OverviewScreen({
       <Card
         title="Net worth"
         aside={
-          <span className="flex items-center gap-2.5">
+          <span className="flex flex-wrap items-center gap-2.5">
+            {/*
+              Two questions people ask separately — "are we on track" and
+              "what is mine" — so two answers rather than arithmetic done in
+              somebody's head. A group of pressed buttons, not tabs: nothing
+              here is a panel, and an incomplete tab pattern announces a
+              promise it does not keep.
+            */}
+            <span className="segmented" role="group" aria-label="Whose figures">
+              {(['household', 'mine'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={scope === option}
+                  onClick={() => {
+                    setScope(option);
+                  }}
+                >
+                  {option === 'household' ? 'Household' : 'Mine'}
+                </button>
+              ))}
+            </span>
             {asOf !== null && <span className="note">as at {asOf}</span>}
             <button
               type="button"
@@ -253,12 +357,54 @@ export function OverviewScreen({
             <p
               className="figure"
               style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
+              // The unabbreviated figure, for anybody who wants the digits.
+              // Null under privacy: a tooltip that gives away what the bullets
+              // hide would make the whole mode decorative.
+              title={exactMoney(worth.amount, privacy) ?? undefined}
             >
-              {formatMoney(worth.amount, { privacy })}
+              {formatMoney(worth.amount, { privacy, compact: true })}
+              {/*
+                Both of these qualify this number and neither is decoration, so
+                they ride on it rather than under the card.
+              */}
+              {personalTotalsFailed && (
+                <Caveat tone="warn" label="Why this total may be short">
+                  The private holdings of other members could not be read, so this figure may be
+                  short by whatever they are worth. It is not that there are none — the request
+                  failed. Reload before relying on this number.
+                </Caveat>
+              )}
+              {!personalTotalsFailed && hiddenUnvalued > 0 && scope === 'household' && (
+                <Caveat tone="warn" label="Why this household total is short">
+                  {hiddenUnvalued}{' '}
+                  {hiddenUnvalued === 1
+                    ? 'private holding of another member has'
+                    : 'private holdings of other members have'}{' '}
+                  never been valued, so this total is short by whatever they are worth. Only they
+                  can record a value for them.
+                </Caveat>
+              )}
             </p>
             <p className="note mt-2">
-              Everything owned, converted at the rate for {asOf ?? today}, less everything owed.
-              {debts.length === 0 && ' No outstanding balances have been recorded, so nothing is subtracted.'}
+              {scope === 'household'
+                ? 'Everything the household owns'
+                : 'Everything you own, and the debts in your name'}
+              , converted at the rate for {asOf ?? today}, less everything owed.
+              {shownDebts.length === 0 && ' No outstanding balances have been recorded, so nothing is subtracted.'}
+              {scope === 'household' && hiddenAssets.length > 0 && (
+                <>
+                  {' '}
+                  Private holdings of other members are counted as one figure each, without the
+                  detail.
+                </>
+              )}
+              {scope === 'mine' && (
+                <>
+                  {' '}
+                  A debt in nobody&rsquo;s name is the household&rsquo;s and is counted here too —
+                  leaving it out would make your own figure better than it is.
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -301,9 +447,9 @@ export function OverviewScreen({
           </div>
         )}
 
-        {debts.length > 0 && (
+        {shownDebts.length > 0 && (
           <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
-            {debts.map((debt) => (
+            {shownDebts.map((debt) => (
               <Stat key={debt.name} label={debt.name} tone="loss">
                 {formatMoney(debt.amount, { privacy })}
               </Stat>
@@ -343,8 +489,12 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {totals.map((total) => (
               <div key={total.currency}>
-                <p className="figure" style={{ color: 'var(--ink)' }}>
-                  {formatMoney(total.value, { privacy })}
+                <p
+                  className="figure"
+                  style={{ color: 'var(--ink)' }}
+                  title={exactMoney(total.value, privacy) ?? undefined}
+                >
+                  {formatMoney(total.value, { privacy, compact: true })}
                   {total.unvalued > 0 && (
                     <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                       {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never

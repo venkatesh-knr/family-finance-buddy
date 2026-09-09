@@ -10,7 +10,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
+  exactMoney,
   formatMoney,
+  percentOfCost,
   isKnownCurrency,
   knownCurrencyCodes,
   money,
@@ -21,7 +23,9 @@ import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
+import { EditHolding } from './EditHolding.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
+import { archiveHolding } from '../../repo/holdings.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
 type SortBy = 'value' | 'name' | 'member';
@@ -95,8 +99,12 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
               const gain = total.value - total.invested;
               return (
                 <div key={total.currency}>
-                  <p className="figure" style={{ color: 'var(--ink)' }}>
-                    {formatMoney(money(total.value, total.currency), { privacy })}
+                  <p
+                    className="figure"
+                    style={{ color: 'var(--ink)' }}
+                    title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
+                  >
+                    {formatMoney(money(total.value, total.currency), { privacy, compact: true })}
                   </p>
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">
@@ -104,6 +112,15 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
                     </Stat>
                     <Stat label={gain < 0n ? 'Total loss' : 'Total return'} tone={gain < 0n ? 'loss' : 'gain'}>
                       {formatMoney(money(gain, total.currency), { privacy })}
+                      {/*
+                        The percentage beside the amount, because ₹67,500 says
+                        nothing about whether it was a good year until you know
+                        what was staked to get it. The sign carries the
+                        direction; the colour only agrees with it.
+                      */}
+                      {percentOfCost(gain, total.invested) !== null && (
+                        <span className="note"> {percentOfCost(gain, total.invested)}</span>
+                      )}
                     </Stat>
                     {total.unread > 0 && (
                       <Stat label="Unread">
@@ -225,6 +242,7 @@ function HoldingCard({
 }) {
   const { holding, latest, peak } = row;
   const currency = holding.instrument.currency;
+  const [editing, setEditing] = useState(false);
 
   return (
     <section
@@ -238,6 +256,14 @@ function HoldingCard({
             <span className="num note">{holding.instrument.symbol}</span>
           )}
           {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
+          {/*
+            "A privacy control nobody can observe working is indistinguishable
+            from one that does nothing" (§20). A holding reaching this screen
+            at all is one the caller may read, so a personal one here is always
+            their own — and without this the toggle in the editor saved a state
+            with nothing on the screen to show for it.
+          */}
+          {holding.visibility === 'personal' && <Pill tone="own">Private</Pill>}
           {holding.instrument.currency !== holding.instrument.exposureCurrency && (
             <Pill tone="neutral">
               {holding.instrument.currency} · tracks {holding.instrument.exposureCurrency}
@@ -303,6 +329,43 @@ function HoldingCard({
           currency={currency}
           today={today}
           onRecord={onRecord}
+        />
+      )}
+
+      {canWrite && (
+        <div className="mt-3 flex flex-wrap items-center gap-3.5">
+          <button
+            type="button"
+            className="note underline"
+            onClick={() => {
+              setEditing((was) => !was);
+            }}
+          >
+            {editing ? 'Cancel correction' : 'Correct this holding'}
+          </button>
+          <ArchiveHolding row={row} onDone={onReload} />
+        </div>
+      )}
+
+      {canWrite && editing && (
+        <EditHolding
+          holding={holding}
+          isMine={holding.member.id === listing.viewer.memberId}
+          // Readings, purchases or sales already denominated in this currency.
+          // Changing it would leave them behind in the old one.
+          hasHistory={
+            latest !== null ||
+            listing.lots.some((lot) => lot.holdingId === holding.id) ||
+            listing.disposals.some((sale) => sale.holdingId === holding.id)
+          }
+          currencyOptions={<CurrencyOptions />}
+          onDone={async () => {
+            setEditing(false);
+            await onReload();
+          }}
+          onCancel={() => {
+            setEditing(false);
+          }}
         />
       )}
 
@@ -717,5 +780,99 @@ function CurrencyOptions() {
         </optgroup>
       )}
     </>
+  );
+}
+
+/**
+ * Retiring a holding you no longer own — or one that should never have been
+ * entered.
+ *
+ * Archive rather than delete, and the button says so, because the two are
+ * different promises and somebody clicking this is entitled to know which one
+ * they are getting. The readings stay: they are the only record of what this
+ * was worth on the dates they cover, and a calendar-year peak cannot be
+ * reconstructed from anything else once they are gone.
+ *
+ * Behind a confirmation, and the confirmation says what is not yet possible —
+ * there is no screen that lists archived holdings, so bringing one back needs
+ * somebody with database access. That is worth saying before the click rather
+ * than discovering after it.
+ */
+function ArchiveHolding({
+  row,
+  onDone,
+}: {
+  row: HoldingRow;
+  onDone: ReturnType<typeof useHoldings>['reload'];
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  if (!confirming) {
+    return (
+      <>
+        <button
+          type="button"
+          className="note underline"
+          onClick={() => {
+            setConfirming(true);
+          }}
+        >
+          Archive this holding
+        </button>
+        {problem !== null && (
+          <div className="mt-2 w-full">
+            <Problem>{problem}</Problem>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="text-caption" style={{ color: 'var(--ink-2)' }}>
+        Archive <strong>{row.holding.instrument.name}</strong>? It leaves every total and every
+        screen. Nothing is deleted — its readings, purchases and sales stay, because they are the
+        record of what it was worth on the dates they cover. There is no screen yet that lists
+        archived holdings, so bringing it back would need database access.
+      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setProblem(null);
+            archiveHolding(row.holding.id)
+              .then(onDone)
+              .catch((error: unknown) => {
+                setProblem(error instanceof Error ? error.message : 'Could not archive that.');
+              })
+              .finally(() => {
+                setBusy(false);
+                setConfirming(false);
+              });
+          }}
+        >
+          {busy ? 'Archiving…' : 'Yes, archive it'}
+        </Button>
+        <button
+          type="button"
+          className="note underline"
+          onClick={() => {
+            setConfirming(false);
+          }}
+        >
+          Keep it
+        </button>
+      </div>
+      {problem !== null && (
+        <div className="mt-2">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+    </div>
   );
 }

@@ -7,6 +7,8 @@ import {
   minorUnitExponent,
   money,
   parseAmountToMinor,
+  exactMoney,
+  percentOfCost,
 } from './money.ts';
 
 /**
@@ -170,5 +172,89 @@ describe('isCurrencyCode stays a shape test', () => {
     // map it would take the screen down instead of letting somebody fix it.
     expect(isCurrencyCode('ABC')).toBe(true);
     expect(() => money(100n, 'ABC')).not.toThrow();
+  });
+});
+
+describe('formatMoney compact', () => {
+  const inr = (minor: bigint) => money(minor, 'INR');
+
+  it('leaves anything below a lakh exactly as it was', () => {
+    // The threshold is where the Indian grouping stops helping. Below it the
+    // full figure is short enough to read, and abbreviating it would lose
+    // precision for nothing.
+    expect(formatMoney(inr(9999999n), { compact: true })).toBe('₹99,999.99');
+    expect(formatMoney(inr(5000000n), { compact: true })).toBe('₹50,000');
+  });
+
+  it('turns a lakh into L, keeping two places', () => {
+    expect(formatMoney(inr(10000000n), { compact: true })).toBe('₹1 L');
+    expect(formatMoney(inr(10750000n), { compact: true })).toBe('₹1.08 L');
+    expect(formatMoney(inr(999999900n), { compact: true })).toBe('₹100 L');
+  });
+
+  it('turns a crore into Cr', () => {
+    expect(formatMoney(inr(1000000000n), { compact: true })).toBe('₹1 Cr');
+    expect(formatMoney(inr(12550000000n), { compact: true })).toBe('₹12.55 Cr');
+  });
+
+  it('drops a trailing zero rather than printing 1.00 Cr', () => {
+    expect(formatMoney(inr(1000000000n), { compact: true })).toBe('₹1 Cr');
+    expect(formatMoney(inr(1500000000n), { compact: true })).toBe('₹1.5 Cr');
+  });
+
+  it('keeps the sign, which is what carries a negative net worth', () => {
+    expect(formatMoney(inr(-12550000000n), { compact: true })).toBe('-₹12.55 Cr');
+  });
+
+  it('uses K and M outside India rather than pretending a dollar has lakhs', () => {
+    // Lakh and crore are an Indian convention. Applying them to a dollar
+    // figure would be inventing a unit nobody reading it uses.
+    expect(formatMoney(money(10000000n, 'USD'), { compact: true })).toBe('$100K');
+    expect(formatMoney(money(1000000000n, 'USD'), { compact: true })).toBe('$10M');
+  });
+
+  it('is still bullets under privacy, which outranks it', () => {
+    expect(formatMoney(inr(12550000000n), { compact: true, privacy: true })).toBe('₹•••••');
+  });
+
+  it('changes nothing unless it is asked for', () => {
+    // Ledgers, forms and anything reconciled against a statement stay exact.
+    expect(formatMoney(inr(12550000000n))).toBe('₹12,55,00,000');
+  });
+});
+
+describe('exactMoney', () => {
+  it('gives the unabbreviated figure, for the title on a compact one', () => {
+    expect(exactMoney(money(12550000000n, 'INR'))).toBe('₹12,55,00,000');
+  });
+
+  it('says nothing under privacy, rather than leaking through a tooltip', () => {
+    expect(exactMoney(money(12550000000n, 'INR'), true)).toBeNull();
+  });
+});
+
+describe('percentOfCost', () => {
+  it('is the gain as a share of what was put in', () => {
+    expect(percentOfCost(50000n, 100000n)).toBe('+50%');
+    expect(percentOfCost(7500n, 100000n)).toBe('+7.5%');
+  });
+
+  it('carries the sign, so a loss reads as one without its colour', () => {
+    expect(percentOfCost(-25000n, 100000n)).toBe('-25%');
+  });
+
+  it('rounds to one place and drops a trailing zero', () => {
+    expect(percentOfCost(3333n, 100000n)).toBe('+3.3%');
+    expect(percentOfCost(100000n, 100000n)).toBe('+100%');
+  });
+
+  it('is null when nothing was invested, rather than infinity or 0%', () => {
+    // A holding with no cost recorded has no return — not a return of zero,
+    // which is a statement about performance nobody made.
+    expect(percentOfCost(50000n, 0n)).toBeNull();
+  });
+
+  it('is null when the gain is zero and nothing was staked either way', () => {
+    expect(percentOfCost(0n, 100000n)).toBe('0%');
   });
 });

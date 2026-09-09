@@ -244,6 +244,15 @@ export interface Holding {
   readonly cost: Money | null;
   readonly openedOn: IsoDate | null;
   readonly isArchived: boolean;
+  /**
+   * §20, on a position rather than a transaction.
+   *
+   * The column has existed since the table was created and the mapper never
+   * read it, so no holding could be private in practice however the policies
+   * were written. Always `household` on a row that came from somebody else —
+   * a personal one of theirs never arrives here at all.
+   */
+  readonly visibility: Visibility;
 }
 
 export interface Valuation {
@@ -319,6 +328,21 @@ export interface Disposal {
 
 export const DISPOSAL_KINDS = ['sale', 'redemption', 'maturity', 'transfer', 'gift'] as const;
 export type DisposalKind = (typeof DISPOSAL_KINDS)[number];
+
+/**
+ * One member's personal holdings, as a single figure.
+ *
+ * Never a breakdown, and the shape is the guarantee: there is nowhere to put
+ * a holding or an asset class. "If a total is visible and only one entry is
+ * private, the private amount can be recovered by subtraction" — a per-class
+ * version of this would hand the subtraction back.
+ */
+export interface PersonalHoldingTotal {
+  readonly memberId: Uuid;
+  readonly total: Money;
+  /** How many of them have never been valued, so a screen can say the sum is short. */
+  readonly unvalued: number;
+}
 
 export interface NewLot {
   readonly householdId: Uuid;

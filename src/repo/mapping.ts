@@ -227,6 +227,7 @@ export function toHolding(
     openedOn: row['opened_on'] === null || row['opened_on'] === undefined
       ? null
       : requireIsoDate(row['opened_on'], 'holding.opened_on'),
+    visibility: requireOneOf(row['visibility'], VISIBILITIES, 'holding.visibility'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'holding.status') === 'archived',
   };

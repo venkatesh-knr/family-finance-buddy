@@ -168,11 +168,62 @@ export interface FormatMoneyOptions {
    * where a ragged right edge costs more than the zeros do.
    */
   readonly alwaysShowMinorUnits?: boolean;
+  /**
+   * Abbreviate a large figure: ₹1.25 Cr rather than ₹1,25,50,000.
+   *
+   * For headline figures only — a net worth, a portfolio total, a FIRE
+   * target. Those are read at a glance and compared against each other, and
+   * eight digits with three group separators is a number somebody has to
+   * count their way through before they know its size.
+   *
+   * Never for a ledger, a form, or anything reconciled against a statement.
+   * Abbreviating loses precision by design, and a figure that has to match a
+   * bank to the paise must not lose any. Callers opt in one figure at a time
+   * for exactly that reason — the default stays exact.
+   *
+   * Lakh and crore for the rupee, because that is how the figure is spoken
+   * where this app is used. Not for other currencies: a dollar total has no
+   * lakhs, and printing one would be inventing a unit nobody reading it uses.
+   */
+  readonly compact?: boolean;
+}
+
+/** Where abbreviation starts: one lakh, and one crore. */
+const LAKH = 100000n;
+const CRORE = 10000000n;
+
+/**
+ * Two decimal places at most, and no trailing zeros.
+ *
+ * "1.5 Cr" rather than "1.50 Cr", "1 Cr" rather than "1.00 Cr" — the zeros
+ * are precision the abbreviation does not have, and printing them claims
+ * accuracy it cannot deliver.
+ */
+function scaled(units: bigint, divisor: bigint): string {
+  // Two extra digits, rounded half away from zero, entirely in bigint: the
+  // whole point of this representation is that no figure passes through a
+  // double, and a display path is no exception.
+  const doubled = units * 200n;
+  const quotient = doubled / divisor;
+  const hundredths = quotient >= 0n ? (quotient + 1n) / 2n : (quotient - 1n) / 2n;
+
+  const whole = hundredths / 100n;
+  const rest = (hundredths < 0n ? -hundredths : hundredths) % 100n;
+  if (rest === 0n) return whole.toString();
+  const two = rest.toString().padStart(2, '0');
+  return `${whole.toString()}.${two.replace(/0$/, '')}`;
 }
 
 export function formatMoney(value: Money, options: FormatMoneyOptions = {}): string {
   const exponent = minorUnitExponent(value.currency);
   const negative = value.minor < 0n;
+
+  // Privacy first: it outranks every other option here, and a compact figure
+  // is still a figure.
+  if (options.compact === true && options.privacy !== true) {
+    const compact = formatCompact(value, exponent, negative);
+    if (compact !== null) return compact;
+  }
   const digits = (negative ? -value.minor : value.minor).toString().padStart(exponent + 1, '0');
   const whole = digits.slice(0, digits.length - exponent);
   const minorPart = exponent === 0 ? '' : digits.slice(digits.length - exponent);
@@ -204,4 +255,93 @@ export function formatMoney(value: Money, options: FormatMoneyOptions = {}): str
   // The string goes to Intl as a string, so a large figure is never squeezed
   // through a double on the way to being displayed.
   return formatter.format(`${negative ? '-' : ''}${whole}${fraction}` as unknown as number);
+}
+
+/**
+ * The abbreviated form, or null when the figure is small enough to show whole.
+ *
+ * Below a lakh there is nothing to gain: the full number is short enough to
+ * read and abbreviating it would only lose paise.
+ */
+function formatCompact(value: Money, exponent: number, negative: boolean): string | null {
+  const magnitude = negative ? -value.minor : value.minor;
+  const major = magnitude / 10n ** BigInt(exponent);
+
+  const symbol = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: value.currency })
+    .formatToParts(0)
+    .filter((part) => part.type === 'currency')
+    .map((part) => part.value)
+    .join('');
+
+  // Lakh and crore are how a rupee figure is spoken in India. Everywhere else
+  // gets the local compact notation instead of a unit its readers do not use.
+  if (value.currency !== 'INR') {
+    if (major < 1000n) return null;
+    // en-US, not the app's display locale. Compact notation follows the
+    // LOCALE, so asking en-IN for a compact dollar gives "$1.00L" — Indian
+    // units on an American figure, which is the confusion this branch exists
+    // to avoid rather than a formatting detail.
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: value.currency,
+      notation: 'compact',
+      // A currency format defaults to two fraction digits, which in compact
+      // notation prints "$100.00K". The zeros are precision the abbreviation
+      // does not have, same as on the rupee side.
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Number(major) * (negative ? -1 : 1));
+  }
+
+  if (major < LAKH) return null;
+
+  const sign = negative ? '-' : '';
+  return major >= CRORE
+    ? `${sign}${symbol}${scaled(major, CRORE)} Cr`
+    : `${sign}${symbol}${scaled(major, LAKH)} L`;
+}
+
+/**
+ * The figure without abbreviation, for the title on a compact one.
+ *
+ * Null under privacy. A tooltip that gives away the amount the bullets are
+ * hiding would make the whole mode decorative — "a privacy control nobody can
+ * observe working is indistinguishable from one that does nothing", and one
+ * that can be defeated by hovering is worse than that.
+ */
+export function exactMoney(value: Money, privacy = false): string | null {
+  return privacy ? null : formatMoney(value);
+}
+
+/**
+ * A gain as a percentage of what was put in, signed.
+ *
+ * The sign is not decoration. "Never encode meaning in colour alone" — a
+ * figure tinted coral means nothing to somebody who cannot see the tint, and
+ * "-25%" means the same thing to everybody.
+ *
+ * Null when nothing was invested. Not "0%", which is a claim about
+ * performance nobody made, and not infinity: a holding whose cost was never
+ * recorded has no return to report, and saying so is the honest answer.
+ *
+ * One decimal place, trailing zero dropped: "+7.5%", "+50%". Percentages are
+ * compared at a glance and a second decimal is noise at that size.
+ */
+export function percentOfCost(gainMinor: bigint, investedMinor: bigint): string | null {
+  if (investedMinor === 0n) return null;
+
+  // Tenths, rounded half away from zero, in bigint — the same discipline as
+  // every other figure here. A ratio of two large amounts is exactly where a
+  // double starts to drift.
+  const doubled = gainMinor * 2000n;
+  const quotient = doubled / investedMinor;
+  const tenths = quotient >= 0n ? (quotient + 1n) / 2n : (quotient - 1n) / 2n;
+
+  const negative = tenths < 0n;
+  const magnitude = negative ? -tenths : tenths;
+  const whole = magnitude / 10n;
+  const rest = magnitude % 10n;
+
+  const sign = negative ? '-' : tenths > 0n ? '+' : '';
+  return `${sign}${whole.toString()}${rest === 0n ? '' : `.${rest.toString()}`}%`;
 }

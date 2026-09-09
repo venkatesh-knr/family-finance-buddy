@@ -5,6 +5,9 @@
  *   addHolding()        — an instrument and a position in it
  *   recordValuation()   — one dated reading
  *
+ *   updateHolding()     — correct a position, and the instrument behind it
+ *   archiveHolding()    — retire a position without deleting it
+ *
  * Lots and sales are read here too, though they are written in lots.ts: a
  * parcel is a purchase and a sale together, so a screen that loaded one
  * without the other could not show a gain at all.
@@ -15,17 +18,23 @@
  */
 
 import { supabase } from './client.ts';
-import { requireRecord } from '../lib/guards.ts';
+import { parseQuantity, quantityToNumeric } from '../lib/quantity.ts';
+import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import { toDisposal, toHolding, toInstrument, toLot, toMember, toValuation } from './mapping.ts';
+import { isKnownCurrency, money, type Money } from '../lib/money.ts';
 import {
   NoHouseholdError,
   type Disposal,
   type Holding,
   type HoldingListing,
   type Lot,
+  type InstrumentKind,
   type Member,
   type NewHolding,
+  type PersonalHoldingTotal,
+  type Quantity,
+  type Visibility,
   type NewValuation,
   type Uuid,
   type Valuation,
@@ -46,7 +55,7 @@ const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 // query makes the database hand over the decimal string it already holds, so
 // precision is never a matter of luck about magnitude.
 const HOLDING_COLUMNS =
-  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status';
+  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility';
 
 const INSTRUMENT_COLUMNS =
   'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status';
@@ -298,4 +307,174 @@ function asRepositoryError(error: ProviderError): Error {
     return new Error('That already exists — check whether it has been recorded once already.');
   }
   return new Error(error.message);
+}
+
+/**
+ * Other members' personal holdings, one sum each.
+ *
+ * The half of §20 the holding policy promised and nothing delivered until
+ * `20260911120000`: without this, every asset total in the app is short by
+ * whatever the rest of the household holds privately, and two members looking
+ * at "what we are worth" see different figures.
+ *
+ * Failing is not the same as empty, and must not be flattened into `[]`. A
+ * household with private holdings would then show a total that is too low —
+ * the exact failure the function exists to prevent, silently.
+ */
+export async function listPersonalHoldingTotals(
+  householdId: Uuid,
+): Promise<readonly PersonalHoldingTotal[]> {
+  const client = supabase();
+
+  // Named argument: PostgREST resolves a function by parameter name, and a
+  // positional call would not find it at all.
+  const { data, error } = await client.rpc('personal_holding_totals', {
+    target_household_id: householdId,
+  });
+
+  if (error !== null) throw asRepositoryError(error);
+  if (data === null) return [];
+  if (!Array.isArray(data)) {
+    throw new MalformedRowError('personal_holding_totals', 'did not return a set of rows');
+  }
+
+  return data.map((row: unknown) => {
+    const record = requireRecord(row, 'personal_holding_totals');
+    const unvalued = record['unvalued'];
+    return {
+      memberId: requireString(record['member_id'], 'personal_holding_totals.member_id'),
+      // Refuses a figure too large to have survived JSON rather than rounding
+      // it: a sum that cannot be trusted throws instead of understating a
+      // household total by a few paise.
+      total: money(
+        toBigIntExact(record['total_minor'], 'personal_holding_totals.total_minor'),
+        requireString(record['currency'], 'personal_holding_totals.currency'),
+      ),
+      unvalued: typeof unvalued === 'number' ? unvalued : 0,
+    };
+  });
+}
+
+/**
+ * Retire a holding.
+ *
+ * Archived, never deleted: "members and categories are archived, never deleted
+ * — their history is the household's arithmetic. Deletes are soft everywhere."
+ * A holding is the strongest case for that rule rather than an exception to
+ * it. Its valuations are the only record of what the household was worth on
+ * the dates they cover, and a Schedule FA peak is computed from readings that
+ * cannot be reconstructed from anything else — so removing the row would take
+ * a disclosure figure with it. Archiving takes it off the screen and out of
+ * every total, and leaves the arithmetic of past years intact.
+ *
+ * `archived_at` is set in the same statement because the schema pairs them:
+ * `holding_archived_at_matches_status` refuses a status without a date, which
+ * is what stops "archived" from being a flag somebody forgets to timestamp.
+ *
+ * The returned rows are checked rather than only the error. A policy-refused
+ * update comes back with neither, which reads as success — the screen would
+ * then hide a row the database still has.
+ */
+export async function archiveHolding(id: Uuid): Promise<void> {
+  const client = supabase();
+
+  const { data, error } = await client
+    .from('holding')
+    .update({ status: 'archived', archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id');
+
+  if (error !== null) throw asRepositoryError(error);
+  if ((data ?? []).length === 0) {
+    throw new Error('That holding could not be archived. It may belong to another member.');
+  }
+}
+
+export interface HoldingPatch {
+  readonly quantity?: Quantity;
+  readonly cost?: Money | null;
+  readonly openedOn?: IsoDate | null;
+  readonly visibility?: Visibility;
+  readonly instrument?: {
+    readonly name?: string;
+    readonly symbol?: string | null;
+    readonly kind?: InstrumentKind;
+    readonly currency?: string;
+    readonly exposureCurrency?: string;
+    readonly isForeignAsset?: boolean;
+  };
+}
+
+/**
+ * Correct a position, and the instrument behind it.
+ *
+ * Two tables, two statements, and deliberately not a transaction — PostgREST
+ * has none, and a database function to wrap them would buy atomicity over a
+ * failure whose worst outcome is a name that saved and a quantity that did
+ * not, both visible on the screen the moment it reloads. The instrument goes
+ * first: it is the one somebody is usually fixing, and a half-applied edit is
+ * better the way round where the visible error is corrected.
+ *
+ * Rows returned are checked, not only the error. A policy-refused update comes
+ * back with neither and reads as success — the screen would then show a change
+ * the database refused, which is the worst of both.
+ */
+export async function updateHolding(
+  id: Uuid,
+  instrumentId: Uuid,
+  patch: HoldingPatch,
+): Promise<void> {
+  const client = supabase();
+
+  if (patch.instrument !== undefined) {
+    const fields: Record<string, unknown> = {};
+    const i = patch.instrument;
+    if (i.name !== undefined) {
+      if (i.name.trim() === '') throw new Error('A holding needs a name.');
+      fields['name'] = i.name.trim();
+    }
+    if (i.symbol !== undefined) fields['symbol'] = i.symbol === null ? null : i.symbol.trim().toUpperCase();
+    if (i.kind !== undefined) fields['kind'] = i.kind;
+    if (i.currency !== undefined) {
+      if (!isKnownCurrency(i.currency)) throw new Error('That is not a currency.');
+      fields['currency'] = i.currency;
+    }
+    if (i.exposureCurrency !== undefined) {
+      if (!isKnownCurrency(i.exposureCurrency)) throw new Error('That is not a currency.');
+      fields['exposure_currency'] = i.exposureCurrency;
+    }
+    if (i.isForeignAsset !== undefined) fields['is_foreign_asset'] = i.isForeignAsset;
+
+    if (Object.keys(fields).length > 0) {
+      const { data, error } = await client
+        .from('instrument')
+        .update(fields)
+        .eq('id', instrumentId)
+        .select('id');
+      if (error !== null) throw asRepositoryError(error);
+      if ((data ?? []).length === 0) {
+        throw new Error('That instrument could not be changed.');
+      }
+    }
+  }
+
+  const fields: Record<string, unknown> = {};
+  if (patch.quantity !== undefined) {
+    const quantity = parseQuantity(patch.quantity);
+    if (quantity <= 0n) throw new Error('A holding is of some quantity. Archive it instead.');
+    fields['quantity'] = quantityToNumeric(quantity);
+  }
+  if (patch.cost !== undefined) {
+    fields['cost_minor'] = patch.cost === null ? null : patch.cost.minor.toString();
+  }
+  if (patch.openedOn !== undefined) fields['opened_on'] = patch.openedOn;
+  if (patch.visibility !== undefined) fields['visibility'] = patch.visibility;
+
+  if (Object.keys(fields).length === 0) return;
+
+  const { data, error } = await client.from('holding').update(fields).eq('id', id).select('id');
+  if (error !== null) throw asRepositoryError(error);
+  if ((data ?? []).length === 0) {
+    throw new Error('That holding could not be changed. It may belong to another member.');
+  }
 }
