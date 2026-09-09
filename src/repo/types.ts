@@ -244,6 +244,15 @@ export interface Holding {
   readonly cost: Money | null;
   readonly openedOn: IsoDate | null;
   readonly isArchived: boolean;
+  /**
+   * §20, on a position rather than a transaction.
+   *
+   * The column has existed since the table was created and the mapper never
+   * read it, so no holding could be private in practice however the policies
+   * were written. Always `household` on a row that came from somebody else —
+   * a personal one of theirs never arrives here at all.
+   */
+  readonly visibility: Visibility;
 }
 
 export interface Valuation {

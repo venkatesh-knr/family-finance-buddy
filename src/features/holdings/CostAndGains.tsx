@@ -24,7 +24,13 @@
 
 import { useCallback, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
-import { formatMoney, minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
+import {
+  formatMoney,
+  minorUnitExponent,
+  money,
+  parseAmountToMinor,
+  percentOfCost,
+} from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
@@ -54,6 +60,12 @@ export function CostAndGains({
   const [open, setOpen] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
+
+  // The cost of the units that were sold, which is what a realised gain is a
+  // percentage of.
+  const soldCost = parcels.reduce((sum, parcel) => sum + parcel.cost.minor, 0n);
+  const realisedPercent =
+    realisedGain === null ? null : percentOfCost(realisedGain.minor, soldCost);
 
   const lots = listing.lots.filter((lot) => lot.holdingId === holding.id);
   const sales = listing.disposals.filter((sale) => sale.holdingId === holding.id);
@@ -103,8 +115,14 @@ export function CostAndGains({
                   money(realisedGain.minor < 0n ? -realisedGain.minor : realisedGain.minor, currency),
                   { privacy },
                 )}{' '}
+                {/*
+                  Against the cost of the units actually sold, not against the
+                  whole position: a 20% gain on what left is a different fact
+                  from the same rupees measured against everything still held.
+                */}
+                {realisedPercent !== null && <span className="note"> {realisedPercent}</span>}
                 <span className="note">
-                  over {parcels.length === 1 ? '1 parcel' : `${String(parcels.length)} parcels`}
+                  {' '}over {parcels.length === 1 ? '1 parcel' : `${String(parcels.length)} parcels`}
                 </span>
               </>
             )}
@@ -277,6 +295,7 @@ function Workings({
                   <th className="micro-label text-right">Cost</th>
                   <th className="micro-label text-right">Proceeds</th>
                   <th className="micro-label text-right">Gain</th>
+                  <th className="micro-label text-right">%</th>
                   <th className="micro-label text-right">Held</th>
                 </tr>
               </thead>
@@ -304,6 +323,9 @@ function Workings({
                         ),
                         { privacy },
                       )}
+                    </td>
+                    <td className="num py-1 text-right note">
+                      {percentOfCost(parcel.gain.minor, parcel.cost.minor) ?? '—'}
                     </td>
                     {/*
                       Days, not "long term" or "short term". The threshold is a

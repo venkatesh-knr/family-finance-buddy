@@ -12,6 +12,7 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import {
   exactMoney,
   formatMoney,
+  percentOfCost,
   isKnownCurrency,
   knownCurrencyCodes,
   money,
@@ -22,6 +23,7 @@ import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
+import { EditHolding } from './EditHolding.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { archiveHolding } from '../../repo/holdings.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
@@ -110,6 +112,15 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
                     </Stat>
                     <Stat label={gain < 0n ? 'Total loss' : 'Total return'} tone={gain < 0n ? 'loss' : 'gain'}>
                       {formatMoney(money(gain, total.currency), { privacy })}
+                      {/*
+                        The percentage beside the amount, because ₹67,500 says
+                        nothing about whether it was a good year until you know
+                        what was staked to get it. The sign carries the
+                        direction; the colour only agrees with it.
+                      */}
+                      {percentOfCost(gain, total.invested) !== null && (
+                        <span className="note"> {percentOfCost(gain, total.invested)}</span>
+                      )}
                     </Stat>
                     {total.unread > 0 && (
                       <Stat label="Unread">
@@ -231,6 +242,7 @@ function HoldingCard({
 }) {
   const { holding, latest, peak } = row;
   const currency = holding.instrument.currency;
+  const [editing, setEditing] = useState(false);
 
   return (
     <section
@@ -244,6 +256,14 @@ function HoldingCard({
             <span className="num note">{holding.instrument.symbol}</span>
           )}
           {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
+          {/*
+            "A privacy control nobody can observe working is indistinguishable
+            from one that does nothing" (§20). A holding reaching this screen
+            at all is one the caller may read, so a personal one here is always
+            their own — and without this the toggle in the editor saved a state
+            with nothing on the screen to show for it.
+          */}
+          {holding.visibility === 'personal' && <Pill tone="own">Private</Pill>}
           {holding.instrument.currency !== holding.instrument.exposureCurrency && (
             <Pill tone="neutral">
               {holding.instrument.currency} · tracks {holding.instrument.exposureCurrency}
@@ -312,7 +332,42 @@ function HoldingCard({
         />
       )}
 
-      {canWrite && <ArchiveHolding row={row} onDone={onReload} />}
+      {canWrite && (
+        <div className="mt-3 flex flex-wrap items-center gap-3.5">
+          <button
+            type="button"
+            className="note underline"
+            onClick={() => {
+              setEditing((was) => !was);
+            }}
+          >
+            {editing ? 'Cancel correction' : 'Correct this holding'}
+          </button>
+          <ArchiveHolding row={row} onDone={onReload} />
+        </div>
+      )}
+
+      {canWrite && editing && (
+        <EditHolding
+          holding={holding}
+          isMine={holding.member.id === listing.viewer.memberId}
+          // Readings, purchases or sales already denominated in this currency.
+          // Changing it would leave them behind in the old one.
+          hasHistory={
+            latest !== null ||
+            listing.lots.some((lot) => lot.holdingId === holding.id) ||
+            listing.disposals.some((sale) => sale.holdingId === holding.id)
+          }
+          currencyOptions={<CurrencyOptions />}
+          onDone={async () => {
+            setEditing(false);
+            await onReload();
+          }}
+          onCancel={() => {
+            setEditing(false);
+          }}
+        />
+      )}
 
       <CostAndGains
         row={row}
@@ -756,7 +811,7 @@ function ArchiveHolding({
 
   if (!confirming) {
     return (
-      <div className="mt-3">
+      <>
         <button
           type="button"
           className="note underline"
@@ -767,11 +822,11 @@ function ArchiveHolding({
           Archive this holding
         </button>
         {problem !== null && (
-          <div className="mt-2">
+          <div className="mt-2 w-full">
             <Problem>{problem}</Problem>
           </div>
         )}
-      </div>
+      </>
     );
   }
 

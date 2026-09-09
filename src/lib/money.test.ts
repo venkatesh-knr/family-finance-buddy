@@ -8,6 +8,7 @@ import {
   money,
   parseAmountToMinor,
   exactMoney,
+  percentOfCost,
 } from './money.ts';
 
 /**
@@ -229,5 +230,31 @@ describe('exactMoney', () => {
 
   it('says nothing under privacy, rather than leaking through a tooltip', () => {
     expect(exactMoney(money(12550000000n, 'INR'), true)).toBeNull();
+  });
+});
+
+describe('percentOfCost', () => {
+  it('is the gain as a share of what was put in', () => {
+    expect(percentOfCost(50000n, 100000n)).toBe('+50%');
+    expect(percentOfCost(7500n, 100000n)).toBe('+7.5%');
+  });
+
+  it('carries the sign, so a loss reads as one without its colour', () => {
+    expect(percentOfCost(-25000n, 100000n)).toBe('-25%');
+  });
+
+  it('rounds to one place and drops a trailing zero', () => {
+    expect(percentOfCost(3333n, 100000n)).toBe('+3.3%');
+    expect(percentOfCost(100000n, 100000n)).toBe('+100%');
+  });
+
+  it('is null when nothing was invested, rather than infinity or 0%', () => {
+    // A holding with no cost recorded has no return — not a return of zero,
+    // which is a statement about performance nobody made.
+    expect(percentOfCost(50000n, 0n)).toBeNull();
+  });
+
+  it('is null when the gain is zero and nothing was staked either way', () => {
+    expect(percentOfCost(0n, 100000n)).toBe('0%');
   });
 });

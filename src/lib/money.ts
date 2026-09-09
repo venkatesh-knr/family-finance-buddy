@@ -312,3 +312,36 @@ function formatCompact(value: Money, exponent: number, negative: boolean): strin
 export function exactMoney(value: Money, privacy = false): string | null {
   return privacy ? null : formatMoney(value);
 }
+
+/**
+ * A gain as a percentage of what was put in, signed.
+ *
+ * The sign is not decoration. "Never encode meaning in colour alone" — a
+ * figure tinted coral means nothing to somebody who cannot see the tint, and
+ * "-25%" means the same thing to everybody.
+ *
+ * Null when nothing was invested. Not "0%", which is a claim about
+ * performance nobody made, and not infinity: a holding whose cost was never
+ * recorded has no return to report, and saying so is the honest answer.
+ *
+ * One decimal place, trailing zero dropped: "+7.5%", "+50%". Percentages are
+ * compared at a glance and a second decimal is noise at that size.
+ */
+export function percentOfCost(gainMinor: bigint, investedMinor: bigint): string | null {
+  if (investedMinor === 0n) return null;
+
+  // Tenths, rounded half away from zero, in bigint — the same discipline as
+  // every other figure here. A ratio of two large amounts is exactly where a
+  // double starts to drift.
+  const doubled = gainMinor * 2000n;
+  const quotient = doubled / investedMinor;
+  const tenths = quotient >= 0n ? (quotient + 1n) / 2n : (quotient - 1n) / 2n;
+
+  const negative = tenths < 0n;
+  const magnitude = negative ? -tenths : tenths;
+  const whole = magnitude / 10n;
+  const rest = magnitude % 10n;
+
+  const sign = negative ? '-' : tenths > 0n ? '+' : '';
+  return `${sign}${whole.toString()}${rest === 0n ? '' : `.${rest.toString()}`}%`;
+}

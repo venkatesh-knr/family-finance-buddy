@@ -253,6 +253,7 @@ describe('toHolding', () => {
     cost_minor: 620000,
     opened_on: '2026-02-14',
     status: 'active',
+    visibility: 'household',
   };
 
   it('joins member and instrument from what the household already loaded', () => {
@@ -270,6 +271,20 @@ describe('toHolding', () => {
     expect(() => toHolding({ ...row, instrument_id: 'somewhere-else' }, members, instruments)).toThrow(
       /not in this household/,
     );
+  });
+
+  it('carries visibility, which the mapper used to drop on the floor', () => {
+    // The column existed from the first migration and was never read, so a
+    // personal holding arrived looking like a household one and no holding
+    // could be marked private at all.
+    expect(toHolding(row, members, instruments).visibility).toBe('household');
+    expect(
+      toHolding({ ...row, visibility: 'personal' }, members, instruments).visibility,
+    ).toBe('personal');
+  });
+
+  it('refuses a visibility it does not recognise rather than guessing household', () => {
+    expect(() => toHolding({ ...row, visibility: 'secret' }, members, instruments)).toThrow();
   });
 
   it('reads cost as null when there is none', () => {
