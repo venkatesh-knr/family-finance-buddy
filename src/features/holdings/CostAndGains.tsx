@@ -25,7 +25,7 @@
 import { useCallback, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
-import { formatQuantity } from '../../lib/quantity.ts';
+import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Field, Notice, Pill, Problem } from '../../ui/primitives.tsx';
 import type { HoldingRow } from './useHoldings.ts';
@@ -140,7 +140,9 @@ export function CostAndGains({
           setOpen((was) => !was);
         }}
       >
-        {open ? 'Hide the workings' : `Show the workings (${String(lots.length)} purchases, ${String(sales.length)} sales)`}
+        {open
+          ? 'Hide the workings'
+          : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
       </button>
 
       {open && (
@@ -231,7 +233,7 @@ function Workings({
         rows={lots.map((lot) => ({
           id: lot.id,
           date: lot.acquiredOn,
-          quantity: lot.quantity,
+          quantity: showQuantity(lot.quantity),
           amount: lot.cost,
           tag: lot.kind === 'purchase' ? null : lot.kind,
         }))}
@@ -252,7 +254,7 @@ function Workings({
         rows={sales.map((sale) => ({
           id: sale.id,
           date: sale.disposedOn,
-          quantity: sale.quantity,
+          quantity: showQuantity(sale.quantity),
           amount: sale.proceeds,
           tag: sale.kind === 'sale' ? null : sale.kind,
         }))}
@@ -608,6 +610,27 @@ function RecordEvent({
       )}
     </form>
   );
+}
+
+function plural(count: number, noun: string): string {
+  return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * The stored scale is not the read scale.
+ *
+ * `numeric(28, 8)` hands back "60.00000000", which is eight places of nothing
+ * and reads as false precision — as though somebody had measured the position
+ * to a hundred-millionth. The formatter trims the padding and keeps every
+ * significant digit, so a genuinely fractional holding still shows in full.
+ */
+function showQuantity(stored: string): string {
+  try {
+    return formatQuantity(parseQuantity(stored));
+  } catch {
+    // A quantity the parser refuses is one worth seeing exactly as stored.
+    return stored;
+  }
 }
 
 /** Minor units back into something editable: 45175 → "451.75". */

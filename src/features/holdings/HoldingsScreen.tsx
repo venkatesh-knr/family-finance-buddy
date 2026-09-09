@@ -10,6 +10,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
+import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
@@ -238,7 +239,7 @@ function HoldingCard({
           )}
         </div>
         <span className="num note">
-          {holding.quantity} units · {holding.member.displayName}
+          {formatQuantity(parseQuantity(holding.quantity))} units · {holding.member.displayName}
         </span>
       </header>
 
