@@ -31,7 +31,7 @@ import { useHoldings, type HoldingRow } from './useHoldings.ts';
 type SortBy = 'value' | 'name' | 'member';
 
 export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload } =
+  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
 
@@ -198,6 +198,7 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
                   onLot={recordLot}
                   onSale={recordSale}
                   onReload={reload}
+                  taxRules={taxRules}
                 />
               ))}
             </div>
@@ -229,6 +230,7 @@ function HoldingCard({
   onLot,
   onSale,
   onReload,
+  taxRules,
 }: {
   row: HoldingRow;
   listing: HoldingListing;
@@ -236,6 +238,7 @@ function HoldingCard({
   today: string;
   canWrite: boolean;
   onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
+  taxRules: ReturnType<typeof useHoldings>['taxRules'];
   onLot: ReturnType<typeof useHoldings>['recordLot'];
   onSale: ReturnType<typeof useHoldings>['recordSale'];
   onReload: ReturnType<typeof useHoldings>['reload'];
@@ -370,6 +373,7 @@ function HoldingCard({
       )}
 
       <CostAndGains
+        taxRules={taxRules}
         row={row}
         listing={listing}
         privacy={privacy}

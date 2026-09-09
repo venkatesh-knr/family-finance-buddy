@@ -169,6 +169,9 @@ export function toInstrument(raw: unknown): Instrument {
     symbol: optionalString(row['symbol'], 'instrument.symbol'),
     currency: requireString(row['currency'], 'instrument.currency'),
     exposureCurrency: requireString(row['exposure_currency'], 'instrument.exposure_currency'),
+    taxAssetClass: optionalString(row['tax_asset_class'], 'instrument.tax_asset_class') as
+      | import('../domain/tax-rules.ts').AssetClass
+      | null,
     isForeignAsset: requireBoolean(row['is_foreign_asset'], 'instrument.is_foreign_asset'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',

@@ -58,7 +58,7 @@ const HOLDING_COLUMNS =
   'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility';
 
 const INSTRUMENT_COLUMNS =
-  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status';
+  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status, tax_asset_class';
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
@@ -402,6 +402,7 @@ export interface HoldingPatch {
     readonly currency?: string;
     readonly exposureCurrency?: string;
     readonly isForeignAsset?: boolean;
+    readonly taxAssetClass?: string | null;
   };
 }
 
@@ -444,6 +445,9 @@ export async function updateHolding(
       fields['exposure_currency'] = i.exposureCurrency;
     }
     if (i.isForeignAsset !== undefined) fields['is_foreign_asset'] = i.isForeignAsset;
+    if (i.taxAssetClass !== undefined) {
+      fields['tax_asset_class'] = i.taxAssetClass === '' ? null : i.taxAssetClass;
+    }
 
     if (Object.keys(fields).length > 0) {
       const { data, error } = await client
