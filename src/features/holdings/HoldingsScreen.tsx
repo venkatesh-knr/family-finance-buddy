@@ -23,6 +23,7 @@ import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
+import { archiveHolding } from '../../repo/holdings.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
 type SortBy = 'value' | 'name' | 'member';
@@ -310,6 +311,8 @@ function HoldingCard({
           onRecord={onRecord}
         />
       )}
+
+      {canWrite && <ArchiveHolding row={row} onDone={onReload} />}
 
       <CostAndGains
         row={row}
@@ -722,5 +725,99 @@ function CurrencyOptions() {
         </optgroup>
       )}
     </>
+  );
+}
+
+/**
+ * Retiring a holding you no longer own — or one that should never have been
+ * entered.
+ *
+ * Archive rather than delete, and the button says so, because the two are
+ * different promises and somebody clicking this is entitled to know which one
+ * they are getting. The readings stay: they are the only record of what this
+ * was worth on the dates they cover, and a calendar-year peak cannot be
+ * reconstructed from anything else once they are gone.
+ *
+ * Behind a confirmation, and the confirmation says what is not yet possible —
+ * there is no screen that lists archived holdings, so bringing one back needs
+ * somebody with database access. That is worth saying before the click rather
+ * than discovering after it.
+ */
+function ArchiveHolding({
+  row,
+  onDone,
+}: {
+  row: HoldingRow;
+  onDone: ReturnType<typeof useHoldings>['reload'];
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  if (!confirming) {
+    return (
+      <div className="mt-3">
+        <button
+          type="button"
+          className="note underline"
+          onClick={() => {
+            setConfirming(true);
+          }}
+        >
+          Archive this holding
+        </button>
+        {problem !== null && (
+          <div className="mt-2">
+            <Problem>{problem}</Problem>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="text-caption" style={{ color: 'var(--ink-2)' }}>
+        Archive <strong>{row.holding.instrument.name}</strong>? It leaves every total and every
+        screen. Nothing is deleted — its readings, purchases and sales stay, because they are the
+        record of what it was worth on the dates they cover. There is no screen yet that lists
+        archived holdings, so bringing it back would need database access.
+      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setProblem(null);
+            archiveHolding(row.holding.id)
+              .then(onDone)
+              .catch((error: unknown) => {
+                setProblem(error instanceof Error ? error.message : 'Could not archive that.');
+              })
+              .finally(() => {
+                setBusy(false);
+                setConfirming(false);
+              });
+          }}
+        >
+          {busy ? 'Archiving…' : 'Yes, archive it'}
+        </Button>
+        <button
+          type="button"
+          className="note underline"
+          onClick={() => {
+            setConfirming(false);
+          }}
+        >
+          Keep it
+        </button>
+      </div>
+      {problem !== null && (
+        <div className="mt-2">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+    </div>
   );
 }

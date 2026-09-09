@@ -5,6 +5,8 @@
  *   addHolding()        — an instrument and a position in it
  *   recordValuation()   — one dated reading
  *
+ *   archiveHolding()    — retire a position without deleting it
+ *
  * Lots and sales are read here too, though they are written in lots.ts: a
  * parcel is a purchase and a sale together, so a screen that loaded one
  * without the other could not show a gain at all.
@@ -346,4 +348,39 @@ export async function listPersonalHoldingTotals(
       unvalued: typeof unvalued === 'number' ? unvalued : 0,
     };
   });
+}
+
+/**
+ * Retire a holding.
+ *
+ * Archived, never deleted: "members and categories are archived, never deleted
+ * — their history is the household's arithmetic. Deletes are soft everywhere."
+ * A holding is the strongest case for that rule rather than an exception to
+ * it. Its valuations are the only record of what the household was worth on
+ * the dates they cover, and a Schedule FA peak is computed from readings that
+ * cannot be reconstructed from anything else — so removing the row would take
+ * a disclosure figure with it. Archiving takes it off the screen and out of
+ * every total, and leaves the arithmetic of past years intact.
+ *
+ * `archived_at` is set in the same statement because the schema pairs them:
+ * `holding_archived_at_matches_status` refuses a status without a date, which
+ * is what stops "archived" from being a flag somebody forgets to timestamp.
+ *
+ * The returned rows are checked rather than only the error. A policy-refused
+ * update comes back with neither, which reads as success — the screen would
+ * then hide a row the database still has.
+ */
+export async function archiveHolding(id: Uuid): Promise<void> {
+  const client = supabase();
+
+  const { data, error } = await client
+    .from('holding')
+    .update({ status: 'archived', archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id');
+
+  if (error !== null) throw asRepositoryError(error);
+  if ((data ?? []).length === 0) {
+    throw new Error('That holding could not be archived. It may belong to another member.');
+  }
 }
