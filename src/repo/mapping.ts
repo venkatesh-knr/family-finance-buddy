@@ -19,15 +19,19 @@ import {
 import { money } from '../lib/money.ts';
 import {
   CATEGORY_NATURES,
+  DISPOSAL_KINDS,
   HOUSEHOLD_KINDS,
   HOUSEHOLD_ROLES,
   INSTRUMENT_KINDS,
+  LOT_KINDS,
   MEMBER_COLOURS,
   PAYMENT_METHODS,
   VALUATION_SOURCES,
   VISIBILITIES,
+  type Disposal,
   type Expense,
   type Holding,
+  type Lot,
   type Household,
   type HouseholdRole,
   type Instrument,
@@ -240,6 +244,44 @@ export function toValuation(raw: unknown): Valuation {
     amount: money(toBigIntExact(row['value_minor'], 'valuation_snapshot.value_minor'), currency),
     source: requireOneOf(row['source'], VALUATION_SOURCES, 'valuation_snapshot.source'),
     note: optionalString(row['note'], 'valuation_snapshot.note'),
+  };
+}
+
+/**
+ * An acquisition row.
+ *
+ * `cost` becomes Money at this boundary rather than staying a loose bigint,
+ * because a cost without its currency is the bug the money invariant exists to
+ * prevent — and a lot's currency is the instrument's, not the household's.
+ */
+export function toLot(raw: unknown): Lot {
+  const row = requireRecord(raw, 'lot');
+  const currency = requireString(row['currency'], 'lot.currency');
+
+  return {
+    id: requireString(row['id'], 'lot.id'),
+    holdingId: requireString(row['holding_id'], 'lot.holding_id'),
+    acquiredOn: requireIsoDate(row['acquired_on'], 'lot.acquired_on'),
+    quantity: requireQuantity(row['quantity'], 'lot.quantity'),
+    cost: money(toBigIntExact(row['cost_minor'], 'lot.cost_minor'), currency),
+    kind: requireOneOf(row['kind'], LOT_KINDS, 'lot.kind'),
+    note: optionalString(row['note'], 'lot.note'),
+  };
+}
+
+/** A sale row. */
+export function toDisposal(raw: unknown): Disposal {
+  const row = requireRecord(raw, 'disposal');
+  const currency = requireString(row['currency'], 'disposal.currency');
+
+  return {
+    id: requireString(row['id'], 'disposal.id'),
+    holdingId: requireString(row['holding_id'], 'disposal.holding_id'),
+    disposedOn: requireIsoDate(row['disposed_on'], 'disposal.disposed_on'),
+    quantity: requireQuantity(row['quantity'], 'disposal.quantity'),
+    proceeds: money(toBigIntExact(row['proceeds_minor'], 'disposal.proceeds_minor'), currency),
+    kind: requireOneOf(row['kind'], DISPOSAL_KINDS, 'disposal.kind'),
+    note: optionalString(row['note'], 'disposal.note'),
   };
 }
 

@@ -5,6 +5,10 @@
  *   addHolding()        — an instrument and a position in it
  *   recordValuation()   — one dated reading
  *
+ * Lots and sales are read here too, though they are written in lots.ts: a
+ * parcel is a purchase and a sale together, so a screen that loaded one
+ * without the other could not show a gain at all.
+ *
  * Same seam as expenses: no Supabase type crosses back out, and no method takes
  * a householdId it could use to look somewhere it does not belong. Row-level
  * security decides the scope; these functions only ask.
@@ -13,11 +17,13 @@
 import { supabase } from './client.ts';
 import { requireRecord } from '../lib/guards.ts';
 import type { IsoDate } from '../lib/dates.ts';
-import { toHolding, toInstrument, toMember, toValuation } from './mapping.ts';
+import { toDisposal, toHolding, toInstrument, toLot, toMember, toValuation } from './mapping.ts';
 import {
   NoHouseholdError,
+  type Disposal,
   type Holding,
   type HoldingListing,
+  type Lot,
   type Member,
   type NewHolding,
   type NewValuation,
@@ -47,6 +53,12 @@ const INSTRUMENT_COLUMNS =
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
+
+const LOT_COLUMNS =
+  'id, holding_id, acquired_on, quantity::text, cost_minor::text, currency, kind, note';
+
+const DISPOSAL_COLUMNS =
+  'id, holding_id, disposed_on, quantity::text, proceeds_minor::text, currency, kind, note';
 
 export async function listHoldings(options: { householdId?: Uuid } = {}): Promise<HoldingListing> {
   const client = supabase();
@@ -125,6 +137,30 @@ export async function listHoldings(options: { householdId?: Uuid } = {}): Promis
 
   const valuations: Valuation[] = valuationsResult.data.map(toValuation);
 
+  // Oldest first, both of them: that is the order FIFO consumes lots in, and
+  // sorting here rather than in the matcher means the rows arrive in the shape
+  // the arithmetic wants instead of being re-sorted on every render.
+  const lotsResult = await client
+    .from('lot')
+    .select(LOT_COLUMNS)
+    .eq('household_id', household.id)
+    .order('acquired_on', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (lotsResult.error !== null) throw asRepositoryError(lotsResult.error);
+
+  const disposalsResult = await client
+    .from('disposal')
+    .select(DISPOSAL_COLUMNS)
+    .eq('household_id', household.id)
+    .order('disposed_on', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (disposalsResult.error !== null) throw asRepositoryError(disposalsResult.error);
+
+  const lots: Lot[] = lotsResult.data.map(toLot);
+  const disposals: Disposal[] = disposalsResult.data.map(toDisposal);
+
   return {
     household,
     viewer: {
@@ -137,6 +173,8 @@ export async function listHoldings(options: { householdId?: Uuid } = {}): Promis
     members,
     holdings,
     valuations,
+    lots,
+    disposals,
   };
 }
 

@@ -8,9 +8,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { calendarYearPeak, type CalendarYearPeak } from '../../domain/peak.ts';
+import {
+  matchFifo,
+  openPosition,
+  realised,
+  type Parcel,
+  type Shortfall,
+} from '../../domain/lots.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
+import { money, type Money } from '../../lib/money.ts';
+import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
-import type { Holding, HoldingListing, NewHolding, NewValuation } from '../../repo/types.ts';
+import { addDisposal, addLot } from '../../repo/lots.ts';
+import type {
+  Holding,
+  HoldingListing,
+  NewDisposal,
+  NewHolding,
+  NewLot,
+  NewValuation,
+} from '../../repo/types.ts';
 
 export interface HoldingRow {
   readonly holding: Holding;
@@ -18,6 +35,20 @@ export interface HoldingRow {
   readonly latest: { readonly date: string; readonly amountMinor: bigint } | null;
   /** The Schedule FA figure for the year in view, with its gaps. */
   readonly peak: CalendarYearPeak;
+  /**
+   * What the units still held cost, and where that figure came from.
+   *
+   * 'lots' is derived from recorded acquisitions net of recorded sales.
+   * 'holding' is the single figure entered before lots existed — a weaker
+   * fact, and the screen says so rather than presenting the two alike.
+   */
+  readonly cost: { readonly amount: Money | null; readonly source: 'lots' | 'holding' };
+  /** Realised gains on this holding, or null when nothing has been sold. */
+  readonly realisedGain: Money | null;
+  /** Every matched parcel, newest sale first, for the detail view. */
+  readonly parcels: readonly Parcel[];
+  /** Sales that could not be matched. Never silently absorbed. */
+  readonly shortfalls: readonly Shortfall[];
 }
 
 export function useHoldings(householdId: string | null): {
@@ -30,6 +61,17 @@ export function useHoldings(householdId: string | null): {
   problem: string | null;
   add: (holding: NewHolding) => Promise<void>;
   record: (valuation: NewValuation) => Promise<void>;
+  recordLot: (lot: NewLot) => Promise<void>;
+  recordSale: (disposal: NewDisposal) => Promise<void>;
+  /**
+   * Re-read everything.
+   *
+   * Exposed because corrections are made through the repository directly
+   * rather than through this hook — there is no useful derived state for an
+   * edit to update, only the need to see the consequence, which is the whole
+   * listing again.
+   */
+  reload: () => Promise<void>;
 } {
   const [listing, setListing] = useState<HoldingListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +114,50 @@ export function useHoldings(householdId: string | null): {
       // Sorted newest first by the query, so the first is the latest.
       const latest = mine[0];
 
+      const currency = holding.instrument.currency;
+
+      // The matcher takes scaled bigints; the repository hands out decimal
+      // strings. Parsing happens here, at the one place arithmetic starts.
+      const matched = matchFifo(
+        listing.lots
+          .filter((lot) => lot.holdingId === holding.id)
+          .map((lot) => ({
+            id: lot.id,
+            instrumentId: holding.instrument.id,
+            acquiredOn: lot.acquiredOn,
+            quantity: parseQuantity(lot.quantity),
+            cost: lot.cost,
+          })),
+        listing.disposals
+          .filter((sale) => sale.holdingId === holding.id)
+          .map((sale) => ({
+            id: sale.id,
+            instrumentId: holding.instrument.id,
+            disposedOn: sale.disposedOn,
+            quantity: parseQuantity(sale.quantity),
+            proceeds: sale.proceeds,
+          })),
+      );
+
+      const open = openPosition(matched);
+      const hasLots = matched.open.length > 0;
+
+      // Presence in the listing is the exact answer, not an approximation of
+      // one: a lot is visible to precisely whoever can see its holding, so a
+      // holding on this screen with no lots beside it genuinely has none. The
+      // holding_cost_source() function says the same thing server-side, and
+      // asking it per holding would be a round trip to learn what is already
+      // here.
+      const cost = hasLots
+        ? {
+            amount: money(
+              open.reduce((sum, entry) => sum + entry.cost.minor, 0n),
+              currency,
+            ),
+            source: 'lots' as const,
+          }
+        : { amount: holding.cost, source: 'holding' as const };
+
       return {
         holding,
         latest: latest === undefined ? null : { date: latest.date, amountMinor: latest.amount.minor },
@@ -81,6 +167,10 @@ export function useHoldings(householdId: string | null): {
           today,
           heldFrom: holding.openedOn,
         }),
+        cost,
+        realisedGain: realised(matched.parcels, currency),
+        parcels: [...matched.parcels].reverse(),
+        shortfalls: matched.shortfalls,
       };
     });
   }, [listing, year, today]);
@@ -101,5 +191,34 @@ export function useHoldings(householdId: string | null): {
     [load],
   );
 
-  return { listing, rows, year, setYear, today, loading, problem, add, record };
+  const recordLot = useCallback(
+    async (lot: NewLot) => {
+      await addLot(lot);
+      await load();
+    },
+    [load],
+  );
+
+  const recordSale = useCallback(
+    async (disposal: NewDisposal) => {
+      await addDisposal(disposal);
+      await load();
+    },
+    [load],
+  );
+
+  return {
+    listing,
+    rows,
+    year,
+    setYear,
+    today,
+    loading,
+    problem,
+    add,
+    record,
+    recordLot,
+    recordSale,
+    reload: load,
+  };
 }
