@@ -24,7 +24,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 |---|---|---|---|
 | overview | screen | partial | `src/features/overview` — net worth, assets per currency, allocation by kind, rate entry, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution |
 | expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, the ledger and its editor. The spending plan moved to FIRE — see Departures |
-| investments | screen | partial | `src/features/holdings` — holdings and valuations; no fund/equity breakdown, no India/Abroad split |
+| investments | screen | partial | `src/features/holdings` — holdings, valuations, and cost and gains per position (purchases, sales, FIFO parcels, realised gain); no fund/equity breakdown, no India/Abroad split |
 | property | screen | not-built | Stage 5 |
 | global | screen | not-built | Stage 5 — needs FX and the currency work |
 | fire | screen | partial | `src/features/plan` — annual expense, the spending plan and the commitments it is built from, target and ladder. No goals, and no projection against real contributions |
@@ -75,4 +75,5 @@ not a gap — if one of these is revisited, change it here first.
 | Envelopes with no spending | every category listed | folded behind a count | Twenty-eight rows reading "₹0.00 · behind" buried the rows worth acting on. |
 | Refusing a total | one figure, always | the figure, or the rates it is missing | *Resolved as a departure* — `20260908130000` added `fx_rate` and `liability.outstanding_minor`, so the headline is net worth as designed. What is kept is the refusal underneath it: a total that cannot be converted honestly comes back as the missing pairs rather than a number short by the dollar holdings. |
 | Allocation donut | an SVG donut with a legend | a row per class: colour, name, share, value, return | Taken from the reference app rather than from the mock. A bar or an arc shows one thing — relative size — where a row of the same height shows four, and on a phone that is the difference between a picture and an answer. The colours are still the chart palette in order, so a class keeps its identity when the donut arrives beside it. |
+| Long or short term | a gain labelled long-term or short-term | days held, unlabelled | The threshold is twelve months for listed equity and twenty-four for unlisted, both of which have moved. `tax_rule` will hold them as dated rows so a prior year recomputes on the rule that applied then; until it exists, the app shows the count and declines to classify it. |
 | Failure states | none — a mock has no loading, empty, offline or denied states | all four, throughout | Not a departure so much as the part a mock cannot show. Do not drop them to match it. |

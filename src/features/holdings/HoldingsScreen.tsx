@@ -13,12 +13,15 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { CostAndGains } from './CostAndGains.tsx';
+import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
 type SortBy = 'value' | 'name' | 'member';
 
 export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record } = useHoldings(householdId);
+  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload } =
+    useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
 
   /**
@@ -30,7 +33,9 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
     for (const row of rows) {
       const currency = row.holding.instrument.currency;
       const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0 };
-      bucket.invested += row.holding.cost?.minor ?? 0n;
+      // The row's cost, not the holding's: where lots exist it is derived from
+      // them net of sales, which is the figure that is actually still invested.
+      bucket.invested += row.cost.amount?.minor ?? 0n;
       if (row.latest === null) bucket.unread += 1;
       else bucket.value += row.latest.amountMinor;
       byCurrency.set(currency, bucket);
@@ -166,6 +171,9 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
                   today={today}
                   canWrite={canWrite}
                   onRecord={record}
+                  onLot={recordLot}
+                  onSale={recordSale}
+                  onReload={reload}
                 />
               ))}
             </div>
@@ -194,6 +202,9 @@ function HoldingCard({
   today,
   canWrite,
   onRecord,
+  onLot,
+  onSale,
+  onReload,
 }: {
   row: HoldingRow;
   listing: HoldingListing;
@@ -201,6 +212,9 @@ function HoldingCard({
   today: string;
   canWrite: boolean;
   onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
+  onLot: ReturnType<typeof useHoldings>['recordLot'];
+  onSale: ReturnType<typeof useHoldings>['recordSale'];
+  onReload: ReturnType<typeof useHoldings>['reload'];
 }) {
   const { holding, latest, peak } = row;
   const currency = holding.instrument.currency;
@@ -275,6 +289,24 @@ function HoldingCard({
           onRecord={onRecord}
         />
       )}
+
+      <CostAndGains
+        row={row}
+        listing={listing}
+        privacy={privacy}
+        today={today}
+        canWrite={canWrite}
+        onLot={onLot}
+        onSale={onSale}
+        onEditLot={async (id, patch) => {
+          await updateLot(id, patch);
+          await onReload();
+        }}
+        onEditSale={async (id, patch) => {
+          await updateDisposal(id, patch);
+          await onReload();
+        }}
+      />
     </section>
   );
 }

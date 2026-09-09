@@ -264,6 +264,10 @@ export interface HoldingListing {
   readonly holdings: readonly Holding[];
   /** Every valuation for the household, newest first. */
   readonly valuations: readonly Valuation[];
+  /** Every acquisition, oldest first — the order the FIFO matcher wants. */
+  readonly lots: readonly Lot[];
+  /** Every sale, oldest first. */
+  readonly disposals: readonly Disposal[];
 }
 
 export interface NewHolding {
@@ -280,6 +284,60 @@ export interface NewHolding {
   readonly quantity: Quantity;
   readonly cost?: Money | null;
   readonly openedOn?: IsoDate | null;
+}
+
+/**
+ * One acquisition, as the repository hands it out.
+ *
+ * `quantity` is a decimal string for the same reason `Holding.quantity` is:
+ * a double cannot hold 12.3456789 exactly, and it stays a string until
+ * something actually does arithmetic on it.
+ */
+export interface Lot {
+  readonly id: Uuid;
+  readonly holdingId: Uuid;
+  readonly acquiredOn: IsoDate;
+  readonly quantity: Quantity;
+  readonly cost: Money;
+  readonly kind: LotKind;
+  readonly note: string | null;
+}
+
+export const LOT_KINDS = ['purchase', 'bonus', 'split', 'transfer', 'gift', 'esop'] as const;
+export type LotKind = (typeof LOT_KINDS)[number];
+
+/** One sale. */
+export interface Disposal {
+  readonly id: Uuid;
+  readonly holdingId: Uuid;
+  readonly disposedOn: IsoDate;
+  readonly quantity: Quantity;
+  readonly proceeds: Money;
+  readonly kind: DisposalKind;
+  readonly note: string | null;
+}
+
+export const DISPOSAL_KINDS = ['sale', 'redemption', 'maturity', 'transfer', 'gift'] as const;
+export type DisposalKind = (typeof DISPOSAL_KINDS)[number];
+
+export interface NewLot {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly acquiredOn: IsoDate;
+  readonly quantity: Quantity;
+  readonly cost: Money;
+  readonly kind?: LotKind;
+  readonly note?: string | null;
+}
+
+export interface NewDisposal {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly disposedOn: IsoDate;
+  readonly quantity: Quantity;
+  readonly proceeds: Money;
+  readonly kind?: DisposalKind;
+  readonly note?: string | null;
 }
 
 export interface NewValuation {
