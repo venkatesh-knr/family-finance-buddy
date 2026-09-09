@@ -338,6 +338,15 @@ function ExpenseList({
 }) {
   const { expenses } = listing;
 
+  // Resolved once for the whole list rather than searched per row: a category
+  // is referenced by id everywhere because "renaming a category changes the
+  // label only", so the name has to be looked up somewhere, and the ledger is
+  // the wrong place to do it thirty times.
+  const categoryNames = useMemo(
+    () => new Map(listing.categories.map((category) => [category.id, category.name])),
+    [listing.categories],
+  );
+
   return (
     <Card
       title="Expenses"
@@ -367,7 +376,15 @@ function ExpenseList({
           */}
           <ul className="row-separated sm:hidden">
             {expenses.map((expense) => (
-              <StackedRow key={expense.id} expense={expense} privacy={privacy} onEdit={onEdit} />
+              <StackedRow
+                key={expense.id}
+                expense={expense}
+                categoryName={
+                  expense.categoryId === null ? null : (categoryNames.get(expense.categoryId) ?? null)
+                }
+                privacy={privacy}
+                onEdit={onEdit}
+              />
             ))}
           </ul>
 
@@ -382,6 +399,7 @@ function ExpenseList({
                 <tr>
                   <th scope="col">Date</th>
                   <th scope="col">Payee</th>
+                  <th scope="col">Category</th>
                   <th scope="col">Member</th>
                   <th scope="col" className="num-col">
                     Amount
@@ -390,7 +408,17 @@ function ExpenseList({
               </thead>
               <tbody>
                 {expenses.map((expense) => (
-                  <Row key={expense.id} expense={expense} privacy={privacy} onEdit={onEdit} />
+                  <Row
+                    key={expense.id}
+                    expense={expense}
+                    categoryName={
+                      expense.categoryId === null
+                        ? null
+                        : (categoryNames.get(expense.categoryId) ?? null)
+                    }
+                    privacy={privacy}
+                    onEdit={onEdit}
+                  />
                 ))}
               </tbody>
             </Table>
@@ -431,10 +459,13 @@ function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: str
  */
 function StackedRow({
   expense,
+  categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
+  /** Null for an uncategorised entry — "a state to show, not a gap to fill in". */
+  categoryName: string | null;
   privacy: boolean;
   onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
@@ -451,6 +482,14 @@ function StackedRow({
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <span className="num note">{formatIsoDate(expense.date)}</span>
+        {/*
+          The category, which the ledger simply never showed — the id was
+          loaded and the name was never resolved, so an entry gave no clue what
+          it had been filed under. Uncategorised says so rather than showing
+          nothing, because a blank reads as "no category column" rather than
+          as "this one has no category".
+        */}
+        <span className="note">{categoryName ?? 'Uncategorised'}</span>
         <MemberTag member={expense.member} />
         {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
         {expense.isVoided && <Pill tone="due">Voided</Pill>}
@@ -484,10 +523,13 @@ function StackedRow({
 
 function Row({
   expense,
+  categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
+  /** Null for an uncategorised entry. */
+  categoryName: string | null;
   privacy: boolean;
   onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
@@ -530,6 +572,9 @@ function Row({
             </button>
           </>
         )}
+      </td>
+      <td className="px-2.5 py-2 align-top" style={{ color: 'var(--ink-2)' }}>
+        {categoryName ?? <span className="note">Uncategorised</span>}
       </td>
       <td className="px-2.5 py-2 align-top">
         <MemberTag member={expense.member} />

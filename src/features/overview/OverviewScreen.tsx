@@ -37,7 +37,7 @@ import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { NoHouseholdError, type HoldingListing } from '../../repo/types.ts';
-import { Button, Card, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
 const KIND_LABEL: Record<string, string> = {
@@ -315,11 +315,23 @@ export function OverviewScreen({
       <Card
         title="Assets"
         aside={
-          asOf === null ? (
-            <span className="note">nothing valued yet</span>
-          ) : (
-            <span className="note">valued as at {asOf}</span>
-          )
+          <span className="flex items-center gap-2">
+            {asOf === null ? (
+              <span className="note">nothing valued yet</span>
+            ) : (
+              <span className="note">valued as at {asOf}</span>
+            )}
+            {/*
+              Said once, on the heading, rather than as a paragraph under every
+              figure it describes. Somebody who adds these up and finds they do
+              not match a statement needs it; everybody else has read it once.
+            */}
+            <Caveat tone="info" label="How these totals are put together">
+              Totalled per currency, untouched by any rate. The converted figure is above; these are
+              what each holding is actually worth in what it is actually priced in, which is the
+              number that does not move when a rate is corrected.
+            </Caveat>
+          </span>
         }
       >
         {totals.length === 0 ? (
@@ -333,6 +345,13 @@ export function OverviewScreen({
               <div key={total.currency}>
                 <p className="figure" style={{ color: 'var(--ink)' }}>
                   {formatMoney(total.value, { privacy })}
+                  {total.unvalued > 0 && (
+                    <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
+                      {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never
+                      been valued, so this total is short by whatever they are worth. The gain is
+                      measured only against what was valued, not against everything bought.
+                    </Caveat>
+                  )}
                 </p>
                 <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                   <Stat label="Invested">{formatMoney(total.investedValued, { privacy })}</Stat>
@@ -358,31 +377,11 @@ export function OverviewScreen({
                   </div>
                 </dl>
 
-                {total.unvalued > 0 && (
-                  <div className="mt-3">
-                    <Notice>
-                      {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never
-                      been valued, so this total is short by whatever they are worth. The gain is
-                      measured only against what was valued, not against everything bought.
-                    </Notice>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
 
-        {/*
-          Said plainly rather than left for somebody to discover by adding the
-          figures up themselves and finding they do not match a bank statement.
-        */}
-        <div className="mt-3.5">
-          <Notice>
-            Totalled per currency, untouched by any rate. The converted figure is above; these are
-            what each holding is actually worth in what it is actually priced in, which is the
-            number that does not move when a rate is corrected.
-          </Notice>
-        </div>
       </Card>
 
       {totals.map((total) => {

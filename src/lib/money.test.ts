@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, minorUnitExponent, money, parseAmountToMinor } from './money.ts';
+import {
+  formatMoney,
+  isCurrencyCode,
+  isKnownCurrency,
+  knownCurrencyCodes,
+  minorUnitExponent,
+  money,
+  parseAmountToMinor,
+} from './money.ts';
 
 /**
  * Fixtures with known answers, written before the implementation.
@@ -125,5 +133,42 @@ describe('money', () => {
   it('rejects a currency that is not a three-letter code', () => {
     expect(() => money(1n, 'rupees')).toThrow();
     expect(() => money(1n, 'inr')).toThrow();
+  });
+});
+
+describe('isKnownCurrency', () => {
+  it('refuses three capitals that are not a currency', () => {
+    // The exact hole a testing round found: the form asked for three capitals,
+    // the shape test agreed, and ABC became a holding's currency.
+    expect(isKnownCurrency('ABC')).toBe(false);
+    expect(isKnownCurrency('XYZ')).toBe(false);
+  });
+
+  it('accepts the ones this app is actually about', () => {
+    expect(isKnownCurrency('INR')).toBe(true);
+    expect(isKnownCurrency('USD')).toBe(true);
+  });
+
+  it('still refuses anything that is not three capitals', () => {
+    expect(isKnownCurrency('inr')).toBe(false);
+    expect(isKnownCurrency('RUPEE')).toBe(false);
+    expect(isKnownCurrency('')).toBe(false);
+  });
+
+  it('offers a list to choose from, so a form need not be free text', () => {
+    const codes = knownCurrencyCodes();
+    expect(codes).toContain('INR');
+    expect(codes).not.toContain('ABC');
+    // Sorted, because a select of 160 unordered codes is not a chooser.
+    expect([...codes].sort()).toEqual(codes);
+  });
+});
+
+describe('isCurrencyCode stays a shape test', () => {
+  it('accepts a code ICU does not know, so existing rows still load', () => {
+    // A holding recorded before the input check existed is data. Refusing to
+    // map it would take the screen down instead of letting somebody fix it.
+    expect(isCurrencyCode('ABC')).toBe(true);
+    expect(() => money(100n, 'ABC')).not.toThrow();
   });
 });

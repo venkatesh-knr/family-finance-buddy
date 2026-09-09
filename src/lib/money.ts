@@ -21,6 +21,53 @@ export interface Money {
 
 const CURRENCY_CODE = /^[A-Z]{3}$/;
 
+/**
+ * The codes that actually exist, from ICU.
+ *
+ * Deliberately separate from `isCurrencyCode`, and the split matters.
+ *
+ * `isCurrencyCode` is a shape test, and reading stays on it. Rows already
+ * written with a code this list does not recognise still have to load: a
+ * holding recorded before the check existed is data, and refusing to map it
+ * would take the screen down rather than let somebody go and fix the row.
+ *
+ * `isKnownCurrency` is for input, where the answer can still be changed. That
+ * is where "ABC" was getting in — three capitals passes a shape test, and the
+ * form asked for three capitals.
+ *
+ * `Intl.supportedValuesOf` is not in every runtime this could end up in, so a
+ * missing implementation means the shape test alone rather than an app that
+ * cannot record anything.
+ */
+let knownCurrencies: ReadonlySet<string> | null = null;
+
+function currencyList(): ReadonlySet<string> | null {
+  if (knownCurrencies !== null) return knownCurrencies;
+  const supported = (
+    Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
+  ).supportedValuesOf;
+  if (typeof supported !== 'function') return null;
+  try {
+    knownCurrencies = new Set(supported('currency'));
+    return knownCurrencies;
+  } catch {
+    return null;
+  }
+}
+
+/** Every ISO 4217 code this runtime knows, sorted. Empty when ICU cannot say. */
+export function knownCurrencyCodes(): readonly string[] {
+  const list = currencyList();
+  return list === null ? [] : [...list].sort();
+}
+
+/** Whether a code names a real currency. Falls back to the shape test. */
+export function isKnownCurrency(value: string): boolean {
+  const list = currencyList();
+  if (list === null) return isCurrencyCode(value);
+  return list.has(value);
+}
+
 /** The display locale. Indian grouping for the rupee, sane output for the rest. */
 const LOCALE = 'en-IN';
 

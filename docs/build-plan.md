@@ -124,6 +124,38 @@ Your development environment and your first deliverable are the same thing.
 
 - Export in both formats, and the template upload with its preview-before-commit flow.
 
+- **Statement import, bank and credit card both.** "Import beats typing" (blueprint §158),
+  and the entry flow is the project's stated failure mode — a month of card spending
+  typed by hand is where somebody stops using this.
+
+  Three things this has to do, all of them from using the app rather than from
+  the specification:
+
+  **Guess the category, and be obviously guessing.** A statement line says
+  `UPI/RAZORPAY/8817` and not which envelope it belongs in. The importer should
+  suggest — from the payee text, from what that payee was filed under last
+  time, from the amount and its regularity — and mark every suggestion as one,
+  because a wrong category that arrived silently is worse than a blank. Learned
+  from the household's own history, not from a shipped keyword list that knows
+  nothing about how this family spends.
+
+  **Let every row be changed before anything is written**, and after. That is
+  what the preview-before-commit flow is for; the category edit that already
+  exists on an expense is the same control afterwards.
+
+  **Never import the same line twice.** A statement re-uploaded, or two
+  statements overlapping at a month boundary, must not double a month's
+  spending. Needs a stable identity per line — date, amount, and the raw
+  description, hashed — recorded against the row so a re-import recognises what
+  it has already seen.
+
+  A card statement is the more valuable of the two, because it is where the
+  discretionary spending is. It also settles a question the category catalogue
+  raised: **a card repayment is never an expense.** The purchases were recorded
+  when they happened, so filing the repayment too would double every one of
+  them — which is why there is no "credit card repayment" category and why the
+  importer must skip the payment line on a bank statement that settles a card.
+
 - FIRE with the live projection.
 
 - Read-auditing on the tables carrying personal detail. `audit_log` already accepts a `'read'` action and nothing writes it: Postgres triggers do not fire on `select`, so this means routing those reads through security-definer functions. Deferred from stage 2 deliberately — it is a change to how reading works, not another trigger, and it should be designed alongside the §20 totals surface it shares.
