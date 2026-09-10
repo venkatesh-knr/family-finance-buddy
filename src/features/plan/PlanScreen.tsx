@@ -121,7 +121,18 @@ function AnnualSummary({
       collapsible
       defaultOpen={startOpen}
       summary={`${formatMoney(annual.total, { privacy, compact: true })} planned this year.`}
-      aside={<span className="note">FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}</span>}
+      aside={
+        <span className="flex flex-wrap items-center gap-2.5">
+          <span className="note">
+            FY {fy}–{String((fy + 1) % 100).padStart(2, '0')}
+          </span>
+          <Caveat tone="info" label="How the annual figure is put together">
+            Monthly figures are counted twelve times, yearly once. Loans and policies are counted
+            because they leave the account like anything else — a plan that omitted them would
+            understate the year and, through it, everything built on it.
+          </Caveat>
+        </span>
+      }
     >
       <p
         className="figure"
@@ -149,11 +160,6 @@ function AnnualSummary({
         </div>
       )}
 
-      <p className="note mt-3.5">
-        Monthly figures are counted twelve times, yearly once. Loans and policies are counted
-        because they leave the account like anything else — a plan that omitted them would understate
-        the year and, through it, everything built on it.
-      </p>
     </Card>
   );
 }
@@ -203,6 +209,13 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
     <Card
       title="FIRE target"
       aside={
+        <span className="flex flex-wrap items-center gap-2.5">
+          <Caveat tone="info" label="How the ladder is built, and what it does not claim">
+            Each year is the one before it plus {inflationPct}%, compounded, and the ladder starts at
+            this year rather than at whenever it was last set up — which is how a target quietly stops
+            being enough. Which multiple is right is a judgement about risk, so the app shows what you
+            ask for and recommends nothing.
+          </Caveat>
         <label className="flex items-center gap-2">
           <span className="micro-label">Retiring in</span>
           <input
@@ -218,6 +231,7 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
           />
           <span className="note">years</span>
         </label>
+        </span>
       }
     >
       {target !== undefined && (
@@ -357,12 +371,6 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
         </button>
       )}
 
-      <p className="note mt-3">
-        Each year is the one before it plus {inflationPct}%, compounded, and the ladder starts at
-        this year rather than at whenever it was last set up — which is how a target quietly stops
-        being enough. Which multiple is right is a judgement about risk, so the app shows what you
-        ask for and recommends nothing.
-      </p>
     </Card>
   );
 }
@@ -747,11 +755,14 @@ function SuggestionPicker({
 
       {problem !== null && <Problem>{problem}</Problem>}
 
-      <p className="note">
-        Marked <strong>compulsory</strong> where the spend arrives whether or not anybody decides
-        to — a fee, a premium, a bill. It is a starting guess: the same name is a commitment in
-        one household and a choice in another, and it is editable afterwards.
+      <p className="note mt-2.5">
+        <Caveat tone="info" label="What compulsory means on these">
+          Marked <strong>compulsory</strong> where the spend arrives whether or not anybody decides
+          to — a fee, a premium, a bill. It is a starting guess: the same name is a commitment in
+          one household and a choice in another, and it is editable afterwards.
+        </Caveat>
       </p>
+
     </div>
   );
 }
@@ -828,17 +839,19 @@ function Commitments({
   return (
     <Card
       title="Loans and policies"
+      aside={
+        <Caveat tone="info" label="What these count toward, and what they do not">
+          These leave the account like any other spending and count toward the year. What makes a
+          loan reduce net worth and a policy not — principal, cover, renewal — belongs with the
+          screen that answers that question, and is not recorded here yet.
+        </Caveat>
+      }
       collapsible
       // Closed unless there is nothing to see. These are set once a year and
       // read rarely, and open they pushed the ledger below three screens.
       defaultOpen={count === 0}
       summary={count === 0 ? 'None yet.' : `${String(count)} recorded.`}
     >
-      <p className="note mb-3">
-        These leave the account like any other spending and count toward the year. What makes a loan
-        reduce net worth and a policy not — principal, cover, renewal — belongs with the screen that
-        answers that question, and is not recorded here yet.
-      </p>
 
       {listing.liabilities.length === 0 && listing.policies.length === 0 ? (
         <p className="note">Nothing recorded yet.</p>

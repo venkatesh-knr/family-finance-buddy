@@ -419,6 +419,7 @@ export function OverviewScreen({
           <div className="mt-3.5 flex flex-wrap items-end gap-3">
             <div className="w-[160px]">
               <Field
+                hint="dated"
                 label={`1 ${worth.missing[0]?.base ?? ''} in ${worth.missing[0]?.quote ?? ''}`}
                 numeric
                 inputMode="decimal"
@@ -439,11 +440,11 @@ export function OverviewScreen({
             >
               {savingRate ? 'Saving…' : `Record for ${asOf ?? today}`}
             </Button>
-            <p className="note w-full">
+            <Caveat tone="info" label="What date this rate applies from">
               Recorded against {asOf ?? today} and used only for figures on or after it. An earlier
               total keeps the rate it was converted at, so last year does not move because the rupee
               did today.
-            </p>
+            </Caveat>
           </div>
         )}
 
@@ -538,7 +539,19 @@ export function OverviewScreen({
         const rows = allocationByKind({ holdings, valuations, currency: total.currency });
         if (rows.length === 0) return null;
         return (
-          <Card key={total.currency} title="Allocation" aside={<span className="note">{total.currency}</span>}>
+          <Card
+            key={total.currency}
+            title="Allocation"
+            aside={
+              <span className="flex flex-wrap items-center gap-2.5">
+                <span className="note">{total.currency}</span>
+                <Caveat tone="info" label="What these shares are of">
+                  Shares are of what has been valued in {total.currency}. A holding nobody has read is
+                  not in this chart at all — it would need a value to have a share.
+                </Caveat>
+              </span>
+            }
+          >
             <ul>
               {rows.map((row, index) => (
                 <li key={row.kind} className="alloc-row">
@@ -569,10 +582,6 @@ export function OverviewScreen({
                 </li>
               ))}
             </ul>
-            <p className="note mt-3.5">
-              Shares are of what has been valued in {total.currency}. A holding nobody has read is
-              not in this chart at all — it would need a value to have a share.
-            </p>
           </Card>
         );
       })}
@@ -613,6 +622,12 @@ export function OverviewScreen({
               <Button type="button" disabled={closing} onClick={() => void close()}>
                 {closing ? 'Closing…' : `Close ${lastMonthEnd.slice(0, 7)}`}
               </Button>
+              <Caveat tone="info" label="What closing a month does">
+                Closing carries each holding&rsquo;s latest reading in that month to the month end and
+                marks it <Pill tone="warn">backfill</Pill> — a defensible approximation, weaker than a
+                reading taken on the day. It values nothing it was not told, so a holding nobody read
+                stays unread. Nothing is overwritten, and running it twice does nothing.
+              </Caveat>
               {closed !== null && (
                 <span className="note">
                   {closed.carried === 0
@@ -622,12 +637,6 @@ export function OverviewScreen({
                 </span>
               )}
             </div>
-            <p className="note">
-              Closing carries each holding&rsquo;s latest reading in that month to the month end and
-              marks it <Pill tone="warn">backfill</Pill> — a defensible approximation, weaker than a
-              reading taken on the day. It values nothing it was not told, so a holding nobody read
-              stays unread. Nothing is overwritten, and running it twice does nothing.
-            </p>
           </div>
         )}
       </Card>
