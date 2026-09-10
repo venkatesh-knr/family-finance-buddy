@@ -98,6 +98,18 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
           aside={
             <span className="flex flex-wrap items-center gap-2.5">
               <span className="note">latest readings</span>
+              {/*
+                Said once, on the heading, rather than as a standing paragraph
+                under figures somebody has read a hundred times. The half of it
+                that WARNS — that an unread holding is missing from the total —
+                is not here: it rides on the affected figure below, and only
+                when there is one.
+              */}
+              <Caveat tone="info" label="How these totals are put together">
+                Each currency on its own, never added across. A holding nobody has read is not in
+                these figures at all, because counting it as zero would make the total look
+                complete while being short.
+              </Caveat>
               {canWrite && <RefreshPrices onRefresh={refresh} />}
             </span>
           }
@@ -113,6 +125,13 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
                   >
                     {formatMoney(money(total.value, total.currency), { privacy, compact: true })}
+                    {total.unread > 0 && (
+                      <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
+                        {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never
+                        been valued, so this total is short by whatever they are worth. They are
+                        absent rather than counted as zero, which would make it look complete.
+                      </Caveat>
+                    )}
                   </p>
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">
@@ -140,10 +159,7 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
               );
             })}
           </div>
-          <p className="note mt-3.5">
-            Each currency on its own, and a holding nobody has read is not in these figures at all
-            — counting it as zero would make the total look complete while being short.
-          </p>
+
         </Card>
       )}
 
@@ -151,7 +167,20 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
         title={rows.length === 0 ? 'Holdings' : `Holdings (${String(rows.length)})`}
         aside={
           <label className="flex items-center gap-2">
-            <span className="micro-label">Peak for</span>
+            <span className="micro-label">
+              Peak for
+              {/*
+                This explained the whole screen from the bottom of it, where
+                somebody reads it once and then scrolls past it forever. It
+                belongs to the control it is about.
+              */}
+              <Caveat tone="info" label="What this peak is, and why the readings matter">
+                Foreign-asset disclosure asks for the highest value a holding reached during the
+                calendar year — January to December — not its closing value, and not the tax year.
+                It cannot be reconstructed from a year-end statement, which is why the readings
+                matter.
+              </Caveat>
+            </span>
             <select
               className="field w-[92px]"
               value={year}
@@ -214,11 +243,6 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
         )}
       </Card>
 
-      <p className="note">
-        Foreign-asset disclosure asks for the highest value a holding reached during the calendar
-        year — January to December — not its closing value, and not the tax year. It cannot be
-        reconstructed from a year-end statement, which is why the readings matter.
-      </p>
     </div>
   );
 }
@@ -756,10 +780,16 @@ function AddHolding({
           }}
         />
         <span className="note">
-          <strong>Foreign asset for disclosure.</strong> A US stock or ETF bought through a US
-          broker is. An Indian fund that merely tracks a US index is not — it is an Indian asset
-          for tax, even though its value moves with the dollar. This is a tax question, not a
-          currency one, so the app will not guess it.
+          <strong>Foreign asset for disclosure.</strong>
+          {/*
+            Four sentences beside a checkbox, every time. The first one is the
+            decision; the rest is why, which is worth reading once.
+          */}
+          <Caveat tone="info" label="Which holdings count as a foreign asset">
+            A US stock or ETF bought through a US broker is. An Indian fund that merely tracks a US
+            index is not — it is an Indian asset for tax, even though its value moves with the
+            dollar. This is a tax question, not a currency one, so the app will not guess it.
+          </Caveat>
         </span>
       </label>
     </Card>
