@@ -41,3 +41,6 @@ env.txt
 
 # local dev-server config for the in-app browser preview
 .claude/
+
+# Vite's dependency-optimisation cache. Build output, not source.
+.vite/

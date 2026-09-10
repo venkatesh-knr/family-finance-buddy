@@ -245,15 +245,6 @@ export async function listPlan(options: {
   };
 }
 
-/*
- * seed_starter_categories is deliberately no longer called.
- *
- * It inserted thirty-six categories copied from one household's workbook, and
- * the screen now offers a grouped catalogue to choose from instead. The
- * database function still exists and is harmless; dropping it belongs in a
- * migration of its own rather than smuggled into a UI change.
- */
-
 export interface BudgetInput {
   readonly householdId: Uuid;
   readonly categoryId: Uuid;
