@@ -1,6 +1,6 @@
 {
   "name": "family-finance-buddy",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Family Finance Buddy \u2014 a household finance app for an Indian family. Static SPA on GitHub Pages, talking directly to Supabase.",
