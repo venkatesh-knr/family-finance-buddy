@@ -77,10 +77,18 @@ export async function listPrices(externalIds: readonly string[]): Promise<readon
  * being read. It is read now. Only a genuine transport failure — no response
  * at all — is described as not reaching anything.
  */
-export async function refreshPrices(): Promise<{ written: number; note?: string }> {
+export async function refreshPrices(
+  externalIds: readonly string[],
+): Promise<{ written: number; note?: string }> {
   const client = supabase();
 
-  const { data, error } = await client.functions.invoke('fetch-prices', { body: {} });
+  // The caller says which instruments it wants priced. The driver used to read
+  // that from `instrument` with the secret key, which meant a standing read
+  // over every household's portfolio to save this round trip. These ids came
+  // from a listing the member was already entitled to.
+  const { data, error } = await client.functions.invoke('fetch-prices', {
+    body: { externalIds: [...new Set(externalIds)] },
+  });
 
   if (error !== null) {
     const said = await driverSaid(error);

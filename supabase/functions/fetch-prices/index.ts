@@ -10,10 +10,10 @@
  * policy and its rate limit into every screen, and would make "which figure
  * did we use" depend on whose device happened to load first.
  *
- * ── why this holds the secret key ───────────────────────────────────────
+ * ── why this holds the secret key, and how little it does with it ───────
  *
- * `price` has no insert grant for anybody. It is reference data — a NAV is the
- * same fact for every household — and no member writes one, because a
+ * `price` has no insert grant for any client. It is reference data — a NAV is
+ * the same fact for every household — and no member writes one, because a
  * household able to write its own NAV could move its own net worth, which is
  * the figure the whole app exists to state honestly.
  *
@@ -21,6 +21,11 @@
  * same allowance accept-invite already relies on: the key "lives only in the
  * backend's own function environment", never in the repository, the bundle, a
  * build log, or an Actions secret.
+ *
+ * What it can do with that key is one thing: append rows to the table of
+ * published prices. It has insert on `price` and no privilege anywhere else —
+ * in particular no read of `instrument`, which an earlier version needed and
+ * which would have been a standing view of every household's portfolio.
  *
  * ── why it is not on a cron ─────────────────────────────────────────────
  *
@@ -112,38 +117,41 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   const admin = createClient(url, secret, { auth: { persistSession: false } });
 
-  // Which identifiers anybody actually holds. The file carries every scheme in
-  // India, and writing all of them would be tens of thousands of rows a day
-  // that nothing reads.
-  const { data: wanted, error: wantedError } = await admin
-    .from('instrument')
-    .select('price_external_id')
-    .eq('price_source', 'amfi')
-    .not('price_external_id', 'is', null)
-    .eq('status', 'active');
-
-  if (wantedError !== null) {
-    // The provider's own message, not a summary of it. A generic sentence here
-    // cost a diagnosis: "Could not read which instruments to price" is true of
-    // a missing column, a rejected key and a network blip alike, and the three
-    // are looked for in completely different places. Nothing in a PostgREST
-    // error names a household or a member, so there is nothing here to leak.
-    return json(
-      {
-        error: `Could not read which instruments to price: ${wantedError.message}`,
-        hint: wantedError.hint ?? undefined,
-        code: wantedError.code ?? undefined,
-      },
-      500,
-      origin,
+  // Which schemes to fetch comes from the caller, not from a privileged read
+  // of everybody's holdings.
+  //
+  // The first version asked `instrument` directly, which needed select on that
+  // table for the secret key — a standing read over every household's
+  // portfolio, granted permanently to save a round trip. Postgres even
+  // suggested it by name when the permission was missing. The caller has
+  // already listed its own instruments under its own policies, so it can say
+  // which identifiers it wants and the driver simply fetches those.
+  //
+  // A caller naming an instrument it cannot see gains nothing: the result is a
+  // published NAV for a fund, which is public knowledge and says nothing about
+  // who holds it.
+  let ids: Set<string>;
+  try {
+    const body: unknown = await request.json();
+    const asked = (body as { externalIds?: unknown }).externalIds;
+    if (!Array.isArray(asked)) {
+      return json({ error: 'Ask for some instruments: externalIds is required.' }, 400, origin);
+    }
+    ids = new Set(
+      asked
+        .filter((id): id is string => typeof id === 'string')
+        .map((id) => id.trim().toUpperCase())
+        .filter((id) => id !== '' && id.length <= 64),
     );
+  } catch {
+    return json({ error: 'That request was not JSON.' }, 400, origin);
   }
 
-  const ids = new Set(
-    (wanted ?? [])
-      .map((row) => (row as { price_external_id: string | null }).price_external_id)
-      .filter((id): id is string => id !== null),
-  );
+  // Bounded, so one call cannot ask for the whole file to be written.
+  const LIMIT = 500;
+  if (ids.size > LIMIT) {
+    return json({ error: `Too many instruments at once: ${String(LIMIT)} is the limit.` }, 400, origin);
+  }
 
   if (ids.size === 0) {
     return json({ fetched: 0, written: 0, note: 'No instrument names an AMFI code.' }, 200, origin);

@@ -12,7 +12,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(10);
+select plan(13);
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -65,6 +65,29 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.price', 'delete'),
   'nor delete one, which would make a past valuation unreproducible'
+);
+
+-- ═══════════════ the driver may write, and only that (3)
+--
+-- Deny-by-default applies to the privileged role too: the event trigger does
+-- not auto-expose a new table to anybody, service_role included. So the one
+-- privilege the driver needs is granted explicitly, and the ones it does not
+-- need are asserted absent — a key that bypasses every row policy should be
+-- able to do exactly one thing.
+
+select ok(
+  has_table_privilege('service_role', 'public.price', 'insert'),
+  'the driver may append a price, which is the whole of its job'
+);
+
+select ok(
+  not has_table_privilege('service_role', 'public.price', 'update'),
+  'and may not revise one: a correction is a new row, so the old figure survives'
+);
+
+select ok(
+  not has_table_privilege('service_role', 'public.instrument', 'select'),
+  'and cannot read which instruments anybody holds — the caller says what to fetch, so a key that bypasses every policy has no standing view of a portfolio'
 );
 
 -- ══════════════════════════════════ everybody may read them (2)
