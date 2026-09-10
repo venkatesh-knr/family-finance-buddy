@@ -239,17 +239,22 @@
   /*
    * A caveat marker, and the panel it opens.
    *
-   * Sized in em so it grows with the figure beside it rather than staying a
-   * fixed dot next to 200%-scaled text. The tap area is padded out past the
-   * glyph: a 14px circle is not a touch target, and this is a phone app.
+   * The mark is sized in em so it grows with the figure beside it rather than
+   * staying a fixed dot next to 200%-scaled text, and its tap area is padded
+   * out past the ring: a 14px circle is not a touch target and this is a phone
+   * app.
    *
-   * The panel is a block inside an inline wrapper, so it drops below the line
-   * it belongs to instead of forcing the figure to reflow around it.
+   * The panel is a native popover, in the top layer. That is not a flourish —
+   * it is the fix. As an ordinary child of the label it belonged to, it
+   * inherited the label's uppercase, its 0.13em letter spacing and its mono
+   * face, and it was confined to whatever narrow flex column the label sat in.
+   * A 116px column turned a sentence into a vertical strip of shouted words.
+   * The top layer escapes the column and every overflow clip on the way up,
+   * and brings light dismiss and Escape with it.
+   *
+   * The typography is reset explicitly rather than hopefully: a popover is
+   * still a descendant in the cascade even when it is not one on the screen.
    */
-  .caveat-wrap {
-    display: inline;
-  }
-
   .caveat-mark {
     align-items: center;
     background: none;
@@ -262,11 +267,13 @@
     font-weight: 700;
     height: 1.45em;
     justify-content: center;
+    letter-spacing: normal;
     line-height: 1;
     margin-inline-start: 0.4em;
     min-width: 1.45em;
     padding: 0;
     position: relative;
+    text-transform: none;
     vertical-align: middle;
   }
 
@@ -275,14 +282,6 @@
     content: '';
     position: absolute;
     inset: -0.85em;
-  }
-
-  .caveat-mark[aria-expanded='true'] {
-    background: currentcolor;
-  }
-
-  .caveat-mark[aria-expanded='true'] > span {
-    color: var(--surface);
   }
 
   /* A figure that is wrong. The triangle carries it as much as the coral. */
@@ -297,12 +296,62 @@
 
   .caveat-panel {
     background: var(--surface-2);
-    border-left: 3px solid currentcolor;
-    border-radius: 4px;
+    border: 1px solid currentcolor;
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
+    /* Every one of these undoes something a micro-label would have imposed. */
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    line-height: 1.5;
+    text-transform: none;
+    /*
+     * Wide enough to read, never wider than the phone. min() rather than a
+     * media query because the constraint is the viewport itself, and one rule
+     * that cannot disagree with itself beats two that can.
+     */
+    max-width: min(30rem, calc(100vw - 2rem));
+    padding: 14px 16px;
+    width: max-content;
+  }
+
+  .caveat-panel::backdrop {
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .caveat-panel-title {
+    color: currentcolor;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  .caveat-panel-body {
     color: var(--ink-2);
-    display: block;
-    margin-top: 7px;
-    padding: 7px 10px;
+  }
+
+  .caveat-close {
+    background: none;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit;
+    margin-top: 10px;
+    padding: 6px 0 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /*
+   * A browser without the top layer would otherwise show every panel at once,
+   * inline and permanently — which is worse than the crowding this replaced.
+   * Hidden there instead: the marker becomes inert rather than the page
+   * becoming a wall.
+   */
+  @supports not selector(:popover-open) {
+    .caveat-panel {
+      display: none;
+    }
   }
 
   .notice-toggle {
