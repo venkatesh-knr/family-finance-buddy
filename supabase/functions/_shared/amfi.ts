@@ -25,10 +25,18 @@ const MONTHS: Record<string, string> = {
 /**
  * Parse AMFI's NAVAll.txt.
  *
- * A header line, then scheme lines, with fund-house names interleaved as bare
- * text. Anything that is not a scheme line is skipped rather than guessed at:
+ * A header line, then scheme lines, with fund-house names and category
+ * headings interleaved as bare text. Anything that is not a scheme line is
+ * skipped rather than guessed at. Eight fields:
  *
- *   Scheme Code;ISIN Payout;ISIN Reinvestment;Scheme Name;NAV;Date
+ *   Scheme Code;ISIN Payout/Growth;ISIN Reinvestment;Scheme Name;Plan;Option;NAV;Date
+ *
+ * The Plan and Option columns are the reason this is written against the real
+ * file and not a reasonable guess at it. A first version assumed six fields,
+ * read "Direct Plan" as the NAV and "Growth Option" as the date, and skipped
+ * every one of the fourteen thousand rows — reporting "no matching scheme"
+ * forever, with nothing on any screen to say why. Hence the field count is
+ * checked and the positions are named.
  *
  * Two identifiers per row, because a scheme has separate ISINs for its payout
  * and reinvestment plans and a holding can be either. Both are recorded
@@ -45,13 +53,16 @@ export function parseAmfi(text: string): readonly Quote[] {
 
   for (const line of text.split('\n')) {
     const parts = line.split(';');
-    if (parts.length < 6) continue;
+    // Exactly eight. A shorter line is a heading, a blank, or a format that
+    // has changed — and a format that has changed must not be parsed on the
+    // assumption it has not.
+    if (parts.length !== 8) continue;
 
     const trimmed = parts.map((part) => part.trim());
     const payoutIsin = trimmed[1] ?? '';
     const reinvestIsin = trimmed[2] ?? '';
-    const nav = trimmed[4] ?? '';
-    const date = trimmed[5] ?? '';
+    const nav = trimmed[6] ?? '';
+    const date = trimmed[7] ?? '';
 
     // The header line and any stray text fail this and are skipped.
     if (!/^\d+(\.\d+)?$/.test(nav)) continue;

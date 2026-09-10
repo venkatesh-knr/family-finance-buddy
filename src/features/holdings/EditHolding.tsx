@@ -50,6 +50,8 @@ export function EditHolding({
   const [exposure, setExposure] = useState(holding.instrument.exposureCurrency);
   const [isForeign, setIsForeign] = useState(holding.instrument.isForeignAsset);
   const [assetClass, setAssetClass] = useState<string>(holding.instrument.taxAssetClass ?? '');
+  const [priceSource, setPriceSource] = useState<string>(holding.instrument.priceSource ?? '');
+  const [priceId, setPriceId] = useState<string>(holding.instrument.priceExternalId ?? '');
   const [quantity, setQuantity] = useState(() => formatQuantity(parseQuantity(holding.quantity)));
   const [cost, setCost] = useState(() =>
     holding.cost === null ? '' : toAmountInput(holding.cost.minor, holding.cost.currency),
@@ -110,6 +112,8 @@ export function EditHolding({
         ...(hasHistory ? {} : { currency, exposureCurrency: exposure }),
         isForeignAsset: isForeign,
         taxAssetClass: assetClass,
+        priceSource: priceSource,
+        priceExternalId: priceId,
       },
     };
 
@@ -124,7 +128,7 @@ export function EditHolding({
     }
   }, [
     cost, currency, exposure, hasHistory, holding.id, holding.instrument.id, isForeign, isMine,
-    assetClass, kind, name, onDone, openedOn, personal, quantity, symbol,
+    assetClass, kind, name, onDone, openedOn, personal, priceId, priceSource, quantity, symbol,
   ]);
 
   return (
@@ -286,6 +290,51 @@ export function EditHolding({
         <button type="button" className="note underline" onClick={onCancel}>
           Cancel
         </button>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
+        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
+          <span className="micro-label">
+            Priced by
+            {/*
+              Linking a holding to a feed is what stops the monthly typing. It
+              is optional and stays optional: most holdings have no feed that
+              covers them, and a valuation entered by hand is what this app has
+              always run on.
+            */}
+            <Caveat tone="info" label="What a price feed does, and what it does not">
+              With a feed, the app fetches the published price and offers it — you still record it,
+              so every stored valuation has a person and a moment behind it. Without one, nothing
+              changes: you type the value as before. AMFI covers Indian mutual funds and knows them
+              by ISIN.
+            </Caveat>
+          </span>
+          <select
+            className="field"
+            value={priceSource}
+            onChange={(event) => {
+              setPriceSource(event.target.value);
+              if (event.target.value === '') setPriceId('');
+            }}
+          >
+            <option value="">No feed</option>
+            <option value="amfi">AMFI (Indian funds)</option>
+          </select>
+        </label>
+
+        {priceSource !== '' && (
+          <div className="w-full sm:w-[190px] sm:shrink-0">
+            <Field
+              label="Its code there"
+              placeholder="INF209K01Z15"
+              hint="The ISIN"
+              value={priceId}
+              onChange={(event) => {
+                setPriceId(event.target.value.toUpperCase());
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <label className="mt-3 flex items-start gap-2.5">

@@ -233,6 +233,16 @@ export interface Instrument {
    * that is right for most instruments and silently wrong for the rest.
    */
   readonly taxAssetClass: AssetClass | null;
+  /**
+   * Which driver prices this and how that driver names it.
+   *
+   * Both or neither, as the schema insists: a source with nothing to look up
+   * cannot fetch, and an identifier with no source does not say who to ask.
+   * Null means no feed covers it and its value is typed in, which is most
+   * holdings and is not an error.
+   */
+  readonly priceSource: string | null;
+  readonly priceExternalId: string | null;
   readonly isArchived: boolean;
 }
 
