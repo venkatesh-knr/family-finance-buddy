@@ -33,10 +33,10 @@ jobs:
       # hash rather than a moving tag (blueprint §15, layer 08). Get them with
       #   gh api repos/actions/checkout/commits/v5 --jq .sha
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -44,6 +44,13 @@ jobs:
       # Clean install from the committed lockfile. Never `npm install` in CI.
       - name: Install
         run: npm ci
+
+      # First, and needing nothing installed: the workflow checking its own
+      # supply chain. A mutable ref means the action that runs tomorrow need
+      # not be the one reviewed today, and a build at a release tag cannot be
+      # reproduced.
+      - name: Every action is pinned to a commit
+        run: bash scripts/check-actions-pinned.sh
 
       - name: Typecheck
         run: npm run typecheck
@@ -69,7 +76,7 @@ jobs:
       # app leaks, so they get the same rigour as the tax arithmetic.
 
       - name: Set up the Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
           version: latest
 
@@ -113,7 +120,7 @@ jobs:
 
       - name: Upload the site
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: dist
 
@@ -133,4 +140,4 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

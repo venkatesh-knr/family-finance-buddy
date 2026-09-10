@@ -1,0 +1,29 @@
+-- Family Finance Buddy — dropping the starter categories nobody chose.
+--
+-- `seed_starter_categories` inserted thirty-six categories in one click,
+-- copied from the workbook this app replaced. The names were somebody's own —
+-- "Milk Aavin", "Mobile1", "Insurance Scooty" — and a household without a
+-- scooty inherited an envelope it would never use and had to go and archive.
+--
+-- The screen offers a grouped catalogue to choose from instead, and
+-- `src/repo/planning.ts` stopped calling this when that landed. Its comment
+-- there said dropping the function "belongs in a migration of its own rather
+-- than smuggled into a UI change". This is that migration.
+--
+-- Why bother, given a function nobody calls costs nothing to leave:
+--
+--   It is SECURITY DEFINER with execute granted to `authenticated`. That is a
+--   small piece of reachable, privileged, untested surface — untested because
+--   nothing exercises it any more, which is precisely when a definer function
+--   is worth removing rather than keeping. Dead code that can still be invoked
+--   is not dead.
+--
+--   And it encodes one household's category names in the schema, where
+--   somebody would eventually find them and assume they were the intended
+--   defaults.
+--
+-- Nothing depends on it. The categories it created are ordinary rows and stay
+-- exactly as they are; this removes only the means of creating more of them
+-- that way.
+
+drop function if exists public.seed_starter_categories(uuid);
