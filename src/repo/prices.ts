@@ -110,9 +110,11 @@ async function driverSaid(error: unknown): Promise<string | null> {
 
   try {
     const body: unknown = await context.clone().json();
-    const message = (body as { error?: unknown }).error;
+    const shape = body as { error?: unknown; hint?: unknown };
+    const message = shape.error;
     if (typeof message === 'string' && message.trim() !== '') {
-      return `${message} (${String(context.status)})`;
+      const hint = typeof shape.hint === 'string' && shape.hint.trim() !== '' ? ` ${shape.hint}` : '';
+      return `${message}${hint} (${String(context.status)})`;
     }
   } catch {
     // Not JSON. The status is still worth having.

@@ -41,6 +41,12 @@
  *
  * Deploy:  supabase functions deploy fetch-prices --use-api
  * Secrets: supabase secrets set SERVICE_ROLE_KEY=sb_secret_...
+ *
+ * That secret must be the CURRENT secret key. A project that has moved to the
+ * new key format rejects the legacy service_role JWT outright, and the
+ * rejection surfaces here as a failure to read which instruments to price —
+ * which is why that error now carries the provider's own words rather than a
+ * summary of them.
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -117,7 +123,20 @@ Deno.serve(async (request: Request): Promise<Response> => {
     .eq('status', 'active');
 
   if (wantedError !== null) {
-    return json({ error: 'Could not read which instruments to price.' }, 500, origin);
+    // The provider's own message, not a summary of it. A generic sentence here
+    // cost a diagnosis: "Could not read which instruments to price" is true of
+    // a missing column, a rejected key and a network blip alike, and the three
+    // are looked for in completely different places. Nothing in a PostgREST
+    // error names a household or a member, so there is nothing here to leak.
+    return json(
+      {
+        error: `Could not read which instruments to price: ${wantedError.message}`,
+        hint: wantedError.hint ?? undefined,
+        code: wantedError.code ?? undefined,
+      },
+      500,
+      origin,
+    );
   }
 
   const ids = new Set(
@@ -162,7 +181,15 @@ Deno.serve(async (request: Request): Promise<Response> => {
   );
 
   if (writeError !== null) {
-    return json({ error: 'Could not record the prices.' }, 500, origin);
+    return json(
+      {
+        error: `Could not record the prices: ${writeError.message}`,
+        hint: writeError.hint ?? undefined,
+        code: writeError.code ?? undefined,
+      },
+      500,
+      origin,
+    );
   }
 
   return json({ fetched: quotes.length, written: quotes.length }, 200, origin);
