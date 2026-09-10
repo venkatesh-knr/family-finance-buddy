@@ -63,15 +63,38 @@ export async function listPrices(externalIds: readonly string[]): Promise<readon
  * "Clients never call a data vendor directly." This posts to the edge function
  * and reports what it did; the function is the only thing that has ever heard
  * of AMFI.
+ *
+ * ── saying what actually went wrong ─────────────────────────────────────
+ *
+ * The first version of this caught every failure and reported "Could not
+ * reach the price driver". That was a guess dressed as a diagnosis. The
+ * driver was deployed and reachable the whole time; the message sent somebody
+ * looking at deployment and secrets for a problem that was neither, which is
+ * worse than saying nothing.
+ *
+ * `functions.invoke` reports a non-2xx as an error and hands back the response
+ * on `context`, so the function's own sentence is available and simply was not
+ * being read. It is read now. Only a genuine transport failure — no response
+ * at all — is described as not reaching anything.
  */
-export async function refreshPrices(): Promise<{ written: number; note?: string }> {
+export async function refreshPrices(
+  externalIds: readonly string[],
+): Promise<{ written: number; note?: string }> {
   const client = supabase();
 
-  const { data, error } = await client.functions.invoke('fetch-prices', { body: {} });
+  // The caller says which instruments it wants priced. The driver used to read
+  // that from `instrument` with the secret key, which meant a standing read
+  // over every household's portfolio to save this round trip. These ids came
+  // from a listing the member was already entitled to.
+  const { data, error } = await client.functions.invoke('fetch-prices', {
+    body: { externalIds: [...new Set(externalIds)] },
+  });
 
   if (error !== null) {
+    const said = await driverSaid(error);
+    if (said !== null) throw new Error(said);
     throw new Error(
-      'Could not reach the price driver. Prices are unchanged — nothing was written.',
+      'The price driver did not respond. Prices are unchanged — nothing was written.',
     );
   }
 
@@ -80,4 +103,37 @@ export async function refreshPrices(): Promise<{ written: number; note?: string 
     written: typeof result.written === 'number' ? result.written : 0,
     ...(typeof result.note === 'string' ? { note: result.note } : {}),
   };
+}
+
+/**
+ * The sentence the function sent back, if it sent one.
+ *
+ * Deliberately forgiving about the shape: a function that failed before it
+ * could compose JSON still has a status worth reporting, and "502" tells
+ * somebody more than a sentence asserting the wrong cause does.
+ */
+async function driverSaid(error: unknown): Promise<string | null> {
+  const context = (error as { context?: unknown }).context;
+  if (!(context instanceof Response)) return null;
+
+  try {
+    const body: unknown = await context.clone().json();
+    const shape = body as { error?: unknown; hint?: unknown };
+    const message = shape.error;
+    if (typeof message === 'string' && message.trim() !== '') {
+      const hint = typeof shape.hint === 'string' && shape.hint.trim() !== '' ? ` ${shape.hint}` : '';
+      return `${message}${hint} (${String(context.status)})`;
+    }
+  } catch {
+    // Not JSON. The status is still worth having.
+  }
+
+  try {
+    const text = (await context.clone().text()).trim();
+    if (text !== '') return `The price driver returned ${String(context.status)}: ${text.slice(0, 200)}`;
+  } catch {
+    // Nothing readable.
+  }
+
+  return `The price driver returned ${String(context.status)} and said nothing.`;
 }

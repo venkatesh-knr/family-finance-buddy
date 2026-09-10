@@ -280,7 +280,11 @@ export function useHoldings(householdId: string | null): {
     reload: load,
     taxRules,
     refresh: async () => {
-      const result = await refreshPrices();
+      const result = await refreshPrices(
+        (listing?.holdings ?? [])
+          .map((holding) => holding.instrument.priceExternalId)
+          .filter((id): id is string => id !== null),
+      );
       await load();
       return result;
     },
