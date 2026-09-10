@@ -31,7 +31,7 @@ import { useHoldings, type HoldingRow } from './useHoldings.ts';
 type SortBy = 'value' | 'name' | 'member';
 
 export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules } =
+  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
 
@@ -93,7 +93,15 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
       {canWrite && <AddHolding listing={listing} onAdd={add} />}
 
       {totals.length > 0 && (
-        <Card title="Portfolio" aside={<span className="note">latest readings</span>}>
+        <Card
+          title="Portfolio"
+          aside={
+            <span className="flex flex-wrap items-center gap-2.5">
+              <span className="note">latest readings</span>
+              {canWrite && <RefreshPrices onRefresh={refresh} />}
+            </span>
+          }
+        >
           <div className="flex flex-col gap-4.5">
             {totals.map((total) => {
               const gain = total.value - total.invested;
@@ -323,6 +331,10 @@ function HoldingCard({
           </dd>
         </div>
       </dl>
+
+      {row.quoted !== null && (
+        <QuotedValue row={row} canWrite={canWrite} today={today} onRecord={onRecord} listing={listing} />
+      )}
 
       {canWrite && (
         <RecordReading
@@ -878,5 +890,151 @@ function ArchiveHolding({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * What the driver says this is worth, offered rather than assumed.
+ *
+ * The figure is not a reading until somebody records it, and that distinction
+ * is the point rather than an extra click. A valuation is a statement the
+ * household makes about its own position — §606's whole argument is that these
+ * readings are the record, and a record that wrote itself from a feed is a
+ * different kind of claim from one a person stood behind. It also keeps the
+ * feed auditable: every stored valuation has a member and a moment attached.
+ *
+ * The date the price is FOR is shown, not the date it was fetched. A NAV for
+ * Friday read on Monday is Friday's figure, and showing Monday would quietly
+ * misdate every valuation taken from it.
+ */
+function QuotedValue({
+  row,
+  canWrite,
+  today,
+  onRecord,
+  listing,
+}: {
+  row: HoldingRow;
+  canWrite: boolean;
+  today: string;
+  onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
+  listing: HoldingListing;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const quoted = row.quoted;
+  if (quoted === null) return null;
+
+  // Already recorded for that date, so there is nothing to offer.
+  const already = row.latest !== null && row.latest.date >= quoted.price.asOf;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+      <span className="micro-label">Quoted</span>
+      <span className="num" style={{ color: 'var(--ink)' }}>
+        {formatMoney(quoted.value, { privacy: false })}
+      </span>
+      <span className="note">
+        {quoted.price.value} on {formatIsoDate(quoted.price.asOf)}
+      </span>
+
+      {already ? (
+        <span className="note">already recorded</span>
+      ) : (
+        canWrite && (
+          <button
+            type="button"
+            className="note underline"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setProblem(null);
+              void onRecord({
+                householdId: listing.household.id,
+                holdingId: row.holding.id,
+                date: quoted.price.asOf,
+                quantity: row.holding.quantity,
+                amount: quoted.value,
+                // Recorded on the date the price is for. 'manual' when that is
+                // today, 'backfill' when it is an earlier day being caught up
+                // — the same rule a typed reading follows, and the weaker
+                // label is the honest one for a figure reconstructed later.
+                source: quoted.price.asOf === today ? 'manual' : 'backfill',
+              })
+                .catch((error: unknown) => {
+                  setProblem(error instanceof Error ? error.message : 'Could not record that.');
+                })
+                .finally(() => {
+                  setBusy(false);
+                });
+            }}
+          >
+            {busy ? 'Recording…' : 'Record this as the reading'}
+          </button>
+        )
+      )}
+
+      {problem !== null && (
+        <div className="w-full">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ask the driver to fetch.
+ *
+ * A button rather than something the screen does on load, for the same reason
+ * the month-end close is: "a screen that quietly writes rows is harder to
+ * trust than one that says what it is about to do". This one reaches a vendor
+ * as well, which is a second reason not to do it behind somebody's back on
+ * every page view.
+ *
+ * It reports what happened rather than just finishing. Nothing written because
+ * nothing is linked to a feed, and nothing written because the vendor was
+ * unreachable, look identical from the outside and mean entirely different
+ * things.
+ */
+function RefreshPrices({
+  onRefresh,
+}: {
+  onRefresh: ReturnType<typeof useHoldings>['refresh'];
+}) {
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<string | null>(null);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="note underline"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setSaid(null);
+          onRefresh()
+            .then((result) => {
+              setSaid(
+                result.note ??
+                  (result.written === 0
+                    ? 'Nothing new to record.'
+                    : `${String(result.written)} price${result.written === 1 ? '' : 's'} recorded.`),
+              );
+            })
+            .catch((error: unknown) => {
+              setSaid(error instanceof Error ? error.message : 'Could not fetch prices.');
+            })
+            .finally(() => {
+              setBusy(false);
+            });
+        }}
+      >
+        {busy ? 'Fetching…' : 'Fetch prices'}
+      </button>
+      {said !== null && <span className="note">{said}</span>}
+    </>
   );
 }

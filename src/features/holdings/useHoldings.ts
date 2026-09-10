@@ -21,6 +21,8 @@ import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
 import { listTaxRules } from '../../repo/taxRules.ts';
+import { listPrices, refreshPrices } from '../../repo/prices.ts';
+import { priceOn, valueOf, type Price } from '../../domain/pricing.ts';
 import type { TaxRule } from '../../domain/tax-rules.ts';
 import type {
   Holding,
@@ -47,6 +49,17 @@ export interface HoldingRow {
   readonly cost: { readonly amount: Money | null; readonly source: 'lots' | 'holding' };
   /** Realised gains on this holding, or null when nothing has been sold. */
   readonly realisedGain: Money | null;
+  /**
+   * What the driver says this is worth today, if it prices this instrument.
+   *
+   * A suggestion and not a reading: nothing is written until somebody records
+   * it. A valuation is a statement the household makes about its own position,
+   * and having a feed does not make it the feed's statement.
+   */
+  readonly quoted: {
+    readonly price: Price;
+    readonly value: Money;
+  } | null;
   /** Every matched parcel, newest sale first, for the detail view. */
   readonly parcels: readonly Parcel[];
   /** Sales that could not be matched. Never silently absorbed. */
@@ -75,6 +88,8 @@ export function useHoldings(householdId: string | null): {
    */
   reload: () => Promise<void>;
   taxRules: readonly TaxRule[];
+  /** Ask the driver to fetch. The client never calls the vendor itself. */
+  refresh: () => Promise<{ written: number; note?: string }>;
 } {
   const [listing, setListing] = useState<HoldingListing | null>(null);
   /**
@@ -85,6 +100,13 @@ export function useHoldings(householdId: string | null): {
    * simply is not shown, rather than being guessed at.
    */
   const [taxRules, setTaxRules] = useState<readonly TaxRule[]>([]);
+  /**
+   * What the driver has recorded for the instruments this household holds.
+   *
+   * Loaded beside the holdings rather than per row: one query for the handful
+   * of identifiers on screen, instead of one per holding.
+   */
+  const [prices, setPrices] = useState<readonly Price[]>([]);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -100,9 +122,18 @@ export function useHoldings(householdId: string | null): {
     try {
       const next = await listHoldings(householdId === null ? {} : { householdId });
       const rules = await listTaxRules().catch(() => []);
+      // A price the driver has not fetched is a valuation typed in by hand,
+      // which is what this app has always had. Failing to read them must not
+      // take the screen down.
+      const quotes = await listPrices(
+        next.holdings
+          .map((holding) => holding.instrument.priceExternalId)
+          .filter((id): id is string => id !== null),
+      ).catch(() => []);
       if (mine === generation.current) {
         setListing(next);
         setTaxRules(rules);
+        setPrices(quotes);
         setProblem(null);
       }
     } catch (error) {
@@ -171,8 +202,22 @@ export function useHoldings(householdId: string | null): {
           }
         : { amount: holding.cost, source: 'holding' as const };
 
+      const externalId = holding.instrument.priceExternalId;
+      const source = holding.instrument.priceSource;
+      const quote =
+        externalId === null || source === null
+          ? null
+          : priceOn(prices, source, externalId, today);
+
       return {
         holding,
+        quoted:
+          quote === null
+            ? null
+            : {
+                price: quote,
+                value: valueOf(parseQuantity(holding.quantity), quote.value, currency),
+              },
         latest: latest === undefined ? null : { date: latest.date, amountMinor: latest.amount.minor },
         peak: calendarYearPeak({
           values: mine.map((value) => ({ date: value.date, amount: value.amount })),
@@ -186,7 +231,7 @@ export function useHoldings(householdId: string | null): {
         shortfalls: matched.shortfalls,
       };
     });
-  }, [listing, year, today]);
+  }, [listing, year, today, prices]);
 
   const add = useCallback(
     async (holding: NewHolding) => {
@@ -234,5 +279,10 @@ export function useHoldings(householdId: string | null): {
     recordSale,
     reload: load,
     taxRules,
+    refresh: async () => {
+      const result = await refreshPrices();
+      await load();
+      return result;
+    },
   };
 }

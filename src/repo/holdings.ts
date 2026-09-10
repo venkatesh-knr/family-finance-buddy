@@ -58,7 +58,7 @@ const HOLDING_COLUMNS =
   'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility';
 
 const INSTRUMENT_COLUMNS =
-  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status, tax_asset_class';
+  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status, tax_asset_class, price_source, price_external_id';
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
@@ -403,6 +403,8 @@ export interface HoldingPatch {
     readonly exposureCurrency?: string;
     readonly isForeignAsset?: boolean;
     readonly taxAssetClass?: string | null;
+    readonly priceSource?: string | null;
+    readonly priceExternalId?: string | null;
   };
 }
 
@@ -447,6 +449,19 @@ export async function updateHolding(
     if (i.isForeignAsset !== undefined) fields['is_foreign_asset'] = i.isForeignAsset;
     if (i.taxAssetClass !== undefined) {
       fields['tax_asset_class'] = i.taxAssetClass === '' ? null : i.taxAssetClass;
+    }
+    // Both or neither, as the schema insists. Sent together so a half-set pair
+    // is refused here with a sentence rather than by a constraint with a code.
+    if (i.priceSource !== undefined || i.priceExternalId !== undefined) {
+      const source = i.priceSource === '' ? null : (i.priceSource ?? null);
+      const externalId = i.priceExternalId === '' ? null : (i.priceExternalId ?? null);
+      if ((source === null) !== (externalId === null)) {
+        throw new Error(
+          'A price feed needs both a source and the code it knows this instrument by, or neither.',
+        );
+      }
+      fields['price_source'] = source;
+      fields['price_external_id'] = externalId === null ? null : externalId.trim();
     }
 
     if (Object.keys(fields).length > 0) {

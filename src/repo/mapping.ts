@@ -172,6 +172,8 @@ export function toInstrument(raw: unknown): Instrument {
     taxAssetClass: optionalString(row['tax_asset_class'], 'instrument.tax_asset_class') as
       | import('../domain/tax-rules.ts').AssetClass
       | null,
+    priceSource: optionalString(row['price_source'], 'instrument.price_source'),
+    priceExternalId: optionalString(row['price_external_id'], 'instrument.price_external_id'),
     isForeignAsset: requireBoolean(row['is_foreign_asset'], 'instrument.is_foreign_asset'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
