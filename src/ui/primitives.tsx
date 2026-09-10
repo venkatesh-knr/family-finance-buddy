@@ -443,36 +443,47 @@ export function Caveat({
   children,
 }: {
   tone?: 'warn' | 'info';
-  /** What the marker means, for anybody who cannot see the shape. */
+  /** What the marker means, and the heading of the panel it opens. */
   label: string;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
+  const panelId = useId().replace(/:/g, '');
 
   return (
-    <span className="caveat-wrap">
+    <>
       <button
         type="button"
         className={`caveat-mark ${tone === 'warn' ? 'caveat-warn' : 'caveat-info'}`}
-        aria-expanded={open}
-        aria-controls={panelId}
-        aria-label={open ? `${label} — hide` : label}
-        onClick={() => {
-          setOpen((was) => !was);
-        }}
+        aria-label={label}
+        popoverTarget={panelId}
       >
         <span aria-hidden="true">{tone === 'warn' ? '▲' : 'i'}</span>
       </button>
 
       {/*
-        Hidden rather than unmounted, so the panel the button points at exists
-        for assistive technology whether or not it is on screen.
+        The native popover, which is the whole reason this stopped rendering as
+        one word per line in capitals.
+        
+        It used to be an ordinary span inside the label it belonged to, and it
+        inherited everything a label is: uppercase, 0.13em letter spacing, the
+        mono face — and, worse, the width of whatever narrow flex column the
+        label was sitting in. A 116px column made a sentence into a vertical
+        strip of shouted words.
+        
+        A popover renders in the top layer. It escapes the column, escapes any
+        overflow clipping, and brings light dismiss and Escape for nothing. The
+        typography is reset explicitly rather than hopefully, because the
+        element is still a descendant in the cascade even when it is not one on
+        the screen.
       */}
-      <span id={panelId} className="caveat-panel text-caption" hidden={!open}>
-        {children}
-      </span>
-    </span>
+      <div id={panelId} popover="auto" className={`caveat-panel ${tone === 'warn' ? 'caveat-warn' : 'caveat-info'}`}>
+        <p className="caveat-panel-title">{label}</p>
+        <div className="caveat-panel-body">{children}</div>
+        <button type="button" className="caveat-close" popoverTarget={panelId} popoverTargetAction="hide">
+          Close
+        </button>
+      </div>
+    </>
   );
 }
 
