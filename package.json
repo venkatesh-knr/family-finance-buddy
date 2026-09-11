@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Family Finance Buddy \u2014 a household finance app for an Indian family. Static SPA on GitHub Pages, talking directly to Supabase.",
+  "description": "Family Finance Buddy — a household finance app for an Indian family. Static SPA on GitHub Pages, talking directly to Supabase.",
   "engines": {
     "node": ">=22"
   },
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",
+    "pdfjs-dist": "6.3.289",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

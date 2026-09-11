@@ -24,7 +24,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 |---|---|---|---|
 | overview | screen | partial | `src/features/overview` — net worth, assets per currency, allocation by kind, rate entry, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution |
 | expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, the ledger and its editor. The spending plan moved to FIRE — see Departures |
-| investments | screen | partial | `src/features/holdings` — holdings with an editor and archive, valuations, prices from the AMFI driver, cost and gains per position (purchases, sales, FIFO parcels, realised gain, long/short term against `tax_rule`); no fund/equity breakdown, no India/Abroad split |
+| investments | screen | partial | `src/features/holdings` — holdings with an editor and archive, valuations, prices from the AMFI driver, cost and gains per position (purchases, sales, FIFO parcels, realised gain, long/short term against `tax_rule`), and eCAS import (`ImportStatement.tsx`, parsed on the device, preview before anything is written); no fund/equity breakdown, no India/Abroad split |
 | property | screen | not-built | Stage 5 |
 | global | screen | not-built | Stage 5 — needs FX and the currency work |
 | fire | screen | partial | `src/features/plan` — annual expense, the spending plan and the commitments it is built from, target and ladder. No goals, and no projection against real contributions |
