@@ -19,12 +19,16 @@ it stops describing the code.
 |---|---|---|
 | 0 — Irreversible choices | done | — |
 | 1 — Walking skeleton | done | — |
-| 2 — Schema, policies, tests | done | 22 migrations, 132 assertions across 8 pgTAP files gating the deploy, audit triggers on every table |
+| 2 — Schema, policies, tests | done | 27 migrations, 166 assertions across 11 pgTAP files gating the deploy, audit triggers on every table holding household data |
 | 3 — The demo household | **partial** | Switcher, demo badge and the edge-case seed (`supabase/seed/demo_edge_cases.sql`) done. Reset-and-reseed is still to design: it is now a household-scoped operation rather than `db reset`. Of the four listed cases, three — a loss-making sale, a carried-forward loss, lots either side of twenty-four months — can now be recorded: `lot` and `disposal` landed in `20260910120000`, and `src/domain/lots.ts` derives the parcels. Classifying any of them long or short term still waits on `tax_rule`, and the foreign dividend on `dividend`; neither table exists. |
-| 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Outstanding: the donut, the since-inception chart, member attribution, and automatic valuation — which waits on the `price` table and its driver, the close job carrying readings that were taken and valuing nothing it was not told. |
-| 5 — The rest of the surface | not started | Property, global, tax, calendar, reports, read-auditing |
+| 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Prices now come through a driver: `price` (`20260914120000`) holds dated public reference prices, the `fetch-prices` edge function fetches AMFI and is the only thing that talks to a vendor, and a holding linked to an ISIN shows the quoted value for somebody to record. Deliberately not on a cron — see the note in that function. Outstanding: the donut, the since-inception chart, member attribution, and drivers beyond AMFI (FX, gold). |
+| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. Nothing computes a tax figure yet — netting, the ₹1.25 lakh allowance, slabs, surcharge and the foreign tax credit are all ahead. Property, global, calendar, reports and read-auditing not started |
 | 6 — Onto the devices | not started | — |
 | 7 — Real data | not started | — |
+
+**Tagged `v0.1.0`** at `2df65ab`. The tag message says what is built, what is
+not, and the one thing a tag here cannot do: migrations are forward-only, so
+checking the tag out works and restoring the database to it does not.
 
 Two things cut across the stages and are worth stating once. Section 20's
 private entries are built end to end for expenses — the control, the policies,
