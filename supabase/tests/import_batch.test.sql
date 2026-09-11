@@ -148,6 +148,19 @@ select is_empty(
   'another household sees none of your imports'
 );
 
+-- The publishable key ships in the bundle, so a password alone must not reach
+-- an import — which says which statements a household has and when.
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub to 'a1a11111-1111-4111-8111-111111111111';
+set local request.jwt.claims   to '{"sub":"a1a11111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal1"}';
+
+select is_empty(
+  $q$ select id from public.import_batch
+       where household_id = 'd1000000-0000-4000-8000-0000000000d1' $q$,
+  'and a password without a second factor reads none of them either'
+);
+
 reset role;
 set local role authenticated;
 set local request.jwt.claim.sub to 'a1a11111-1111-4111-8111-111111111111';
