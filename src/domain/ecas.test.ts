@@ -210,6 +210,37 @@ describe('the identity of a statement line', () => {
     );
   });
 
+  /**
+   * The case that matters on the second import, and the reason the ordinal
+   * counts identical lines rather than positions.
+   *
+   * A CAS is requested for a period, and the periods overlap: April to
+   * September this time, January to September next. The same instalment is
+   * the first line of one file and the seventh of the other. An identity built
+   * on position makes those two different lines, the unique index sees two
+   * different hashes and lets both in, and the fund's cost basis is doubled
+   * for that instalment.
+   */
+  it('gives a line the same identity whatever period the file covers', () => {
+    const shorter = parseEcas([
+      'Folio No: 12345678',
+      'ABC0001-A Fund - Growth Registrar : CAMS',
+      '05-Jun-2024 Purchase-SIP 5,000.00 45.123 110.8100 90.246',
+    ]);
+
+    const longer = parseEcas([
+      'Folio No: 12345678',
+      'ABC0001-A Fund - Growth Registrar : CAMS',
+      '05-Apr-2024 Purchase-SIP 5,000.00 45.123 110.8100 45.123',
+      '05-May-2024 Purchase-SIP 5,000.00 43.500 114.9425 88.623',
+      '05-Jun-2024 Purchase-SIP 5,000.00 45.123 110.8100 90.246',
+    ]);
+
+    const june = longer.folios[0]?.transactions.find((t) => t.date === '2024-06-05');
+
+    expect(shorter.folios[0]?.transactions[0]?.identity).toBe(june?.identity);
+  });
+
   it('gives two folios different identities for otherwise identical lines', () => {
     const one = parseEcas([
       'Folio No: 11111111',

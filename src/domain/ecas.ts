@@ -377,6 +377,46 @@ function finishScheme(current: Building, block: readonly string[]): void {
   if (named !== undefined) current.scheme = cleanScheme(named);
 }
 
+/**
+ * Stamp each line with what it is, so the same line is recognised next time.
+ *
+ * The ordinal at the end counts how many otherwise-identical lines came before
+ * this one in the same folio — not the line's position in the file, which was
+ * the first shape of this and was wrong in a way that only shows up on the
+ * second import.
+ *
+ * A CAS is requested for a period, and the periods overlap: April to September
+ * this time, January to September next. The same instalment is the first line
+ * of one file and the seventh of the other, so a position-based identity makes
+ * it two different lines — and the unique index, seeing two different hashes,
+ * lets both in. A doubled instalment is a doubled cost basis and a wrong
+ * capital gain years later, which is the exact failure this is here to stop.
+ *
+ * Counting identical lines instead is stable however much of the history a
+ * file happens to cover, and still separates the case it was written for: two
+ * instalments on one day, for the same amount, into the same fund.
+ */
+function identify(folio: Building, registrar: Registrar): EcasTransaction[] {
+  const seen = new Map<string, number>();
+
+  return folio.transactions.map((txn) => {
+    const line = [
+      registrar,
+      folio.folio,
+      folio.isin ?? folio.scheme,
+      txn.date,
+      txn.description,
+      `${txn.direction}${txn.amountMinor.toString()}`,
+      txn.units.toString(),
+    ].join('|');
+
+    const before = seen.get(line) ?? 0;
+    seen.set(line, before + 1);
+
+    return { ...txn, identity: `${line}|#${String(before)}` };
+  });
+}
+
 interface Building {
   amc: string;
   folio: string;
@@ -671,19 +711,7 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       scheme: folio.scheme,
       isin: folio.isin,
       closingUnits: folio.closingUnits,
-      transactions: folio.transactions.map((txn, index) => ({
-        ...txn,
-        identity: [
-          registrar,
-          folio.folio,
-          folio.isin ?? folio.scheme,
-          txn.date,
-          txn.description,
-          `${txn.direction}${txn.amountMinor.toString()}`,
-          txn.units.toString(),
-          `#${String(index)}`,
-        ].join('|'),
-      })),
+      transactions: identify(folio, registrar),
     })),
   };
 }
