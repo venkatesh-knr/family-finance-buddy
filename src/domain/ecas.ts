@@ -211,6 +211,32 @@ const TABLE_HEADER = /^date\b.*transaction|^isin\b.*security/i;
 const AMC_LINE = /(mutual fund|asset management(\s+company)?|amc)\s*$/i;
 
 /**
+ * Where a scheme's own name starts, on a registrar's statement.
+ *
+ * The lines between a folio and its transactions are, in order: the investor's
+ * name, the scheme, the nominees, the opening balance. Taking "the first
+ * plausible line after the folio" made the investor's name the name of the
+ * instrument — wrong, and a person's name written into a table that did not
+ * ask for one.
+ *
+ * Every scheme line begins with the registrar's own code for it — `P1191-`,
+ * `PP001ZG-`, `108ETD2G-` — so the name can be cut from there, which drops
+ * whatever preceded it.
+ */
+const SCHEME_CODE = /(?:^|\s)([A-Z0-9]{3,10}-)(?=[A-Za-z])/;
+
+/** Where the block of lines between a folio and its figures ends. */
+const SCHEME_BLOCK_END =
+  /^(nominee|opening\s+(unit\s+)?balance|closing\s+(unit\s+)?balance|\*\*\*\s*no transaction|date\b)/i;
+
+/** A page header like "01-Apr-2026 To 11-Sep-2026": a period, not a transaction. */
+const PERIOD_ONLY =
+  /^(\d{1,2}[-/](?:[A-Za-z]{3}|\d{1,2})[-/]\d{4})\s+to\s+(\d{1,2}[-/](?:[A-Za-z]{3}|\d{1,2})[-/]\d{4})$/i;
+
+/** "Closing Unit Balance: 4,013.730 NAV on …" — the figure that follows the words. */
+const CLOSING_UNITS = /closing\s+(?:unit\s+)?balance\s*:?\s*([\d,]+(?:\.\d+)?)/i;
+
+/**
  * A figure as a statement prints one: 5,000.00 · (4,000.00) · -10.000 · .15
  *
  * That last one is a real stamp duty from a real statement. The earlier
@@ -301,7 +327,8 @@ function directionOf(kind: EcasTxnKind, negative: boolean): Direction {
 function cleanScheme(line: string): string {
   return line
     .replace(/\(advisor[^)]*\)/gi, '')
-    .replace(/registrar\s*:?\s*\w+/gi, '')
+    .replace(/registrar\s*:?\s*(cams|kfintech|karvy)?/gi, '')
+    .replace(/\((non[\s-]*)?demat\)/gi, '')
     .replace(ISIN, '')
     .replace(/\bisin\s*:?/gi, '')
     // The scheme code a statement prints in front of the name: "HDFC0001-",
@@ -309,6 +336,10 @@ function cleanScheme(line: string): string {
     // genuinely part of the name — "UTI - Infrastructure Fund" — keeps it.
     .replace(/^[A-Z0-9]{4,10}\s*-\s*/, '')
     .replace(/\s{2,}/g, ' ')
+    // What removing the furniture leaves behind: "- Growth -", "Plan - -
+    // Reinvest". Punctuation that separated something from nothing.
+    .replace(/\s*-\s*-\s*/g, ' - ')
+    .replace(/^[\s\-–—,:;]+|[\s\-–—,:;]+$/g, '')
     .trim();
 }
 
@@ -316,6 +347,34 @@ function cleanScheme(line: string): string {
 function lastFour(folio: string): string {
   const compact = folio.replace(/[^0-9A-Za-z]/g, '');
   return compact.slice(-4);
+}
+
+/**
+ * Settle the scheme from the lines between a folio and its figures.
+ *
+ * They arrive as: the investor's name, the scheme (wrapped over one or two
+ * lines), the nominees. Cutting at the registrar's scheme code drops the name
+ * — which is the point, and not only for tidiness. The ISIN is taken from the
+ * whole block, because a wrapped line can carry the name and the ISIN apart.
+ */
+function finishScheme(current: Building, block: readonly string[]): void {
+  const joined = block.join(' ').replace(/\s+/g, ' ').trim();
+  if (joined === '') return;
+
+  const isin = ISIN.exec(joined);
+  if (current.isin === null && isin) current.isin = isin[1] ?? null;
+
+  const code = SCHEME_CODE.exec(joined);
+
+  if (code?.index !== undefined && code[0] !== undefined && code[1] !== undefined) {
+    const startsAt = code.index + (code[0].length - code[1].length);
+    current.scheme = cleanScheme(joined.slice(startsAt));
+    return;
+  }
+
+  // No code. The line that names a fund is the one that says so.
+  const named = block.find((line) => /\b(fund|plan|scheme|etf|index)\b/i.test(line));
+  if (named !== undefined) current.scheme = cleanScheme(named);
 }
 
 interface Building {
@@ -348,6 +407,11 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
   // next, which is where a registrar puts it.
   let awaitingScheme = false;
   let candidates: { at: number; text: string }[] = [];
+  // The lines between a folio and its first figure, on a registrar's layout.
+  let schemeBlock: string[] | null = null;
+  // An AMC is printed once above several folios, so it is remembered rather
+  // than looked for immediately above each one.
+  let lastAmc = '';
   // Counts printed lines, so "the two lines above this folio" means what it
   // says whatever blank space the PDF had in between.
   let at = 0;
@@ -391,28 +455,56 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       const schemeAbove = near.find((text) => !AMC_LINE.test(text));
       const amcAbove = near.find((text) => AMC_LINE.test(text));
 
+      // Only a depository prints the scheme above the folio. On a registrar's
+      // statement the lines above are the previous fund's exit-load paragraph,
+      // and reading one as a name produced holdings called "kindly update them
+      // immediately."
+      const above = layout === 'depository' ? schemeAbove : undefined;
+
       current = {
-        amc: amcAbove ?? '',
+        amc: amcAbove ?? lastAmc,
         folio,
-        scheme: schemeAbove === undefined ? '' : cleanScheme(schemeAbove),
-        isin: schemeAbove === undefined ? null : (ISIN.exec(schemeAbove)?.[1] ?? null),
+        scheme: above === undefined ? '' : cleanScheme(above),
+        isin: above === undefined ? null : (ISIN.exec(above)?.[1] ?? null),
         closingUnits: null,
         transactions: [],
       };
       folios.push(current);
       // A registrar prints it after; a depository has already printed it.
       awaitingScheme = current.scheme === '';
+      schemeBlock = awaitingScheme ? [] : null;
       candidates = [];
       previous = line;
       continue;
     }
 
     if (current !== null) {
+      // The scheme block runs from the folio to the first of the nominees, the
+      // balances, or the figures themselves.
+      if (schemeBlock !== null) {
+        if (SCHEME_BLOCK_END.test(line) || DATE_AT_START.test(line)) {
+          finishScheme(current, schemeBlock);
+          schemeBlock = null;
+          awaitingScheme = false;
+        } else if (!PERIOD_ONLY.test(line)) {
+          // Six lines is generous for a wrapped scheme name and short enough
+          // that a missing terminator cannot swallow a page.
+          if (schemeBlock.length < 6) schemeBlock.push(line);
+          previous = line;
+          continue;
+        }
+      }
+
       const isin = /isin/i.test(line) ? ISIN.exec(line) : null;
       if (isin && current.isin === null) current.isin = isin[1] ?? null;
 
       if (CLOSING_LINE.test(line)) {
-        const last = line.split(' ').filter(isNumber).at(-1);
+        // The figure that follows the words, not the last one on the line: a
+        // registrar prints "Closing Unit Balance: 4,013.730 NAV on …: INR
+        // 105.66 … Market Value …: INR 424,090.71", and the last number there
+        // is what the holding is worth, not how much of it there is.
+        const stated = CLOSING_UNITS.exec(line)?.[1];
+        const last = stated ?? line.split(' ').filter(isNumber).at(-1);
         if (last !== undefined) {
           try {
             current.closingUnits = parseQuantity(magnitude(last).text);
@@ -431,9 +523,26 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       }
     }
 
+    // "01-Apr-2026 To 11-Sep-2026" heads every page of a registrar's
+    // statement. It begins with a date and is not a transaction, and it was
+    // the whole of the "could not be read" list on the first real eCAS.
+    const periodOnly = PERIOD_ONLY.exec(line);
+    if (periodOnly) {
+      if (period === null) {
+        const dates = [...line.matchAll(DATE_ANYWHERE)];
+        const from = toIsoDate(dates[0]?.[1] ?? '', dates[0]?.[2] ?? '', dates[0]?.[3] ?? '');
+        const to = toIsoDate(dates[1]?.[1] ?? '', dates[1]?.[2] ?? '', dates[1]?.[3] ?? '');
+        if (from !== null && to !== null) period = { from, to };
+      }
+      previous = line;
+      continue;
+    }
+
     const dated = DATE_AT_START.exec(line);
 
     if (dated === null) {
+      if (AMC_LINE.test(line)) lastAmc = line;
+
       // Could this be the name of a fund? Not a header, not a balance, not a
       // bare identifier, and with enough letters in it to be a name.
       const plausible =
@@ -442,12 +551,10 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
         /[A-Za-z]{3}/.test(line) &&
         line.length >= 6;
 
-      if (awaitingScheme && current !== null && current.scheme === '' && plausible) {
-        current.scheme = cleanScheme(line);
-        const inScheme = ISIN.exec(line);
-        if (current.isin === null && inScheme) current.isin = inScheme[1] ?? null;
-        awaitingScheme = false;
-      } else if (plausible) {
+      // Scheme lines belonging to a folio are collected by the block above;
+      // what is gathered here is what sits *before* the next folio, which is
+      // where a depository prints the name.
+      if (plausible) {
         candidates.push({ at, text: line });
         if (candidates.length > 4) candidates.shift();
       }

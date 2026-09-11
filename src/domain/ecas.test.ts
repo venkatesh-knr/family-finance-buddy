@@ -229,6 +229,91 @@ describe('the identity of a statement line', () => {
 });
 
 /**
+ * A registrar's eCAS, as CAMS actually prints one.
+ *
+ * Written from a real statement with every figure, folio, name and identifier
+ * replaced. It differs from the published description in three ways that each
+ * broke something: the investor's name sits between the folio and the scheme,
+ * the scheme line wraps with the ISIN on the continuation, and every page is
+ * headed by a date range that begins like a transaction.
+ */
+const REGISTRAR = [
+  'Consolidated Account Statement',
+  '01-Apr-2026 To 11-Sep-2026',
+  'Date Transaction Amount Units Price Unit',
+  '(INR) (INR) Balance',
+  'A Fund House Mutual Fund',
+  'Folio No: 1234567 / 61 PAN: ABCDE1234F KYC: OK PAN: OK',
+  'Jane Investor',
+  'P1191-A Fund House Large Cap Fund (erstwhile Bluechip Fund) - Growth (Non Registrar : CAMS',
+  '-Demat) - ISIN: INF109K01BL4(Advisor: ABCMFC)',
+  'Nominee 1: Nominee 2: Nominee 3:',
+  'Opening Unit Balance: 3,733.251',
+  '06-Apr-2026 SIP Purchase - Instalment 14/190 - via Internet - ABCMFC/E376338 4,999.75 48.845 102.36 3,782.096',
+  '06-Apr-2026 *** Stamp Duty *** 0.25',
+  'Closing Unit Balance: 3,782.096 NAV on 10-Sep-2026: INR 105.66 Total Cost Value: 298,936.65 Market Value on 10-Sep-2026: INR 424,090.71',
+];
+
+describe('a registrar eCAS, as one is actually printed', () => {
+  const statement = parseEcas(REGISTRAR);
+  const folio = statement.folios[0];
+
+  it('reads the period from the page header', () => {
+    expect(statement.period).toEqual({ from: '2026-04-01', to: '2026-09-11' });
+  });
+
+  /**
+   * The page header begins with a date and is not a transaction. Every page of
+   * a real statement carries one, and they were the whole of its "could not be
+   * read" list.
+   */
+  it('does not take the page header for a transaction it failed to read', () => {
+    expect(statement.unread).toEqual([]);
+  });
+
+  /**
+   * The line between the folio and the scheme is the investor's name. Taking
+   * the first plausible line after the folio made a person's name the name of
+   * an instrument — wrong as data, and a name written into a table that never
+   * asked for one.
+   */
+  it('takes the scheme, not the name of the person the statement is for', () => {
+    expect(folio?.scheme).toBe(
+      'A Fund House Large Cap Fund (erstwhile Bluechip Fund) - Growth',
+    );
+    expect(folio?.scheme).not.toContain('Jane Investor');
+  });
+
+  it('finds the ISIN on the line the name wrapped onto', () => {
+    expect(folio?.isin).toBe('INF109K01BL4');
+  });
+
+  it('takes the fund house printed above the folio', () => {
+    expect(folio?.amc).toBe('A Fund House Mutual Fund');
+  });
+
+  /**
+   * "Closing Unit Balance: 3,782.096 NAV on …: INR 105.66 … Market Value …:
+   * INR 424,090.71" — the last figure on that line is what the holding is
+   * worth, and reading it as a quantity would say the household owns four
+   * hundred thousand units of it.
+   */
+  it('reads the closing balance as units, not the market value beside it', () => {
+    expect(folio?.closingUnits).toBe(q('3782.096'));
+  });
+
+  it('reads the instalment and leaves the stamp duty as a charge', () => {
+    const [purchase, duty] = folio?.transactions ?? [];
+
+    expect(purchase?.amountMinor).toBe(paise('4999.75'));
+    expect(purchase?.units).toBe(q('48.845'));
+    expect(purchase?.nav).toBe('102.36');
+    expect(duty?.kind).toBe('charge');
+    expect(duty?.amountMinor).toBe(paise('0.25'));
+  });
+});
+
+/**
  * A depository CAS, which is the other document entirely.
  *
  * CDSL and NSDL send a monthly statement covering demat holdings and mutual
