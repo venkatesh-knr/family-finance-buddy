@@ -24,7 +24,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 |---|---|---|---|
 | overview | screen | partial | `src/features/overview` — net worth, assets per currency, allocation by kind, rate entry, reading gaps, month close. Not built: the donut, the since-inception chart, member attribution |
 | expenses | screen | built | `src/features/expenses` — quick add, budget vs actual, the ledger and its editor. The spending plan moved to FIRE — see Departures |
-| investments | screen | partial | `src/features/holdings` — holdings, valuations, and cost and gains per position (purchases, sales, FIFO parcels, realised gain); no fund/equity breakdown, no India/Abroad split |
+| investments | screen | partial | `src/features/holdings` — holdings with an editor and archive, valuations, prices from the AMFI driver, cost and gains per position (purchases, sales, FIFO parcels, realised gain, long/short term against `tax_rule`); no fund/equity breakdown, no India/Abroad split |
 | property | screen | not-built | Stage 5 |
 | global | screen | not-built | Stage 5 — needs FX and the currency work |
 | fire | screen | partial | `src/features/plan` — annual expense, the spending plan and the commitments it is built from, target and ladder. No goals, and no projection against real contributions |
@@ -42,7 +42,8 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 |---|---|---|---|
 | card | component | built | `src/ui/primitives.tsx` — plus collapsible, which the prototype has no equivalent of |
 | pill | component | built | `src/ui/primitives.tsx` — five tones, `own` `ok` `warn` `due` `neutral` |
-| notice | component | built | `src/ui/primitives.tsx` — caveat with its reasons folded away |
+| notice | component | built | `src/ui/primitives.tsx` — a caveat that stays visible, with its reasons folded away. Used where a card IS the caveat, or where there is no figure to attach to |
+| caveat | component | built | `src/ui/primitives.tsx` — a marker on the figure it qualifies, opening a native popover. No prototype equivalent; see Departures |
 | problem | component | built | `src/ui/primitives.tsx` — `role="alert"`, no prototype equivalent |
 | field | component | built | `src/ui/primitives.tsx` |
 | button | component | built | `src/ui/primitives.tsx` |
@@ -76,4 +77,5 @@ not a gap — if one of these is revisited, change it here first.
 | Refusing a total | one figure, always | the figure, or the rates it is missing | *Resolved as a departure* — `20260908130000` added `fx_rate` and `liability.outstanding_minor`, so the headline is net worth as designed. What is kept is the refusal underneath it: a total that cannot be converted honestly comes back as the missing pairs rather than a number short by the dollar holdings. |
 | Allocation donut | an SVG donut with a legend | a row per class: colour, name, share, value, return | Taken from the reference app rather than from the mock. A bar or an arc shows one thing — relative size — where a row of the same height shows four, and on a phone that is the difference between a picture and an answer. The colours are still the chart palette in order, so a class keeps its identity when the donut arrives beside it. |
 | Long or short term | a gain labelled long-term or short-term | days held, unlabelled | The threshold is twelve months for listed equity and twenty-four for unlisted, both of which have moved. `tax_rule` will hold them as dated rows so a prior year recomputes on the rule that applied then; until it exists, the app shows the count and declines to classify it. |
+| Explanatory prose | a paragraph under each block | a marker on the figure it qualifies | Fifteen coloured paragraphs on one screen are read as decoration, and the one that mattered goes down with the rest. A sentence that explains what a block IS is said once, on its heading; a sentence that warns a figure is WRONG rides on that figure and appears only when it applies. Figure subtitles carrying live values stay visible — they are data, not prose. |
 | Failure states | none — a mock has no loading, empty, offline or denied states | all four, throughout | Not a departure so much as the part a mock cannot show. Do not drop them to match it. |
