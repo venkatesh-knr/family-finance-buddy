@@ -131,6 +131,21 @@ describe('parsing a consolidated account statement', () => {
     expect(redemption?.units).toBeGreaterThan(0n);
   });
 
+  it('leaves a charge that belongs to no purchase alone, rather than guessing', () => {
+    const statement = parseEcas([
+      'Folio No: 12345678',
+      'ABC0001-A Fund - Growth',
+      '05-Apr-2024 Purchase-SIP 5,000.00 45.123 110.8100 45.123',
+      '20-Jun-2024 *** Annual Maintenance *** 100.00',
+    ]);
+
+    const fee = statement.folios[0]?.transactions.find((t) => t.date === '2024-06-20');
+
+    expect(fee?.kind).toBe('charge');
+    expect(fee?.absorbed).toBe(false);
+    expect(statement.folios[0]?.transactions[0]?.chargesMinor).toBe(0n);
+  });
+
   it('reads a charge line that carries one figure and no units', () => {
     const duty = statement.folios[0]?.transactions.find((t) => t.kind === 'charge');
 
@@ -138,6 +153,27 @@ describe('parsing a consolidated account statement', () => {
     expect(duty?.amountMinor).toBe(paise('0.25'));
     expect(duty?.units).toBe(0n);
     expect(duty?.nav).toBeNull();
+  });
+
+  /**
+   * The cost of acquisition is all in: "brokerage, STT and stamp duty belong
+   * in here rather than in a column of their own". A statement prints the duty
+   * as its own row on the same day, so the two are put back together.
+   */
+  it('folds stamp duty into the purchase it was charged on', () => {
+    const [purchase, duty] = statement.folios[0]?.transactions ?? [];
+
+    expect(purchase?.kind).toBe('purchase');
+    expect(purchase?.amountMinor).toBe(paise('5000.00'));
+    expect(purchase?.chargesMinor).toBe(paise('0.25'));
+    expect(duty?.absorbed).toBe(true);
+  });
+
+  it('leaves the purchase its own identity, so an earlier import still matches', () => {
+    const purchase = statement.folios[0]?.transactions[0];
+
+    expect(purchase?.identity).not.toContain('0.25');
+    expect(purchase?.identity).toContain('in500000');
   });
 
   it('tells a reinvestment from a payout, because one buys units and one does not', () => {

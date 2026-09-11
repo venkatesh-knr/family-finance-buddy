@@ -101,6 +101,27 @@ export interface EcasTransaction {
   readonly direction: Direction;
   /** Paise. Always positive — see the note above. */
   readonly amountMinor: bigint;
+  /**
+   * Stamp duty and the like, printed as their own lines and belonging to this
+   * one.
+   *
+   * `lot.cost_minor` is the cost of acquisition all in — "brokerage, STT and
+   * stamp duty belong in here rather than in a column of their own: they are
+   * part of the cost of acquisition for the purpose that matters, and
+   * splitting them out invites a cost basis that forgets to add them back".
+   * A statement prints them as separate rows, so they are put back together
+   * here, and the cost a lot records is `amountMinor + chargesMinor`.
+   */
+  readonly chargesMinor: bigint;
+  /**
+   * True on a charge that has been folded into the purchase it belongs to.
+   *
+   * Kept in the list rather than removed, because the preview shows what the
+   * statement said and then what became of each line — and a row that quietly
+   * vanished between the file and the table is the kind of thing that makes
+   * somebody stop trusting an importer.
+   */
+  readonly absorbed: boolean;
   /** Scaled to eight places, like every quantity. Zero for a payout or a charge. */
   readonly units: bigint;
   /** As printed, commas removed. Not money and never summed, so it stays text. */
@@ -283,7 +304,9 @@ function classify(description: string): EcasTxnKind {
 
   // Charges first: a stamp duty line mentions neither buying nor selling, and
   // every other test below would miss it rather than mis-file it.
-  if (/stamp duty|\bstt\b|transaction charge|\btds\b|tax deducted|\bgst\b/.test(text)) {
+  if (
+    /stamp duty|\bstt\b|transaction charge|\btds\b|tax deducted|\bgst\b|maintenance/.test(text)
+  ) {
     return 'charge';
   }
   // Before purchase and redemption, both of which appear inside these phrases.
@@ -396,10 +419,64 @@ function finishScheme(current: Building, block: readonly string[]): void {
  * file happens to cover, and still separates the case it was written for: two
  * instalments on one day, for the same amount, into the same fund.
  */
+/**
+ * Put a purchase and its stamp duty back together.
+ *
+ * A statement prints them as two rows on the same day — "SIP Purchase …
+ * 4,999.75" and "*** Stamp Duty *** 0.25" — and the second is part of what the
+ * first cost. Dropping it understates the cost basis by a few paise an
+ * instalment, which is small and is still the figure a capital gain is
+ * computed from.
+ *
+ * Matched within a folio, on the date, to the nearest purchase — the one above
+ * it by preference, which is how both layouts print the pair. A charge with no
+ * purchase to belong to stays as it is and is reported rather than guessed at:
+ * an annual maintenance fee is not part of anything's cost.
+ */
+function absorbCharges(transactions: readonly Omit<EcasTransaction, 'identity'>[]) {
+  const rows = transactions.map((txn) => ({ ...txn }));
+
+  const buys = (kind: EcasTxnKind) =>
+    kind === 'purchase' || kind === 'switch_in' || kind === 'dividend_reinvest';
+
+  rows.forEach((row, at) => {
+    if (row.kind !== 'charge' || row.absorbed) return;
+
+    let found = -1;
+    for (let back = at - 1; back >= 0; back -= 1) {
+      const candidate = rows[back];
+      if (candidate !== undefined && candidate.date === row.date && buys(candidate.kind)) {
+        found = back;
+        break;
+      }
+    }
+    if (found === -1) {
+      for (let ahead = at + 1; ahead < rows.length; ahead += 1) {
+        const candidate = rows[ahead];
+        if (candidate !== undefined && candidate.date === row.date && buys(candidate.kind)) {
+          found = ahead;
+          break;
+        }
+      }
+    }
+
+    const target = found === -1 ? undefined : rows[found];
+    if (target === undefined) return;
+
+    target.chargesMinor += row.amountMinor;
+    row.absorbed = true;
+  });
+
+  return rows;
+}
+
 function identify(folio: Building, registrar: Registrar): EcasTransaction[] {
   const seen = new Map<string, number>();
 
-  return folio.transactions.map((txn) => {
+  // The identity is the line's own text and does not include the charge folded
+  // into it: a statement re-read after this change must still recognise the
+  // purchases it already recorded.
+  return absorbCharges(folio.transactions).map((txn) => {
     const line = [
       registrar,
       folio.folio,
@@ -685,6 +762,8 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       kind,
       direction: directionOf(kind, negative),
       amountMinor,
+      chargesMinor: 0n,
+      absorbed: false,
       units: unitsScaled,
       nav: navToken === undefined ? null : magnitude(navToken).text,
       balanceUnits,

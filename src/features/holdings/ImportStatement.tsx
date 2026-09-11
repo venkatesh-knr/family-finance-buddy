@@ -44,7 +44,7 @@ import type { HoldingListing } from '../../repo/types.ts';
 import { Button, Card, Field, Notice, PasswordField, Pill, Problem, Table } from '../../ui/primitives.tsx';
 
 /** What a parsed line becomes, decided once and shown in the preview. */
-type Fate = 'purchase' | 'sale' | 'not-recorded' | 'already-in';
+type Fate = 'purchase' | 'sale' | 'folded' | 'not-recorded' | 'already-in';
 
 interface PreviewRow {
   readonly txn: EcasTransaction;
@@ -69,7 +69,12 @@ function fateOf(txn: EcasTransaction): { fate: Fate; because: string | null } {
     case 'switch_out':
       return { fate: 'sale', because: null };
     case 'charge':
-      return { fate: 'not-recorded', because: 'A charge, not a purchase — no table holds one yet' };
+      // Stamp duty is part of what a purchase cost, so it goes into that
+      // purchase's cost rather than being recorded or dropped. A charge that
+      // belongs to no purchase — an annual fee — has nowhere to go yet.
+      return txn.absorbed
+        ? { fate: 'folded', because: 'Added to the cost of the purchase it was charged on' }
+        : { fate: 'not-recorded', because: 'A charge that belongs to no purchase — no table holds one yet' };
     case 'dividend_payout':
       return { fate: 'not-recorded', because: 'A payout waits on the dividend table' };
     default:
@@ -116,6 +121,7 @@ export function ImportStatement({
       sales: willWrite.filter((r) => r.fate === 'sale').length,
       alreadyIn: rows.filter((r) => r.fate === 'already-in').length,
       notRecorded: rows.filter((r) => r.fate === 'not-recorded').length,
+      folded: rows.filter((r) => r.fate === 'folded').length,
     };
   }, [folios, left]);
 
@@ -198,7 +204,9 @@ export function ImportStatement({
           .map((row) => ({
             acquiredOn: row.txn.date,
             quantity: formatQuantity(row.txn.units),
-            costMinor: row.txn.amountMinor,
+            // All in, which is what a cost basis is: the instalment plus the
+            // stamp duty charged on it.
+            costMinor: row.txn.amountMinor + row.txn.chargesMinor,
             sourceHash: row.hash,
             note: row.txn.description,
           })),
@@ -327,6 +335,7 @@ export function ImportStatement({
               ? 'The file states no period.'
               : `Covering ${formatIsoDate(period.from)} to ${formatIsoDate(period.to)}.`}{' '}
             {counts.purchases} purchases and {counts.sales} sales will be recorded.
+            {counts.folded > 0 && ` ${String(counts.folded)} stamp duty lines go into the cost of the purchases they were charged on.`}
             {counts.alreadyIn > 0 && ` ${String(counts.alreadyIn)} lines are already in from an earlier import.`}
             {counts.notRecorded > 0 && ` ${String(counts.notRecorded)} are not recorded at all — each says why.`}
           </p>
@@ -416,8 +425,18 @@ export function ImportStatement({
                             {row.txn.units === 0n ? '—' : formatQuantity(row.txn.units)}
                           </td>
                           <td>
-                            {row.fate === 'purchase' && <Pill tone="ok">A purchase</Pill>}
+                            {row.fate === 'purchase' && (
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                <Pill tone="ok">A purchase</Pill>
+                                {row.txn.chargesMinor > 0n && (
+                                  <span className="note">
+                                    costing {formatMoney(money(row.txn.amountMinor + row.txn.chargesMinor, 'INR'))} with duty
+                                  </span>
+                                )}
+                              </span>
+                            )}
                             {row.fate === 'sale' && <Pill tone="warn">A sale</Pill>}
+                            {row.fate === 'folded' && <span className="note">{row.because}</span>}
                             {row.fate === 'already-in' && <Pill tone="neutral">Already in</Pill>}
                             {row.fate === 'not-recorded' && (
                               <span className="note">{row.because}</span>
