@@ -403,20 +403,33 @@ export function ImportStatement({
                       return (
                         <tr key={row.hash}>
                           <td>
-                            <input
-                              type="checkbox"
-                              checked={writable && !left.has(row.hash)}
-                              disabled={!writable}
-                              aria-label={`Include ${row.txn.description} on ${row.txn.date}`}
-                              onChange={(event) => {
-                                setLeft((was) => {
-                                  const next = new Set(was);
-                                  if (event.target.checked) next.delete(row.hash);
-                                  else next.add(row.hash);
-                                  return next;
-                                });
-                              }}
-                            />
+                            {/*
+                              Only rows that become a row of their own get a
+                              box. An unticked box beside "added to the cost of
+                              the purchase above" says the opposite of what is
+                              happening — that line is being recorded, inside
+                              another one — and a disabled control is read as a
+                              refusal rather than as "not applicable".
+                            */}
+                            {writable ? (
+                              <input
+                                type="checkbox"
+                                checked={!left.has(row.hash)}
+                                aria-label={`Include ${row.txn.description} on ${row.txn.date}`}
+                                onChange={(event) => {
+                                  setLeft((was) => {
+                                    const next = new Set(was);
+                                    if (event.target.checked) next.delete(row.hash);
+                                    else next.add(row.hash);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ) : (
+                              <span className="note" aria-hidden="true">
+                                {row.fate === 'folded' ? '↳' : '—'}
+                              </span>
+                            )}
                           </td>
                           <td>{formatIsoDate(row.txn.date)}</td>
                           <td>{row.txn.description}</td>
