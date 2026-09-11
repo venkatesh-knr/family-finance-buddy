@@ -284,6 +284,32 @@ describe('the shapes a statement arrives in', () => {
     expect(statement.folios[0]?.folioLast4).toBe('5845');
   });
 
+  /**
+   * A CDSL depository CAS prints 01-11-2022 where a registrar prints
+   * 01-Nov-2022. A parser that knew only the second read a real file as
+   * empty — every row present, every row unrecognised.
+   */
+  it('reads a numeric date, day first, as an Indian statement writes one', () => {
+    const statement = parseEcas([
+      'Folio No: 12345678',
+      'ABC0001-A Fund - Growth',
+      '01-11-2022 Purchase 1,000.00 10.000 100.0000 10.000',
+    ]);
+
+    expect(statement.folios[0]?.transactions[0]?.date).toBe('2022-11-01');
+  });
+
+  it('refuses a month that is not one rather than reading it as January', () => {
+    const statement = parseEcas([
+      'Folio No: 12345678',
+      'ABC0001-A Fund - Growth',
+      '01-13-2022 Purchase 1,000.00 10.000 100.0000 10.000',
+    ]);
+
+    expect(statement.folios[0]?.transactions ?? []).toEqual([]);
+    expect(statement.unread).toHaveLength(1);
+  });
+
   it('does not take "No Transaction during the period" for a scheme name', () => {
     const statement = parseEcas([
       'Folio No: 12345678 Mode of Holding: Single',

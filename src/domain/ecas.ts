@@ -129,8 +129,22 @@ const MONTHS: Readonly<Record<string, string>> = {
   jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
 };
 
-const DATE_AT_START = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})\b/;
-const DATE_ANYWHERE = /(\d{1,2})-([A-Za-z]{3})-(\d{4})/g;
+/**
+ * Two date forms, because the registrars and the depositories disagree.
+ *
+ * A CAMS or KFintech statement prints `05-Apr-2024`. A CDSL depository CAS
+ * prints `01-11-2022`, and a parser that knew only the first read a real file
+ * as having no transactions at all — every row was there and every row began
+ * with a date it did not recognise.
+ *
+ * The numeric form is read day-first. Every document this parser is pointed at
+ * is issued in India, where that is the convention, and both the depositories
+ * and the registrars follow it. It is worth stating out loud: on the twelfth of
+ * November the two readings differ silently, and a wrong date is a wrong
+ * holding period and eventually a wrong tax rate.
+ */
+const DATE_AT_START = /^(\d{1,2})[-/]([A-Za-z]{3}|\d{1,2})[-/](\d{4})\b/;
+const DATE_ANYWHERE = /(\d{1,2})[-/]([A-Za-z]{3}|\d{1,2})[-/](\d{4})/g;
 const ISIN = /\b([A-Z]{2}[A-Z0-9]{9}\d)\b/;
 const FOLIO_LINE = /^folio\s*no\.?\s*:?\s*(.+)$/i;
 
@@ -164,9 +178,22 @@ function isNumber(token: string): boolean {
 }
 
 function toIsoDate(day: string, month: string, year: string): string | null {
-  const mm = MONTHS[month.toLowerCase()];
-  if (mm === undefined) return null;
-  return `${year}-${mm}-${day.padStart(2, '0')}`;
+  const named = MONTHS[month.toLowerCase()];
+
+  if (named === undefined) {
+    // The numeric form. Rejected rather than clamped when it is not a month:
+    // a statement that prints 13 where a month belongs is one this parser has
+    // misread, and reading it as January would bury that.
+    const numeric = Number(month);
+    if (!Number.isInteger(numeric) || numeric < 1 || numeric > 12) return null;
+
+    const asDay = Number(day);
+    if (!Number.isInteger(asDay) || asDay < 1 || asDay > 31) return null;
+
+    return `${year}-${String(numeric).padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  return `${year}-${named}-${day.padStart(2, '0')}`;
 }
 
 /** Strips brackets, sign and grouping, and says which of the two it found. */
