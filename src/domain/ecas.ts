@@ -45,8 +45,32 @@
 import { parseAmountToMinor } from '../lib/money.ts';
 import { parseQuantity } from '../lib/quantity.ts';
 
-/** Which registrar produced the file. They print the same facts differently. */
-export type Registrar = 'cams' | 'kfintech' | 'unknown';
+/**
+ * Who produced the file. They print the same facts differently.
+ *
+ * Two documents, not one. A registrar's eCAS (CAMS, KFintech) is the full
+ * mutual-fund transaction history across AMCs. A depository CAS (CDSL, NSDL)
+ * is a month's statement for demat holdings and mutual fund folios together,
+ * and its mutual-fund rows carry the same facts in a different order.
+ */
+export type Registrar = 'cams' | 'kfintech' | 'cdsl' | 'nsdl' | 'unknown';
+
+/**
+ * How a transaction row is laid out, which follows from who issued it.
+ *
+ *   registrar   Date · Description · Amount · Units · Price · Unit Balance,
+ *               with the description on the same line as the figures.
+ *
+ *   depository  Date · Reference · Amount · NAV · Price · Units · Stamp Duty ·
+ *               Distribution · Withdrawal, with the description printed on the
+ *               line above and the row beginning with an instalment and ARN
+ *               reference that is not a number.
+ *
+ * The difference is not cosmetic: read a depository row by taking the last
+ * four figures — which is right for a registrar — and the units become the
+ * amount and the stamp duty becomes the units.
+ */
+type Layout = 'registrar' | 'depository';
 
 /**
  * What a line does to a position.
@@ -167,11 +191,33 @@ const FOLIO_TOKEN = /^([0-9][0-9A-Za-z]*(?:\s*[/-]\s*[0-9A-Za-z]+)*)/;
 const NOT_A_SCHEME =
   /^(no transaction|opening|closing|date\b|nav on|registrar|isin\b|pan\b|kyc|nominee|mode of holding|folio|email|address|statement|consolidated|page\b|total\b|market value|income capital)/i;
 const REGISTRAR_LINE = /registrar\s*:?\s*(cams|kfintech|karvy)/i;
-const CLOSING_LINE = /closing\s+unit\s+balance/i;
-const OPENING_LINE = /opening\s+unit\s+balance/i;
+const DEPOSITORY_LINE = /central depository services|national securities depository/i;
 
-/** A figure as a statement prints one: 5,000.00 · (4,000.00) · -10.000 */
-const NUMBER = /^\(?[-+]?[\d,]+(?:\.\d+)?\)?$/;
+// "Closing Unit Balance" on a registrar's statement, "Closing Balance" on a
+// depository's.
+const CLOSING_LINE = /closing\s+(unit\s+)?balance/i;
+const OPENING_LINE = /opening\s+(unit\s+)?balance/i;
+
+/** The line that introduces a table of transactions, on either layout. */
+const TABLE_HEADER = /^date\b.*transaction|^isin\b.*security/i;
+
+/**
+ * An AMC, rather than a scheme.
+ *
+ * Anchored at the end, because "ICICI Prudential Mutual Fund" is a fund house
+ * and "ICICI Prudential Bluechip Fund - Growth" is a scheme, and the first
+ * four words do not tell them apart.
+ */
+const AMC_LINE = /(mutual fund|asset management(\s+company)?|amc)\s*$/i;
+
+/**
+ * A figure as a statement prints one: 5,000.00 · (4,000.00) · -10.000 · .15
+ *
+ * That last one is a real stamp duty from a real statement. The earlier
+ * pattern required a digit before the decimal point, so `.15` was not a number
+ * to it — which silently shifted every column on the row that carried one.
+ */
+const NUMBER = /^\(?[-+]?(?:\d[\d,]*)?(?:\.\d+)?\)?$/;
 
 function isNumber(token: string): boolean {
   return NUMBER.test(token) && /\d/.test(token);
@@ -199,7 +245,10 @@ function toIsoDate(day: string, month: string, year: string): string | null {
 /** Strips brackets, sign and grouping, and says which of the two it found. */
 function magnitude(token: string): { text: string; negative: boolean } {
   const negative = token.startsWith('(') || token.startsWith('-');
-  const text = token.replace(/[(),+-]/g, '');
+  const stripped = token.replace(/[(),+-]/g, '');
+  // `.15` is how a statement writes fifteen paise, and both the money and the
+  // quantity parser require a digit before the point.
+  const text = stripped.startsWith('.') ? `0${stripped}` : stripped;
   return { text, negative };
 }
 
@@ -255,7 +304,10 @@ function cleanScheme(line: string): string {
     .replace(/registrar\s*:?\s*\w+/gi, '')
     .replace(ISIN, '')
     .replace(/\bisin\s*:?/gi, '')
-    .replace(/^[A-Z0-9]{2,10}-/, '')
+    // The scheme code a statement prints in front of the name: "HDFC0001-",
+    // "1191 - ", "LFRAG - ". Four characters at least, so a fund house that is
+    // genuinely part of the name — "UTI - Infrastructure Fund" — keeps it.
+    .replace(/^[A-Z0-9]{4,10}\s*-\s*/, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -286,23 +338,33 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
   const unread: UnreadLine[] = [];
 
   let registrar: Registrar = 'unknown';
+  let layout: Layout = 'registrar';
   let period: { from: string; to: string } | null = null;
   let current: Building | null = null;
   let previous = '';
-  // The first non-empty line after a folio that is not an ISIN or a header is
-  // the scheme. Tracked rather than assumed adjacent, because the two
-  // registrars order those lines differently.
+  // A registrar prints the scheme after the folio; a depository prints it
+  // before. So plausible scheme lines are remembered as they go past, and the
+  // folio line takes the most recent one — falling back to waiting for the
+  // next, which is where a registrar puts it.
   let awaitingScheme = false;
+  let candidates: { at: number; text: string }[] = [];
+  // Counts printed lines, so "the two lines above this folio" means what it
+  // says whatever blank space the PDF had in between.
+  let at = 0;
 
   for (const raw of lines) {
     const line = raw.replace(/\s+/g, ' ').trim();
     if (line === '') continue;
+    at += 1;
 
     if (registrar === 'unknown') {
       const found = REGISTRAR_LINE.exec(line);
       if (found) {
         // Karvy is KFintech's former name and still appears on older files.
         registrar = found[1]?.toLowerCase() === 'cams' ? 'cams' : 'kfintech';
+      } else if (DEPOSITORY_LINE.test(line)) {
+        registrar = /national securities/i.test(line) ? 'nsdl' : 'cdsl';
+        layout = 'depository';
       }
     }
 
@@ -323,17 +385,24 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       const after = (folioMatch[1] ?? '').trim();
       const folio = (FOLIO_TOKEN.exec(after)?.[1] ?? after.split(' ')[0] ?? '').trim();
 
+      // Only the two or three lines immediately above, so a scheme name is
+      // never borrowed from a different folio further up the page.
+      const near = candidates.filter((c) => at - c.at <= 3).map((c) => c.text).reverse();
+      const schemeAbove = near.find((text) => !AMC_LINE.test(text));
+      const amcAbove = near.find((text) => AMC_LINE.test(text));
+
       current = {
-        // An AMC name sits above the folio on both layouts.
-        amc: /mutual fund|asset management|fund house|amc\b/i.test(previous) ? previous : '',
+        amc: amcAbove ?? '',
         folio,
-        scheme: '',
-        isin: null,
+        scheme: schemeAbove === undefined ? '' : cleanScheme(schemeAbove),
+        isin: schemeAbove === undefined ? null : (ISIN.exec(schemeAbove)?.[1] ?? null),
         closingUnits: null,
         transactions: [],
       };
       folios.push(current);
-      awaitingScheme = true;
+      // A registrar prints it after; a depository has already printed it.
+      awaitingScheme = current.scheme === '';
+      candidates = [];
       previous = line;
       continue;
     }
@@ -365,21 +434,31 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
     const dated = DATE_AT_START.exec(line);
 
     if (dated === null) {
-      if (awaitingScheme && current !== null && current.scheme === '') {
-        const bare = ISIN.exec(line);
-        if (/^isin/i.test(line) || (bare && line.replace(bare[0], '').trim() === '')) {
-          if (current.isin === null && bare) current.isin = bare[1] ?? null;
-        } else if (!NOT_A_SCHEME.test(line)) {
-          current.scheme = cleanScheme(line);
-          const inScheme = ISIN.exec(line);
-          if (current.isin === null && inScheme) current.isin = inScheme[1] ?? null;
-          awaitingScheme = false;
-        }
+      // Could this be the name of a fund? Not a header, not a balance, not a
+      // bare identifier, and with enough letters in it to be a name.
+      const plausible =
+        !NOT_A_SCHEME.test(line) &&
+        !TABLE_HEADER.test(line) &&
+        /[A-Za-z]{3}/.test(line) &&
+        line.length >= 6;
+
+      if (awaitingScheme && current !== null && current.scheme === '' && plausible) {
+        current.scheme = cleanScheme(line);
+        const inScheme = ISIN.exec(line);
+        if (current.isin === null && inScheme) current.isin = inScheme[1] ?? null;
+        awaitingScheme = false;
+      } else if (plausible) {
+        candidates.push({ at, text: line });
+        if (candidates.length > 4) candidates.shift();
       }
+
       previous = line;
       continue;
     }
 
+    // The line above, before it is overwritten: a depository prints the
+    // description of a transaction there and the figures here.
+    const above = previous;
     previous = line;
 
     const date = toIsoDate(dated[1] ?? '', dated[2] ?? '', dated[3] ?? '');
@@ -388,26 +467,48 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
       continue;
     }
 
-    // Read the figures off the right-hand end. Which columns a line carries
-    // varies — a purchase prints four, a stamp duty one — so the count is
-    // discovered rather than assumed.
     const tokens = line.slice(dated[0].length).trim().split(' ').filter((t) => t !== '');
     const numbers: string[] = [];
-    while (tokens.length > 0 && numbers.length < 4 && isNumber(tokens[tokens.length - 1] ?? '')) {
-      numbers.unshift(tokens.pop() ?? '');
-    }
+    let description: string;
 
-    const description = tokens.join(' ').trim();
+    if (layout === 'depository') {
+      // Left to right from the first figure. The row begins with an instalment
+      // number and an ARN — "42/62 - ARN-0020/E236466" — which are not figures,
+      // and the description itself is printed on the line above.
+      const firstFigure = tokens.findIndex((token) => isNumber(token));
+      const reference = (firstFigure === -1 ? tokens : tokens.slice(0, firstFigure)).join(' ');
+
+      if (firstFigure !== -1) {
+        for (const token of tokens.slice(firstFigure)) {
+          if (isNumber(token)) numbers.push(token);
+        }
+      }
+
+      const spoken = NOT_A_SCHEME.test(above) || TABLE_HEADER.test(above) ? '' : above;
+      description = [spoken, reference].filter((part) => part.trim() !== '').join(' ').trim();
+    } else {
+      // Read off the right-hand end. Which columns a line carries varies — a
+      // purchase prints four, a stamp duty one — so the count is discovered
+      // rather than assumed.
+      while (tokens.length > 0 && numbers.length < 4 && isNumber(tokens[tokens.length - 1] ?? '')) {
+        numbers.unshift(tokens.pop() ?? '');
+      }
+      description = tokens.join(' ').trim();
+    }
 
     if (numbers.length === 0 || description === '') {
       unread.push({ line, folio: current?.folio ?? null });
       continue;
     }
 
+    // The same four facts, in the order each issuer prints them.
+    //
+    //   registrar   amount · units · price · unit balance
+    //   depository  amount · NAV · price · units · stamp duty · payouts
     const amountToken = numbers[0] ?? '';
-    const unitsToken = numbers.length >= 2 ? numbers[1] : undefined;
-    const navToken = numbers.length >= 3 ? numbers[2] : undefined;
-    const balanceToken = numbers.length >= 4 ? numbers[3] : undefined;
+    const unitsToken = layout === 'depository' ? numbers[3] : numbers[1];
+    const navToken = layout === 'depository' ? numbers[1] : numbers[2];
+    const balanceToken = layout === 'depository' ? undefined : numbers[3];
 
     const amount = magnitude(amountToken);
     const units = unitsToken === undefined ? null : magnitude(unitsToken);

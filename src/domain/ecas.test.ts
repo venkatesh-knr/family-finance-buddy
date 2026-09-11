@@ -228,6 +228,100 @@ describe('the identity of a statement line', () => {
   });
 });
 
+/**
+ * A depository CAS, which is the other document entirely.
+ *
+ * CDSL and NSDL send a monthly statement covering demat holdings and mutual
+ * fund folios together. Its mutual-fund rows carry the same facts as a
+ * registrar's in a different order, and the first real file this parser met
+ * was one of these — read as having no transactions at all.
+ *
+ * The shape below is that file's, with every figure, folio and identifier
+ * replaced.
+ */
+const DEPOSITORY = [
+  'Central Depository Services (India) Limited',
+  'CONSOLIDATED ACCOUNT STATEMENT (CAS) FOR SECURITIES HELD IN DEMAT FORM',
+  'AND INVESTMENTS IN MUTUAL FUNDS FOR THE PERIOD',
+  'FROM 01-11-2022 TO 30-11-2022',
+  'STATEMENT OF TRANSACTIONS FOR THE PERIOD FROM 01-11-2022 TO 30-11-2022',
+  'A Fund House Mutual Fund',
+  '1191 - A Fund House Bluechip Fund - Growth',
+  'Folio No : 11112222/33 Mode of Holding : Single KYC of Investor/s : KYC OK Nominee : Please Nominate',
+  'ISIN : INF109K01BL4 UCC : MFXXXX0000 Mobile No : Please provide Email : someone@example.test',
+  'Income Capital',
+  'Stamp',
+  'Date Transaction Description Amount (`) NAV (`) Price (`) Units Distrib Withdr',
+  'Duty (`)',
+  'ution (`) awal (`)',
+  'Opening Balance 2015.379',
+  'SIP Purchase - Instalment',
+  '07-11-2022 42/62 - ARN-0000/E000000 2999.85 69.68 69.68 43.052 .15 0 0',
+  '617753219',
+  'Closing Balance 2058.431',
+  'A Fund House Medium Term Bond Fund - Growth',
+  'Folio No : 11112222/33 Mode of Holding : Single KYC of Investor/s : KYC OK Nominee : Please Nominate',
+  'ISIN : INF109K01AH4 UCC : Mobile No : Please provide Email : someone@example.test',
+  'No Transaction during the period',
+];
+
+describe('a depository CAS, which prints the same facts differently', () => {
+  const statement = parseEcas(DEPOSITORY);
+
+  it('knows who issued it', () => {
+    expect(statement.registrar).toBe('cdsl');
+  });
+
+  it('reads the period written in numbers', () => {
+    expect(statement.period).toEqual({ from: '2022-11-01', to: '2022-11-30' });
+  });
+
+  /**
+   * The scheme is printed above the folio here and below it on a registrar's
+   * statement. Getting this wrong is what made three holdings come back named
+   * "No Transaction during the period".
+   */
+  it('takes the scheme from above the folio, and the fund house from above that', () => {
+    expect(statement.folios[0]?.scheme).toBe('A Fund House Bluechip Fund - Growth');
+    expect(statement.folios[0]?.amc).toBe('A Fund House Mutual Fund');
+    expect(statement.folios[0]?.isin).toBe('INF109K01BL4');
+    expect(statement.folios[0]?.folioLast4).toBe('2233');
+  });
+
+  /**
+   * The row this whole layout branch exists for. Read off the right-hand end,
+   * as a registrar's row is, its four trailing figures are units, stamp duty
+   * and two zeroes — so the amount would have come out as 43.05 and the units
+   * as fifteen paise.
+   */
+  it('reads amount, NAV and units from the columns this layout puts them in', () => {
+    const txn = statement.folios[0]?.transactions[0];
+
+    expect(txn?.date).toBe('2022-11-07');
+    expect(txn?.kind).toBe('purchase');
+    expect(txn?.amountMinor).toBe(paise('2999.85'));
+    expect(txn?.nav).toBe('69.68');
+    expect(txn?.units).toBe(q('43.052'));
+  });
+
+  it('takes the description from the line above the figures', () => {
+    expect(statement.folios[0]?.transactions[0]?.description).toContain('SIP Purchase - Instalment');
+  });
+
+  it('reads the closing balance this layout writes without the word "unit"', () => {
+    expect(statement.folios[0]?.closingUnits).toBe(q('2058.431'));
+  });
+
+  it('leaves a quiet folio quiet rather than inventing a transaction', () => {
+    expect(statement.folios[1]?.transactions).toEqual([]);
+    expect(statement.folios[1]?.scheme).toBe('A Fund House Medium Term Bond Fund - Growth');
+  });
+
+  it('reads the whole statement without a line it could not account for', () => {
+    expect(statement.unread).toEqual([]);
+  });
+});
+
 describe('the shapes a statement arrives in', () => {
   it('reads an upper-case date, which KFintech prints', () => {
     const statement = parseEcas([

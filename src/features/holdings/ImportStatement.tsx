@@ -38,7 +38,7 @@ import { sha256Hex } from '../../lib/hash.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { formatQuantity } from '../../lib/quantity.ts';
 import { PasswordNeeded, readStatementLines } from '../../lib/ecas-pdf.ts';
-import { parseEcas, type EcasTransaction, type EcasFolio } from '../../domain/ecas.ts';
+import { parseEcas, type EcasTransaction, type EcasFolio, type Registrar } from '../../domain/ecas.ts';
 import { importStatement, alreadyImported, type ImportKind, type PlannedFolio } from '../../repo/imports.ts';
 import type { HoldingListing } from '../../repo/types.ts';
 import { Button, Card, Field, Notice, PasswordField, Pill, Problem, Table } from '../../ui/primitives.tsx';
@@ -92,7 +92,7 @@ export function ImportStatement({
 
   const [folios, setFolios] = useState<readonly PreviewFolio[] | null>(null);
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
-  const [registrar, setRegistrar] = useState<'cams' | 'kfintech' | 'unknown'>('unknown');
+  const [registrar, setRegistrar] = useState<Registrar>('unknown');
   const [unread, setUnread] = useState<readonly string[]>([]);
   const [memberOf, setMemberOf] = useState<Readonly<Record<string, string>>>({});
   const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
@@ -213,7 +213,14 @@ export function ImportStatement({
           })),
       }));
 
-      const kind: ImportKind = registrar === 'kfintech' ? 'ecas_kfintech' : 'ecas_cams';
+      // What the batch will say it was, so a figure traced back later names
+      // the document it came from rather than "an import".
+      const kind: ImportKind =
+        registrar === 'kfintech'
+          ? 'ecas_kfintech'
+          : registrar === 'cdsl' || registrar === 'nsdl'
+            ? 'depository_cas'
+            : 'ecas_cams';
 
       const outcome = await importStatement({
         householdId: listing.household.id,
