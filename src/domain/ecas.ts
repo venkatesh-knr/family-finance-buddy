@@ -133,6 +133,25 @@ const DATE_AT_START = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})\b/;
 const DATE_ANYWHERE = /(\d{1,2})-([A-Za-z]{3})-(\d{4})/g;
 const ISIN = /\b([A-Z]{2}[A-Z0-9]{9}\d)\b/;
 const FOLIO_LINE = /^folio\s*no\.?\s*:?\s*(.+)$/i;
+
+/**
+ * The folio itself, off the front of what follows "Folio No:".
+ *
+ * A real statement prints more on that line than the number — "Mode of
+ * Holding: Single", a PAN, a KYC flag — and taking the rest of the line whole
+ * ended with a folio whose last four characters were "ngle".
+ */
+const FOLIO_TOKEN = /^([0-9][0-9A-Za-z]*(?:\s*[/-]\s*[0-9A-Za-z]+)*)/;
+
+/**
+ * Lines that sit where a scheme name sits and are not one.
+ *
+ * "No Transaction during the period" is printed in place of the table for a
+ * folio that was quiet, and it became the scheme name of three holdings on the
+ * first real statement this parser met.
+ */
+const NOT_A_SCHEME =
+  /^(no transaction|opening|closing|date\b|nav on|registrar|isin\b|pan\b|kyc|nominee|mode of holding|folio|email|address|statement|consolidated|page\b|total\b|market value|income capital)/i;
 const REGISTRAR_LINE = /registrar\s*:?\s*(cams|kfintech|karvy)/i;
 const CLOSING_LINE = /closing\s+unit\s+balance/i;
 const OPENING_LINE = /opening\s+unit\s+balance/i;
@@ -271,11 +290,11 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
 
     const folioMatch = FOLIO_LINE.exec(line);
     if (folioMatch) {
-      // The folio number, without the KYC and PAN flags printed beside it on a
-      // CAMS statement. Those are identifiers and have no business here.
-      const folio = (folioMatch[1] ?? '')
-        .split(/\s{2,}|\bPAN\b|\bKYC\b/i)[0]
-        ?.trim() ?? '';
+      // The folio number itself and nothing else on the line: a PAN, a KYC
+      // flag and "Mode of Holding: Single" all follow it on a real statement,
+      // and they are identifiers or noise, neither of which belongs here.
+      const after = (folioMatch[1] ?? '').trim();
+      const folio = (FOLIO_TOKEN.exec(after)?.[1] ?? after.split(' ')[0] ?? '').trim();
 
       current = {
         // An AMC name sits above the folio on both layouts.
@@ -323,7 +342,7 @@ export function parseEcas(lines: readonly string[]): EcasStatement {
         const bare = ISIN.exec(line);
         if (/^isin/i.test(line) || (bare && line.replace(bare[0], '').trim() === '')) {
           if (current.isin === null && bare) current.isin = bare[1] ?? null;
-        } else if (!/^date\b/i.test(line)) {
+        } else if (!NOT_A_SCHEME.test(line)) {
           current.scheme = cleanScheme(line);
           const inScheme = ISIN.exec(line);
           if (current.isin === null && inScheme) current.isin = inScheme[1] ?? null;

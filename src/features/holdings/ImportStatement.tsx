@@ -97,6 +97,12 @@ export function ImportStatement({
   const [memberOf, setMemberOf] = useState<Readonly<Record<string, string>>>({});
   const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
   const [done, setDone] = useState<string | null>(null);
+  /**
+   * What the PDF engine actually read, kept so a statement the parser gets
+   * wrong can be diagnosed from the one place the file exists — this page.
+   * Shown only on request, never sent anywhere, and gone when the page closes.
+   */
+  const [rawLines, setRawLines] = useState<readonly string[]>([]);
 
   const viewerMemberId = listing?.viewer.memberId ?? '';
   const canRecord = listing?.viewer.canRecord ?? false;
@@ -122,6 +128,7 @@ export function ImportStatement({
     try {
       const { lines } = await readStatementLines(await file.arrayBuffer(), password);
       const statement = parseEcas(lines);
+      setRawLines(lines);
 
       if (statement.folios.length === 0) {
         setProblem(
@@ -324,7 +331,16 @@ export function ImportStatement({
             </Notice>
           )}
 
-          {folios.map((entry) => (
+          {folios.filter((entry) => entry.rows.length === 0).length > 0 && (
+            <p className="note">
+              {folios.filter((entry) => entry.rows.length === 0).length} folios had no transactions
+              in this period and are not shown.
+            </p>
+          )}
+
+          {folios
+            .filter((entry) => entry.rows.length > 0)
+            .map((entry) => (
             <div key={entry.folio.folio}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="text-body font-semibold">
@@ -432,6 +448,36 @@ export function ImportStatement({
             </button>
           </div>
         </div>
+      )}
+
+      {/*
+        The diagnostic, and the reason it exists: a parser meets layouts its
+        fixtures never had, and the only copy of the file is on this machine.
+        Without this, working out why a row was misread means describing a
+        document nobody else can look at.
+      */}
+      {rawLines.length > 0 && (
+        <details className="mt-4">
+          <summary className="note cursor-pointer">
+            What the file looked like ({rawLines.length} lines)
+          </summary>
+          <p className="note mt-2">
+            Exactly what the PDF engine read, before any of it was understood. It stays on this
+            device. If you send any of it to somebody to diagnose a misread row, change the figures,
+            the folio numbers and the names first — this is the text of your statement.
+          </p>
+          <pre
+            className="mt-2 overflow-auto text-caption"
+            style={{
+              maxHeight: '24rem',
+              background: 'var(--surface-2)',
+              padding: '0.75rem',
+              borderRadius: '0.375rem',
+            }}
+          >
+            {rawLines.map((line, at) => `${String(at + 1).padStart(4, ' ')}  ${line}`).join('\n')}
+          </pre>
+        </details>
       )}
     </Card>
   );

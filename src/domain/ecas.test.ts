@@ -268,6 +268,32 @@ describe('the shapes a statement arrives in', () => {
     expect(into?.direction).toBe('in');
   });
 
+  /**
+   * Both of these come from the first real statement this parser met, where
+   * the published shape turned out to be a simplification.
+   */
+  it('takes the folio number off a line that carries half the account with it', () => {
+    const statement = parseEcas([
+      'Folio No: 10422158 / 45 PAN: XXXXX1234X KYC: OK Mode of Holding: Single',
+      'ABC0001-A Fund - Growth Registrar : CAMS',
+      '05-Apr-2024 Purchase-SIP 5,000.00 45.123 110.8100 45.123',
+    ]);
+
+    expect(statement.folios[0]?.folio).toBe('10422158 / 45');
+    // Not "ngle", which is what the whole line ends in.
+    expect(statement.folios[0]?.folioLast4).toBe('5845');
+  });
+
+  it('does not take "No Transaction during the period" for a scheme name', () => {
+    const statement = parseEcas([
+      'Folio No: 12345678 Mode of Holding: Single',
+      'No Transaction during the period',
+    ]);
+
+    expect(statement.folios[0]?.scheme).toBe('');
+    expect(statement.folios[0]?.transactions).toEqual([]);
+  });
+
   it('returns nothing rather than guessing when the file is not a statement', () => {
     const statement = parseEcas(['Dear investor,', 'Thank you for your business.']);
 
