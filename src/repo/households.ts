@@ -46,3 +46,28 @@ export async function listHouseholds(): Promise<readonly HouseholdMembership[]> 
     accountId: String(row.user_account_id),
   }));
 }
+
+/**
+ * Empty a demo household and put the sample data back.
+ *
+ * "Reset wipes and reseeds it to a known state, so you can experiment
+ * destructively without care" (§468). Everything that decides whether this may
+ * happen is in the database — second factor, owner, and a household marked
+ * demo — so a screen that offered it wrongly would still be refused.
+ */
+export async function resetDemoHousehold(householdId: Uuid): Promise<void> {
+  const client = supabase();
+
+  // Named argument: PostgREST resolves a function by parameter name, and a
+  // positional call would not find it at all.
+  const result = await client.rpc('reset_demo_household', { target_household_id: householdId });
+
+  // The function's refusals are written to be read by a person — "Only an
+  // owner can reset a demo household." — so they are passed through as they
+  // are rather than replaced with a vaguer one.
+  if (result.error !== null) {
+    throw new Error(
+      result.error.message === '' ? 'Could not reset the demo household.' : result.error.message,
+    );
+  }
+}

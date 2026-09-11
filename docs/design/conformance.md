@@ -33,7 +33,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 | calendar | screen | not-built | Stage 5 |
 | reports | screen | not-built | Stage 5 — export, template upload |
 | profile | screen | built | `src/features/profile` — identity, private-entry count, recent activity |
-| settings | screen | built | `src/features/settings` — device and household groups, members absorbed |
+| settings | screen | built | `src/features/settings` — device and household groups, members absorbed, and the Data group's demo reset (demo households only, owner only). The rest of Data — template, upload, export, where your data lives, delete household — arrives with stage 5 |
 | privacy | screen | not-built | Where-your-data-lives status page; partly served by Profile's activity list |
 
 ## Components
