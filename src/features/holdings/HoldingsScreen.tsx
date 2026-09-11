@@ -24,6 +24,7 @@ import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
 import { EditHolding } from './EditHolding.tsx';
+import { ImportStatement } from './ImportStatement.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { archiveHolding } from '../../repo/holdings.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
@@ -91,6 +92,19 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
   return (
     <div className="flex flex-col gap-4.5">
       {canWrite && <AddHolding listing={listing} onAdd={add} />}
+
+      {/*
+        Beside adding a holding by hand, because it is the same errand done in
+        bulk: "imports are accelerants, not prerequisites" (§791). Folded away
+        by default — typing one purchase is the common case, and importing
+        three years of them is the occasional one.
+      */}
+      <ImportStatement
+        listing={listing}
+        onImported={() => {
+          void reload();
+        }}
+      />
 
       {totals.length > 0 && (
         <Card
