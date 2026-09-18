@@ -42,16 +42,8 @@ import {
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
 import { Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
-
-const KIND_LABEL: Record<string, string> = {
-  equity: 'Equity',
-  etf: 'ETF',
-  mutual_fund: 'Mutual funds',
-  bond: 'Bonds',
-  deposit: 'Deposits',
-  other: 'Other',
-};
 
 /** Chart colours come from tokens in order, so a class keeps its colour. */
 const SERIES = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)'];
@@ -79,7 +71,7 @@ export function OverviewScreen({
    * looks like a row and does nothing is worse than one that plainly is not a
    * link.
    */
-  onOpenHoldings: () => void;
+  onOpenHoldings: (filter: { kind: string; currency: string }) => void;
 }) {
   const [listing, setListing] = useState<HoldingListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -649,9 +641,11 @@ export function OverviewScreen({
                         <button
                           type="button"
                           className="alloc-name block underline"
-                          onClick={onOpenHoldings}
+                          onClick={() => {
+                            onOpenHoldings({ kind: row.kind, currency: group.currency });
+                          }}
                         >
-                          {KIND_LABEL[row.kind] ?? row.kind}
+                          {kindLabel(row.kind)}
                         </button>
                         <span className="alloc-share block">
                           {(row.share * 100).toFixed(1)}% of what is valued

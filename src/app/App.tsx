@@ -157,6 +157,19 @@ function SignedIn({
   const { current } = useHouseholdChoice();
   const householdId = current?.household.id ?? null;
 
+  /**
+   * An asset class clicked on Overview, carried to Holdings.
+   *
+   * Here rather than inside Holdings because it is set on one screen and read
+   * on another, and it is cleared by the tabs: arriving at Holdings by asking
+   * for Holdings means all of them. A filter that outlived the click that set
+   * it is a list quietly missing rows.
+   */
+  const [holdingsFilter, setHoldingsFilter] = useState<{
+    kind: string;
+    currency: string;
+  } | null>(null);
+
   return (
     <div className="min-h-screen">
       <header
@@ -243,6 +256,7 @@ function SignedIn({
               type="button"
               aria-pressed={screen === id}
               onClick={() => {
+                setHoldingsFilter(null);
                 setScreen(id);
               }}
             >
@@ -278,13 +292,23 @@ function SignedIn({
               setPrivacy((on) => !on);
             }}
             householdId={householdId}
-            onOpenHoldings={() => {
+            onOpenHoldings={(filter) => {
+              setHoldingsFilter(filter);
               setScreen('holdings');
             }}
           />
         )}
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
-        {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'holdings' && (
+          <HoldingsScreen
+            privacy={privacy}
+            householdId={householdId}
+            filter={holdingsFilter}
+            onClearFilter={() => {
+              setHoldingsFilter(null);
+            }}
+          />
+        )}
       </main>
 
       {/*
