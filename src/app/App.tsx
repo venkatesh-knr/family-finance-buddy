@@ -278,6 +278,9 @@ function SignedIn({
               setPrivacy((on) => !on);
             }}
             householdId={householdId}
+            onOpenHoldings={() => {
+              setScreen('holdings');
+            }}
           />
         )}
         {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
