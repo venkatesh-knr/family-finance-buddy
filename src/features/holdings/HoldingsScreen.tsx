@@ -292,6 +292,7 @@ function HoldingCard({
   const { holding, latest, peak } = row;
   const currency = holding.instrument.currency;
   const [editing, setEditing] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   return (
     <section
@@ -342,7 +343,13 @@ function HoldingCard({
         <div>
           <dt className="micro-label">
             Peak {peak.year}
-            {peak.isProvisional && ' (provisional)'}
+            {/*
+              Only against a figure. `isProvisional` means "a lower bound,
+              because months are missing", and a year with no readings at all
+              has every month missing — so this read "Peak 2025 (provisional)"
+              above the words "not known", which is a qualification of nothing.
+            */}
+            {peak.isProvisional && peak.peak !== null && ' (provisional)'}
           </dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {peak.peak === null ? (
@@ -374,22 +381,32 @@ function HoldingCard({
         <QuotedValue row={row} canWrite={canWrite} today={today} onRecord={onRecord} listing={listing} />
       )}
 
-      {canWrite && (
-        <RecordReading
-          listing={listing}
-          holdingId={holding.id}
-          quantity={holding.quantity}
-          currency={currency}
-          today={today}
-          onRecord={onRecord}
-        />
-      )}
+      {/*
+        The forms are folded away, and the figures are not.
 
+        A card carrying three permanently open forms reads as a data-entry
+        screen, and this one is mostly read rather than written: a reading is
+        taken once a month, a correction almost never. So the actions sit on
+        one quiet line and open what they name — which also stops an empty
+        amount box, showing its placeholder, being mistaken for a value of
+        nothing.
+      */}
       {canWrite && (
         <div className="mt-3 flex flex-wrap items-center gap-3.5">
           <button
             type="button"
             className="note underline"
+            aria-expanded={recording}
+            onClick={() => {
+              setRecording((was) => !was);
+            }}
+          >
+            {recording ? 'Cancel this reading' : 'Record a value'}
+          </button>
+          <button
+            type="button"
+            className="note underline"
+            aria-expanded={editing}
             onClick={() => {
               setEditing((was) => !was);
             }}
@@ -398,6 +415,20 @@ function HoldingCard({
           </button>
           <ArchiveHolding row={row} onDone={onReload} />
         </div>
+      )}
+
+      {canWrite && recording && (
+        <RecordReading
+          listing={listing}
+          holdingId={holding.id}
+          quantity={holding.quantity}
+          currency={currency}
+          today={today}
+          onRecord={async (valuation) => {
+            await onRecord(valuation);
+            setRecording(false);
+          }}
+        />
       )}
 
       {canWrite && editing && (

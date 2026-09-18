@@ -61,6 +61,9 @@ export function CostAndGains({
   taxRules: readonly TaxRule[];
 }) {
   const [open, setOpen] = useState(false);
+  // Entering a purchase by hand is the rare path now that a statement can be
+  // imported, so the two forms are behind a toggle rather than always open.
+  const [entering, setEntering] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
 
@@ -172,6 +175,19 @@ export function CostAndGains({
       )}
 
       {canWrite && (
+        <button
+          type="button"
+          className="note mt-3 underline"
+          aria-expanded={entering}
+          onClick={() => {
+            setEntering((was) => !was);
+          }}
+        >
+          {entering ? 'Hide these forms' : 'Add a purchase or sale'}
+        </button>
+      )}
+
+      {canWrite && entering && (
         <div className="mt-3.5 flex flex-col gap-3">
           <RecordEvent
             what="purchase"
