@@ -146,18 +146,39 @@ export function CostAndGains({
         </div>
       </dl>
 
-      <button
-        type="button"
-        className="note mt-3 underline"
-        aria-expanded={open}
-        onClick={() => {
-          setOpen((was) => !was);
-        }}
-      >
-        {open
-          ? 'Hide the workings'
-          : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
-      </button>
+      {/*
+        Both toggles on one line, with whatever they open below it. As two
+        separate blocks they were inline elements with nothing between them,
+        so "Show the workings (0 purchases, 0 sales)" and "Add a purchase or
+        sale" ran together into one sentence.
+      */}
+      <div className="mt-3 flex flex-wrap items-center gap-3.5">
+        <button
+          type="button"
+          className="note underline"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen((was) => !was);
+          }}
+        >
+          {open
+            ? 'Hide the workings'
+            : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
+        </button>
+
+        {canWrite && (
+          <button
+            type="button"
+            className="note underline"
+            aria-expanded={entering}
+            onClick={() => {
+              setEntering((was) => !was);
+            }}
+          >
+            {entering ? 'Hide these forms' : 'Add a purchase or sale'}
+          </button>
+        )}
+      </div>
 
       {open && (
         <Workings
@@ -172,19 +193,6 @@ export function CostAndGains({
           taxRules={taxRules}
           assetClass={holding.instrument.taxAssetClass}
         />
-      )}
-
-      {canWrite && (
-        <button
-          type="button"
-          className="note mt-3 underline"
-          aria-expanded={entering}
-          onClick={() => {
-            setEntering((was) => !was);
-          }}
-        >
-          {entering ? 'Hide these forms' : 'Add a purchase or sale'}
-        </button>
       )}
 
       {canWrite && entering && (
