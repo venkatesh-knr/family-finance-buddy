@@ -18,19 +18,40 @@ import {
   money,
   parseAmountToMinor,
 } from '../../lib/money.ts';
-import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
+import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { kindLabel } from '../../ui/labels.ts';
 import { CostAndGains } from './CostAndGains.tsx';
 import { EditHolding } from './EditHolding.tsx';
+import { ImportStatement } from './ImportStatement.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { archiveHolding } from '../../repo/holdings.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
 type SortBy = 'value' | 'name' | 'member';
 
-export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
+export function HoldingsScreen({
+  privacy,
+  householdId,
+  filter = null,
+  onClearFilter,
+}: {
+  privacy: boolean;
+  householdId: string | null;
+  /**
+   * An asset class asked for on Overview, where clicking "Bonds" means "show
+   * me the bonds". Null is the ordinary case: every holding.
+   *
+   * Currency as well as kind, because Overview's shares are per currency —
+   * "Bonds, 100% of what is valued" is an answer about the rupee column, and
+   * following it into a list that also contained dollar bonds would be
+   * answering a question nobody asked.
+   */
+  filter?: { kind: string; currency: string } | null;
+  onClearFilter?: () => void;
+}) {
   const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
@@ -44,11 +65,26 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
     for (const row of rows) {
       const currency = row.holding.instrument.currency;
       const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0 };
-      // The row's cost, not the holding's: where lots exist it is derived from
-      // them net of sales, which is the figure that is actually still invested.
-      bucket.invested += row.cost.amount?.minor ?? 0n;
-      if (row.latest === null) bucket.unread += 1;
-      else bucket.value += row.latest.amountMinor;
+
+      if (row.latest === null) {
+        // Unread on both sides of the comparison, or neither.
+        //
+        // This used to count an unvalued holding's cost as invested while
+        // having no value to set against it, so importing three funds nobody
+        // had valued turned a portfolio into a 61% loss. The cost was real and
+        // the loss was a subtraction from a figure that did not exist.
+        //
+        // Overview has always done it this way — its figure is named
+        // `investedValued` — and the two screens disagreeing about one
+        // household's return is worse than either answer alone.
+        bucket.unread += 1;
+      } else {
+        // The row's cost, not the holding's: where lots exist it is derived
+        // from them net of sales, which is what is actually still invested.
+        bucket.invested += row.cost.amount?.minor ?? 0n;
+        bucket.value += row.latest.amountMinor;
+      }
+
       byCurrency.set(currency, bucket);
     }
     return [...byCurrency.entries()].map(([currency, b]) => ({ currency, ...b }));
@@ -57,7 +93,14 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
   // Biggest first by default: on a list of twenty, the largest position is
   // almost always the one the question is about.
   const ordered = useMemo(() => {
-    const copy = [...rows];
+    const copy =
+      filter === null
+        ? [...rows]
+        : rows.filter(
+            (row) =>
+              row.holding.instrument.kind === filter.kind &&
+              row.holding.instrument.currency === filter.currency,
+          );
     copy.sort((a, b) => {
       if (sortBy === 'name') {
         return a.holding.instrument.name.localeCompare(b.holding.instrument.name);
@@ -73,7 +116,7 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
       return bv > av ? 1 : bv < av ? -1 : 0;
     });
     return copy;
-  }, [rows, sortBy]);
+  }, [rows, sortBy, filter]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 
@@ -91,6 +134,19 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
   return (
     <div className="flex flex-col gap-4.5">
       {canWrite && <AddHolding listing={listing} onAdd={add} />}
+
+      {/*
+        Beside adding a holding by hand, because it is the same errand done in
+        bulk: "imports are accelerants, not prerequisites" (§791). Folded away
+        by default — typing one purchase is the common case, and importing
+        three years of them is the occasional one.
+      */}
+      <ImportStatement
+        listing={listing}
+        onImported={() => {
+          void reload();
+        }}
+      />
 
       {totals.length > 0 && (
         <Card
@@ -164,7 +220,13 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
       )}
 
       <Card
-        title={rows.length === 0 ? 'Holdings' : `Holdings (${String(rows.length)})`}
+        title={
+          filter !== null
+            ? `${kindLabel(filter.kind)} in ${filter.currency} (${String(ordered.length)})`
+            : rows.length === 0
+              ? 'Holdings'
+              : `Holdings (${String(rows.length)})`
+        }
         aside={
           <label className="flex items-center gap-2">
             <span className="micro-label">
@@ -204,6 +266,31 @@ export function HoldingsScreen({ privacy, householdId }: { privacy: boolean; hou
           </p>
         ) : (
           <>
+            {/*
+              A filtered list has to say so where the list is, not only in the
+              heading: somebody who scrolled past the heading is looking at a
+              short list with no sign that the rest exists.
+            */}
+            {filter !== null && (
+              <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+                <Pill tone="neutral">
+                  {kindLabel(filter.kind)} · {filter.currency}
+                </Pill>
+                <span className="note">
+                  {ordered.length === rows.length
+                    ? 'every holding is in this class'
+                    : `${String(rows.length - ordered.length)} other ${
+                        rows.length - ordered.length === 1 ? 'holding is' : 'holdings are'
+                      } hidden`}
+                </span>
+                {onClearFilter !== undefined && (
+                  <button type="button" className="note underline" onClick={onClearFilter}>
+                    Show all holdings
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
               <span className="micro-label">Sort</span>
               <span className="segmented" role="group" aria-label="Sort holdings">
@@ -278,6 +365,7 @@ function HoldingCard({
   const { holding, latest, peak } = row;
   const currency = holding.instrument.currency;
   const [editing, setEditing] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   return (
     <section
@@ -306,7 +394,7 @@ function HoldingCard({
           )}
         </div>
         <span className="num note">
-          {formatQuantity(parseQuantity(holding.quantity))} units · {holding.member.displayName}
+          {formatQuantity(row.unitsHeld)} units · {holding.member.displayName}
         </span>
       </header>
 
@@ -328,7 +416,13 @@ function HoldingCard({
         <div>
           <dt className="micro-label">
             Peak {peak.year}
-            {peak.isProvisional && ' (provisional)'}
+            {/*
+              Only against a figure. `isProvisional` means "a lower bound,
+              because months are missing", and a year with no readings at all
+              has every month missing — so this read "Peak 2025 (provisional)"
+              above the words "not known", which is a qualification of nothing.
+            */}
+            {peak.isProvisional && peak.peak !== null && ' (provisional)'}
           </dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {peak.peak === null ? (
@@ -360,22 +454,32 @@ function HoldingCard({
         <QuotedValue row={row} canWrite={canWrite} today={today} onRecord={onRecord} listing={listing} />
       )}
 
-      {canWrite && (
-        <RecordReading
-          listing={listing}
-          holdingId={holding.id}
-          quantity={holding.quantity}
-          currency={currency}
-          today={today}
-          onRecord={onRecord}
-        />
-      )}
+      {/*
+        The forms are folded away, and the figures are not.
 
+        A card carrying three permanently open forms reads as a data-entry
+        screen, and this one is mostly read rather than written: a reading is
+        taken once a month, a correction almost never. So the actions sit on
+        one quiet line and open what they name — which also stops an empty
+        amount box, showing its placeholder, being mistaken for a value of
+        nothing.
+      */}
       {canWrite && (
         <div className="mt-3 flex flex-wrap items-center gap-3.5">
           <button
             type="button"
             className="note underline"
+            aria-expanded={recording}
+            onClick={() => {
+              setRecording((was) => !was);
+            }}
+          >
+            {recording ? 'Cancel this reading' : 'Record a value'}
+          </button>
+          <button
+            type="button"
+            className="note underline"
+            aria-expanded={editing}
             onClick={() => {
               setEditing((was) => !was);
             }}
@@ -384,6 +488,20 @@ function HoldingCard({
           </button>
           <ArchiveHolding row={row} onDone={onReload} />
         </div>
+      )}
+
+      {canWrite && recording && (
+        <RecordReading
+          listing={listing}
+          holdingId={holding.id}
+          quantity={quantityToNumeric(row.unitsHeld)}
+          currency={currency}
+          today={today}
+          onRecord={async (valuation) => {
+            await onRecord(valuation);
+            setRecording(false);
+          }}
+        />
       )}
 
       {canWrite && editing && (
@@ -397,6 +515,7 @@ function HoldingCard({
             listing.lots.some((lot) => lot.holdingId === holding.id) ||
             listing.disposals.some((sale) => sale.holdingId === holding.id)
           }
+          hasLots={listing.lots.some((lot) => lot.holdingId === holding.id)}
           currencyOptions={<CurrencyOptions />}
           onDone={async () => {
             setEditing(false);
@@ -984,7 +1103,7 @@ function QuotedValue({
                 householdId: listing.household.id,
                 holdingId: row.holding.id,
                 date: quoted.price.asOf,
-                quantity: row.holding.quantity,
+                quantity: quantityToNumeric(row.unitsHeld),
                 amount: quoted.value,
                 // Recorded on the date the price is for. 'manual' when that is
                 // today, 'backfill' when it is an earlier day being caught up
