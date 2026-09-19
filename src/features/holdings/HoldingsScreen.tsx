@@ -515,6 +515,7 @@ function HoldingCard({
             listing.lots.some((lot) => lot.holdingId === holding.id) ||
             listing.disposals.some((sale) => sale.holdingId === holding.id)
           }
+          hasLots={listing.lots.some((lot) => lot.holdingId === holding.id)}
           currencyOptions={<CurrencyOptions />}
           onDone={async () => {
             setEditing(false);

@@ -32,6 +32,7 @@ export function EditHolding({
   isMine,
   /** Whether anything is already denominated in the current currency. */
   hasHistory,
+  hasLots = false,
   currencyOptions,
   onDone,
   onCancel,
@@ -39,6 +40,15 @@ export function EditHolding({
   holding: Holding;
   isMine: boolean;
   hasHistory: boolean;
+  /**
+   * Whether units and cost come from recorded purchases.
+   *
+   * Then they are not this form's to set. An imported holding carries zero on
+   * its own row on purpose — what is held is derived from the lots — and the
+   * old rule here, "a holding is of some quantity", refused every save on one,
+   * so a fund an eCAS had just created could not even be given a price feed.
+   */
+  hasLots?: boolean;
   currencyOptions: React.ReactNode;
   onDone: () => Promise<void>;
   onCancel: () => void;
@@ -80,7 +90,7 @@ export function EditHolding({
       setProblem(error instanceof Error ? error.message : 'That is not a quantity.');
       return;
     }
-    if (quantityValue <= 0n) {
+    if (!hasLots && quantityValue <= 0n) {
       setProblem('A holding is of some quantity. Archive it instead of setting it to zero.');
       return;
     }
@@ -96,8 +106,12 @@ export function EditHolding({
     }
 
     const patch: HoldingPatch = {
-      quantity,
-      cost: costValue,
+      // Left out entirely when the purchases are the record, for the same
+      // reason the currency is below: the form does not show these fields
+      // then, so it must not write them. The repository still refuses a zero
+      // quantity on a holding with no purchases, which is where that rule
+      // belongs.
+      ...(hasLots ? {} : { quantity, cost: costValue }),
       openedOn: openedOn === '' ? null : openedOn,
       // Only where it is yours to set. The policy refuses making somebody
       // else's holding private — "privacy is a decision about your own record;
@@ -174,30 +188,42 @@ export function EditHolding({
           </select>
         </label>
 
-        <div className="w-full sm:w-[110px] sm:shrink-0">
-          <Field
-            label="Units"
-            numeric
-            inputMode="decimal"
-            value={quantity}
-            onChange={(event) => {
-              setQuantity(event.target.value);
-            }}
-          />
-        </div>
+        {hasLots ? (
+          // Not two fields showing figures nobody should type over. The
+          // purchases are the record, and a units box here would be a second
+          // answer to "how much is held" that could only drift from the first.
+          <p className="note w-full">
+            Units and cost come from the purchases and sales recorded for this holding, so they are
+            corrected there rather than here.
+          </p>
+        ) : (
+          <>
+            <div className="w-full sm:w-[110px] sm:shrink-0">
+              <Field
+                label="Units"
+                numeric
+                inputMode="decimal"
+                value={quantity}
+                onChange={(event) => {
+                  setQuantity(event.target.value);
+                }}
+              />
+            </div>
 
-        <div className="w-full sm:w-[130px] sm:shrink-0">
-          <Field
-            label={`Cost (${currency})`}
-            numeric
-            inputMode="decimal"
-            placeholder="not recorded"
-            value={cost}
-            onChange={(event) => {
-              setCost(event.target.value);
-            }}
-          />
-        </div>
+            <div className="w-full sm:w-[130px] sm:shrink-0">
+              <Field
+                label={`Cost (${currency})`}
+                numeric
+                inputMode="decimal"
+                placeholder="not recorded"
+                value={cost}
+                onChange={(event) => {
+                  setCost(event.target.value);
+                }}
+              />
+            </div>
+          </>
+        )}
 
         <div className="w-full sm:w-[150px] sm:shrink-0">
           <Field
