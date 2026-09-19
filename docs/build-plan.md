@@ -124,80 +124,165 @@ Your development environment and your first deliverable are the same thing.
 
 ### Stage 5 — The rest of the surface — _Weeks 7–9_
 
-- Property with its cost basis, bonds and deposits, retirement, protection, liabilities, the calendar.
+**Do these in the order below.** Stage 5 is the widest stage and the only one
+whose items look independent enough to take in any sequence. They are not. Two
+of them are prerequisites wearing the costume of features, and the stage gate is
+a round trip that needs one half built before the other half can be tested at
+all. Work down the list. If something has to move, move it here and say why, so
+that there is one order rather than two.
 
-- Export in both formats, and the template upload with its preview-before-commit flow.
+Three things are already built and sit outside the order: `tax_rule` and its
+classification module, eCAS import, and the `lot`/`disposal` ledger they fill.
+What remains of each is noted where it belongs below.
 
-- **eCAS import — and it comes first among the imports.** A CAMS or KFintech
-  consolidated statement is the full mutual-fund transaction history across every
-  AMC; a depository CAS is the same for demat equity and bonds (blueprint §778,
-  §781). Both are password-protected PDFs, both are digitally generated with real
-  text, so extraction is a layout problem — reading positioned text and rebuilding
-  rows — not character recognition.
+---
 
-  **Parsed on the device, never uploaded.** A consolidated statement lists every
-  folio, the PAN and the address. "Doing it on the device means a document listing
-  every folio, your PAN and your address is never uploaded anywhere. That is better
-  than any server-side design, not a compromise with one" (§894). The browser's own
-  PDF engine takes the password and decrypts the file, so this needs no service and
-  no key of ours — which is also the only reason it is possible at all in an
-  architecture with no server.
+**1. The currency control.** Everything else in this stage is downstream of it.
 
-  **It is worth more now than when it was specified.** §260: "the ledger fills in
-  behind it as SIPs post and CAS files import, and the moment a holding has a
-  complete ledger, XIRR and lot-level capital gains turn on for it." That ledger is
-  `lot` and `disposal`, which landed in `20260910120000`, and `src/domain/lots.ts`
-  already derives the parcels. eCAS is how those tables get filled in bulk rather
-  than one purchase at a time — every SIP instalment is a lot, so a household three
-  years into a monthly SIP has a hundred-odd rows nobody will ever type.
+`fx_rate` exists (`20260908130000`), `src/domain/fx.ts` converts, and the
+Overview headline already refuses honestly when a rate is missing. What does not
+exist is anywhere for a person to say which currency they are reading in.
+`docs/design/conformance.md` records it as *"in the avatar menu and Settings" →
+"neither, yet"* — dropped from both because two controls for one setting drift
+apart. That reasoning still holds; the conclusion has expired. It lands in
+Settings, alone, and it lands first.
 
-  Ordering, from §791: "Ship manual entry first and make it genuinely fast — imports
-  are accelerants, not prerequisites. Then the NAV and FX jobs … then eCAS (unlocks
-  XIRR retroactively), then statement import with the rules engine." Manual entry is
-  built and so are lots; the NAV driver is the `price` table still outstanding from
-  stage 4. **eCAS goes ahead of bank and card import**, which the note below was
-  written without saying.
+It is first because Global cannot start without it, the tax engine needs it for
+every US trade, and export has to write a currency column that means something.
+Building it after any of those three means rebuilding part of them.
 
-  The de-duplication requirement below applies here with more force, not less: a CAS
-  covers a date range somebody will re-request and re-import, and a doubled SIP is a
-  doubled cost basis and a wrong capital gain years later.
+**2. The tax engine, and the Tax screen on top of it.**
 
-- **Statement import, bank and credit card both.** "Import beats typing" (blueprint §158),
-  and the entry flow is the project's stated failure mode — a month of card spending
-  typed by hand is where somebody stops using this.
+The largest single piece left. `tax_rule` holds dated rows and
+`src/domain/tax-rules.ts` classifies a parcel long or short term against the rule
+that covered its sale, refusing where no rule covers the date. Nothing computes
+a figure yet: netting, the ₹1.25 lakh equity allowance, the slabs, surcharge and
+cess, the foreign tax credit and its Form 67, advance-tax instalments.
 
-  Three things this has to do, all of them from using the app rather than from
-  the specification:
+Pure functions, per `CLAUDE.md` — no I/O, no `Date.now()`, the date passed in —
+and fixtures with known answers written before the implementation.
 
-  **Guess the category, and be obviously guessing.** A statement line says
-  `UPI/RAZORPAY/8817` and not which envelope it belongs in. The importer should
-  suggest — from the payee text, from what that payee was filed under last
-  time, from the amount and its regularity — and mark every suggestion as one,
-  because a wrong category that arrived silently is worse than a blank. Learned
-  from the household's own history, not from a shipped keyword list that knows
-  nothing about how this family spends.
+*First chore of this step:* `docs/design/conformance.md` still carries a
+departure saying long and short term go unlabelled "until `tax_rule` exists".
+It exists, and has since `20260912120000`. Close that row as part of this work
+rather than leaving a known-stale claim in the file CI reads.
 
-  **Let every row be changed before anything is written**, and after. That is
-  what the preview-before-commit flow is for; the category edit that already
-  exists on an expense is the same control afterwards.
+**3. Global.**
 
-  **Never import the same line twice.** A statement re-uploaded, or two
-  statements overlapping at a month boundary, must not double a month's
-  spending. Needs a stable identity per line — date, amount, and the raw
-  description, hashed — recorded against the row so a re-import recognises what
-  it has already seen.
+The abroad half of the portfolio, and the paperwork it creates: the direct US
+brokerage holdings kept apart from the feeder funds that only track a US index,
+LRS headroom against the USD 250,000 year, TCS above ₹10 lakh, and Schedule FA
+on the calendar year with its initial, peak and closing values.
 
-  A card statement is the more valuable of the two *for spending*, because it is
-  where the discretionary money goes — though eCAS above outranks both, and the
-  blueprint's own sequencing says so. It also settles a question the category catalogue
-  raised: **a card repayment is never an expense.** The purchases were recorded
-  when they happened, so filing the repayment too would double every one of
-  them — which is why there is no "credit card repayment" category and why the
-  importer must skip the payment line on a bank statement that settles a card.
+`src/domain/peak.ts` is already capturing peak values monthly, which is the one
+part of this that cannot be reconstructed later — it is why the snapshot job was
+built in stage 4 rather than here.
 
-- FIRE with the live projection.
+**4. Reports — export first, then the template upload.**
 
-- Read-auditing on the tables carrying personal detail. `audit_log` already accepts a `'read'` action and nothing writes it: Postgres triggers do not fire on `select`, so this means routing those reads through security-definer functions. Deferred from stage 2 deliberately — it is a change to how reading works, not another trigger, and it should be designed alongside the §20 totals surface it shares.
+Export in both formats, then the template with its preview-before-commit flow on
+top of `import_batch` (`20260917120000`).
+
+Export leads because the gate below is a round trip and you cannot test a round
+trip from the far end. It is also the cheaper half: a file written from data the
+app already holds, against an import path that has to survive whatever a person
+did to it in Excel.
+
+The demo household needs the prototype's `sample-bar` by the time anything can
+be exported from it — a banner marking illustrative figures. It is a small
+component and it is what stops a demo export being mistaken for a real one.
+
+**5. Property, and the rest of the balance sheet.**
+
+Property with its cost basis, bonds and deposits, retirement, protection and
+liabilities. Loans and policies already live on FIRE and stay there — see the
+Departures table in `docs/design/conformance.md`; what is missing is the assets
+side, not another home for the debts.
+
+FD and bond accrual is a calculation module with no home yet, and per the
+conventions it gets its fixtures before its implementation.
+
+**6. Bank and card statement import.**
+
+"Import beats typing" (blueprint §158), and the entry flow is the project's
+stated failure mode — a month of card spending typed by hand is where somebody
+stops using this.
+
+It comes after export because of the gate, and after eCAS because the blueprint
+sequences it that way (§791) and eCAS is already done.
+
+Three things this has to do, all of them from using the app rather than from the
+specification:
+
+**Guess the category, and be obviously guessing.** A statement line says
+`UPI/RAZORPAY/8817` and not which envelope it belongs in. The importer should
+suggest — from the payee text, from what that payee was filed under last time,
+from the amount and its regularity — and mark every suggestion as one, because a
+wrong category that arrived silently is worse than a blank. Learned from the
+household's own history, not from a shipped keyword list that knows nothing
+about how this family spends.
+
+**Let every row be changed before anything is written**, and after. That is what
+the preview-before-commit flow is for; the category edit that already exists on
+an expense is the same control afterwards.
+
+**Never import the same line twice.** A statement re-uploaded, or two statements
+overlapping at a month boundary, must not double a month's spending. Needs a
+stable identity per line — date, amount, and the raw description, hashed —
+recorded against the row so a re-import recognises what it has already seen.
+`import_batch` already does this for eCAS lines; the same mechanism carries.
+
+A card statement is the more valuable of the two *for spending*, because it is
+where the discretionary money goes. It also settles a question the category
+catalogue raised: **a card repayment is never an expense.** The purchases were
+recorded when they happened, so filing the repayment too would double every one
+of them — which is why there is no "credit card repayment" category and why the
+importer must skip the payment line on a bank statement that settles a card.
+
+**7. Calendar.**
+
+Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here
+because it is a view over things the earlier steps create — there is little to
+put on a calendar until property, protection and the tax engine exist.
+
+**8. FIRE with the live projection.**
+
+Projected against real contributions rather than a flat assumption, and against
+goals, neither of which exists today. It needs the balance sheet from step 5 to
+be complete, or the projection starts from a number that is missing the property
+and the deposits.
+
+**9. Read-auditing on the tables carrying personal detail.**
+
+`audit_log` already accepts a `'read'` action and nothing writes it: Postgres
+triggers do not fire on `select`, so this means routing those reads through
+security-definer functions. Deferred from stage 2 deliberately — it is a change
+to how reading works, not another trigger, and it should be designed alongside
+the §20 totals surface it shares. Last in the stage because every step above
+adds tables it would otherwise have to be retrofitted onto.
+
+---
+
+**Already built, and what is left of it.**
+
+**eCAS import** (`import_batch` with per-line hashes, `src/domain/ecas.ts`,
+`src/lib/ecas-pdf.ts`, `src/features/holdings/ImportStatement.tsx`) parses both
+layouts, registrar and depository, and a real November 2022 CAS reads with
+nothing unread. Parsed on the device and never uploaded — a consolidated
+statement lists every folio, the PAN and the address, and "doing it on the
+device means [it] is never uploaded anywhere. That is better than any
+server-side design, not a compromise with one" (§894).
+
+Outstanding: editing a figure in the preview (today you leave the row out and
+correct it on the holding), any undo after commit, dividends and charges that
+belong to no purchase — no table holds them — and the demat half of a depository
+CAS.
+
+**XIRR** is not built and has no module. §260: "the moment a holding has a
+complete ledger, XIRR and lot-level capital gains turn on for it." That ledger
+is `lot` and `disposal`, built in `20260910120000`, and eCAS now fills it in
+bulk. The gains half turned on; XIRR did not. It is a pure function with
+fixtures and it can be picked up beside any of the steps above.
 
 > **Gate —** export everything, edit a hundred rows in Excel, upload it back, and land in the same state. That round trip proves the whole import path.
 
