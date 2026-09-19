@@ -18,7 +18,7 @@ import {
   money,
   parseAmountToMinor,
 } from '../../lib/money.ts';
-import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
+import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
@@ -394,7 +394,7 @@ function HoldingCard({
           )}
         </div>
         <span className="num note">
-          {formatQuantity(parseQuantity(holding.quantity))} units · {holding.member.displayName}
+          {formatQuantity(row.unitsHeld)} units · {holding.member.displayName}
         </span>
       </header>
 
@@ -494,7 +494,7 @@ function HoldingCard({
         <RecordReading
           listing={listing}
           holdingId={holding.id}
-          quantity={holding.quantity}
+          quantity={quantityToNumeric(row.unitsHeld)}
           currency={currency}
           today={today}
           onRecord={async (valuation) => {
@@ -1102,7 +1102,7 @@ function QuotedValue({
                 householdId: listing.household.id,
                 holdingId: row.holding.id,
                 date: quoted.price.asOf,
-                quantity: row.holding.quantity,
+                quantity: quantityToNumeric(row.unitsHeld),
                 amount: quoted.value,
                 // Recorded on the date the price is for. 'manual' when that is
                 // today, 'backfill' when it is an earlier day being caught up

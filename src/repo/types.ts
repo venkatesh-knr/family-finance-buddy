@@ -218,6 +218,14 @@ export interface Instrument {
   readonly name: string;
   readonly kind: InstrumentKind;
   readonly symbol: string | null;
+  /**
+   * The international identifier, where the household has one.
+   *
+   * Read as well as written now: a statement supplies it for every scheme, and
+   * it is what AMFI's file is keyed by — so it is what turns a fund the
+   * importer created into a fund the price driver can quote.
+   */
+  readonly isin: string | null;
   /** What it is priced in. */
   readonly currency: string;
   /** What its value tracks, which is not always the same thing. See §293. */

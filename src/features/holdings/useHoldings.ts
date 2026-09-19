@@ -35,6 +35,17 @@ import type {
 
 export interface HoldingRow {
   readonly holding: Holding;
+  /**
+   * How many units are actually held, scaled like every quantity.
+   *
+   * Derived from the lots net of the sales wherever lots exist, and only
+   * otherwise the figure on the holding row. An imported statement creates the
+   * position with a quantity of zero on purpose — "what is held is derived
+   * from the lots and sales about to be written" — so a screen reading the
+   * holding's own column showed "0 units" above six recorded purchases, and a
+   * fetched price multiplied by that would have valued the fund at nothing.
+   */
+  readonly unitsHeld: bigint;
   /** Most recent reading, whenever it was taken. */
   readonly latest: { readonly date: string; readonly amountMinor: bigint } | null;
   /** The Schedule FA figure for the year in view, with its gaps. */
@@ -186,6 +197,10 @@ export function useHoldings(householdId: string | null): {
       const open = openPosition(matched);
       const hasLots = matched.open.length > 0;
 
+      const unitsHeld = hasLots
+        ? open.reduce((sum, entry) => sum + entry.quantity, 0n)
+        : parseQuantity(holding.quantity);
+
       // Presence in the listing is the exact answer, not an approximation of
       // one: a lot is visible to precisely whoever can see its holding, so a
       // holding on this screen with no lots beside it genuinely has none. The
@@ -211,12 +226,13 @@ export function useHoldings(householdId: string | null): {
 
       return {
         holding,
+        unitsHeld,
         quoted:
           quote === null
             ? null
             : {
                 price: quote,
-                value: valueOf(parseQuantity(holding.quantity), quote.value, currency),
+                value: valueOf(unitsHeld, quote.value, currency),
               },
         latest: latest === undefined ? null : { date: latest.date, amountMinor: latest.amount.minor },
         peak: calendarYearPeak({

@@ -58,7 +58,7 @@ const HOLDING_COLUMNS =
   'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility';
 
 const INSTRUMENT_COLUMNS =
-  'id, name, kind, symbol, currency, exposure_currency, is_foreign_asset, status, tax_asset_class, price_source, price_external_id';
+  'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, status, tax_asset_class, price_source, price_external_id';
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';

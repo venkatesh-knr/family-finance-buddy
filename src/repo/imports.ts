@@ -276,6 +276,16 @@ async function findOrCreateInstrument(
   const named = (byName.data ?? [])[0];
   if (named !== undefined) return { id: String(named.id), created: false };
 
+  // A fund the driver can price, said at the moment the statement supplies the
+  // identifier. AMFI's file is keyed by ISIN, which is exactly what an eCAS
+  // prints beside every scheme — so an imported fund arrives already able to
+  // fetch its own NAV, rather than sitting unvalued until somebody goes and
+  // fills that in by hand.
+  const priced =
+    folio.isin === null
+      ? { price_source: null, price_external_id: null }
+      : { price_source: 'amfi', price_external_id: folio.isin };
+
   const created = await client
     .from('instrument')
     .insert({
@@ -290,6 +300,7 @@ async function findOrCreateInstrument(
       // somebody to change on the holding.
       exposure_currency: folio.currency,
       is_foreign_asset: false,
+      ...priced,
     })
     .select('id')
     .single();

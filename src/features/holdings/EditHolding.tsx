@@ -315,6 +315,11 @@ export function EditHolding({
             onChange={(event) => {
               setPriceSource(event.target.value);
               if (event.target.value === '') setPriceId('');
+              // The identifier the household already has. AMFI knows a fund by
+              // its ISIN, an imported statement supplied one, and asking
+              // somebody to type it back in from a PDF is asking them to
+              // re-enter something the app is already holding.
+              else if (priceId === '') setPriceId(holding.instrument.isin ?? '');
             }}
           >
             <option value="">No feed</option>

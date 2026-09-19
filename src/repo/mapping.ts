@@ -167,6 +167,7 @@ export function toInstrument(raw: unknown): Instrument {
     name: requireString(row['name'], 'instrument.name'),
     kind: requireOneOf(row['kind'], INSTRUMENT_KINDS, 'instrument.kind'),
     symbol: optionalString(row['symbol'], 'instrument.symbol'),
+    isin: optionalString(row['isin'], 'instrument.isin'),
     currency: requireString(row['currency'], 'instrument.currency'),
     exposureCurrency: requireString(row['exposure_currency'], 'instrument.exposure_currency'),
     taxAssetClass: optionalString(row['tax_asset_class'], 'instrument.tax_asset_class') as
