@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { calendarYearPeak, type CalendarYearPeak } from '../../domain/peak.ts';
 import {
+  costHeld,
   matchFifo,
   openPosition,
   realised,
@@ -17,7 +18,7 @@ import {
 } from '../../domain/lots.ts';
 import { historyOf, unitsHeld as statedUnitsHeld, type History } from '../../domain/position.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
-import { money, type Money } from '../../lib/money.ts';
+import type { Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
@@ -207,15 +208,7 @@ export function useHoldings(householdId: string | null): {
       // holding_cost_source() function says the same thing server-side, and
       // asking it per holding would be a round trip to learn what is already
       // here.
-      const cost = hasLots
-        ? {
-            amount: money(
-              open.reduce((sum, entry) => sum + entry.cost.minor, 0n),
-              currency,
-            ),
-            source: 'lots' as const,
-          }
-        : { amount: holding.cost, source: 'holding' as const };
+      const cost = costHeld(matched, holding.cost, currency);
 
       const externalId = holding.instrument.priceExternalId;
       const source = holding.instrument.priceSource;

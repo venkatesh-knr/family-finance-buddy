@@ -11,7 +11,8 @@
  * three times is three sentences that drift.
  */
 
-import type { Disposal, Lot } from '../../domain/lots.ts';
+import { costHeld, matchFifo, type Disposal, type Lot } from '../../domain/lots.ts';
+import type { Money } from '../../lib/money.ts';
 import { historyOf, isQualified, type History, type StatedBalance } from '../../domain/position.ts';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
@@ -56,6 +57,22 @@ export function positionInputs(
         ? null
         : { units: parseQuantity(holding.stated.quantity), asOf: holding.stated.asOf },
   };
+}
+
+/**
+ * What this holding's units still held cost.
+ *
+ * The same figure the holdings screen shows, from the same function, so a
+ * household cannot have one amount invested on one screen and another on the
+ * next. Null when no cost was ever recorded, which is not a cost of zero.
+ */
+export function costForHolding(listing: HoldingListing, holding: Holding): Money | null {
+  const inputs = positionInputs(listing, holding);
+  return costHeld(
+    matchFifo(inputs.lots, inputs.disposals),
+    holding.cost,
+    holding.instrument.currency,
+  ).amount;
 }
 
 /** Whether this holding's purchases account for its statement's closing balance. */

@@ -32,6 +32,7 @@ import {
 import { isQualified, type History } from '../../domain/position.ts';
 import { closeMonth, listHoldings, listPersonalHoldingTotals } from '../../repo/holdings.ts';
 import {
+  costForHolding,
   historyForHolding,
   RETURN_REFUSED_BECAUSE,
   shortPositions as shortPositionsPhrase,
@@ -206,7 +207,7 @@ export function OverviewScreen({
 
   const holdings = useMemo<readonly HoldingInput[]>(
     () =>
-      (listing?.holdings ?? [])
+      (listing === null ? [] : listing.holdings)
         .filter((h) => scope === 'household' || h.member.id === mine)
         .map((h) => ({
           id: h.id,
@@ -214,7 +215,11 @@ export function OverviewScreen({
           memberName: h.member.displayName,
           kind: h.instrument.kind,
           currency: h.instrument.currency,
-          cost: h.cost,
+          // Derived from the purchases where there are any, exactly as the
+          // holdings screen does. This used to read the holding's own column,
+          // which an import leaves empty, so a household with imported funds
+          // showed less invested here than on the screen beside it.
+          cost: costForHolding(listing as HoldingListing, h),
           isArchived: h.isArchived,
           costIsShort: isQualified(histories.get(h.id) ?? { kind: 'unstated' }),
         })),
