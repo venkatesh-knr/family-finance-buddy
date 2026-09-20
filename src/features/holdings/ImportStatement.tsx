@@ -33,7 +33,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { formatIsoDate } from '../../lib/dates.ts';
+import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
+import { unitsText } from './history.ts';
 import { sha256Hex } from '../../lib/hash.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { formatQuantity } from '../../lib/quantity.ts';
@@ -82,6 +83,31 @@ function fateOf(txn: EcasTransaction): { fate: Fate; because: string | null } {
   }
 }
 
+/**
+ * The closing balance a folio will be recorded with, and the date it was true.
+ *
+ * The statement's period end, because that is the date a registrar's closing
+ * balance is struck on — and never later than today. A statement can be
+ * requested to a date that has not happened, and a balance stamped with one
+ * would swallow a purchase entered between now and then, counting it as already
+ * in the balance when it is not.
+ *
+ * Null with no period: "a balance without a date silently ages into a wrong
+ * figure", so a statement that states no dates records no balances, and the
+ * position falls back to what its lots say.
+ */
+function closingOf(
+  folio: EcasFolio,
+  period: { from: string; to: string } | null,
+): PlannedFolio['closing'] {
+  if (folio.closingUnits === null || period === null) return null;
+  const today = istCalendarDate(new Date());
+  return {
+    units: formatQuantity(folio.closingUnits),
+    asOf: period.to < today ? period.to : today,
+  };
+}
+
 export function ImportStatement({
   listing,
   onImported,
@@ -122,8 +148,18 @@ export function ImportStatement({
       alreadyIn: rows.filter((r) => r.fate === 'already-in').length,
       notRecorded: rows.filter((r) => r.fate === 'not-recorded').length,
       folded: rows.filter((r) => r.fate === 'folded').length,
+      // Folios shown here that carry a closing balance. A re-requested
+      // statement can have every line already in and still be worth recording:
+      // its balance is later than the one on file.
+      closings: (folios ?? []).filter(
+        (f) => f.rows.length > 0 && closingOf(f.folio, period) !== null,
+      ).length,
+      // Any folio at all, including the ones not shown. A quiet folio records a
+      // balance onto a position that already exists, so it can justify the
+      // button even though there is nothing to list for it.
+      anyClosing: (folios ?? []).some((f) => closingOf(f.folio, period) !== null),
     };
-  }, [folios, left]);
+  }, [folios, left, period]);
 
   async function read() {
     if (file === null || listing === null) return;
@@ -199,6 +235,7 @@ export function ImportStatement({
         folioLast4: entry.folio.folioLast4,
         memberId: memberOf[entry.folio.folio] ?? viewerMemberId,
         currency: 'INR',
+        closing: closingOf(entry.folio, period),
         purchases: entry.rows
           .filter((row) => row.fate === 'purchase' && !left.has(row.hash))
           .map((row) => ({
@@ -238,8 +275,17 @@ export function ImportStatement({
         folios: planned,
       });
 
+      const balances =
+        outcome.balancesRecorded === 0
+          ? ''
+          : ` ${String(outcome.balancesRecorded)} closing balance${outcome.balancesRecorded === 1 ? '' : 's'} recorded as the units held.`;
+      const kept =
+        outcome.balancesKept === 0
+          ? ''
+          : ` ${String(outcome.balancesKept)} already had a balance from a later statement, and kept it.`;
+
       setDone(
-        `${String(outcome.purchasesWritten)} purchases and ${String(outcome.salesWritten)} sales recorded, across ${String(outcome.holdingsCreated)} new positions.`,
+        `${String(outcome.purchasesWritten)} purchases and ${String(outcome.salesWritten)} sales recorded, across ${String(outcome.holdingsCreated)} new positions.${balances}${kept}`,
       );
       setFolios(null);
       setFile(null);
@@ -335,6 +381,8 @@ export function ImportStatement({
               ? 'The file states no period.'
               : `Covering ${formatIsoDate(period.from)} to ${formatIsoDate(period.to)}.`}{' '}
             {counts.purchases} purchases and {counts.sales} sales will be recorded.
+            {counts.closings > 0 &&
+              ` ${String(counts.closings)} closing balance${counts.closings === 1 ? '' : 's'} will be recorded as the units held. A position that already has a balance from a later statement keeps it.`}
             {counts.folded > 0 && ` ${String(counts.folded)} stamp duty lines go into the cost of the purchases they were charged on.`}
             {counts.alreadyIn > 0 && ` ${String(counts.alreadyIn)} lines are already in from an earlier import.`}
             {counts.notRecorded > 0 && ` ${String(counts.notRecorded)} are not recorded at all — each says why.`}
@@ -367,6 +415,15 @@ export function ImportStatement({
                   {entry.folio.isin !== null && ` · ${entry.folio.isin}`}
                 </span>
               </div>
+
+              {closingOf(entry.folio, period) !== null && (
+                <p className="note mt-2">
+                  The statement reports {unitsText(entry.folio.closingUnits ?? 0n)} units held on{' '}
+                  {formatIsoDate(closingOf(entry.folio, period)?.asOf ?? '')}. That is what the
+                  position is valued on; the purchases below are the cost, and cover only what this
+                  statement itemises.
+                </p>
+              )}
 
               <label className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="micro-label">Whose holding</span>
@@ -467,12 +524,16 @@ export function ImportStatement({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="button"
-              disabled={busy || counts.purchases + counts.sales === 0}
+              disabled={busy || (counts.purchases + counts.sales === 0 && !counts.anyClosing)}
               onClick={() => {
                 void commit();
               }}
             >
-              {busy ? 'Recording…' : `Record ${String(counts.purchases + counts.sales)} rows`}
+              {busy
+                ? 'Recording…'
+                : counts.purchases + counts.sales === 0
+                  ? 'Record the closing balances'
+                  : `Record ${String(counts.purchases + counts.sales)} rows`}
             </Button>
             <button
               type="button"

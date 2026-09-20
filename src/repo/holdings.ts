@@ -55,7 +55,7 @@ const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 // query makes the database hand over the decimal string it already holds, so
 // precision is never a matter of luck about magnitude.
 const HOLDING_COLUMNS =
-  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility';
+  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, visibility, stated_quantity::text, stated_as_at, stated_source_batch_id';
 
 const INSTRUMENT_COLUMNS =
   'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, status, tax_asset_class, price_source, price_external_id';

@@ -281,6 +281,22 @@ export interface Holding {
    * a personal one of theirs never arrives here at all.
    */
   readonly visibility: Visibility;
+  /**
+   * What a registrar's statement said this position holds, and on what date.
+   *
+   * Null for a holding nobody imported. Where it exists it answers *how many
+   * units*, and only that: cost still comes from the lots, and never borrows
+   * this. See `domain/position.ts`.
+   */
+  readonly stated: StatedBalanceRow | null;
+}
+
+export interface StatedBalanceRow {
+  readonly quantity: Quantity;
+  /** The date the balance was true. Without one it is not a balance. */
+  readonly asOf: IsoDate;
+  /** The import that stated it, or null for a balance nobody imported. */
+  readonly sourceBatchId: Uuid | null;
 }
 
 export interface Valuation {

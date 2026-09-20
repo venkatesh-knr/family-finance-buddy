@@ -31,6 +31,7 @@ import {
   type Disposal,
   type Expense,
   type Holding,
+  type StatedBalanceRow,
   type Lot,
   type Household,
   type HouseholdRole,
@@ -236,6 +237,37 @@ export function toHolding(
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'holding.visibility'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'holding.status') === 'archived',
+    stated: toStatedBalance(row),
+  };
+}
+
+/**
+ * The closing balance a statement reported, if one was recorded.
+ *
+ * A quantity without a date is refused rather than read as best it can be: the
+ * database has a check for it, but a balance with no date is a figure that ages
+ * into a wrong one, and this is the last place it can be stopped from being
+ * valued on.
+ */
+function toStatedBalance(row: Record<string, unknown>): StatedBalanceRow | null {
+  const quantity = row['stated_quantity'];
+  const asOf = row['stated_as_at'];
+  const hasQuantity = quantity !== null && quantity !== undefined;
+  const hasDate = asOf !== null && asOf !== undefined;
+
+  if (!hasQuantity && !hasDate) return null;
+  if (hasQuantity !== hasDate) {
+    throw new MalformedRowError(
+      'holding.stated_quantity',
+      'and holding.stated_as_at must be present together — a balance without a date is not one',
+    );
+  }
+
+  const batch = row['stated_source_batch_id'];
+  return {
+    quantity: requireQuantity(quantity, 'holding.stated_quantity'),
+    asOf: requireIsoDate(asOf, 'holding.stated_as_at'),
+    sourceBatchId: batch === null || batch === undefined ? null : requireString(batch, 'holding.stated_source_batch_id'),
   };
 }
 

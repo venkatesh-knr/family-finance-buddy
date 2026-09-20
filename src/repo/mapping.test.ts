@@ -290,6 +290,55 @@ describe('toHolding', () => {
   it('reads cost as null when there is none', () => {
     expect(toHolding({ ...row, cost_minor: null }, members, instruments).cost).toBeNull();
   });
+
+  describe('the balance a statement reported', () => {
+    it('is null on a holding nobody imported, which is nearly all of them', () => {
+      expect(toHolding(row, members, instruments).stated).toBeNull();
+      expect(
+        toHolding(
+          { ...row, stated_quantity: null, stated_as_at: null, stated_source_batch_id: null },
+          members,
+          instruments,
+        ).stated,
+      ).toBeNull();
+    });
+
+    it('carries the units as a string, the date, and the import that said so', () => {
+      const stated = toHolding(
+        {
+          ...row,
+          stated_quantity: '4013.73000000',
+          stated_as_at: '2026-09-30',
+          stated_source_batch_id: 'b-1',
+        },
+        members,
+        instruments,
+      ).stated;
+      expect(stated).toEqual({
+        quantity: '4013.73000000',
+        asOf: '2026-09-30',
+        sourceBatchId: 'b-1',
+      });
+    });
+
+    it('does not need an import to have said it', () => {
+      expect(
+        toHolding(
+          { ...row, stated_quantity: '10.00000000', stated_as_at: '2026-09-30' },
+          members,
+          instruments,
+        ).stated?.sourceBatchId,
+      ).toBeNull();
+    });
+
+    it('refuses a balance with no date rather than valuing on one that will age', () => {
+      // The database has a check for this. The mapper is the second line, and
+      // the first one a self-hosted instance without the migration would meet.
+      expect(() =>
+        toHolding({ ...row, stated_quantity: '10.00000000', stated_as_at: null }, members, instruments),
+      ).toThrow(/stated/);
+    });
+  });
 });
 
 describe('household kind', () => {

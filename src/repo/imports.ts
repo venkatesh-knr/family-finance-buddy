@@ -32,6 +32,7 @@
  */
 
 import { supabase } from './client.ts';
+import { isIsoDate } from '../lib/dates.ts';
 import { parseQuantity, quantityToNumeric } from '../lib/quantity.ts';
 import type { Uuid } from './types.ts';
 
@@ -61,6 +62,20 @@ export interface PlannedDisposal {
   readonly note: string | null;
 }
 
+/**
+ * The registrar's own count of units, on a date.
+ *
+ * Kept apart from the purchases on purpose: it answers "how many units", which
+ * a statement covering only part of the history answers completely, where the
+ * purchases answer it only for the part the statement reached.
+ */
+export interface StatedClosing {
+  /** A decimal string, never a number. */
+  readonly units: string;
+  /** The date the statement says the balance was true. */
+  readonly asOf: string;
+}
+
 export interface PlannedFolio {
   readonly scheme: string;
   readonly isin: string | null;
@@ -70,6 +85,8 @@ export interface PlannedFolio {
   readonly currency: string;
   readonly purchases: readonly PlannedLot[];
   readonly sales: readonly PlannedDisposal[];
+  /** Null when the statement printed no closing balance, or no date to put on one. */
+  readonly closing: StatedClosing | null;
 }
 
 export interface ImportOutcome {
@@ -80,6 +97,10 @@ export interface ImportOutcome {
   readonly alreadyPresent: number;
   readonly instrumentsCreated: number;
   readonly holdingsCreated: number;
+  /** Closing balances now on a holding, from this statement. */
+  readonly balancesRecorded: number;
+  /** Closing balances left alone because the holding already had one as late or later. */
+  readonly balancesKept: number;
 }
 
 export interface ImportRequest {
@@ -177,9 +198,27 @@ export async function importStatement(request: ImportRequest): Promise<ImportOut
   let salesWritten = 0;
   let instrumentsCreated = 0;
   let holdingsCreated = 0;
+  let balancesRecorded = 0;
+  let balancesKept = 0;
+
+  const stateBalance = async (holdingId: Uuid, closing: StatedClosing | null) => {
+    if (closing === null) return;
+    if (await recordStatedBalance(holdingId, closing, batchId)) balancesRecorded += 1;
+    else balancesKept += 1;
+  };
 
   for (const entry of toWrite) {
-    if (entry.purchases.length === 0 && entry.sales.length === 0) continue;
+    if (entry.purchases.length === 0 && entry.sales.length === 0) {
+      // Nothing new to write, and still worth a look. A statement re-requested
+      // to a later date repeats every line — all "already in" — and carries a
+      // newer closing balance than the one on file. A fund that was quiet in
+      // the period is the same. Neither may create a position from nothing,
+      // but an existing one takes the newer balance.
+      if (entry.folio.closing === null) continue;
+      const existing = await matchHolding(request.householdId, entry.folio, null);
+      if (existing !== null) await stateBalance(existing, entry.folio.closing);
+      continue;
+    }
 
     const instrument = await findOrCreateInstrument(request.householdId, entry.folio);
     if (instrument.created) instrumentsCreated += 1;
@@ -226,6 +265,10 @@ export async function importStatement(request: ImportRequest): Promise<ImportOut
       if (error !== null) throw asRepositoryError(error);
       salesWritten += entry.sales.length;
     }
+
+    // Last, so a failure above leaves rows and no balance rather than a
+    // balance and no rows; running the import again writes the rest.
+    await stateBalance(holding.id, entry.folio.closing);
   }
 
   return {
@@ -235,6 +278,8 @@ export async function importStatement(request: ImportRequest): Promise<ImportOut
     alreadyPresent: present.size,
     instrumentsCreated,
     holdingsCreated,
+    balancesRecorded,
+    balancesKept,
   };
 }
 
@@ -252,29 +297,8 @@ async function findOrCreateInstrument(
 ): Promise<{ id: Uuid; created: boolean }> {
   const client = supabase();
 
-  if (folio.isin !== null) {
-    const { data, error } = await client
-      .from('instrument')
-      .select('id')
-      .eq('household_id', householdId)
-      .eq('isin', folio.isin)
-      .limit(1);
-
-    if (error !== null) throw asRepositoryError(error);
-    const found = (data ?? [])[0];
-    if (found !== undefined) return { id: String(found.id), created: false };
-  }
-
-  const byName = await client
-    .from('instrument')
-    .select('id')
-    .eq('household_id', householdId)
-    .eq('name', folio.scheme)
-    .limit(1);
-
-  if (byName.error !== null) throw asRepositoryError(byName.error);
-  const named = (byName.data ?? [])[0];
-  if (named !== undefined) return { id: String(named.id), created: false };
+  const existing = await findInstrument(householdId, folio);
+  if (existing !== null) return { id: existing, created: false };
 
   // A fund the driver can price, said at the moment the statement supplies the
   // identifier. AMFI's file is keyed by ISIN, which is exactly what an eCAS
@@ -309,20 +333,56 @@ async function findOrCreateInstrument(
   return { id: String(created.data.id), created: true };
 }
 
-/** The position this folio is, creating it only if the member has none. */
-async function findOrCreateHolding(
-  householdId: Uuid,
-  folio: PlannedFolio,
-  instrumentId: Uuid,
-): Promise<{ id: Uuid; created: boolean }> {
+/** The instrument this scheme already is, or null. Matched as described above. */
+async function findInstrument(householdId: Uuid, folio: PlannedFolio): Promise<Uuid | null> {
   const client = supabase();
 
-  const existing = await client
+  if (folio.isin !== null) {
+    const { data, error } = await client
+      .from('instrument')
+      .select('id')
+      .eq('household_id', householdId)
+      .eq('isin', folio.isin)
+      .limit(1);
+
+    if (error !== null) throw asRepositoryError(error);
+    const found = (data ?? [])[0];
+    if (found !== undefined) return String(found.id);
+  }
+
+  const byName = await client
+    .from('instrument')
+    .select('id')
+    .eq('household_id', householdId)
+    .eq('name', folio.scheme)
+    .limit(1);
+
+  if (byName.error !== null) throw asRepositoryError(byName.error);
+  const named = (byName.data ?? [])[0];
+  return named === undefined ? null : String(named.id);
+}
+
+/**
+ * The position this folio already is, or null.
+ *
+ * Without an instrument yet — a folio that was quiet in the period, with no
+ * rows to justify creating anything — it is found the way an import finds it:
+ * by ISIN, then by name.
+ */
+async function matchHolding(
+  householdId: Uuid,
+  folio: PlannedFolio,
+  instrumentId: Uuid | null,
+): Promise<Uuid | null> {
+  const resolved = instrumentId ?? (await findInstrument(householdId, folio));
+  if (resolved === null) return null;
+
+  const existing = await supabase()
     .from('holding')
     .select('id, folio_last4')
     .eq('household_id', householdId)
     .eq('member_id', folio.memberId)
-    .eq('instrument_id', instrumentId);
+    .eq('instrument_id', resolved);
 
   if (existing.error !== null) throw asRepositoryError(existing.error);
 
@@ -334,7 +394,19 @@ async function findOrCreateHolding(
     rows.find((row) => row.folio_last4 === folio.folioLast4) ??
     rows.find((row) => row.folio_last4 === null);
 
-  if (match !== undefined) return { id: String(match.id), created: false };
+  return match === undefined ? null : String(match.id);
+}
+
+/** The position this folio is, creating it only if the member has none. */
+async function findOrCreateHolding(
+  householdId: Uuid,
+  folio: PlannedFolio,
+  instrumentId: Uuid,
+): Promise<{ id: Uuid; created: boolean }> {
+  const client = supabase();
+
+  const found = await matchHolding(householdId, folio, instrumentId);
+  if (found !== null) return { id: found, created: false };
 
   const created = await client
     .from('holding')
@@ -346,6 +418,7 @@ async function findOrCreateHolding(
       // Zero, and not the statement's closing balance. What is held is derived
       // from the lots and sales about to be written; a quantity typed in beside
       // them would be a second answer to one question, and the two would drift.
+      // The closing balance has columns of its own, written once the rows are in.
       quantity: '0',
     })
     .select('id')
@@ -353,6 +426,41 @@ async function findOrCreateHolding(
 
   if (created.error !== null) throw asRepositoryError(created.error);
   return { id: String(created.data.id), created: true };
+}
+
+/**
+ * Record what the registrar says this position held, if that is news.
+ *
+ * One conditional update rather than a read and a write: "a later statement
+ * supersedes it; an earlier one does not" is decided by the database in the
+ * statement that writes, so two imports running together cannot leave the older
+ * of them winning. Returns whether the balance was written. False means the
+ * holding already had one as at that date or later — the outcome an
+ * out-of-order import is meant to have, and not a failure.
+ */
+async function recordStatedBalance(
+  holdingId: Uuid,
+  closing: StatedClosing,
+  batchId: Uuid,
+): Promise<boolean> {
+  // Interpolated into a filter below, so it is checked rather than trusted.
+  if (!isIsoDate(closing.asOf)) {
+    throw new Error('A closing balance needs a real date to be recorded against.');
+  }
+
+  const { data, error } = await supabase()
+    .from('holding')
+    .update({
+      stated_quantity: quantityToNumeric(parseQuantity(closing.units)),
+      stated_as_at: closing.asOf,
+      stated_source_batch_id: batchId,
+    })
+    .eq('id', holdingId)
+    .or(`stated_as_at.is.null,stated_as_at.lt.${closing.asOf}`)
+    .select('id');
+
+  if (error !== null) throw asRepositoryError(error);
+  return (data ?? []).length > 0;
 }
 
 interface ProviderError {
