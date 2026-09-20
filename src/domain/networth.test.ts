@@ -19,6 +19,7 @@ const holding = (over: Partial<HoldingInput> & { id: string }): HoldingInput => 
   currency: 'INR',
   cost: null,
   isArchived: false,
+  costIsShort: false,
   ...over,
 });
 
@@ -92,7 +93,7 @@ describe('assetTotals', () => {
     const rupees = totals.find((t) => t.currency === 'INR');
 
     expect(rupees?.invested.minor).toBe(10_000_000n); // 80,000 + 20,000
-    expect(rupees?.gain.minor).toBe(1_300_000n); // 1,13,000 - 1,00,000
+    expect(rupees?.gain?.minor).toBe(1_300_000n); // 1,13,000 - 1,00,000
   });
 
   it('reports a loss as a negative gain rather than hiding it', () => {
@@ -100,7 +101,7 @@ describe('assetTotals', () => {
       holdings: [holding({ id: 'h1', cost: inr(50_000) })],
       valuations: [reading('h1', '2026-08-31', inr(42_000))],
     });
-    expect(totals[0]?.gain.minor).toBe(-800_000n);
+    expect(totals[0]?.gain?.minor).toBe(-800_000n);
   });
 
   it('counts a holding with no reading as unvalued, not as zero', () => {
@@ -128,6 +129,62 @@ describe('assetTotals', () => {
 
   it('has nothing to say about an empty household', () => {
     expect(assetTotals({ holdings: [], valuations: [] })).toEqual([]);
+  });
+
+  /**
+   * The first real import: ₹4,24,090.71 of fund valued on the statement's own
+   * closing balance, against ₹29,542 of purchases the statement itemised. Set
+   * against each other that is +1,300% — a gain that never happened.
+   */
+  describe('a position whose cost covers only part of what is valued', () => {
+    const short = holding({ id: 'h1', cost: inr(29_542), costIsShort: true });
+    const whole = holding({ id: 'h2', cost: inr(20_000) });
+
+    it('keeps its value in the total, because the value is right', () => {
+      const totals = assetTotals({
+        holdings: [short, whole],
+        valuations: [
+          reading('h1', '2026-09-30', inr(424_090.71)),
+          reading('h2', '2026-09-30', inr(22_000)),
+        ],
+      });
+      expect(totals[0]?.value.minor).toBe(44_609_071n);
+    });
+
+    it('refuses the gain rather than printing one measured against it', () => {
+      const totals = assetTotals({
+        holdings: [short, whole],
+        valuations: [
+          reading('h1', '2026-09-30', inr(424_090.71)),
+          reading('h2', '2026-09-30', inr(22_000)),
+        ],
+      });
+      expect(totals[0]?.gain).toBeNull();
+      expect(totals[0]?.costShort).toBe(1);
+    });
+
+    it('does not refuse anything until the position has been valued', () => {
+      // No reading, so it is in neither side of the comparison — the same rule
+      // that keeps an unvalued holding out of the gain today.
+      const totals = assetTotals({
+        holdings: [short, whole],
+        valuations: [reading('h2', '2026-09-30', inr(22_000))],
+      });
+      expect(totals[0]?.gain?.minor).toBe(200_000n);
+      expect(totals[0]?.costShort).toBe(0);
+    });
+
+    it('refuses in its own currency and no other', () => {
+      const totals = assetTotals({
+        holdings: [short, holding({ id: 'h3', currency: 'USD', cost: usd(1_000) })],
+        valuations: [
+          reading('h1', '2026-09-30', inr(424_090.71)),
+          reading('h3', '2026-09-30', usd(1_250)),
+        ],
+      });
+      expect(totals.find((t) => t.currency === 'INR')?.gain).toBeNull();
+      expect(totals.find((t) => t.currency === 'USD')?.gain?.minor).toBe(25_000n);
+    });
   });
 });
 
@@ -211,7 +268,7 @@ describe('allocationByKind', () => {
 
     const bond = rows.find((r) => r.kind === 'bond');
     expect(bond?.invested.minor).toBe(6_000_000n);
-    expect(bond?.gain.minor).toBe(-300_000n);
+    expect(bond?.gain?.minor).toBe(-300_000n);
     expect(bond?.returnOnCost).toBeCloseTo(-0.05, 6);
   });
 
@@ -224,6 +281,32 @@ describe('allocationByKind', () => {
       currency: 'INR',
     });
     expect(rows[0]?.returnOnCost).toBeNull();
+  });
+
+  it('gives a class with a short cost no return, and leaves the others theirs', () => {
+    const rows = allocationByKind({
+      holdings: [
+        holding({ id: 'h1', kind: 'mutual_fund', cost: inr(29_542), costIsShort: true }),
+        holding({ id: 'h2', kind: 'bond', cost: inr(60_000) }),
+      ],
+      valuations: [
+        reading('h1', '2026-09-30', inr(424_090.71)),
+        reading('h2', '2026-09-30', inr(57_000)),
+      ],
+      currency: 'INR',
+    });
+
+    const funds = rows.find((r) => r.kind === 'mutual_fund');
+    // Still a slice: the value is the registrar's own count of units.
+    expect(funds?.value.minor).toBe(42_409_071n);
+    expect(funds?.share).toBeGreaterThan(0.8);
+    expect(funds?.gain).toBeNull();
+    expect(funds?.returnOnCost).toBeNull();
+    expect(funds?.costShort).toBe(1);
+
+    const bond = rows.find((r) => r.kind === 'bond');
+    expect(bond?.returnOnCost).toBeCloseTo(-0.05, 6);
+    expect(bond?.costShort).toBe(0);
   });
 
   it('gives no shares at all when nothing has been valued', () => {

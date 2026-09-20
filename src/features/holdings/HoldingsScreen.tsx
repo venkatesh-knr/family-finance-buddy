@@ -23,7 +23,9 @@ import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
+import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
+import { RETURN_REFUSED_BECAUSE, shortPositions } from './history.ts';
 import { EditHolding } from './EditHolding.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
@@ -61,10 +63,13 @@ export function HoldingsScreen({
    * currencies, and a holding nobody has read is absent rather than zero.
    */
   const totals = useMemo(() => {
-    const byCurrency = new Map<string, { value: bigint; invested: bigint; unread: number }>();
+    const byCurrency = new Map<
+      string,
+      { value: bigint; invested: bigint; unread: number; short: number }
+    >();
     for (const row of rows) {
       const currency = row.holding.instrument.currency;
-      const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0 };
+      const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0, short: 0 };
 
       if (row.latest === null) {
         // Unread on both sides of the comparison, or neither.
@@ -83,6 +88,10 @@ export function HoldingsScreen({
         // from them net of sales, which is what is actually still invested.
         bucket.invested += row.cost.amount?.minor ?? 0n;
         bucket.value += row.latest.amountMinor;
+        // Valued, with a cost that covers only part of what is valued. The
+        // value stays in: it is right. What cannot be trusted is anything
+        // computed by setting the two against each other.
+        if (isQualified(row.history)) bucket.short += 1;
       }
 
       byCurrency.set(currency, bucket);
@@ -192,19 +201,44 @@ export function HoldingsScreen({
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">
                       {formatMoney(money(total.invested, total.currency), { privacy })}
-                    </Stat>
-                    <Stat label={gain < 0n ? 'Total loss' : 'Total return'} tone={gain < 0n ? 'loss' : 'gain'}>
-                      {formatMoney(money(gain, total.currency), { privacy })}
-                      {/*
-                        The percentage beside the amount, because ₹67,500 says
-                        nothing about whether it was a good year until you know
-                        what was staked to get it. The sign carries the
-                        direction; the colour only agrees with it.
-                      */}
-                      {percentOfCost(gain, total.invested) !== null && (
-                        <span className="note"> {percentOfCost(gain, total.invested)}</span>
+                      {total.short > 0 && (
+                        <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
+                          {shortPositions(total.short)} a statement that covers only part of the
+                          history, so what was paid for the earlier units is not in this figure.
+                          It is the sum of the purchases that were recorded, and nothing has been
+                          made up to fill the rest.
+                        </Caveat>
                       )}
                     </Stat>
+                    {total.short > 0 ? (
+                      // Refused, and said so where the figure would be. An
+                      // empty space would read as a portfolio with no return;
+                      // a number would read as a portfolio that made 1,300%.
+                      <Stat label="Total return">
+                        <span className="note">not shown</span>
+                        <Caveat tone="warn" label={`Why there is no ${total.currency} return`}>
+                          {shortPositions(total.short)} a statement that covers only part of the
+                          history. {RETURN_REFUSED_BECAUSE} The value above is right, because the
+                          units are the statement&rsquo;s own count; it is the cost that is short.
+                        </Caveat>
+                      </Stat>
+                    ) : (
+                      <Stat
+                        label={gain < 0n ? 'Total loss' : 'Total return'}
+                        tone={gain < 0n ? 'loss' : 'gain'}
+                      >
+                        {formatMoney(money(gain, total.currency), { privacy })}
+                        {/*
+                          The percentage beside the amount, because ₹67,500 says
+                          nothing about whether it was a good year until you know
+                          what was staked to get it. The sign carries the
+                          direction; the colour only agrees with it.
+                        */}
+                        {percentOfCost(gain, total.invested) !== null && (
+                          <span className="note"> {percentOfCost(gain, total.invested)}</span>
+                        )}
+                      </Stat>
+                    )}
                     {total.unread > 0 && (
                       <Stat label="Unread">
                         {total.unread} {total.unread === 1 ? 'holding' : 'holdings'}

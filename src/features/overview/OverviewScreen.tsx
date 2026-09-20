@@ -29,7 +29,14 @@ import {
   type HoldingInput,
   type ValuationInput,
 } from '../../domain/networth.ts';
+import { isQualified, type History } from '../../domain/position.ts';
 import { closeMonth, listHoldings, listPersonalHoldingTotals } from '../../repo/holdings.ts';
+import {
+  historyForHolding,
+  RETURN_REFUSED_BECAUSE,
+  shortPositions as shortPositionsPhrase,
+  unitsText,
+} from '../holdings/history.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
@@ -184,6 +191,19 @@ export function OverviewScreen({
 
   const mine = listing?.viewer.memberId ?? null;
 
+  /**
+   * Whether each position's purchases account for the units its statement
+   * reported. Worked out once here, because the totals, the allocation and the
+   * notice all need the answer and must not each derive their own.
+   */
+  const histories = useMemo<ReadonlyMap<string, History>>(
+    () =>
+      listing === null
+        ? new Map()
+        : new Map(listing.holdings.map((h) => [h.id, historyForHolding(listing, h)])),
+    [listing],
+  );
+
   const holdings = useMemo<readonly HoldingInput[]>(
     () =>
       (listing?.holdings ?? [])
@@ -196,8 +216,24 @@ export function OverviewScreen({
           currency: h.instrument.currency,
           cost: h.cost,
           isArchived: h.isArchived,
+          costIsShort: isQualified(histories.get(h.id) ?? { kind: 'unstated' }),
         })),
-    [listing, scope, mine],
+    [listing, scope, mine, histories],
+  );
+
+  /** The positions in view whose cost covers only part of their units, named. */
+  const shortPositions = useMemo(
+    () =>
+      (listing?.holdings ?? [])
+        .filter((h) => !h.isArchived && (scope === 'household' || h.member.id === mine))
+        .flatMap((h) => {
+          const history = histories.get(h.id);
+          if (history === undefined || history.kind === 'unstated' || !isQualified(history)) return [];
+          return [
+            `${h.instrument.name} · ${h.member.displayName} — ${unitsText(history.lotUnits)} of ${unitsText(history.statedUnits)} units`,
+          ];
+        }),
+    [listing, scope, mine, histories],
   );
 
   const valuations = useMemo<readonly ValuationInput[]>(
@@ -440,27 +476,55 @@ export function OverviewScreen({
                   )}
                 </p>
                 <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
-                  <Stat label="Invested">{formatMoney(total.investedValued, { privacy })}</Stat>
-                  <Stat
-                    label={total.gain.minor < 0n ? 'Unrealised loss' : 'Unrealised gain'}
-                    tone={total.gain.minor < 0n ? 'loss' : 'gain'}
-                  >
-                    {formatMoney(total.gain, { privacy })}
+                  <Stat label="Invested">
+                    {formatMoney(total.investedValued, { privacy })}
+                    {total.costShort > 0 && (
+                      <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
+                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
+                        the history, so what was paid for the earlier units is not in this figure.
+                        It is the sum of the purchases that were recorded, and nothing has been made
+                        up to fill the rest.
+                      </Caveat>
+                    )}
                   </Stat>
-                  <div className="stat">
-                    <dt className="micro-label">Change</dt>
-                    <dd>
-                      <Delta direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}>
-                        {total.investedValued.minor === 0n
-                          ? 'no cost recorded'
-                          : `${String(
-                              Math.round(
-                                (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
-                              ) / 10,
-                            )}% on cost`}
-                      </Delta>
-                    </dd>
-                  </div>
+                  {total.gain === null ? (
+                    // Said where the figure would be. Empty space would read as
+                    // a portfolio with no return, and a number as one that made
+                    // a fortune; neither happened.
+                    <Stat label="Unrealised gain">
+                      <span className="note">not shown</span>
+                      <Caveat tone="warn" label={`Why there is no ${total.currency} gain`}>
+                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
+                        the history. {RETURN_REFUSED_BECAUSE} The total above is right, because the
+                        units are the statement&rsquo;s own count; it is the cost that is short.
+                      </Caveat>
+                    </Stat>
+                  ) : (
+                    <>
+                      <Stat
+                        label={total.gain.minor < 0n ? 'Unrealised loss' : 'Unrealised gain'}
+                        tone={total.gain.minor < 0n ? 'loss' : 'gain'}
+                      >
+                        {formatMoney(total.gain, { privacy })}
+                      </Stat>
+                      <div className="stat">
+                        <dt className="micro-label">Change</dt>
+                        <dd>
+                          <Delta
+                            direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
+                          >
+                            {total.investedValued.minor === 0n
+                              ? 'no cost recorded'
+                              : `${String(
+                                  Math.round(
+                                    (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
+                                  ) / 10,
+                                )}% on cost`}
+                          </Delta>
+                        </dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
 
               </div>
@@ -674,7 +738,7 @@ export function OverviewScreen({
                           one is silence about a figure nobody entered, the other
                           is a claim that it has gone nowhere.
                         */}
-                        {row.returnOnCost !== null && (
+                        {row.returnOnCost !== null && row.gain !== null && (
                           <Delta
                             direction={
                               row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
@@ -682,6 +746,17 @@ export function OverviewScreen({
                           >
                             {(row.returnOnCost * 100).toFixed(1)}%
                           </Delta>
+                        )}
+                        {/*
+                          A refused return says so. The column is otherwise
+                          silent for a class with no cost recorded, and this is
+                          a different silence: there is a cost, and it is short.
+                        */}
+                        {row.costShort > 0 && (
+                          <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
+                            {shortPositionsPhrase(row.costShort)} a statement that covers only part
+                            of the history. {RETURN_REFUSED_BECAUSE}
+                          </Caveat>
                         )}
                       </span>
                     </li>
@@ -697,7 +772,7 @@ export function OverviewScreen({
         title="Needs attention"
         aside={<span className="note">{today.slice(0, 4)}</span>}
       >
-        {gaps.missingMonths.length === 0 && gaps.neverRead.length === 0 ? (
+        {gaps.missingMonths.length === 0 && gaps.neverRead.length === 0 && shortPositions.length === 0 ? (
           <p className="note">
             Every finished month this year has a reading. That is what makes the year&rsquo;s peak a
             figure rather than a lower bound.
@@ -718,6 +793,16 @@ export function OverviewScreen({
                 {gaps.neverRead.length}{' '}
                 {gaps.neverRead.length === 1 ? 'holding has' : 'holdings have'} never been valued.
                 They are absent from every total above rather than counted as zero.
+              </Notice>
+            )}
+            {shortPositions.length > 0 && (
+              <Notice tone="due" names={shortPositions} namesLabel="Which positions">
+                {shortPositionsPhrase(shortPositions.length)} a statement that covers only part of
+                the history. Once valued, {shortPositions.length === 1 ? 'it counts' : 'they count'}{' '}
+                in net worth in full, because the units are the registrar&rsquo;s own count; the
+                cost, the gain and the history are what is incomplete, and no return is shown for{' '}
+                {shortPositions.length === 1 ? 'it' : 'them'}. A statement requested from before
+                the first purchase fills the gap without doubling anything already recorded.
               </Notice>
             )}
           </div>

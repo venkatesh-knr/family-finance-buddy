@@ -34,6 +34,7 @@ import {
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
 import type { HoldingRow } from './useHoldings.ts';
 import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
 
@@ -66,6 +67,8 @@ export function CostAndGains({
   const [entering, setEntering] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
+  // Null unless the purchases and the statement's closing balance disagree.
+  const shortBy = historySentence(row.history);
 
   // The cost of the units that were sold, which is what a realised gain is a
   // percentage of.
@@ -86,6 +89,15 @@ export function CostAndGains({
               <span className="note">not recorded</span>
             ) : (
               formatMoney(cost.amount, { privacy })
+            )}
+            {shortBy !== null && (
+              <Caveat tone="warn" label="Why this cost covers only part of the units">
+                {shortBy} What is shown is what was actually paid for those units; the rest is not
+                itemised, and inventing a cost for it would invent an acquisition date too, which
+                the tax figures rely on. The units, and so the value, are the statement&rsquo;s own
+                count. {RETURN_REFUSED_BECAUSE} A statement that begins before the first purchase
+                fills the gap; nothing already recorded is doubled.
+              </Caveat>
             )}
             {cost.source === 'holding' && cost.amount !== null && (
               <Caveat tone="info" label="Where this cost figure came from">

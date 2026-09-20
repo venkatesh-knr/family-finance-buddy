@@ -15,11 +15,13 @@ import {
   type Parcel,
   type Shortfall,
 } from '../../domain/lots.ts';
+import { historyOf, unitsHeld as statedUnitsHeld, type History } from '../../domain/position.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { money, type Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
+import { positionInputs } from './history.ts';
 import { listTaxRules } from '../../repo/taxRules.ts';
 import { listPrices, refreshPrices } from '../../repo/prices.ts';
 import { priceOn, valueOf, type Price } from '../../domain/pricing.ts';
@@ -46,6 +48,14 @@ export interface HoldingRow {
    * fetched price multiplied by that would have valued the fund at nothing.
    */
   readonly unitsHeld: bigint;
+  /**
+   * Whether the purchases account for the units the statement reported.
+   *
+   * Cost and gain are measured against the purchases, so where these disagree
+   * they are refused — see `isQualified`. Net worth is not: the units above are
+   * the registrar's own count, so the value is right and only the cost is short.
+   */
+  readonly history: History;
   /** Most recent reading, whenever it was taken. */
   readonly latest: { readonly date: string; readonly amountMinor: bigint } | null;
   /** The Schedule FA figure for the year in view, with its gaps. */
@@ -173,33 +183,23 @@ export function useHoldings(householdId: string | null): {
 
       // The matcher takes scaled bigints; the repository hands out decimal
       // strings. Parsing happens here, at the one place arithmetic starts.
-      const matched = matchFifo(
-        listing.lots
-          .filter((lot) => lot.holdingId === holding.id)
-          .map((lot) => ({
-            id: lot.id,
-            instrumentId: holding.instrument.id,
-            acquiredOn: lot.acquiredOn,
-            quantity: parseQuantity(lot.quantity),
-            cost: lot.cost,
-          })),
-        listing.disposals
-          .filter((sale) => sale.holdingId === holding.id)
-          .map((sale) => ({
-            id: sale.id,
-            instrumentId: holding.instrument.id,
-            disposedOn: sale.disposedOn,
-            quantity: parseQuantity(sale.quantity),
-            proceeds: sale.proceeds,
-          })),
-      );
+      const inputs = positionInputs(listing, holding);
+      const matched = matchFifo(inputs.lots, inputs.disposals);
 
       const open = openPosition(matched);
       const hasLots = matched.open.length > 0;
 
-      const unitsHeld = hasLots
-        ? open.reduce((sum, entry) => sum + entry.quantity, 0n)
-        : parseQuantity(holding.quantity);
+      // Two sources for two questions. Cost below is derived from the lots
+      // alone and never sees the statement; units come from the registrar's
+      // closing balance where there is one, and from the lots as before where
+      // there is not.
+      const unitsHeld = statedUnitsHeld({
+        ...inputs,
+        unstated: hasLots
+          ? open.reduce((sum, entry) => sum + entry.quantity, 0n)
+          : parseQuantity(holding.quantity),
+      });
+      const history = historyOf(inputs);
 
       // Presence in the listing is the exact answer, not an approximation of
       // one: a lot is visible to precisely whoever can see its holding, so a
@@ -227,6 +227,7 @@ export function useHoldings(householdId: string | null): {
       return {
         holding,
         unitsHeld,
+        history,
         quoted:
           quote === null
             ? null
