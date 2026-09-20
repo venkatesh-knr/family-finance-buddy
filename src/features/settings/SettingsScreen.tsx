@@ -16,12 +16,13 @@
  * the thing behind each one gets built.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HouseholdScreen } from '../household/HouseholdScreen.tsx';
 import { ThemeToggle, type ThemeChoice } from '../../app/theme.tsx';
 import { Button, Card, Pill, Problem } from '../../ui/primitives.tsx';
 import { useHouseholdChoice } from '../../app/household.tsx';
 import { resetDemoHousehold } from '../../repo/households.ts';
+import { listRates } from '../../repo/rates.ts';
 
 export function SettingsScreen({
   householdId,
@@ -29,12 +30,17 @@ export function SettingsScreen({
   onTheme,
   hideAmountsByDefault,
   onHideAmountsByDefault,
+  displayCurrency,
+  onDisplayCurrency,
 }: {
   householdId: string | null;
   theme: ThemeChoice;
   onTheme: (next: ThemeChoice) => void;
   hideAmountsByDefault: boolean;
   onHideAmountsByDefault: (next: boolean) => void;
+  /** Empty means the household's base currency. */
+  displayCurrency: string;
+  onDisplayCurrency: (next: string) => void;
 }) {
   const { current, reload } = useHouseholdChoice();
   const household = current?.household ?? null;
@@ -45,6 +51,36 @@ export function SettingsScreen({
   // reset replaces the members nobody signs in as, and a list still showing
   // the old ones would be describing a household that no longer exists.
   const [resets, setResets] = useState(0);
+
+  /**
+   * Which currencies this household can actually be read in.
+   *
+   * Its base, plus every currency it has recorded a rate against — in either
+   * direction, since a rate reads both ways. Offering the full ISO list would
+   * be offering a hundred and fifty choices that all answer "there is no rate
+   * for that", which is a menu of disappointments.
+   */
+  const [convertible, setConvertible] = useState<readonly string[]>([]);
+
+  useEffect(() => {
+    if (householdId === null) return;
+    let live = true;
+    listRates(householdId)
+      .then((rates) => {
+        if (live) setConvertible([...new Set(rates.flatMap((r) => [r.base, r.quote]))]);
+      })
+      .catch(() => {
+        // A rate list that will not load is not worth a broken settings screen.
+        // The base currency alone is a correct, if narrow, set of options.
+        if (live) setConvertible([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [householdId]);
+
+  const base = household?.baseCurrency ?? 'INR';
+  const options = [...new Set([base, ...convertible])];
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,11 +118,41 @@ export function SettingsScreen({
               <span className="sv">{hideAmountsByDefault ? 'On' : 'Off'}</span>
             </label>
           </div>
+
+          <div className="setrow">
+            <div>
+              <div className="sk">Read amounts in</div>
+              <div className="sd">
+                Converts figures for display. Nothing stored changes — a holding bought in dollars
+                stays a dollar holding, and the household&rsquo;s own currency is still {base}.
+              </div>
+            </div>
+            <label className="flex items-center gap-2">
+              <span className="micro-label">Currency</span>
+              <select
+                className="field w-auto"
+                value={displayCurrency === '' ? base : displayCurrency}
+                onChange={(event) => {
+                  // The base currency is stored as "no choice", so a household
+                  // that later changes its base takes this device with it.
+                  onDisplayCurrency(event.target.value === base ? '' : event.target.value);
+                }}
+              >
+                {options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <p className="note mt-2">
-          Both are remembered on this device only. A different phone, or a private window, starts
+          These are remembered on this device only. A different phone, or a private window, starts
           from the default again.
+          {options.length === 1 &&
+            ' Only ' + base + ' is offered because no exchange rate has been recorded yet — add one on Overview, and the currency it names can be read here.'}
         </p>
       </section>
 

@@ -52,6 +52,7 @@ export function OverviewScreen({
   privacy,
   onPrivacy,
   householdId,
+  displayCurrency,
   onOpenHoldings,
 }: {
   privacy: boolean;
@@ -63,6 +64,16 @@ export function OverviewScreen({
    */
   onPrivacy: () => void;
   householdId: string | null;
+  /**
+   * Which currency to read in, or empty for the household's own.
+   *
+   * A device setting (§366), never written to a row: "a separate display
+   * toggle lets anyone read the whole app in USD without changing a stored
+   * value or a target" (§602). It changes what this screen converts into and
+   * nothing else — the per-currency asset figures above stay in the currency
+   * each holding is actually priced in.
+   */
+  displayCurrency: string;
   /**
    * Take me to the holdings behind this figure.
    *
@@ -245,6 +256,10 @@ export function OverviewScreen({
   }, [today]);
 
   const base = listing?.household.baseCurrency ?? 'INR';
+  // What this device reads in. The household's own currency until somebody
+  // says otherwise, and a rate reads both ways, so USD works from the one row
+  // a household records for USD to INR.
+  const display = displayCurrency === '' ? base : displayCurrency;
 
   /**
    * Assets minus debt, in the household's own currency — or a refusal naming
@@ -283,11 +298,11 @@ export function OverviewScreen({
       // than each holding is the same arithmetic with fewer roundings.
       assets: [...totals.map((t) => t.value), ...hiddenAssets.map((entry) => entry.total)],
       debts: shownDebts.map((d) => d.amount),
-      base,
+      base: display,
       rates,
       on: asOf ?? today,
     });
-  }, [totals, hiddenAssets, shownDebts, base, rates, asOf, today]);
+  }, [totals, hiddenAssets, shownDebts, display, rates, asOf, today]);
 
   const saveRate = useCallback(
     async (pair: { base: string; quote: string }) => {
@@ -497,6 +512,7 @@ export function OverviewScreen({
                 ? 'Everything the household owns'
                 : 'Everything you own, and the debts in your name'}
               , converted at the rate for {asOf ?? today}, less everything owed.
+              {display !== base && ` Read in ${display}; this household's own currency is ${base}.`}
               {shownDebts.length === 0 && ' No outstanding balances have been recorded, so nothing is subtracted.'}
               {scope === 'household' && hiddenAssets.length > 0 && (
                 <>

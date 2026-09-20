@@ -67,6 +67,57 @@ describe('convert', () => {
     if (result.ok) expect(result.amount.minor).toBe(8_846n);
   });
 
+  /**
+   * Reading a rate the other way round.
+   *
+   * A household records what it has: one row saying a dollar costs 88.45
+   * rupees. Reading the whole app in dollars needs the same fact the other way
+   * round, and requiring a second row for it would mean two rows that can
+   * disagree about one exchange rate — the thing the dated-rows invariant
+   * exists to prevent.
+   */
+  describe('the inverse of a recorded rate', () => {
+    it('converts rupees to dollars from a dollars-to-rupees rate', () => {
+      const result = convert(inr(8_845), 'USD', [rate('2026-08-31', '88.45')], '2026-08-31');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.amount).toEqual(usd(100));
+    });
+
+    it('prefers a rate recorded for the pair asked about', () => {
+      // Both directions on file, and they disagree — a spread, or one of them
+      // entered by hand. The one actually recorded for this pair wins; the
+      // inverse is the fallback, not an equal.
+      const direct: Rate = { base: 'INR', quote: 'USD', asOf: '2026-08-31', rate: '0.02' };
+      const result = convert(inr(100), 'USD', [direct, rate('2026-08-31', '88.45')], '2026-08-31');
+
+      // 100 rupees at the recorded 0.02 is $2.00; through the inverse it would
+      // have been $1.13.
+      if (result.ok) expect(result.amount).toEqual(usd(2));
+    });
+
+    it('obeys the date rule in both directions', () => {
+      // The rate is dated August; converting July must not reach forward for
+      // it just because it is being read backwards.
+      const result = convert(inr(8_845), 'USD', [rate('2026-08-31', '88.45')], '2026-07-15');
+
+      expect(result).toEqual({ ok: false, missing: { base: 'INR', quote: 'USD' } });
+    });
+
+    it('rounds the inverted figure once, at the end', () => {
+      // ₹100 at 88.45 to the dollar is $1.1305..., which is $1.13.
+      const result = convert(inr(100), 'USD', [rate('2026-08-31', '88.45')], '2026-08-31');
+
+      if (result.ok) expect(result.amount.minor).toBe(113n);
+    });
+
+    it('still refuses when neither direction was ever recorded', () => {
+      const result = convert(inr(100), 'EUR', [rate('2026-08-31', '88.45')], '2026-08-31');
+
+      expect(result).toEqual({ ok: false, missing: { base: 'INR', quote: 'EUR' } });
+    });
+  });
+
   it('refuses rather than guessing when there is no rate', () => {
     const result = convert(usd(100), 'INR', [], '2026-08-31');
     expect(result).toEqual({ ok: false, missing: { base: 'USD', quote: 'INR' } });

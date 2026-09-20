@@ -99,6 +99,39 @@ function multiply(minor: bigint, decimal: string, exponentDelta: number): bigint
   return rounded;
 }
 
+/**
+ * Divide an integer amount by a decimal string, exactly.
+ *
+ * The mirror of `multiply`, and it exists for one reason: a household records
+ * the rate it has. One row says a dollar costs 88.45 rupees, and reading the
+ * same holdings in dollars needs that fact the other way round. Asking for a
+ * second row instead would mean two rows describing one exchange rate, free to
+ * disagree — which is the failure the dated-rows invariant exists to prevent.
+ *
+ * Dividing by `factor / 10^scale` is multiplying by `10^scale / factor`, so
+ * the whole calculation stays in bigint and rounds once, at the end, half away
+ * from zero.
+ */
+function divide(minor: bigint, decimal: string, exponentDelta: number): bigint {
+  const negative = decimal.trimStart().startsWith('-');
+  const [whole = '0', fraction = ''] = decimal.replace('-', '').trim().split('.');
+  const scale = fraction.length;
+  const factor = BigInt(whole + fraction) * (negative ? -1n : 1n);
+
+  // The column forbids it — `check (rate > 0)` — so this is a guard against a
+  // caller, not against the database.
+  if (factor === 0n) throw new Error('A rate of zero cannot be inverted.');
+
+  let numerator = minor * 10n ** BigInt(scale);
+  let denominator = factor;
+  if (exponentDelta > 0) numerator *= 10n ** BigInt(exponentDelta);
+  else if (exponentDelta < 0) denominator *= 10n ** BigInt(-exponentDelta);
+
+  const doubled = numerator * 2n;
+  const quotient = doubled / denominator;
+  return quotient >= 0n ? (quotient + 1n) / 2n : (quotient - 1n) / 2n;
+}
+
 export function convert(
   amount: Money,
   target: string,
@@ -109,11 +142,29 @@ export function convert(
   // still an opportunity to round something that needed no rounding.
   if (amount.currency === target) return { ok: true, amount };
 
-  const rate = rateOn(rates, amount.currency, target, on);
-  if (rate === null) return { ok: false, missing: { base: amount.currency, quote: target } };
-
   const exponentDelta = minorUnitExponent(target) - minorUnitExponent(amount.currency);
-  return { ok: true, amount: money(multiply(amount.minor, rate.rate, exponentDelta), target) };
+
+  const rate = rateOn(rates, amount.currency, target, on);
+  if (rate !== null) {
+    return { ok: true, amount: money(multiply(amount.minor, rate.rate, exponentDelta), target) };
+  }
+
+  /**
+   * The same rate, read backwards.
+   *
+   * Tried only after the pair itself, so a rate somebody recorded for this
+   * direction always wins. That order matters where the two disagree: a rate a
+   * bank actually gave on a remittance carries a spread, and its inverse is
+   * not the rate that bank would give going the other way. For a mid-market
+   * rate — which is what a feed publishes and what these rows almost always
+   * are — the inverse is the same fact.
+   */
+  const inverse = rateOn(rates, target, amount.currency, on);
+  if (inverse !== null) {
+    return { ok: true, amount: money(divide(amount.minor, inverse.rate, exponentDelta), target) };
+  }
+
+  return { ok: false, missing: { base: amount.currency, quote: target } };
 }
 
 export type NetWorth =

@@ -25,7 +25,12 @@ import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
 import { useScreen, type Screen } from './useScreen.ts';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
-import { HIDE_AMOUNTS_BY_DEFAULT, useDevicePreference } from './preferences.ts';
+import {
+  DISPLAY_CURRENCY,
+  HIDE_AMOUNTS_BY_DEFAULT,
+  useDeviceChoice,
+  useDevicePreference,
+} from './preferences.ts';
 import { AccountMenu } from './AccountMenu.tsx';
 
 /**
@@ -68,6 +73,9 @@ export function App() {
   // to read something should not quietly rewrite what the device does next
   // time it opens.
   const [privacy, setPrivacy] = useState(hideByDefault);
+  // Empty until somebody chooses: the household's base currency is the answer
+  // for a device that has never been asked.
+  const [displayCurrency, setDisplayCurrency] = useDeviceChoice(DISPLAY_CURRENCY, '');
   const { screen, setScreen } = useScreen();
 
   const refreshAuth = useCallback(async () => {
@@ -122,6 +130,8 @@ export function App() {
         email={auth.email}
         screen={screen}
         setScreen={setScreen}
+        displayCurrency={displayCurrency}
+        onDisplayCurrency={setDisplayCurrency}
       />
     </HouseholdProvider>
   );
@@ -143,6 +153,8 @@ function SignedIn({
   setScreen,
   hideAmountsByDefault,
   onHideAmountsByDefault,
+  displayCurrency,
+  onDisplayCurrency,
 }: {
   privacy: boolean;
   setPrivacy: (update: (on: boolean) => boolean) => void;
@@ -153,6 +165,9 @@ function SignedIn({
   setScreen: (next: Screen) => void;
   hideAmountsByDefault: boolean;
   onHideAmountsByDefault: (next: boolean) => void;
+  /** Empty means the household's base currency. */
+  displayCurrency: string;
+  onDisplayCurrency: (next: string) => void;
 }) {
   const { current } = useHouseholdChoice();
   const householdId = current?.household.id ?? null;
@@ -283,6 +298,8 @@ function SignedIn({
             onTheme={setChoice}
             hideAmountsByDefault={hideAmountsByDefault}
             onHideAmountsByDefault={onHideAmountsByDefault}
+            displayCurrency={displayCurrency}
+            onDisplayCurrency={onDisplayCurrency}
           />
         )}
         {screen === 'overview' && (
@@ -292,6 +309,7 @@ function SignedIn({
               setPrivacy((on) => !on);
             }}
             householdId={householdId}
+            displayCurrency={displayCurrency}
             onOpenHoldings={(filter) => {
               setHoldingsFilter(filter);
               setScreen('holdings');
