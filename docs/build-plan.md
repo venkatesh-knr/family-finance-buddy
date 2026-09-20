@@ -127,9 +127,8 @@ Your development environment and your first deliverable are the same thing.
 **Do these in the order below.** Stage 5 is the widest stage and the only one
 whose items look independent enough to take in any sequence. They are not.
 Three of them are prerequisites wearing the costume of features, and the stage
-gate is
-a round trip that needs one half built before the other half can be tested at
-all. Work down the list. If something has to move, move it here and say why, so
+gate is a round trip that needs one half built before the other half can be
+tested at all. Work down the list. If something has to move, move it here and say why, so
 that there is one order rather than two.
 
 Three things are already built and sit outside the order: `tax_rule` and its
