@@ -19,10 +19,10 @@ it stops describing the code.
 |---|---|---|
 | 0 — Irreversible choices | done | — |
 | 1 — Walking skeleton | done | — |
-| 2 — Schema, policies, tests | done | 28 migrations, 187 assertions across 12 pgTAP files gating the deploy, audit triggers on every table holding household data |
+| 2 — Schema, policies, tests | done | 30 migrations, 205 assertions across 13 pgTAP files gating the deploy, audit triggers on every table holding household data |
 | 3 — The demo household | done | Switcher, demo badge, and reset-and-reseed: `public.reset_demo_household` (`20260916120000`) is the schema's one hard delete — owner only, second factor, households marked demo only — behind a confirmation in Settings → Data. The seed lives in `app.seed_demo_household`; `supabase/seed/demo_edge_cases.sql` calls it. Still to add to the seed, as its own change: a loss-making sale, a carried-forward loss and lots either side of twenty-four months, all recordable now that `lot`, `disposal` and `tax_rule` exist. The foreign dividend waits on a `dividend` table. The live project also holds a second demo household from the local-only fixture, its login banned; removing it is an open decision. |
 | 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Prices now come through a driver: `price` (`20260914120000`) holds dated public reference prices, the `fetch-prices` edge function fetches AMFI and is the only thing that talks to a vendor, and a holding linked to an ISIN shows the quoted value for somebody to record. Deliberately not on a cron — see the note in that function. Outstanding: the donut, the since-inception chart, member attribution, and drivers beyond AMFI (FX, gold). |
-| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. Nothing computes a tax figure yet — netting, the ₹1.25 lakh allowance, slabs, surcharge and the foreign tax credit are all ahead. **eCAS import is built and untested against a real file**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and a real November 2022 CAS parses with nothing unread. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
+| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. Nothing computes a tax figure yet — netting, the ₹1.25 lakh allowance, slabs, surcharge and the foreign tax credit are all ahead. **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
 | 6 — Onto the devices | not started | — |
 | 7 — Real data | not started | — |
 
@@ -125,8 +125,9 @@ Your development environment and your first deliverable are the same thing.
 ### Stage 5 — The rest of the surface — _Weeks 7–9_
 
 **Do these in the order below.** Stage 5 is the widest stage and the only one
-whose items look independent enough to take in any sequence. They are not. Two
-of them are prerequisites wearing the costume of features, and the stage gate is
+whose items look independent enough to take in any sequence. They are not.
+Three of them are prerequisites wearing the costume of features, and the stage
+gate is
 a round trip that needs one half built before the other half can be tested at
 all. Work down the list. If something has to move, move it here and say why, so
 that there is one order rather than two.
@@ -151,7 +152,38 @@ It is first because Global cannot start without it, the tax engine needs it for
 every US trade, and export has to write a currency column that means something.
 Building it after any of those three means rebuilding part of them.
 
-**2. The tax engine, and the Tax screen on top of it.**
+**2. What the app does when a statement covers only part of the history.**
+
+The first real import made this concrete. A CAMS eCAS requested for April to
+September writes a lot per instalment in that window and nothing before it, so
+the app holds 280 units of a fund whose closing balance on the same statement is
+4,013. Five sixths to nine tenths of three positions are simply absent.
+
+The missing units are not the problem. The problem is that nothing says they are
+missing: the quoted value offered for recording is units times NAV, so accepting
+one stores ₹29,542 for a holding worth about ₹4.2 lakh — and it stores it as an
+ordinary reading, indistinguishable from a complete one, feeding net worth,
+allocation, the FIRE multiple and every total downstream.
+
+The statement itself carries the check. It prints an opening balance and a
+closing balance, and the lots either reach the closing figure or they do not.
+
+Capital gains are already safe: the FIFO matcher refuses to cost units it has no
+purchase for and reports a shortfall, which the holdings screen shows. Valuations
+have no such guard, and this step is that guard.
+
+Two ways out, and they are not exclusive. Re-request the statement from before
+the first investment, which is free and fixes it properly — an overlapping
+re-import is recognised line by line and writes only what is new. Or record the
+opening balance as a single lot, which makes the units right immediately and the
+holding period wrong, since one row cannot say when those units were bought; that
+is a worse answer for tax and would have to be marked as an estimate the tax
+engine refuses to classify.
+
+Here rather than later because every figure the steps below compute is built on
+these, and because the cheaper answer is a file request rather than code.
+
+**3. The tax engine, and the Tax screen on top of it.**
 
 The largest single piece left. `tax_rule` holds dated rows and
 `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule
@@ -167,7 +199,7 @@ departure saying long and short term go unlabelled "until `tax_rule` exists".
 It exists, and has since `20260912120000`. Close that row as part of this work
 rather than leaving a known-stale claim in the file CI reads.
 
-**3. Global.**
+**4. Global.**
 
 The abroad half of the portfolio, and the paperwork it creates: the direct US
 brokerage holdings kept apart from the feeder funds that only track a US index,
@@ -178,7 +210,7 @@ on the calendar year with its initial, peak and closing values.
 part of this that cannot be reconstructed later — it is why the snapshot job was
 built in stage 4 rather than here.
 
-**4. Reports — export first, then the template upload.**
+**5. Reports — export first, then the template upload.**
 
 Export in both formats, then the template with its preview-before-commit flow on
 top of `import_batch` (`20260917120000`).
@@ -192,7 +224,7 @@ The demo household needs the prototype's `sample-bar` by the time anything can
 be exported from it — a banner marking illustrative figures. It is a small
 component and it is what stops a demo export being mistaken for a real one.
 
-**5. Property, and the rest of the balance sheet.**
+**6. Property, and the rest of the balance sheet.**
 
 Property with its cost basis, bonds and deposits, retirement, protection and
 liabilities. Loans and policies already live on FIRE and stay there — see the
@@ -202,7 +234,7 @@ side, not another home for the debts.
 FD and bond accrual is a calculation module with no home yet, and per the
 conventions it gets its fixtures before its implementation.
 
-**6. Bank and card statement import.**
+**7. Bank and card statement import.**
 
 "Import beats typing" (blueprint §158), and the entry flow is the project's
 stated failure mode — a month of card spending typed by hand is where somebody
@@ -239,20 +271,35 @@ recorded when they happened, so filing the repayment too would double every one
 of them — which is why there is no "credit card repayment" category and why the
 importer must skip the payment line on a bank statement that settles a card.
 
-**7. Calendar.**
+**8. Calendar.**
 
 Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here
 because it is a view over things the earlier steps create — there is little to
 put on a calendar until property, protection and the tax engine exist.
 
-**8. FIRE with the live projection.**
+**9. FIRE with the live projection.**
 
 Projected against real contributions rather than a flat assumption, and against
-goals, neither of which exists today. It needs the balance sheet from step 5 to
+goals, neither of which exists today. It needs the balance sheet from step 6 to
 be complete, or the projection starts from a number that is missing the property
 and the deposits.
 
-**9. Read-auditing on the tables carrying personal detail.**
+**10. Narrow what a contributor and a viewer can read.**
+
+Section 11 of the blueprint says a contributor sees their own records plus
+household expense totals, and a viewer a household summary with no account
+identifiers. The database does not enforce either. Writes are right — a viewer
+writes nothing, a contributor writes only under their own name — but every role
+reads every household row, and the policy says so itself: "Household-wide read
+for every role in this slice. Narrowing contributor and viewer reads is a later
+slice" (`20260904120300_policies.sql`).
+
+Harmless while the household has one member, and it must be true before stage 6
+puts the app on anybody else's phone — a viewer login handed to an advisor today
+would show them every payee and every loan. Policy work with denial tests, on the
+same footing as the rest of stage 2's suite.
+
+**11. Read-auditing on the tables carrying personal detail.**
 
 `audit_log` already accepts a `'read'` action and nothing writes it: Postgres
 triggers do not fire on `select`, so this means routing those reads through
@@ -282,7 +329,10 @@ CAS.
 complete ledger, XIRR and lot-level capital gains turn on for it." That ledger
 is `lot` and `disposal`, built in `20260910120000`, and eCAS now fills it in
 bulk. The gains half turned on; XIRR did not. It is a pure function with
-fixtures and it can be picked up beside any of the steps above.
+fixtures, and it belongs after step 2 rather than beside any step: a return
+computed from six instalments of a ninety-instalment history is wrong in exactly
+the way a partial import makes everything wrong, and more convincingly, because
+a percentage carries no units to check it against.
 
 > **Gate —** export everything, edit a hundred rows in Excel, upload it back, and land in the same state. That round trip proves the whole import path.
 
