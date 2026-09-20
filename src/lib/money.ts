@@ -68,8 +68,25 @@ export function isKnownCurrency(value: string): boolean {
   return list.has(value);
 }
 
-/** The display locale. Indian grouping for the rupee, sane output for the rest. */
+/** The display locale for the rupee: 1,23,456 rather than 123,456. */
 const LOCALE = 'en-IN';
+
+/**
+ * Which locale writes this currency's digits.
+ *
+ * "Indian lakh/crore grouping (₹1,23,456) and Western grouping ($1,234.56) are
+ * both formatter concerns — the same stored integer renders either way" (§610).
+ * The grouping belongs to the currency being written, not to the household
+ * writing it: en-IN for everything produced "$1,23,798.76", which is not how
+ * anybody writes dollars, and it surfaced the moment a figure could be read in
+ * one currency by a household that keeps its books in another.
+ *
+ * A device preference for grouping is listed in §366 and is not built. When it
+ * arrives it overrides this; until then the currency decides.
+ */
+function localeFor(currency: string): string {
+  return currency === 'INR' ? LOCALE : 'en-US';
+}
 
 export function isCurrencyCode(value: string): boolean {
   return CURRENCY_CODE.test(value);
@@ -234,7 +251,7 @@ export function formatMoney(value: Money, options: FormatMoneyOptions = {}): str
   const isWhole = minorPart === '' || /^0+$/.test(minorPart);
   const fractionDigits = isWhole && options.alwaysShowMinorUnits !== true ? 0 : exponent;
 
-  const formatter = new Intl.NumberFormat(LOCALE, {
+  const formatter = new Intl.NumberFormat(localeFor(value.currency), {
     style: 'currency',
     currency: value.currency,
     minimumFractionDigits: fractionDigits,
@@ -267,7 +284,10 @@ function formatCompact(value: Money, exponent: number, negative: boolean): strin
   const magnitude = negative ? -value.minor : value.minor;
   const major = magnitude / 10n ** BigInt(exponent);
 
-  const symbol = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: value.currency })
+  const symbol = new Intl.NumberFormat(localeFor(value.currency), {
+    style: 'currency',
+    currency: value.currency,
+  })
     .formatToParts(0)
     .filter((part) => part.type === 'currency')
     .map((part) => part.value)

@@ -289,7 +289,13 @@ function SignedIn({
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app pb-nav">
-        {screen === 'fire' && <FireScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'fire' && (
+          <FireScreen
+            privacy={privacy}
+            householdId={householdId}
+            displayCurrency={displayCurrency}
+          />
+        )}
         {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} />}
         {screen === 'settings' && (
           <SettingsScreen
@@ -316,7 +322,13 @@ function SignedIn({
             }}
           />
         )}
-        {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'expenses' && (
+          <ExpensesScreen
+            privacy={privacy}
+            householdId={householdId}
+            displayCurrency={displayCurrency}
+          />
+        )}
         {screen === 'holdings' && (
           <HoldingsScreen
             privacy={privacy}
