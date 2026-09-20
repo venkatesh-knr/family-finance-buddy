@@ -34,6 +34,7 @@ import {
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
 import type { HoldingRow } from './useHoldings.ts';
 import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
 
@@ -61,8 +62,13 @@ export function CostAndGains({
   taxRules: readonly TaxRule[];
 }) {
   const [open, setOpen] = useState(false);
+  // Entering a purchase by hand is the rare path now that a statement can be
+  // imported, so the two forms are behind a toggle rather than always open.
+  const [entering, setEntering] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
+  // Null unless the purchases and the statement's closing balance disagree.
+  const shortBy = historySentence(row.history);
 
   // The cost of the units that were sold, which is what a realised gain is a
   // percentage of.
@@ -83,6 +89,15 @@ export function CostAndGains({
               <span className="note">not recorded</span>
             ) : (
               formatMoney(cost.amount, { privacy })
+            )}
+            {shortBy !== null && (
+              <Caveat tone="warn" label="Why this cost covers only part of the units">
+                {shortBy} What is shown is what was actually paid for those units; the rest is not
+                itemised, and inventing a cost for it would invent an acquisition date too, which
+                the tax figures rely on. The units, and so the value, are the statement&rsquo;s own
+                count. {RETURN_REFUSED_BECAUSE} A statement that begins before the first purchase
+                fills the gap; nothing already recorded is doubled.
+              </Caveat>
             )}
             {cost.source === 'holding' && cost.amount !== null && (
               <Caveat tone="info" label="Where this cost figure came from">
@@ -143,18 +158,39 @@ export function CostAndGains({
         </div>
       </dl>
 
-      <button
-        type="button"
-        className="note mt-3 underline"
-        aria-expanded={open}
-        onClick={() => {
-          setOpen((was) => !was);
-        }}
-      >
-        {open
-          ? 'Hide the workings'
-          : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
-      </button>
+      {/*
+        Both toggles on one line, with whatever they open below it. As two
+        separate blocks they were inline elements with nothing between them,
+        so "Show the workings (0 purchases, 0 sales)" and "Add a purchase or
+        sale" ran together into one sentence.
+      */}
+      <div className="mt-3 flex flex-wrap items-center gap-3.5">
+        <button
+          type="button"
+          className="note underline"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen((was) => !was);
+          }}
+        >
+          {open
+            ? 'Hide the workings'
+            : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
+        </button>
+
+        {canWrite && (
+          <button
+            type="button"
+            className="note underline"
+            aria-expanded={entering}
+            onClick={() => {
+              setEntering((was) => !was);
+            }}
+          >
+            {entering ? 'Hide these forms' : 'Add a purchase or sale'}
+          </button>
+        )}
+      </div>
 
       {open && (
         <Workings
@@ -171,7 +207,7 @@ export function CostAndGains({
         />
       )}
 
-      {canWrite && (
+      {canWrite && entering && (
         <div className="mt-3.5 flex flex-col gap-3">
           <RecordEvent
             what="purchase"

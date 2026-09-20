@@ -25,7 +25,12 @@ import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
 import { useScreen, type Screen } from './useScreen.ts';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
-import { HIDE_AMOUNTS_BY_DEFAULT, useDevicePreference } from './preferences.ts';
+import {
+  DISPLAY_CURRENCY,
+  HIDE_AMOUNTS_BY_DEFAULT,
+  useDeviceChoice,
+  useDevicePreference,
+} from './preferences.ts';
 import { AccountMenu } from './AccountMenu.tsx';
 
 /**
@@ -68,6 +73,9 @@ export function App() {
   // to read something should not quietly rewrite what the device does next
   // time it opens.
   const [privacy, setPrivacy] = useState(hideByDefault);
+  // Empty until somebody chooses: the household's base currency is the answer
+  // for a device that has never been asked.
+  const [displayCurrency, setDisplayCurrency] = useDeviceChoice(DISPLAY_CURRENCY, '');
   const { screen, setScreen } = useScreen();
 
   const refreshAuth = useCallback(async () => {
@@ -122,6 +130,8 @@ export function App() {
         email={auth.email}
         screen={screen}
         setScreen={setScreen}
+        displayCurrency={displayCurrency}
+        onDisplayCurrency={setDisplayCurrency}
       />
     </HouseholdProvider>
   );
@@ -143,6 +153,8 @@ function SignedIn({
   setScreen,
   hideAmountsByDefault,
   onHideAmountsByDefault,
+  displayCurrency,
+  onDisplayCurrency,
 }: {
   privacy: boolean;
   setPrivacy: (update: (on: boolean) => boolean) => void;
@@ -153,9 +165,25 @@ function SignedIn({
   setScreen: (next: Screen) => void;
   hideAmountsByDefault: boolean;
   onHideAmountsByDefault: (next: boolean) => void;
+  /** Empty means the household's base currency. */
+  displayCurrency: string;
+  onDisplayCurrency: (next: string) => void;
 }) {
   const { current } = useHouseholdChoice();
   const householdId = current?.household.id ?? null;
+
+  /**
+   * An asset class clicked on Overview, carried to Holdings.
+   *
+   * Here rather than inside Holdings because it is set on one screen and read
+   * on another, and it is cleared by the tabs: arriving at Holdings by asking
+   * for Holdings means all of them. A filter that outlived the click that set
+   * it is a list quietly missing rows.
+   */
+  const [holdingsFilter, setHoldingsFilter] = useState<{
+    kind: string;
+    currency: string;
+  } | null>(null);
 
   return (
     <div className="min-h-screen">
@@ -243,6 +271,7 @@ function SignedIn({
               type="button"
               aria-pressed={screen === id}
               onClick={() => {
+                setHoldingsFilter(null);
                 setScreen(id);
               }}
             >
@@ -260,7 +289,13 @@ function SignedIn({
       </nav>
 
       <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app pb-nav">
-        {screen === 'fire' && <FireScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'fire' && (
+          <FireScreen
+            privacy={privacy}
+            householdId={householdId}
+            displayCurrency={displayCurrency}
+          />
+        )}
         {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} />}
         {screen === 'settings' && (
           <SettingsScreen
@@ -269,6 +304,8 @@ function SignedIn({
             onTheme={setChoice}
             hideAmountsByDefault={hideAmountsByDefault}
             onHideAmountsByDefault={onHideAmountsByDefault}
+            displayCurrency={displayCurrency}
+            onDisplayCurrency={onDisplayCurrency}
           />
         )}
         {screen === 'overview' && (
@@ -278,10 +315,30 @@ function SignedIn({
               setPrivacy((on) => !on);
             }}
             householdId={householdId}
+            displayCurrency={displayCurrency}
+            onOpenHoldings={(filter) => {
+              setHoldingsFilter(filter);
+              setScreen('holdings');
+            }}
           />
         )}
-        {screen === 'expenses' && <ExpensesScreen privacy={privacy} householdId={householdId} />}
-        {screen === 'holdings' && <HoldingsScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'expenses' && (
+          <ExpensesScreen
+            privacy={privacy}
+            householdId={householdId}
+            displayCurrency={displayCurrency}
+          />
+        )}
+        {screen === 'holdings' && (
+          <HoldingsScreen
+            privacy={privacy}
+            householdId={householdId}
+            filter={holdingsFilter}
+            onClearFilter={() => {
+              setHoldingsFilter(null);
+            }}
+          />
+        )}
       </main>
 
       {/*

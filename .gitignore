@@ -44,3 +44,9 @@ env.txt
 
 # Vite's dependency-optimisation cache. Build output, not source.
 .vite/
+
+# statements — a CAS lists every folio, the PAN and the address of the person
+# it was issued to. This repository is public. Nothing under here is ever
+# committed, whatever it is called or what format it is in.
+SampleDoc/
+*.pdf

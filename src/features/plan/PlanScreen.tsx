@@ -9,8 +9,10 @@
  * believed.
  */
 
-import { useCallback, useMemo, useState } from 'react';
-import { exactMoney, formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { exactMoney, formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
+import { convert } from '../../domain/fx.ts';
+import { listRates, type FxRate } from '../../repo/rates.ts';
 import type {
   CommitmentCadence,
   LiabilityKind,
@@ -56,11 +58,38 @@ const MULTIPLIERS = [25, 30, 50];
 export function FireScreen({
   privacy,
   householdId,
+  displayCurrency,
 }: {
   privacy: boolean;
   householdId: string | null;
+  /** Empty for the household's own currency. A device setting (§366). */
+  displayCurrency: string;
 }) {
   const plan = usePlan(householdId);
+
+  /**
+   * Rates, for reading the target in another currency.
+   *
+   * Only the figures somebody reads are converted — the target and its ladder.
+   * The plan rows below are editable, and a field converted for display is a
+   * field somebody types into in one currency and stores in another.
+   */
+  const [rates, setRates] = useState<readonly FxRate[]>([]);
+
+  useEffect(() => {
+    if (householdId === null) return;
+    let live = true;
+    listRates(householdId)
+      .then((next) => {
+        if (live) setRates(next);
+      })
+      .catch(() => {
+        if (live) setRates([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [householdId]);
 
   if (plan.loading) return <p className="note py-4.5">Loading…</p>;
   if (plan.noHousehold) return <JoinHousehold onJoined={plan.reload} />;
@@ -71,7 +100,12 @@ export function FireScreen({
 
   return (
     <div className="flex flex-col gap-4.5">
-      <FireCard plan={plan} privacy={privacy} />
+      <FireCard
+        plan={plan}
+        privacy={privacy}
+        displayCurrency={displayCurrency}
+        rates={rates}
+      />
       <AnnualSummary plan={plan} privacy={privacy} startOpen />
       <Categories plan={plan} privacy={privacy} editable={editable} />
       <Commitments plan={plan} privacy={privacy} editable={editable} />
@@ -178,7 +212,17 @@ function AnnualSummary({
  * neither is a fact, and an app that hard-codes them is quietly asserting they
  * are.
  */
-function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy: boolean }) {
+function FireCard({
+  plan,
+  privacy,
+  displayCurrency,
+  rates,
+}: {
+  plan: ReturnType<typeof usePlan>;
+  privacy: boolean;
+  displayCurrency: string;
+  rates: readonly FxRate[];
+}) {
   const {
     ladder,
     multiplier,
@@ -188,10 +232,26 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
     yearsAhead,
     setYearsAhead,
     annual,
+    today,
   } = plan;
   const [everyYear, setEveryYear] = useState(false);
 
   if (annual === null) return null;
+
+  const reading = displayCurrency === '' ? annual.total.currency : displayCurrency;
+
+  /**
+   * A figure to read, in the currency this device asked for.
+   *
+   * At today's rate, which is right here and wrong for a transaction: a target
+   * is a statement about now, not a thing that happened on a date. Where no
+   * rate covers today the original is shown rather than a guess — the currency
+   * in the formatted figure says which one it is.
+   */
+  const read = (amount: Money): Money => {
+    const converted = convert(amount, reading, rates, today);
+    return converted.ok ? converted.amount : amount;
+  };
 
   const target = ladder[ladder.length - 1];
   const baseYear = ladder[0]?.year ?? 0;
@@ -239,13 +299,15 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
           <p
             className="figure"
             style={{ color: 'var(--ink)' }}
-            title={exactMoney(target.target, privacy) ?? undefined}
+            title={exactMoney(read(target.target), privacy) ?? undefined}
           >
-            {formatMoney(target.target, { privacy, compact: true })}
+            {formatMoney(read(target.target), { privacy, compact: true })}
           </p>
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
             rise {inflationPct}% a year
+            {reading !== annual.total.currency &&
+              ` · read in ${reading} at today's rate; the plan itself is in ${annual.total.currency}`}
           </p>
 
           {/*
@@ -255,7 +317,7 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
             something the app asserts and becomes something it shows.
           */}
           <p className="note mt-2.5">
-            <span className="num">{formatMoney(annual.total, { privacy })}</span> a year, ×{' '}
+            <span className="num">{formatMoney(read(annual.total), { privacy })}</span> a year, ×{' '}
             {multiplier}, compounded at {inflationPct}% for{' '}
             {target.year - (ladder[0]?.year ?? target.year)}{' '}
             {target.year - (ladder[0]?.year ?? target.year) === 1 ? 'year' : 'years'}.
@@ -350,7 +412,7 @@ function FireCard({ plan, privacy }: { plan: ReturnType<typeof usePlan>; privacy
                     className="num px-2.5 py-2 text-right"
                     style={{ color: 'var(--ink)', fontWeight: isTarget ? 600 : 400 }}
                   >
-                    {formatMoney(step.target, { privacy })}
+                    {formatMoney(read(step.target), { privacy })}
                   </td>
                 </tr>
               );

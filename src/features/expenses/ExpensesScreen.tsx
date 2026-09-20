@@ -6,7 +6,7 @@
  * policies and the change stream and comes back on another device.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
@@ -17,9 +17,43 @@ import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
 import { useExpenses } from './useExpenses.ts';
+import { listRates, type FxRate } from '../../repo/rates.ts';
 
-export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; householdId: string | null }) {
+export function ExpensesScreen({
+  privacy,
+  householdId,
+  displayCurrency,
+}: {
+  privacy: boolean;
+  householdId: string | null;
+  /** Empty for the household's own currency. A device setting (§366). */
+  displayCurrency: string;
+}) {
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
+
+  /**
+   * The rates this household has recorded.
+   *
+   * Loaded here rather than in the hook because only the comparison needs
+   * them, and a failure to read them must not take the ledger down with it:
+   * with no rates, spending in another currency is left out and said so.
+   */
+  const [rates, setRates] = useState<readonly FxRate[]>([]);
+
+  useEffect(() => {
+    if (householdId === null) return;
+    let live = true;
+    listRates(householdId)
+      .then((next) => {
+        if (live) setRates(next);
+      })
+      .catch(() => {
+        if (live) setRates([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [householdId]);
 
   const {
     listing,
@@ -57,6 +91,9 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
 
   if (listing === null) return null;
 
+  // The household's own currency until this device says otherwise.
+  const reading = displayCurrency === '' ? (listing?.household.baseCurrency ?? 'INR') : displayCurrency;
+
   return (
     <div className="flex flex-col gap-4.5">
       {listing.viewer.canRecord ? (
@@ -70,6 +107,12 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
         </Card>
       )}
 
+      {/*
+        The comparison is read in whatever this device asked for; the ledger
+        below stays in what was entered. A ledger is the record, and the rule
+        is to never overwrite an original figure with a converted one — the
+        currency pill on a foreign row says which is which.
+      */}
       <BudgetVsActual
         categories={listing.categories}
         budgets={budgets}
@@ -81,7 +124,8 @@ export function ExpensesScreen({ privacy, householdId }: { privacy: boolean; hou
         personalSpend={personalSpend}
         today={today}
         fy={fy}
-        currency={listing.household.baseCurrency}
+        currency={reading}
+        rates={rates}
         privacy={privacy}
       />
 

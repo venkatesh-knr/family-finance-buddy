@@ -16,7 +16,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
 import { parseQuantity as q } from '../lib/quantity.ts';
-import { matchFifo, openPosition, realised, type Disposal, type Lot } from './lots.ts';
+import { costHeld, matchFifo, openPosition, realised, type Disposal, type Lot } from './lots.ts';
 
 const inr = (minor: bigint) => money(minor, 'INR');
 
@@ -288,5 +288,42 @@ describe('realised', () => {
     );
 
     expect(realised(rupee.parcels, 'USD')).toBeNull();
+  });
+});
+
+describe('costHeld', () => {
+  const fallback = inr(3_000_000n);
+
+  it('is what the units still held cost, net of what was sold', () => {
+    // 10 bought for ₹1,000 and 10 for ₹3,000; 15 sold takes all of the first
+    // and half of the second, leaving 5 units that cost ₹1,500.
+    const result = matchFifo(
+      [lot('l1', '2024-01-10', '10', 100000n), lot('l2', '2024-02-10', '10', 300000n)],
+      [sale('d1', '2024-06-10', '15', 450000n)],
+    );
+    expect(costHeld(result, fallback, 'INR')).toEqual({ amount: inr(150000n), source: 'lots' });
+  });
+
+  it('prefers the lots to the single figure entered before they existed', () => {
+    const result = matchFifo([lot('l1', '2024-01-10', '10', 100000n)], []);
+    expect(costHeld(result, fallback, 'INR').source).toBe('lots');
+    expect(costHeld(result, fallback, 'INR').amount).toEqual(inr(100000n));
+  });
+
+  it('falls back to that figure when there are no purchases, and says so', () => {
+    const result = matchFifo([], []);
+    expect(costHeld(result, fallback, 'INR')).toEqual({ amount: fallback, source: 'holding' });
+  });
+
+  it('has no cost at all when nothing was ever recorded, rather than a zero', () => {
+    expect(costHeld(matchFifo([], []), null, 'INR')).toEqual({ amount: null, source: 'holding' });
+  });
+
+  it('is zero, from the lots, for a position sold down to nothing', () => {
+    const result = matchFifo(
+      [lot('l1', '2024-01-10', '10', 100000n)],
+      [sale('d1', '2024-06-10', '10', 150000n)],
+    );
+    expect(costHeld(result, fallback, 'INR')).toEqual({ amount: inr(0n), source: 'lots' });
   });
 });

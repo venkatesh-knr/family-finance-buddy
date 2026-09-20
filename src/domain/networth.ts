@@ -30,6 +30,15 @@ export interface HoldingInput {
   /** What it cost, if that was ever recorded. */
   readonly cost: Money | null;
   readonly isArchived: boolean;
+  /**
+   * Whether that cost covers only part of the units being valued.
+   *
+   * Required rather than defaulted: a caller that forgot it would read as "the
+   * cost is complete", which is the claim this flag exists to withhold. True
+   * when a statement's closing balance and the recorded purchases disagree —
+   * see `domain/position.ts`.
+   */
+  readonly costIsShort: boolean;
 }
 
 export interface ValuationInput {
@@ -67,8 +76,16 @@ export interface CurrencyTotal {
   readonly invested: Money;
   /** What was paid for the part that has been valued — the only fair base for `gain`. */
   readonly investedValued: Money;
-  /** value − investedValued. Negative is a loss and is shown as one. */
-  readonly gain: Money;
+  /**
+   * value − investedValued. Negative is a loss and is shown as one.
+   *
+   * Null where a valued holding's cost is short: the difference would be a
+   * number that never happened, and printing it would be worse than saying
+   * there is none. The value, and `invested`, are still true and still here.
+   */
+  readonly gain: Money | null;
+  /** How many valued holdings have a cost covering only part of their units. */
+  readonly costShort: number;
   /** How many holdings have never been read. A total with these in it is short. */
   readonly unvalued: number;
 }
@@ -80,7 +97,7 @@ export function assetTotals(options: {
   const latest = latestValuationPerHolding(options.valuations);
   const buckets = new Map<
     string,
-    { value: bigint; invested: bigint; investedValued: bigint; unvalued: number }
+    { value: bigint; invested: bigint; investedValued: bigint; unvalued: number; costShort: number }
   >();
 
   for (const holding of options.holdings) {
@@ -91,6 +108,7 @@ export function assetTotals(options: {
       invested: 0n,
       investedValued: 0n,
       unvalued: 0,
+      costShort: 0,
     };
 
     const reading = latest.get(holding.id);
@@ -102,6 +120,9 @@ export function assetTotals(options: {
     } else {
       bucket.value += reading.amount.minor;
       bucket.investedValued += cost;
+      // Only once it has been read: an unvalued holding is on neither side of
+      // the comparison, so its short cost is not a reason to refuse it.
+      if (holding.costIsShort) bucket.costShort += 1;
     }
 
     buckets.set(holding.currency, bucket);
@@ -113,7 +134,8 @@ export function assetTotals(options: {
       value: money(b.value, currency),
       invested: money(b.invested, currency),
       investedValued: money(b.investedValued, currency),
-      gain: money(b.value - b.investedValued, currency),
+      gain: b.costShort > 0 ? null : money(b.value - b.investedValued, currency),
+      costShort: b.costShort,
       unvalued: b.unvalued,
     }))
     .sort((a, b) => (b.value.minor > a.value.minor ? 1 : b.value.minor < a.value.minor ? -1 : 0));
@@ -126,8 +148,10 @@ export interface AllocationRow {
   readonly share: number;
   /** What was paid for the holdings in this class that have been valued. */
   readonly invested: Money;
-  /** value − invested. Negative is a loss, and shown as one. */
-  readonly gain: Money;
+  /** value − invested. Negative is a loss, and shown as one. Null where the cost is short. */
+  readonly gain: Money | null;
+  /** How many holdings in this class have a cost covering only part of their units. */
+  readonly costShort: number;
   /**
    * Gain as a fraction of cost, or null when nothing was paid — a class with
    * no recorded cost has no return, and 0% would be a claim rather than an
@@ -142,7 +166,7 @@ export function allocationByKind(options: {
   readonly currency: string;
 }): readonly AllocationRow[] {
   const latest = latestValuationPerHolding(options.valuations);
-  const byKind = new Map<string, { value: bigint; invested: bigint }>();
+  const byKind = new Map<string, { value: bigint; invested: bigint; costShort: number }>();
   let total = 0n;
 
   for (const holding of options.holdings) {
@@ -150,9 +174,10 @@ export function allocationByKind(options: {
     const reading = latest.get(holding.id);
     if (reading === undefined) continue;
 
-    const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n };
+    const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n, costShort: 0 };
     bucket.value += reading.amount.minor;
     bucket.invested += holding.cost?.minor ?? 0n;
+    if (holding.costIsShort) bucket.costShort += 1;
     byKind.set(holding.kind, bucket);
     total += reading.amount.minor;
   }
@@ -171,8 +196,14 @@ export function allocationByKind(options: {
       value: money(b.value, options.currency),
       share: Number(b.value) / Number(total),
       invested: money(b.invested, options.currency),
-      gain: money(b.value - b.invested, options.currency),
-      returnOnCost: b.invested === 0n ? null : Number(b.value - b.invested) / Number(b.invested),
+      // A short cost has no return, for the same reason it has no gain: a class
+      // holding one would print a percentage set against money never paid.
+      gain: b.costShort > 0 ? null : money(b.value - b.invested, options.currency),
+      costShort: b.costShort,
+      returnOnCost:
+        b.costShort > 0 || b.invested === 0n
+          ? null
+          : Number(b.value - b.invested) / Number(b.invested),
     }))
     .sort((a, b) => b.share - a.share);
 }

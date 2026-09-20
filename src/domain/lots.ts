@@ -238,6 +238,36 @@ export function openPosition(result: FifoResult): readonly OpenLot[] {
 }
 
 /**
+ * What the units still held cost, and where that figure came from.
+ *
+ * 'lots' is derived from recorded acquisitions net of recorded sales. 'holding'
+ * is the single figure entered before lots existed — a weaker fact, which the
+ * screen says so rather than presenting the two alike — and is used only where
+ * there is not a lot to derive from. Null when neither exists, because a cost
+ * nobody recorded is not a cost of zero.
+ *
+ * One function for every screen. Holdings derived this and Overview read the
+ * old column, so one household showed two different amounts invested.
+ */
+export function costHeld(
+  result: FifoResult,
+  fallback: Money | null,
+  currency: CurrencyCode,
+): { readonly amount: Money | null; readonly source: 'lots' | 'holding' } {
+  // Presence of a lot at all, sold down or not: a position that was bought and
+  // sold has a cost of zero from its lots, not a stale figure from before them.
+  if (result.open.length === 0) return { amount: fallback, source: 'holding' };
+
+  return {
+    amount: money(
+      openPosition(result).reduce((sum, entry) => sum + entry.cost.minor, 0n),
+      currency,
+    ),
+    source: 'lots',
+  };
+}
+
+/**
  * Gains realised in one currency, or null.
  *
  * Null rather than zero when there is nothing, because zero realised gain is a

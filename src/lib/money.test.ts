@@ -90,6 +90,30 @@ describe('parseAmountToMinor', () => {
   });
 });
 
+/**
+ * "Indian lakh/crore grouping (₹1,23,456) and Western grouping ($1,234.56) are
+ * both formatter concerns — the same stored integer renders either way."
+ * (§610)
+ *
+ * The display locale was en-IN for every currency, which is right for the
+ * rupee and wrong for everything else: a dollar figure came out as
+ * $1,23,798.76, which is not how anybody writes dollars. It showed up the
+ * moment the display-currency control let a target be read in USD.
+ */
+describe('grouping follows the currency, not the household', () => {
+  it('groups rupees the Indian way', () => {
+    expect(formatMoney(money(12_379_876n, 'INR'))).toBe('₹1,23,798.76');
+  });
+
+  it('groups dollars the Western way', () => {
+    expect(formatMoney(money(12_379_876n, 'USD'))).toBe('$123,798.76');
+  });
+
+  it('groups euros the Western way too', () => {
+    expect(formatMoney(money(100_000_00n, 'EUR'))).toContain('100,000');
+  });
+});
+
 describe('formatMoney', () => {
   it('formats rupees with lakh grouping', () => {
     expect(formatMoney(money(12345678n, 'INR'))).toBe('₹1,23,456.78');
@@ -120,8 +144,18 @@ describe('formatMoney', () => {
     expect(formatMoney(money(-250000n, 'INR'))).toBe('-₹2,500');
   });
 
+  /**
+   * The yen symbol is the price of grouping dollars correctly.
+   *
+   * en-IN wrote "JP¥1,234", which disambiguates the yen from the yuan, and
+   * also wrote "$1,23,798.76", which is not how dollars are written anywhere.
+   * en-GB keeps "JP¥" and gives "US$123,798.76" — noise on the currency this
+   * household actually holds. So: en-US for everything but the rupee, and a
+   * bare ¥ where a yen figure ever appears, which is a trade worth naming
+   * rather than discovering.
+   */
   it('formats a currency with no minor unit', () => {
-    expect(formatMoney(money(1234n, 'JPY'))).toBe('JP¥1,234');
+    expect(formatMoney(money(1234n, 'JPY'))).toBe('¥1,234');
   });
 
   it('hides the figure but keeps the symbol in privacy mode', () => {

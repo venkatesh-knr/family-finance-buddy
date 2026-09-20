@@ -11,7 +11,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(21);
+select plan(22);
 
 -- ─────────────────────────────────────────────────────────────── fixtures
 --
@@ -94,10 +94,18 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
   ('b0000000-0000-4000-8000-0000000000b1', 'd1000000-0000-4000-8000-0000000000d1',
    'aa000000-0000-4000-8000-0000000000a1', 'f1000000-0000-4000-8000-0000000000f1', 100);
 
-insert into public.lot (id, household_id, holding_id, acquired_on, quantity, cost_minor, currency, created_by) values
+-- An import, and a purchase that cites it. Both belong to the sandbox and
+-- both have to go: a batch left behind is the record of a file whose rows are
+-- gone, and the hashes that would recognise a re-import went with them.
+insert into public.import_batch (id, household_id, kind, label, row_count, created_by) values
+  ('c1000000-0000-4000-8000-00000000c101', 'd1000000-0000-4000-8000-0000000000d1',
+   'ecas_cams', 'A statement imported into the sandbox', 1,
+   'ac000000-0000-4000-8000-0000000000a1');
+
+insert into public.lot (id, household_id, holding_id, acquired_on, quantity, cost_minor, currency, created_by, source_batch_id) values
   ('10000000-0000-4000-8000-000000000101', 'd1000000-0000-4000-8000-0000000000d1',
    'b0000000-0000-4000-8000-0000000000b1', date '2024-07-01', 100, 10000000, 'INR',
-   'ac000000-0000-4000-8000-0000000000a1');
+   'ac000000-0000-4000-8000-0000000000a1', 'c1000000-0000-4000-8000-00000000c101');
 
 insert into public.disposal (id, household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, created_by) values
   ('20000000-0000-4000-8000-000000000201', 'd1000000-0000-4000-8000-0000000000d1',
@@ -222,6 +230,15 @@ select is_empty(
 select is_empty(
   $q$ select 1 from public.member where id = 'aa000000-0000-4000-8000-0000000000a9' $q$,
   'a member nobody signs in as is removed'
+);
+
+-- The guard caught this one for real: import_batch was added a migration after
+-- the reset was written, and the first reset afterwards refused and named it
+-- rather than leaving the batches behind.
+select is_empty(
+  $q$ select 1 from public.import_batch
+       where household_id = 'd1000000-0000-4000-8000-0000000000d1' $q$,
+  'and the imports go with the rows they wrote'
 );
 
 -- ═══════════════════════════════════════════════════ what came back (3)

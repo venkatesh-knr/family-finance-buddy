@@ -23,6 +23,8 @@ import {
 } from '../../domain/budget.ts';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
+import { convert } from '../../domain/fx.ts';
+import type { FxRate } from '../../repo/rates.ts';
 import type {
   Budget,
   Expense,
@@ -43,6 +45,7 @@ export function BudgetVsActual({
   today,
   fy,
   currency,
+  rates,
   privacy,
 }: {
   categories: readonly ExpenseCategory[];
@@ -58,7 +61,16 @@ export function BudgetVsActual({
   personalSpend: PersonalSpendPeriods | null;
   today: string;
   fy: number;
+  /** What these figures are read in: the household's currency, or this device's choice. */
   currency: string;
+  /**
+   * The household's recorded rates, for the spending that is not in `currency`.
+   *
+   * Each row converts at the rate for its own date — "a transaction converts
+   * at the rate for its own date" — so a dollar expense from March is counted
+   * at March's rate and not at today's.
+   */
+  rates: readonly FxRate[];
   privacy: boolean;
 }) {
   const [period, setPeriod] = useState<Period>('month');
@@ -89,23 +101,74 @@ export function BudgetVsActual({
                 ? null
                 : (monthly?.planned.minor ?? 0n) * 12n + (yearly?.planned.minor ?? 0n));
 
+        /**
+         * A plan is stored in the currency it was set in, and read in the
+         * currency this device asked for.
+         *
+         * Relabelling it would be worse than not converting at all: the
+         * figures came out as "$26,500 planned" against spending genuinely
+         * converted to dollars, so a household reading in USD saw a budget
+         * eighty-eight times what it had set.
+         *
+         * Converted at today's rate, unlike spending: a plan is a statement
+         * about now, not something that happened on a date.
+         */
+        const stored = monthly?.planned.currency ?? yearly?.planned.currency ?? currency;
+        const raw = minor === null ? null : money(minor, stored);
+        const converted = raw === null ? null : convert(raw, currency, rates, today);
+
         return {
           categoryId: category.id,
           name: category.name,
           nature: category.nature,
-          planned: minor === null ? null : money(minor, currency),
+          // A plan no rate can carry into the currency being read is no plan
+          // on this screen — counted below rather than shown at the wrong size.
+          planned: converted !== null && converted.ok ? converted.amount : null,
         };
       });
-  }, [categories, budgets, period, currency]);
+  }, [categories, budgets, period, currency, rates, today]);
 
-  const actuals = useMemo<readonly CategoryActual[]>(() => {
-    return expenses
-      .filter(
-        (expense) =>
-          !expense.isVoided && expense.date >= bounds.start && expense.date <= bounds.end,
-      )
-      .map((expense) => ({ categoryId: expense.categoryId, spent: expense.amount }));
-  }, [expenses, bounds]);
+  /** Plans that could not be carried into the currency being read. */
+  const plansUnconverted = useMemo(() => {
+    const missing = new Set<string>();
+    for (const budget of budgets) {
+      if (convert(budget.planned, currency, rates, today).ok) continue;
+      missing.add(budget.planned.currency);
+    }
+    return [...missing];
+  }, [budgets, currency, rates, today]);
+
+  /**
+   * What was spent, in the currency being read, and what could not be.
+   *
+   * This used to add every expense's minor units together whatever currency
+   * they were in, so a $49.99 domain renewal counted as ₹49.99 — a real row
+   * in the demo household, and a figure wrong by a factor of the exchange
+   * rate. Each row is converted at the rate for its own date now, and a row
+   * with no rate for its date is left out and counted, because a total short
+   * by an amount nobody can see is the failure this app exists to avoid.
+   */
+  const { actuals, unconverted } = useMemo(() => {
+    const rows: CategoryActual[] = [];
+    const missing = new Map<string, number>();
+
+    for (const expense of expenses) {
+      if (expense.isVoided) continue;
+      if (expense.date < bounds.start || expense.date > bounds.end) continue;
+
+      const converted = convert(expense.amount, currency, rates, expense.date);
+      if (converted.ok) {
+        rows.push({ categoryId: expense.categoryId, spent: converted.amount });
+      } else {
+        missing.set(expense.amount.currency, (missing.get(expense.amount.currency) ?? 0) + 1);
+      }
+    }
+
+    return {
+      actuals: rows,
+      unconverted: [...missing.entries()].map(([code, count]) => ({ code, count })),
+    };
+  }, [expenses, bounds, currency, rates]);
 
   /**
    * The private sums, given the member names this screen already has.
@@ -320,6 +383,32 @@ export function BudgetVsActual({
               <Notice tone="due">
                 Private spending could not be read just now, so this total may be short. It is not
                 that nobody has any — that would show as a line of its own.
+              </Notice>
+            </div>
+          )}
+
+          {plansUnconverted.length > 0 && (
+            <div className="mt-2.5">
+              <Notice tone="due" names={plansUnconverted} namesLabel="Which currencies">
+                Some categories are planned in another currency and no rate carries them into this
+                one, so they are shown as having no plan rather than as a figure at the wrong size.
+              </Notice>
+            </div>
+          )}
+
+          {unconverted.length > 0 && (
+            <div className="mt-2.5">
+              <Notice
+                tone="due"
+                names={unconverted.map(
+                  (entry) =>
+                    `${String(entry.count)} ${entry.count === 1 ? 'entry' : 'entries'} in ${entry.code}`,
+                )}
+                namesLabel="Which spending"
+              >
+                Spending in another currency is not in these figures, because no rate covers the
+                day it was spent. A rate for that date, recorded on Overview, brings it in —
+                converting it at today&rsquo;s rate instead would restate what a past month cost.
               </Notice>
             </div>
           )}

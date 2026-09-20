@@ -218,6 +218,14 @@ export interface Instrument {
   readonly name: string;
   readonly kind: InstrumentKind;
   readonly symbol: string | null;
+  /**
+   * The international identifier, where the household has one.
+   *
+   * Read as well as written now: a statement supplies it for every scheme, and
+   * it is what AMFI's file is keyed by — so it is what turns a fund the
+   * importer created into a fund the price driver can quote.
+   */
+  readonly isin: string | null;
   /** What it is priced in. */
   readonly currency: string;
   /** What its value tracks, which is not always the same thing. See §293. */
@@ -273,6 +281,22 @@ export interface Holding {
    * a personal one of theirs never arrives here at all.
    */
   readonly visibility: Visibility;
+  /**
+   * What a registrar's statement said this position holds, and on what date.
+   *
+   * Null for a holding nobody imported. Where it exists it answers *how many
+   * units*, and only that: cost still comes from the lots, and never borrows
+   * this. See `domain/position.ts`.
+   */
+  readonly stated: StatedBalanceRow | null;
+}
+
+export interface StatedBalanceRow {
+  readonly quantity: Quantity;
+  /** The date the balance was true. Without one it is not a balance. */
+  readonly asOf: IsoDate;
+  /** The import that stated it, or null for a balance nobody imported. */
+  readonly sourceBatchId: Uuid | null;
 }
 
 export interface Valuation {
