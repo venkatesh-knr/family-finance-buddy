@@ -164,23 +164,57 @@ one stores ₹29,542 for a holding worth about ₹4.2 lakh — and it stores it 
 ordinary reading, indistinguishable from a complete one, feeding net worth,
 allocation, the FIRE multiple and every total downstream.
 
-The statement itself carries the check. It prints an opening balance and a
-closing balance, and the lots either reach the closing figure or they do not.
+**The decision: stop asking one number to answer two questions.**
 
-Capital gains are already safe: the FIFO matcher refuses to cost units it has no
-purchase for and reports a shortfall, which the holdings screen shows. Valuations
-have no such guard, and this step is that guard.
+*How much is this worth* and *what did it cost* have different sources, and the
+statement supplies both separately. The closing balance is the registrar's own
+count of units held on a date. The lots are the purchase history. A partial
+statement gives a complete answer to the first and an incomplete one to the
+second, and the app has been deriving both from the lots — which is why the
+value came out 93% short.
 
-Two ways out, and they are not exclusive. Re-request the statement from before
-the first investment, which is free and fixes it properly — an overlapping
-re-import is recognised line by line and writes only what is new. Or record the
-opening balance as a single lot, which makes the units right immediately and the
-holding period wrong, since one row cannot say when those units were bought; that
-is a worse answer for tax and would have to be marked as an estimate the tax
-engine refuses to classify.
+So:
+
+- **Import records the closing balance.** `holding` gains `stated_quantity`,
+  `stated_as_at` and `stated_source_batch_id`, written from the per-scheme
+  closing units the statement already prints. A later import with a later
+  `stated_as_at` supersedes it; an earlier one does not.
+- **Units for valuation are the stated balance as at its date, plus the net of
+  lots dated after it.** That is right for a partial history and stays right for
+  a household still running an SIP after the statement was cut.
+- **Cost stays derived from the lots alone, and never borrows the stated units.**
+  A cost figure is the sum of what was actually paid; there is nothing to sum
+  for units the statement did not itemise.
+- **Where the two disagree, the return is refused, not printed.** ₹4.2 lakh of
+  value against ₹29,542 of recorded cost is a +1,300% gain that never happened.
+  The percentage, the gain figure and the allocation return column all come back
+  empty with the reason on them, exactly as an unpriced holding does today.
+- **The holding is marked short, and the mark travels.** A caveat on the figure
+  names the arithmetic — lots cover 280.479 of the 4,013.730 units reported on
+  30 Sep 2026 — and Overview carries a notice counting how many positions are in
+  that state. Net worth still includes them, because with stated units the
+  valuation is now correct; what is qualified is the cost, the gain and the
+  history, not the total.
+- **Capital gains need no new guard.** The FIFO matcher already refuses to cost
+  units it has no purchase for and reports the shortfall. This step is the same
+  refusal applied to valuation, which had none.
+
+**Rejected: writing the opening balance in as a single synthetic lot.** It makes
+the units right in one line and is the obvious shortcut. It also invents a
+purchase date and a cost for units bought across years, and both feed the tax
+engine — a fabricated acquisition date produces a confident long-term
+classification out of nothing. A gap the app can see is worth more than a number
+it made up.
+
+**The real fix is still a file request, not code.** An eCAS requested from
+before the first investment carries the whole history, overlapping rows are
+recognised line by line and only the new ones are written, and the shortfall
+resolves itself. The work above is what the app does in the meantime — and it is
+also what it does forever for a folio whose registrar will not go back far
+enough.
 
 Here rather than later because every figure the steps below compute is built on
-these, and because the cheaper answer is a file request rather than code.
+these.
 
 **3. The tax engine, and the Tax screen on top of it.**
 
