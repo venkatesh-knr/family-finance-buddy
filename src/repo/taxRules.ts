@@ -11,12 +11,18 @@
  */
 
 import { supabase } from './client.ts';
-import { MalformedRowError, optionalString, requireRecord, requireString } from '../lib/guards.ts';
+import {
+  MalformedRowError,
+  optionalString,
+  requireRecord,
+  requireString,
+  toBigIntExact,
+} from '../lib/guards.ts';
 import type { AssetClass, TaxRule, Term } from '../domain/tax-rules.ts';
 import type { IsoDate } from '../lib/dates.ts';
 
 const COLUMNS =
-  'jurisdiction, kind, asset_class, months, rate_pct::text, term, effective_from, effective_to, authority';
+  'jurisdiction, kind, asset_class, months, rate_pct::text, term, effective_from, effective_to, authority, band_from_minor::text, band_to_minor::text';
 
 export async function listTaxRules(): Promise<readonly TaxRule[]> {
   const client = supabase();
@@ -51,6 +57,14 @@ export async function listTaxRules(): Promise<readonly TaxRule[]> {
       effectiveFrom: requireString(record['effective_from'], 'tax_rule.effective_from') as IsoDate,
       effectiveTo: optionalString(record['effective_to'], 'tax_rule.effective_to') as IsoDate | null,
       authority: requireString(record['authority'], 'tax_rule.authority'),
+      bandFromMinor:
+        record['band_from_minor'] === null || record['band_from_minor'] === undefined
+          ? null
+          : toBigIntExact(record['band_from_minor'], 'tax_rule.band_from_minor'),
+      bandToMinor:
+        record['band_to_minor'] === null || record['band_to_minor'] === undefined
+          ? null
+          : toBigIntExact(record['band_to_minor'], 'tax_rule.band_to_minor'),
     };
   });
 }

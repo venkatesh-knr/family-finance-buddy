@@ -24,6 +24,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2024-07-23',
     effectiveTo: null,
     authority: 'Finance (No. 2) Act 2024',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
   {
     jurisdiction: 'IN',
@@ -35,6 +37,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2024-07-23',
     effectiveTo: null,
     authority: 'Finance (No. 2) Act 2024',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
   {
     jurisdiction: 'IN',
@@ -46,6 +50,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2024-07-23',
     effectiveTo: null,
     authority: 's. 112A',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
   {
     jurisdiction: 'IN',
@@ -57,6 +63,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2024-07-23',
     effectiveTo: null,
     authority: 's. 111A',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
   // An earlier, closed rule — the case the dating exists for.
   {
@@ -69,6 +77,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2020-04-01',
     effectiveTo: '2024-07-22',
     authority: 'pre-2024 regime',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
   {
     jurisdiction: 'IN',
@@ -80,6 +90,8 @@ const rules: readonly TaxRule[] = [
     effectiveFrom: '2024-07-23',
     effectiveTo: null,
     authority: 'Finance (No. 2) Act 2024',
+    bandFromMinor: null,
+    bandToMinor: null,
   },
 ];
 

@@ -64,6 +64,14 @@ export interface TaxRule {
   readonly effectiveFrom: IsoDate;
   readonly effectiveTo: IsoDate | null;
   readonly authority: string;
+  /**
+   * The band this rule covers, in minor units of the jurisdiction's currency.
+   * Null on a row that has none — a holding period or a capital-gains rate.
+   * `bandToMinor` null means "and above"; both null on an `exemption` row
+   * means the whole thing, which does not occur in what is seeded today.
+   */
+  readonly bandFromMinor: bigint | null;
+  readonly bandToMinor: bigint | null;
 }
 
 export type Classification =
