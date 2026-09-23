@@ -24,12 +24,22 @@
 
 import { taxYearBounds } from './budget.ts';
 import type { Parcel } from './lots.ts';
-import { classify, type AssetClass, type TaxRule } from './tax-rules.ts';
+import { classify, longTermRate, type AssetClass, type TaxRule } from './tax-rules.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import { money, type Money } from '../lib/money.ts';
 
 /** The two `tax_rule` asset classes the ₹1.25 lakh allowance is seeded for. */
 const EQUITY_CLASSES: ReadonlySet<AssetClass> = new Set(['listed_equity', 'equity_fund']);
+
+/**
+ * Whether a class is one this module nets and the allowance covers.
+ *
+ * Exported so a screen listing sales says "netted" by asking the same question
+ * the netter asks, rather than keeping a second list that drifts from it.
+ */
+export function isEquityClass(assetClass: AssetClass): boolean {
+  return EQUITY_CLASSES.has(assetClass);
+}
 
 /**
  * The exemption is minor units of INR — "the jurisdiction's currency" the
@@ -211,4 +221,100 @@ export function netEquityGains(options: {
     },
     excluded,
   };
+}
+
+export interface TermTax {
+  /** What was taxable in this term after set-off and the allowance. */
+  readonly taxable: Money;
+  /** The rate applied, as `tax_rule` holds it. Null when nothing was taxable and none was needed. */
+  readonly ratePct: string | null;
+  /** Where the rate came from, so a figure can be traced rather than argued about. */
+  readonly authority: string | null;
+  /**
+   * Null when there is a taxable gain and no rate to apply to it — refused, not
+   * assumed to be nothing. Zero, with no rate needed, when nothing was taxable.
+   */
+  readonly tax: Money | null;
+}
+
+export interface EquityTax {
+  readonly shortTerm: TermTax;
+  /** Null when the exemption is unknown: what is taxable long term cannot be said. */
+  readonly longTerm: TermTax | null;
+  /** Null unless every part of it is known. A total short by a refused part would read as complete. */
+  readonly total: Money | null;
+}
+
+/**
+ * The rate for a term, as of a date, when listed shares and equity funds agree.
+ *
+ * The allowance is combined across the two, and so is what is left of it, so
+ * they are taxed as one bucket. Two rates for one bucket would mean choosing
+ * one, which is a guess — so disagreement is a refusal. They are seeded equal
+ * today; this is what makes that a fact the code checks rather than assumes.
+ */
+function equityRate(rules: readonly TaxRule[], term: 'long' | 'short', on: IsoDate): TaxRule | null {
+  const listed = longTermRate(rules, 'listed_equity', term, on);
+  const fund = longTermRate(rules, 'equity_fund', term, on);
+  if (listed === null || fund === null || listed.ratePct === null || fund.ratePct === null) return null;
+  return thousandths(listed.ratePct) === thousandths(fund.ratePct) ? listed : null;
+}
+
+/** A rate in `numeric(6,3)` text — `12.5`, `12.500` — as an integer count of thousandths of a percent. */
+function thousandths(ratePct: string): bigint {
+  const [whole = '0', fraction = ''] = ratePct.split('.');
+  return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0').slice(0, 3));
+}
+
+/**
+ * `minor × rate%`, half a paisa rounding up, entirely in bigint.
+ *
+ * Half up rather than truncating: a tax that always rounds down is a small
+ * standing error in one direction, and the sum of several terms would carry it.
+ * Non-negative only — a taxable figure never is anything else.
+ */
+function percentOf(minor: bigint, ratePct: string): bigint {
+  return (minor * thousandths(ratePct) + 50_000n) / 100_000n;
+}
+
+/**
+ * What the netted gains cost, before surcharge and cess.
+ *
+ * Equity gains are taxed at rates of their own — 20% short term, 12.5% long
+ * term after the allowance — and not at the slab, so this is a multiplication
+ * and nothing more. Surcharge and the 4% cess sit on top of it, in a later step
+ * that also needs the taxpayer's other income; nothing here pretends to be that.
+ *
+ * Rates are read as of the last day of the year, like the allowance. That is
+ * sound while earlier regimes are not seeded, because a sale under one is
+ * refused by `classify` and never reaches these totals.
+ */
+export function equityTax(gains: EquityCapitalGains, rules: readonly TaxRule[]): EquityTax {
+  const on = gains.window.end;
+
+  const termTax = (taxable: Money, term: 'long' | 'short'): TermTax => {
+    if (taxable.minor === 0n) {
+      return { taxable, ratePct: null, authority: null, tax: money(0n, CURRENCY) };
+    }
+    const rule = equityRate(rules, term, on);
+    if (rule === null || rule.ratePct === null) {
+      return { taxable, ratePct: null, authority: null, tax: null };
+    }
+    return {
+      taxable,
+      ratePct: rule.ratePct,
+      authority: rule.authority,
+      tax: money(percentOf(taxable.minor, rule.ratePct), CURRENCY),
+    };
+  };
+
+  const shortTerm = termTax(gains.shortTerm.taxable, 'short');
+  const longTerm = gains.longTerm.taxable === null ? null : termTax(gains.longTerm.taxable, 'long');
+
+  const total =
+    longTerm === null || shortTerm.tax === null || longTerm.tax === null
+      ? null
+      : money(shortTerm.tax.minor + longTerm.tax.minor, CURRENCY);
+
+  return { shortTerm, longTerm, total };
 }

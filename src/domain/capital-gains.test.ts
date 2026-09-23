@@ -19,7 +19,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { money, type Money } from '../lib/money.ts';
-import { netEquityGains, type ExcludedParcel } from './capital-gains.ts';
+import { equityTax, netEquityGains, type ExcludedParcel } from './capital-gains.ts';
 import type { Parcel } from './lots.ts';
 import type { TaxRule } from './tax-rules.ts';
 
@@ -309,5 +309,145 @@ describe('netEquityGains', () => {
     expect(result.shortTerm.net).toEqual(inr(0));
     expect(result.longTerm.net).toEqual(inr(0));
     expect(result.window).toEqual({ start: '2026-04-01', end: '2027-03-31' });
+  });
+});
+
+/**
+ * What the netted gains cost, before surcharge and cess.
+ *
+ * Equity gains are taxed at rates of their own rather than the slab, so this
+ * is one multiplication per term — but it is a multiplication of money by a
+ * decimal, which is exactly where a float would quietly be wrong. `tax_rule`
+ * hands the rate over as a string (`12.500` from `numeric(6,3)`), and every
+ * figure here was worked out by hand.
+ */
+describe('equityTax', () => {
+  const rateRules: readonly TaxRule[] = [
+    ...rules,
+    ...(['listed_equity', 'equity_fund'] as const).flatMap((assetClass) => [
+      {
+        jurisdiction: 'IN',
+        kind: 'cg_rate',
+        assetClass,
+        months: null,
+        ratePct: '12.500',
+        term: 'long' as const,
+        effectiveFrom: '2024-07-23',
+        effectiveTo: null,
+        authority: 'Finance (No. 2) Act 2024, s. 112A — long term',
+        bandFromMinor: null,
+        bandToMinor: null,
+      },
+      {
+        jurisdiction: 'IN',
+        kind: 'cg_rate',
+        assetClass,
+        months: null,
+        ratePct: '20.000',
+        term: 'short' as const,
+        effectiveFrom: '2024-07-23',
+        effectiveTo: null,
+        authority: 'Finance (No. 2) Act 2024, s. 111A — short term',
+        bandFromMinor: null,
+        bandToMinor: null,
+      },
+    ]),
+  ];
+
+  const netted = (parcels: readonly Parcel[], ruleSet: readonly TaxRule[] = rateRules) =>
+    netEquityGains({ parcels, assetClassOf, rules: ruleSet, fy: 2026 });
+
+  it('applies 12.5% to the long-term gain left after the allowance, and 20% to the short', () => {
+    // LT ₹3,00,000 less ₹1,25,000 = ₹1,75,000 at 12.5% = ₹21,875.
+    // ST ₹70,000 at 20% = ₹14,000. Together ₹35,875.
+    const gains = netted([lt('a', inr(300_000)), st('b', inr(70_000))]);
+    const tax = equityTax(gains, rateRules);
+
+    expect(tax.longTerm?.tax).toEqual(inr(21_875));
+    expect(tax.longTerm?.ratePct).toBe('12.500');
+    expect(tax.shortTerm.tax).toEqual(inr(14_000));
+    expect(tax.shortTerm.ratePct).toBe('20.000');
+    expect(tax.total).toEqual(inr(35_875));
+  });
+
+  it('carries where each rate came from, so a figure can be traced', () => {
+    const tax = equityTax(netted([lt('a', inr(300_000)), st('b', inr(70_000))]), rateRules);
+    expect(tax.longTerm?.authority).toContain('s. 112A');
+    expect(tax.shortTerm.authority).toContain('s. 111A');
+  });
+
+  it('rounds a half paisa up, in integers', () => {
+    // ₹100.04 = 10,004 paise. At 20% that is 2,000.8 → 2,001; nothing to
+    // hedge about. At 12.5% a gain that lands on half a paisa must round up
+    // rather than truncate: 10,004 × 12.5% = 1,250.5 → 1,251.
+    const short = equityTax(netted([st('a', money(10_004n, 'INR'))]), rateRules);
+    expect(short.shortTerm.tax?.minor).toBe(2_001n);
+
+    const withAllowanceGone = netEquityGains({
+      parcels: [lt('a', money(12_500_000n + 10_004n, 'INR'))],
+      assetClassOf,
+      rules: rateRules,
+      fy: 2026,
+    });
+    expect(equityTax(withAllowanceGone, rateRules).longTerm?.tax?.minor).toBe(1_251n);
+  });
+
+  it('needs no rate for a term with nothing taxable in it', () => {
+    // A year of losses and exempt gains never asks the rate table anything, so
+    // a missing rate row is not a reason to refuse a tax of zero.
+    const noRates = rules;
+    const gains = netEquityGains({
+      parcels: [lt('a', inr(90_000))],
+      assetClassOf,
+      rules: noRates,
+      fy: 2026,
+    });
+    const tax = equityTax(gains, noRates);
+    expect(tax.longTerm?.tax).toEqual(inr(0));
+    expect(tax.shortTerm.tax).toEqual(inr(0));
+    expect(tax.total).toEqual(inr(0));
+  });
+
+  it('refuses a tax on a taxable gain with no rate to apply, rather than assuming none', () => {
+    const gains = netEquityGains({
+      parcels: [st('a', inr(70_000))],
+      assetClassOf,
+      rules,
+      fy: 2026,
+    });
+    const tax = equityTax(gains, rules);
+    expect(tax.shortTerm.taxable).toEqual(inr(70_000));
+    expect(tax.shortTerm.tax).toBeNull();
+    expect(tax.total).toBeNull();
+  });
+
+  it('refuses the whole long-term side when the exemption itself is unknown', () => {
+    const noExemption = rateRules.filter((r) => r.kind !== 'exemption');
+    const gains = netEquityGains({
+      parcels: [lt('a', inr(300_000))],
+      assetClassOf,
+      rules: noExemption,
+      fy: 2026,
+    });
+    const tax = equityTax(gains, noExemption);
+    expect(tax.longTerm).toBeNull();
+    expect(tax.total).toBeNull();
+  });
+
+  it('refuses a term where listed shares and equity funds disagree on the rate', () => {
+    // The allowance is combined, and so is the tax on what is left of it. Two
+    // rates for one bucket would mean choosing one, which is guessing.
+    const disagree = rateRules.map((r) =>
+      r.kind === 'cg_rate' && r.assetClass === 'equity_fund' && r.term === 'short'
+        ? { ...r, ratePct: '15.000' }
+        : r,
+    );
+    const gains = netEquityGains({
+      parcels: [st('a', inr(70_000))],
+      assetClassOf,
+      rules: disagree,
+      fy: 2026,
+    });
+    expect(equityTax(gains, disagree).shortTerm.tax).toBeNull();
   });
 });
