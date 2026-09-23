@@ -24,3 +24,24 @@ export const INSTRUMENT_KIND_LABEL: Record<string, string> = {
 export function kindLabel(kind: string): string {
   return INSTRUMENT_KIND_LABEL[kind] ?? kind.replace('_', ' ');
 }
+
+/**
+ * What a tax asset class is called, in the words the editor's own dropdown uses.
+ *
+ * A person sets the class in "Correct this holding" and reads it back on the
+ * Tax screen; the two saying different things for one class is how somebody
+ * decides the second is a different setting.
+ */
+export const TAX_ASSET_CLASS_LABEL: Record<string, string> = {
+  listed_equity: 'Listed equity',
+  equity_fund: 'Equity mutual fund',
+  debt_fund: 'Debt fund',
+  gold: 'Gold',
+  foreign_equity: 'Foreign shares or ETF',
+  unlisted_equity: 'Unlisted shares',
+  property: 'Property',
+};
+
+export function taxClassLabel(assetClass: string): string {
+  return TAX_ASSET_CLASS_LABEL[assetClass] ?? assetClass.replace('_', ' ');
+}

@@ -16,6 +16,7 @@ import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
 import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { FireScreen } from '../features/plan/PlanScreen.tsx';
+import { TaxScreen } from '../features/tax/TaxScreen.tsx';
 import { ProfileScreen } from '../features/profile/ProfileScreen.tsx';
 import { SettingsScreen } from '../features/settings/SettingsScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
@@ -61,6 +62,7 @@ const SCREENS: readonly (readonly [Screen, string, string])[] = [
   ['overview', 'Overview', '◉'],
   ['expenses', 'Expenses', '₹'],
   ['holdings', 'Holdings', '◧'],
+  ['tax', 'Tax', '§'],
   ['fire', 'FIRE', '△'],
 ];
 
@@ -339,6 +341,7 @@ function SignedIn({
             }}
           />
         )}
+        {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
       </main>
 
       {/*
