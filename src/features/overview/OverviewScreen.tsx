@@ -41,6 +41,8 @@ import {
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
+import { assetHistory } from '../../domain/history.ts';
+import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney } from '../../lib/money.ts';
@@ -365,6 +367,28 @@ export function OverviewScreen({
     });
   }, [totals, hiddenAssets, shownDebts, display, rates, asOf, today]);
 
+  /**
+   * What was held, month by month. Follows the same scope as everything else
+   * on the screen, and is drawn from the readings the client can see: another
+   * member's private holdings arrive as a sum with no dates, so they are named
+   * as missing from the line rather than added to it.
+   */
+  const history = useMemo(() => {
+    const opened = new Map((listing?.holdings ?? []).map((h) => [h.id, h.openedOn]));
+    return assetHistory({
+      holdings: holdings.map((h) => ({
+        id: h.id,
+        currency: h.currency,
+        openedOn: opened.get(h.id) ?? null,
+        isArchived: h.isArchived,
+      })),
+      readings: valuations,
+      rates,
+      display,
+      asOf: asOf ?? today,
+    });
+  }, [listing, holdings, valuations, rates, display, asOf, today]);
+
   const saveRate = useCallback(
     async (pair: { base: string; quote: string }) => {
       if (listing === null) return;
@@ -633,6 +657,13 @@ export function OverviewScreen({
           </dl>
         )}
       </Card>
+
+      <AssetsOverTime
+        history={history}
+        display={display}
+        privacy={privacy}
+        otherPrivate={hiddenAssets.length > 0}
+      />
 
       {/*
         What is held, per currency, at the stat step — 17px, not the hero's.
