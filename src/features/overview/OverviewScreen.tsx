@@ -692,7 +692,7 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {totals.map((total) => (
               <div key={total.currency}>
-                <h3 className="micro-label">{total.currency}</h3>
+                <h3 className="label">{total.currency}</h3>
                 <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-2.5">
                   <Stat label="Valued">
                     {formatMoney(total.value, { privacy })}
@@ -735,7 +735,7 @@ export function OverviewScreen({
                         {formatMoney(total.gain, { privacy })}
                       </Stat>
                       <div className="stat">
-                        <dt className="micro-label">Change</dt>
+                        <dt className="label">Change</dt>
                         <dd>
                           <Delta
                             direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
@@ -778,7 +778,7 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {allocation.map((group) => (
               <div key={group.currency}>
-                {allocation.length > 1 && <p className="micro-label">{group.currency}</p>}
+                {allocation.length > 1 && <p className="label">{group.currency}</p>}
                 {/* The ring beside the rows, not instead of them: it shows size, and the rows show what it is of. */}
                 <div className={allocation.length > 1 ? 'alloc-layout mt-1.5' : 'alloc-layout'}>
                   <AllocationDonut rows={group.rows} currency={group.currency} privacy={privacy} />

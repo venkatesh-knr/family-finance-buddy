@@ -83,7 +83,7 @@ export function CostAndGains({
     <div className="mt-3.5 border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
       <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
-          <dt className="micro-label">Cost of units held</dt>
+          <dt className="label">Cost of units held</dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {cost.amount === null ? (
               <Unit>not recorded</Unit>
@@ -111,7 +111,7 @@ export function CostAndGains({
         </div>
 
         <div>
-          <dt className="micro-label">Realised</dt>
+          <dt className="label">Realised</dt>
           <dd
             className="num"
             style={{
@@ -326,7 +326,7 @@ function Workings({
 
       {parcels.length > 0 && (
         <div>
-          <h4 className="micro-label">Matched parcels</h4>
+          <h4 className="label">Matched parcels</h4>
           <p className="note mt-1">
             First in, first out, as the Act requires for demat shares and fund units. These are
             worked out fresh every time and never stored: entering a purchase you had forgotten
@@ -434,7 +434,7 @@ function Ledger({
 }) {
   return (
     <div>
-      <h4 className="micro-label">{heading}</h4>
+      <h4 className="label">{heading}</h4>
       {rows.length === 0 ? (
         <p className="note mt-1">{empty}</p>
       ) : (
@@ -458,7 +458,9 @@ function Ledger({
             ) : (
               <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="note">{formatIsoDate(entry.date)}</span>
-                <span className="num">{entry.quantity} units</span>
+                <span>
+                  <span className="num">{entry.quantity}</span> <Unit>units</Unit>
+                </span>
                 <span className="num" style={{ color: 'var(--ink)' }}>
                   {formatMoney(money(entry.amount.minor, entry.amount.currency), { privacy })}
                 </span>

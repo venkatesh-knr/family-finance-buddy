@@ -195,7 +195,7 @@ function MemberRow({
         <span className="ml-auto flex items-center gap-2">
           {canChangeRoles && member.role != null ? (
             <label className="flex items-center gap-2">
-              <span className="micro-label">Role</span>
+              <span className="label">Role</span>
               <select
                 className="field w-auto"
                 value={member.role}
@@ -351,7 +351,7 @@ function IssueInvite({
           </div>
 
           <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-            <span className="micro-label">Role</span>
+            <span className="label">Role</span>
             <select
               className="field"
               value={role}
@@ -368,7 +368,7 @@ function IssueInvite({
           </label>
 
           <label className="flex w-full flex-col gap-1.5 sm:w-[110px] sm:shrink-0">
-            <span className="micro-label">Colour</span>
+            <span className="label">Colour</span>
             <select
               className="field"
               value={colour}

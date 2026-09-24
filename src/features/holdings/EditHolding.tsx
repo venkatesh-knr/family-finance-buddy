@@ -172,7 +172,7 @@ export function EditHolding({
         </div>
 
         <label className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Kind</span>
+          <span className="label">Kind</span>
           <select
             className="field"
             value={kind}
@@ -239,7 +239,7 @@ export function EditHolding({
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">
+          <span className="label">
             Priced in
             {hasHistory && (
               <Caveat tone="info" label="Why the currency cannot be changed">
@@ -263,7 +263,7 @@ export function EditHolding({
         </label>
 
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Tracks</span>
+          <span className="label">Tracks</span>
           <select
             className="field"
             value={exposure}
@@ -277,7 +277,7 @@ export function EditHolding({
         </label>
 
         <label className="flex w-full sm:w-[170px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">
+          <span className="label">
             Taxed as
             {/*
               Asked, not inferred. A mutual fund is equity or debt according to
@@ -320,7 +320,7 @@ export function EditHolding({
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">
+          <span className="label">
             Priced by
             {/*
               Linking a holding to a feed is what stops the monthly typing. It

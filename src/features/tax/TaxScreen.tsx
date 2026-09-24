@@ -147,7 +147,7 @@ export function TaxScreen({
         aside={
           <span className="flex flex-wrap items-center gap-2.5">
             <label className="flex items-center gap-2">
-              <span className="micro-label">Year</span>
+              <span className="label">Year</span>
               <select
                 className="field w-[130px]"
                 value={fy}
@@ -163,7 +163,7 @@ export function TaxScreen({
               </select>
             </label>
             <label className="flex items-center gap-2">
-              <span className="micro-label">
+              <span className="label">
                 Whose return
                 <Caveat tone="info" label="Why this is one person at a time">
                   Tax is filed per person, and the ₹1.25 lakh equity allowance is each
@@ -216,7 +216,7 @@ export function TaxScreen({
       )}
 
       <Card title="Capital gains" aside={<span className="note">netted across asset classes</span>}>
-        <h3 className="micro-label">Listed shares and equity funds</h3>
+        <h3 className="label">Listed shares and equity funds</h3>
         <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
           <Stat label="Long term, net">{signed(gains.equityLong.net, privacy)}</Stat>
           <Stat label="Short term, net">{signed(gains.equityShort.net, privacy)}</Stat>
@@ -265,7 +265,7 @@ export function TaxScreen({
         {otherActivity && (
           <>
             <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
-            <h3 className="micro-label">
+            <h3 className="label">
               Gold and unlisted shares
               <Caveat tone="info" label="How these differ from equity">
                 Long term is two years, not one, and the gain is taxed at 12.5% with no allowance —
@@ -368,7 +368,7 @@ export function TaxScreen({
             className="grid items-center gap-x-3"
             style={{ gridTemplateColumns: 'minmax(90px, 1fr) 3fr 110px' }}
           >
-            <span className="micro-label">Long-term allowance</span>
+            <span className="label">Long-term allowance</span>
             <Bar
               value={Number(allowance.used.minor)}
               target={Number(allowance.available.minor)}

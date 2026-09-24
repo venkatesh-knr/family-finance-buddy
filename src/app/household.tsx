@@ -149,7 +149,7 @@ export function HouseholdSwitcher() {
 
   return (
     <label className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-      <span className="micro-label">Household</span>
+      <span className="label">Household</span>
       <select
         className="field w-auto"
         value={current.household.id}

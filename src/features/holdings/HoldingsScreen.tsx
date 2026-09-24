@@ -262,7 +262,7 @@ export function HoldingsScreen({
         }
         aside={
           <label className="flex items-center gap-2">
-            <span className="micro-label">
+            <span className="label">
               Peak for
               {/*
                 This explained the whole screen from the bottom of it, where
@@ -325,7 +325,7 @@ export function HoldingsScreen({
             )}
 
             <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-              <span className="micro-label">Sort</span>
+              <span className="label">Sort</span>
               <span className="segmented" role="group" aria-label="Sort holdings">
                 {(['value', 'name', 'member'] as const).map((option) => (
                   <button
@@ -409,7 +409,7 @@ function HoldingCard({
         <div className="flex flex-wrap items-center gap-2">
           <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{holding.instrument.name}</span>
           {holding.instrument.symbol !== null && (
-            <span className="num note">{holding.instrument.symbol}</span>
+            <span className="note">{holding.instrument.symbol}</span>
           )}
           {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
           {/*
@@ -434,7 +434,7 @@ function HoldingCard({
 
       <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
-          <dt className="micro-label">Latest reading</dt>
+          <dt className="label">Latest reading</dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {latest === null ? (
               <Unit>none yet</Unit>
@@ -448,7 +448,7 @@ function HoldingCard({
         </div>
 
         <div>
-          <dt className="micro-label">
+          <dt className="label">
             Peak {peak.year}
             {/*
               Only against a figure. `isProvisional` means "a lower bound,
@@ -819,7 +819,7 @@ function AddHolding({
         </div>
 
         <label className="flex w-full sm:w-[130px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Kind</span>
+          <span className="label">Kind</span>
           <select
             className="field"
             value={kind}
@@ -842,7 +842,7 @@ function AddHolding({
           produce a currency that does not exist.
         */}
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Priced in</span>
+          <span className="label">Priced in</span>
           <select
             className="field"
             value={currency}
@@ -855,7 +855,7 @@ function AddHolding({
         </label>
 
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">
+          <span className="label">
             Tracks
             {/*
               The distinction that made the two boxes look broken beside each
@@ -896,7 +896,7 @@ function AddHolding({
         </div>
 
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Member</span>
+          <span className="label">Member</span>
           <select
             className="field"
             value={memberId}
@@ -1114,7 +1114,7 @@ function QuotedValue({
 
   return (
     <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-      <span className="micro-label">Quoted</span>
+      <span className="label">Quoted</span>
       <span className="num" style={{ color: 'var(--ink)' }}>
         {formatMoney(quoted.value, { privacy: false })}
       </span>

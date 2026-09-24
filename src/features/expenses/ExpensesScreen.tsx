@@ -303,7 +303,7 @@ function QuickAdd({
         </div>
 
         <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="micro-label">Category</span>
+          <span className="label">Category</span>
           <select
             className="field"
             value={categoryId}
@@ -321,7 +321,7 @@ function QuickAdd({
         </label>
 
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Member</span>
+          <span className="label">Member</span>
           <select
             className="field"
             value={memberId}

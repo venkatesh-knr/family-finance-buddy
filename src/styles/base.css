@@ -67,6 +67,23 @@
     font-weight: 600;
   }
 
+  /*
+   * A label: over a stat, beside a field, above a caption (docs/tokens.md §3).
+   * Sentence case in the sans face, at the caption's colour. Nothing about it
+   * is a signal, because a signal on every label is a texture.
+   */
+  .label {
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+
+  /*
+   * The table column header, and only that: uppercase, letterspaced, mono.
+   * Kept as its own class for the tables that are not `.tbl`.
+   */
   .micro-label {
     color: var(--muted);
     font-family: var(--font-mono);
@@ -815,7 +832,7 @@
   }
 
   /*
-   * Table (§5). Header in surface-2 with mono micro-labels, hairline rows,
+   * Table (§5). Header in surface-2 with a mono micro-label, hairline rows,
    * and a total row that is heavier because it is a different kind of claim.
    * The wrapper scrolls on its own so the page body never does.
    */

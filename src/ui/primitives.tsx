@@ -82,7 +82,7 @@ export function Field({
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; numeric?: boolean }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="micro-label">{label}</span>
+      <span className="label">{label}</span>
       <input className={numeric ? 'field field-num' : 'field'} {...props} />
       {hint !== undefined && <span className="note">{hint}</span>}
     </label>
@@ -119,7 +119,7 @@ export function PasswordField({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="micro-label">{label}</span>
+      <span className="label">{label}</span>
 
       <span className="relative flex items-center">
         <input
@@ -244,7 +244,7 @@ export function Stat({
   // <dl>; a bare div would look identical and say less.
   return (
     <div className="stat">
-      <dt className="micro-label">{label}</dt>
+      <dt className="label">{label}</dt>
       <dd className={tone === 'gain' ? 'v pos' : tone === 'loss' ? 'v neg' : 'v'}>{children}</dd>
     </div>
   );
@@ -573,7 +573,7 @@ export function Absent({
 /**
  * A word that sits beside a figure — "of", "at", "units", "holdings", "left".
  *
- * docs/tokens.md §3 gives mono to every number and to uppercase micro-labels,
+ * docs/tokens.md §3 gives mono to figures in a column and to the table header,
  * and Public Sans to everything read as prose. Mono is the ledger signal
  * precisely because it is reserved for figures; a word set in it spends the
  * signal, and reads as terminal output. But a word placed inside a figure's
@@ -597,7 +597,7 @@ export function Unit({ children, inherit = false }: { children: ReactNode; inher
 export function Qualifier({ word, children }: { word: string; children: ReactNode }) {
   return (
     <span className="note">
-      <Unit>{word}</Unit> <span className="num">{children}</span>
+      <Unit>{word}</Unit> <span className="tabular-nums">{children}</span>
     </span>
   );
 }
