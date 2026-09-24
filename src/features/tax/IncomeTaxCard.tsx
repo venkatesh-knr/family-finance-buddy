@@ -288,7 +288,7 @@ function Row({
         <dt style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 500 }}>{label}</dt>
         {note !== undefined && <span className="note">{note}</span>}
       </div>
-      <dd className="num" style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 400 }}>
+      <dd className="tabular-nums" style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 400 }}>
         {value}
       </dd>
     </div>

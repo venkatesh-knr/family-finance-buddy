@@ -530,13 +530,13 @@ function StackedRow({
         <span style={{ color: 'var(--ink)' }}>
           {expense.payee ?? <span className="note">No payee</span>}
         </span>
-        <span className="num whitespace-nowrap" style={{ color: 'var(--ink)' }}>
+        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)' }}>
           {formatMoney(expense.amount, { privacy })}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="num note">{formatIsoDate(expense.date)}</span>
+        <span className="tabular-nums note">{formatIsoDate(expense.date)}</span>
         {/*
           The category, which the ledger simply never showed — the id was
           loaded and the name was never resolved, so an entry gave no clue what

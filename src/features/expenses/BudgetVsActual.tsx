@@ -469,7 +469,7 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
           <Pill tone={TONE[row.state]}>{LABEL[row.state]}</Pill>
         </span>
 
-        <span className="num whitespace-nowrap" style={{ color: 'var(--ink)' }}>
+        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)' }}>
           {formatMoney(row.spent, { privacy })}
           {row.planned !== null && (
             <>
@@ -497,13 +497,13 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
         {row.pace !== null && (
           <span className="note">
-            <Unit>pace</Unit> <span className="num">{row.pace.toFixed(2)}</span>
+            <Unit>pace</Unit> <span className="tabular-nums">{row.pace.toFixed(2)}</span>
           </span>
         )}
         {row.remaining !== null && (
           <span className="note" style={overspent ? { color: 'var(--coral)' } : undefined}>
             <Unit inherit={overspent}>{overspent ? 'over by' : 'left'}</Unit>{' '}
-            <span className="num">
+            <span className="tabular-nums">
               {formatMoney(
                 money(overspent ? -row.remaining.minor : row.remaining.minor, row.spent.currency),
                 { privacy },

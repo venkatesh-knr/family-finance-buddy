@@ -129,7 +129,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 | Caption / note | 11.8–12.5px | 400 | ui | `--muted` |
 | Label (stat tile, figure caption, form field) | 12px | 400 | ui | `--muted`, sentence case, no letter-spacing |
 | Table column header | 10.5px | 500 | mono | uppercase, `letter-spacing:.13em`. The only micro-label. |
-| Pill / badge | 9.5px | 500 | mono | uppercase, `letter-spacing:.1em` |
+| Pill / badge | 9.5px | 500 | mono | uppercase, `letter-spacing:.1em`. **Deliberately exempt** from the label and mono rules above: a short status badge is a stamped tag, not a label describing a figure, and the uppercase mono is right for it. A chip that carries a figure and a phrase (the `Delta`, "▲ 22.9% on cost") is not a badge and follows them. |
 
 ### Numerals — non-negotiable
 
@@ -147,7 +147,7 @@ wide and evenly spaced, and reads as output rather than as a fact.
 A magnitude suffix — `L`, `Cr`, `K` — is a **unit**: a span at `0.6em` in `--muted`,
 welded to the figure with no space, so `₹5.3` then `L` rather than `₹5.3 L`. It is never
 smaller than 11px (`0.6875rem`), or a stat value's unit would be set below the caption
-step. The currency symbol is not a unit and stays at the figure's size. One `Money`
+step. The currency symbol is not a unit and stays at the figure's size. One `Amount`
 component in `ui/primitives.tsx` renders it, so every figure does it the same way; a
 plain-string formatter remains for the places a span cannot go (an `aria-label`, a `title`,
 SVG text).

@@ -142,7 +142,7 @@ export function ProfileScreen({ email, householdId }: { email: string | null; ho
                 <span className="flex items-center gap-2.5">
                   {entry.isMine && <Pill tone="own">You</Pill>}
                   {entry.actor === null && <Pill tone="neutral">Scheduled</Pill>}
-                  <span className="num note">{when(entry.at)}</span>
+                  <span className="tabular-nums note">{when(entry.at)}</span>
                 </span>
               </li>
             ))}

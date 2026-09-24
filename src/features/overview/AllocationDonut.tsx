@@ -52,7 +52,7 @@ export function AllocationDonut({
         </path>
       ))}
       <text className="donut-label" x={SIZE / 2} y={SIZE / 2 - 4} textAnchor="middle">
-        TOTAL
+        Total
       </text>
       <text className="donut-total" x={SIZE / 2} y={SIZE / 2 + 16} textAnchor="middle">
         {formatMoney(money(total, currency), { privacy, compact: true })}

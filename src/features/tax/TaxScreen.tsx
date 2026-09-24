@@ -374,7 +374,7 @@ export function TaxScreen({
               target={Number(allowance.available.minor)}
               label="Long-term equity allowance used"
             />
-            <span className="num text-right">{formatMoney(allowance.used, { privacy })}</span>
+            <span className="tabular-nums text-right">{formatMoney(allowance.used, { privacy })}</span>
           </div>
           {/* A div, not a p: the caveat opens a popover, and a div may not sit inside a p. */}
           <div className="sm mt-2">
@@ -436,7 +436,7 @@ export function TaxScreen({
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{lot.holdingName}</span>
-                  <span className="num">{signed(lot.parcel.gain, privacy)}</span>
+                  <span className="tabular-nums">{signed(lot.parcel.gain, privacy)}</span>
                 </div>
                 <p className="note mt-1">
                   Sold {formatIsoDate(lot.parcel.disposedOn)} · bought{' '}

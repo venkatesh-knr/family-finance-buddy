@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { exactMoney, formatMoney, money, parseAmountToMinor, type Money as MoneyValue } from '../../lib/money.ts';
+import { exactMoney, formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { convert } from '../../domain/fx.ts';
 import { listRates, type FxRate } from '../../repo/rates.ts';
 import type {
@@ -23,7 +23,7 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Caveat, Field, Money, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -173,7 +173,7 @@ function AnnualSummary({
         style={{ color: 'var(--ink)' }}
         title={exactMoney(annual.total, privacy) ?? undefined}
       >
-        <Money value={annual.total} privacy={privacy} compact />
+        <Amount value={annual.total} privacy={privacy} compact />
       </p>
 
       <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
@@ -248,7 +248,7 @@ function FireCard({
    * rate covers today the original is shown rather than a guess — the currency
    * in the formatted figure says which one it is.
    */
-  const read = (amount: MoneyValue): MoneyValue => {
+  const read = (amount: Money): Money => {
     const converted = convert(amount, reading, rates, today);
     return converted.ok ? converted.amount : amount;
   };
@@ -301,7 +301,7 @@ function FireCard({
             style={{ color: 'var(--ink)' }}
             title={exactMoney(read(target.target), privacy) ?? undefined}
           >
-            <Money value={read(target.target)} privacy={privacy} compact />
+            <Amount value={read(target.target)} privacy={privacy} compact />
           </p>
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
@@ -317,7 +317,7 @@ function FireCard({
             something the app asserts and becomes something it shows.
           */}
           <p className="note mt-2.5">
-            <span className="num">{formatMoney(read(annual.total), { privacy })}</span> a year, ×{' '}
+            <span className="tabular-nums">{formatMoney(read(annual.total), { privacy })}</span> a year, ×{' '}
             {multiplier}, compounded at {inflationPct}% for{' '}
             {target.year - (ladder[0]?.year ?? target.year)}{' '}
             {target.year - (ladder[0]?.year ?? target.year) === 1 ? 'year' : 'years'}.
@@ -660,7 +660,7 @@ function BudgetField({
     return (
       <span className="w-[112px] shrink-0">
         <span className="label">{label}</span>
-        <span className="num block" style={{ color: 'var(--ink-2)' }}>
+        <span className="tabular-nums block" style={{ color: 'var(--ink-2)' }}>
           {current === null ? <span className="note">—</span> : formatMoney(current, { privacy })}
         </span>
       </span>
@@ -974,7 +974,7 @@ function CommitmentRow({
         <Pill tone="neutral">{kind}</Pill>
         {inactive && <Pill tone="due">not counted</Pill>}
       </span>
-      <span className="num" style={{ color: 'var(--ink)' }}>
+      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
         {amount === null ? <span className="note">not set</span> : formatMoney(amount, { privacy })}
         <span className="note"> / {cadence.replace(/_/g, ' ')}</span>
       </span>

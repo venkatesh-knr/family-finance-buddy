@@ -52,7 +52,7 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Delta, EyeIcon, Money, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, EyeIcon, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -538,7 +538,7 @@ export function OverviewScreen({
             // hide would make the whole mode decorative.
             title={exactMoney(worth.amount, privacy) ?? undefined}
           >
-            <Money value={worth.amount} privacy={privacy} compact />
+            <Amount value={worth.amount} privacy={privacy} compact />
             {/*
               Each of these qualifies this number and none is decoration, so
               they ride on it, and each appears only when it applies.
@@ -589,7 +589,7 @@ export function OverviewScreen({
                 : totals.map((total, index) => (
                     <span key={total.currency}>
                       {index > 0 && '  +  '}
-                      <Money value={total.value} privacy={privacy} compact />
+                      <Amount value={total.value} privacy={privacy} compact />
                     </span>
                   ))}
               <Caveat tone="warn" label="Why these do not add into one figure">

@@ -21,7 +21,7 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Field, Money, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Field, Amount, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -189,7 +189,7 @@ export function HoldingsScreen({
                     style={{ color: 'var(--ink)' }}
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
                   >
-                    <Money value={money(total.value, total.currency)} privacy={privacy} compact />
+                    <Amount value={money(total.value, total.currency)} privacy={privacy} compact />
                     {total.unread > 0 && (
                       <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                         {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never
@@ -427,7 +427,7 @@ function HoldingCard({
           )}
         </div>
         <span className="note">
-          <span className="num">{formatQuantity(row.unitsHeld)}</span> units ·{' '}
+          <span className="tabular-nums">{formatQuantity(row.unitsHeld)}</span> units ·{' '}
           {holding.member.displayName}
         </span>
       </header>
@@ -435,7 +435,7 @@ function HoldingCard({
       <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
           <dt className="label">Latest reading</dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {latest === null ? (
               <Unit>none yet</Unit>
             ) : (
@@ -458,7 +458,7 @@ function HoldingCard({
             */}
             {peak.isProvisional && peak.peak !== null && ' (provisional)'}
           </dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {peak.peak === null ? (
               <Unit>not known</Unit>
             ) : (
@@ -1115,7 +1115,7 @@ function QuotedValue({
   return (
     <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
       <span className="label">Quoted</span>
-      <span className="num" style={{ color: 'var(--ink)' }}>
+      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
         {formatMoney(quoted.value, { privacy: false })}
       </span>
       <span className="note">

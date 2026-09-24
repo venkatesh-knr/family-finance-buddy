@@ -84,7 +84,7 @@ export function CostAndGains({
       <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
           <dt className="label">Cost of units held</dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {cost.amount === null ? (
               <Unit>not recorded</Unit>
             ) : (
@@ -113,7 +113,7 @@ export function CostAndGains({
         <div>
           <dt className="label">Realised</dt>
           <dd
-            className="num"
+            className="tabular-nums"
             style={{
               color:
                 realisedGain === null
@@ -141,7 +141,7 @@ export function CostAndGains({
                 {realisedPercent !== null && <span className="note"> {realisedPercent}</span>}
                 <span className="note">
                   {' '}
-                  <Unit>over</Unit> <span className="num">{parcels.length}</span>{' '}
+                  <Unit>over</Unit> <span className="tabular-nums">{parcels.length}</span>{' '}
                   <Unit>{parcels.length === 1 ? 'parcel' : 'parcels'}</Unit>
                 </span>
               </>
@@ -459,9 +459,9 @@ function Ledger({
               <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="note">{formatIsoDate(entry.date)}</span>
                 <span>
-                  <span className="num">{entry.quantity}</span> <Unit>units</Unit>
+                  <span className="tabular-nums">{entry.quantity}</span> <Unit>units</Unit>
                 </span>
-                <span className="num" style={{ color: 'var(--ink)' }}>
+                <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
                   {formatMoney(money(entry.amount.minor, entry.amount.currency), { privacy })}
                 </span>
                 {entry.tag !== null && <Pill tone="neutral">{entry.tag}</Pill>}

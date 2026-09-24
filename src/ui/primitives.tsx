@@ -7,7 +7,7 @@
 
 import { useId, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
-import { formatMoneyParts, type FormatMoneyOptions, type Money as MoneyValue } from '../lib/money.ts';
+import { formatMoneyParts, type FormatMoneyOptions, type Money } from '../lib/money.ts';
 
 export function Card({
   title,
@@ -262,15 +262,15 @@ export function Stat({
  * For figures in the page. Text that cannot hold a span — an `aria-label`, a
  * `title`, SVG text — still takes the string from `formatMoney`.
  */
-export function Money({
+export function Amount({
   value,
   ...options
-}: { value: MoneyValue } & FormatMoneyOptions): React.JSX.Element {
+}: { value: Money } & FormatMoneyOptions): React.JSX.Element {
   const { figure, unit } = formatMoneyParts(value, options);
   return (
     <>
       {figure}
-      {unit !== null && <span className="money-unit">{unit}</span>}
+      {unit !== null && <span className="amount-unit">{unit}</span>}
     </>
   );
 }
