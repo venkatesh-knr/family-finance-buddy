@@ -110,6 +110,15 @@ export function useHoldings(householdId: string | null): {
    */
   reload: () => Promise<void>;
   taxRules: readonly TaxRule[];
+  /**
+   * Whether the rules failed to load, as distinct from there being none.
+   *
+   * The screen carries on without them — every holding figure is true without
+   * one — but the Tax screen must not present "no rules came back" as "no rule
+   * covers this year", which read as an answer about the law rather than as a
+   * fault. Empty and failed are different things and this is what tells them apart.
+   */
+  taxRulesFailed: boolean;
   /** Ask the driver to fetch. The client never calls the vendor itself. */
   refresh: () => Promise<{ written: number; note?: string }>;
 } {
@@ -122,6 +131,7 @@ export function useHoldings(householdId: string | null): {
    * simply is not shown, rather than being guessed at.
    */
   const [taxRules, setTaxRules] = useState<readonly TaxRule[]>([]);
+  const [taxRulesFailed, setTaxRulesFailed] = useState(false);
   /**
    * What the driver has recorded for the instruments this household holds.
    *
@@ -143,7 +153,7 @@ export function useHoldings(householdId: string | null): {
     const mine = ++generation.current;
     try {
       const next = await listHoldings(householdId === null ? {} : { householdId });
-      const rules = await listTaxRules().catch(() => []);
+      const rules = await listTaxRules().catch(() => null);
       // A price the driver has not fetched is a valuation typed in by hand,
       // which is what this app has always had. Failing to read them must not
       // take the screen down.
@@ -154,7 +164,8 @@ export function useHoldings(householdId: string | null): {
       ).catch(() => []);
       if (mine === generation.current) {
         setListing(next);
-        setTaxRules(rules);
+        setTaxRules(rules ?? []);
+        setTaxRulesFailed(rules === null);
         setPrices(quotes);
         setProblem(null);
       }
@@ -289,6 +300,7 @@ export function useHoldings(householdId: string | null): {
     recordSale,
     reload: load,
     taxRules,
+    taxRulesFailed,
     refresh: async () => {
       const result = await refreshPrices(
         (listing?.holdings ?? [])

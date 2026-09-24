@@ -34,6 +34,7 @@ import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { taxClassLabel } from '../../ui/labels.ts';
 import { Bar, Card, Caveat, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
+import { IncomeTaxCard } from './IncomeTaxCard.tsx';
 import { taxLotsFor, type TaxLot } from './taxLots.ts';
 
 /** A gain or loss with its sign written out: the direction is never carried by colour alone. */
@@ -47,14 +48,15 @@ function signed(value: Money, privacy: boolean): string {
 const rateText = (ratePct: string): string => `${String(Number(ratePct))}%`;
 
 const STILL_TO_COME: readonly string[] = [
-  'Salary, other income and deductions — the other heads of a return',
-  'Slabs, rebate, surcharge and the 4% cess, and so the total liability — and the tax on short-term gold and unlisted gains, which is taxed at the slab',
-  'The old and new regime, side by side',
+  'Salary and other income saved per person and year — what you type above is held on the page and not stored',
+  'Deductions beyond the standard one: 80C, 80D, home-loan interest, HRA — and so a fair old-against-new comparison',
+  'A surcharge on capital gains above ₹50 lakh, and the rebate’s relief beside a gain',
+  'TDS and advance tax credited, so the balance due and not only the liability',
   'Foreign shares, at the SBI prescribed exchange rate for the month of sale',
   'Debt funds, whose treatment depends on when they were bought',
   'Property, and the choice between 12.5% and 20% with indexation',
   'Losses brought forward from earlier years, and any carried on',
-  'The foreign tax credit, and advance tax instalments',
+  'The foreign tax credit',
 ];
 
 /** Why a sale that is listed is not in the figures, in a few words. */
@@ -82,7 +84,7 @@ export function TaxScreen({
   privacy: boolean;
   householdId: string | null;
 }) {
-  const { listing, rows, today, loading, problem, taxRules } = useHoldings(householdId);
+  const { listing, rows, today, loading, problem, taxRules, taxRulesFailed } = useHoldings(householdId);
 
   const [chosenFy, setChosenFy] = useState<number | null>(null);
   const [chosenMember, setChosenMember] = useState<string | null>(null);
@@ -196,6 +198,14 @@ export function TaxScreen({
           should be the one to check it — every figure below traces to the sales listed under it.
         </p>
       </Card>
+
+      {taxRulesFailed && (
+        <Notice tone="due">
+          The tax rules could not be loaded, so nothing on this page can be computed — that is a
+          fault, not an answer about the law. Reload the page; if it persists, the rules table may
+          be out of step with this version of the app.
+        </Notice>
+      )}
 
       {!isMine && (
         <Notice>
@@ -337,6 +347,15 @@ export function TaxScreen({
         )}
       </Card>
 
+      <IncomeTaxCard
+        key={`${memberId}-${String(fy)}`}
+        fy={fy}
+        gains={gains}
+        rules={taxRules}
+        privacy={privacy}
+        whose={member?.displayName ?? 'this member'}
+      />
+
       {inProgress && allowance !== null && (
         <Card title="Expiring this year" aside={<span className="note">use it or lose it</span>}>
           <div
@@ -432,9 +451,9 @@ export function TaxScreen({
       </Card>
 
       <Notice names={STILL_TO_COME} namesLabel="What is still to come">
-        This page covers one part of one head: capital gains on listed equity, equity funds, gold
-        and unlisted shares. It is not the whole return, and the total above is not a total
-        liability.
+        This page computes tax on the salary and other income you type in, and on capital gains on
+        listed equity, equity funds, gold and unlisted shares, with only the standard deduction. It
+        is an estimate of the liability on those figures and not the whole return.
       </Notice>
     </div>
   );
