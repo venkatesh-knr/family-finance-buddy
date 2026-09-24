@@ -52,25 +52,17 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Delta, EyeIcon, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
 export function OverviewScreen({
   privacy,
-  onPrivacy,
   householdId,
   displayCurrency,
   onOpenHoldings,
 }: {
   privacy: boolean;
-  /**
-   * The same switch as the one in the top bar, offered again beside the
-   * figure it hides. That is where somebody is looking when they decide they
-   * want it covered, and asking them to go back up to the chrome to do it is
-   * the sort of small friction that means it never gets used.
-   */
-  onPrivacy: () => void;
   householdId: string | null;
   /**
    * Which currency to read in, or empty for the household's own.
@@ -454,8 +446,10 @@ export function OverviewScreen({
         per-currency figures with the refusal marked on them, exactly as before,
         and the Assets card below carries the same figures as stat tiles.
 
-        The Household / Mine switch and the eye are here because they govern the
-        whole screen, not a card.
+        The Household / Mine switch is here because it governs the whole screen, not
+        a card. There is no privacy switch: the top bar has the one, and two
+        controls for one state is the problem the currency control was folded to
+        avoid.
       */}
       <Card
         title="Net worth"
@@ -513,15 +507,6 @@ export function OverviewScreen({
                 </>
               )}
             </Caveat>
-            <button
-              type="button"
-              className="iconbtn"
-              aria-pressed={privacy}
-              aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
-              onClick={onPrivacy}
-            >
-              <EyeIcon crossed={privacy} />
-            </button>
           </span>
         }
       >

@@ -313,9 +313,6 @@ function SignedIn({
         {screen === 'overview' && (
           <OverviewScreen
             privacy={privacy}
-            onPrivacy={() => {
-              setPrivacy((on) => !on);
-            }}
             householdId={householdId}
             displayCurrency={displayCurrency}
             onOpenHoldings={(filter) => {
