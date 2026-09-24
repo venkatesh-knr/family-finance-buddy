@@ -32,7 +32,7 @@ import { taxYearBounds, taxYearOf } from '../../domain/budget.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { taxClassLabel } from '../../ui/labels.ts';
-import { Bar, Card, Caveat, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Bar, Card, Caveat, Notice, Pill, Problem, Qualifier, Stat } from '../../ui/primitives.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
 import { IncomeTaxCard } from './IncomeTaxCard.tsx';
 import { taxLotsFor, type TaxLot } from './taxLots.ts';
@@ -222,28 +222,31 @@ export function TaxScreen({
           <Stat label="Short term, net">{signed(gains.equityShort.net, privacy)}</Stat>
           <Stat label="Allowance used">
             {allowance === null ? (
-              <>
-                <span className="note">not known</span>
-                <Caveat tone="warn" label="Why the allowance is not shown">
-                  No rule for the ₹1.25 lakh equity allowance covers this tax year, so what is
-                  taxable cannot be said. Nothing is assumed in its place.
-                </Caveat>
-              </>
+              <Absent label="Why the allowance is not shown">
+                No rule for the ₹1.25 lakh equity allowance covers this tax year, so what is
+                taxable cannot be said. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(allowance.used, { privacy })}{' '}
-                <span className="note">of {formatMoney(allowance.available, { privacy })}</span>
+                <Qualifier word="of">{formatMoney(allowance.available, { privacy })}</Qualifier>
               </>
             )}
           </Stat>
           <Stat label="Taxable, long term">
             {tax.equityLong === null ? (
-              <span className="note">not shown</span>
+              <Absent label="Why long-term tax is not shown">
+                The ₹1.25 lakh equity allowance for this year is not in the rules, so what is
+                taxable long term cannot be said. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(tax.equityLong.taxable, { privacy })}
                 {tax.equityLong.ratePct !== null && (
-                  <span className="note"> at {rateText(tax.equityLong.ratePct)}</span>
+                  <>
+                    {' '}
+                    <Qualifier word="at">{rateText(tax.equityLong.ratePct)}</Qualifier>
+                  </>
                 )}
               </>
             )}
@@ -251,7 +254,10 @@ export function TaxScreen({
           <Stat label="Taxable, short term">
             {formatMoney(tax.equityShort.taxable, { privacy })}
             {tax.equityShort.ratePct !== null && (
-              <span className="note"> at {rateText(tax.equityShort.ratePct)}</span>
+              <>
+                {' '}
+                <Qualifier word="at">{rateText(tax.equityShort.ratePct)}</Qualifier>
+              </>
             )}
           </Stat>
         </dl>
@@ -272,7 +278,10 @@ export function TaxScreen({
               <Stat label="Taxable, long term">
                 {formatMoney(tax.otherLong.taxable, { privacy })}
                 {tax.otherLong.ratePct !== null && (
-                  <span className="note"> at {rateText(tax.otherLong.ratePct)}</span>
+                  <>
+                    {' '}
+                    <Qualifier word="at">{rateText(tax.otherLong.ratePct)}</Qualifier>
+                  </>
                 )}
               </Stat>
               <Stat label="Short term, net">{signed(gains.otherShort.net, privacy)}</Stat>
@@ -305,13 +314,10 @@ export function TaxScreen({
           )}
           <Stat label="Tax on gains at their own rates">
             {tax.total === null ? (
-              <>
-                <span className="note">not shown</span>
-                <Caveat tone="warn" label="Why there is no tax figure">
-                  A rate or the allowance for this year is missing from the rules, so a total would
-                  be short by something that cannot be named. Nothing is assumed in its place.
-                </Caveat>
-              </>
+              <Absent label="Why there is no tax figure">
+                A rate or the allowance for this year is missing from the rules, so a total would
+                be short by something that cannot be named. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(tax.total, { privacy })}

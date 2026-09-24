@@ -21,7 +21,7 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Field, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -215,12 +215,11 @@ export function HoldingsScreen({
                       // empty space would read as a portfolio with no return;
                       // a number would read as a portfolio that made 1,300%.
                       <Stat label="Total return">
-                        <span className="note">not shown</span>
-                        <Caveat tone="warn" label={`Why there is no ${total.currency} return`}>
+                        <Absent label={`Why there is no ${total.currency} return`}>
                           {shortPositions(total.short)} a statement that covers only part of the
                           history. {RETURN_REFUSED_BECAUSE} The value above is right, because the
                           units are the statement&rsquo;s own count; it is the cost that is short.
-                        </Caveat>
+                        </Absent>
                       </Stat>
                     ) : (
                       <Stat
@@ -241,7 +240,7 @@ export function HoldingsScreen({
                     )}
                     {total.unread > 0 && (
                       <Stat label="Unread">
-                        {total.unread} {total.unread === 1 ? 'holding' : 'holdings'}
+                        {total.unread} <Unit>{total.unread === 1 ? 'holding' : 'holdings'}</Unit>
                       </Stat>
                     )}
                   </dl>
@@ -427,8 +426,9 @@ function HoldingCard({
             </Pill>
           )}
         </div>
-        <span className="num note">
-          {formatQuantity(row.unitsHeld)} units · {holding.member.displayName}
+        <span className="note">
+          <span className="num">{formatQuantity(row.unitsHeld)}</span> units ·{' '}
+          {holding.member.displayName}
         </span>
       </header>
 
@@ -437,7 +437,7 @@ function HoldingCard({
           <dt className="micro-label">Latest reading</dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {latest === null ? (
-              <span className="note">none yet</span>
+              <Unit>none yet</Unit>
             ) : (
               <>
                 {formatMoney(money(latest.amountMinor, currency), { privacy })}{' '}
@@ -460,7 +460,7 @@ function HoldingCard({
           </dt>
           <dd className="num" style={{ color: 'var(--ink)' }}>
             {peak.peak === null ? (
-              <span className="note">not known</span>
+              <Unit>not known</Unit>
             ) : (
               <>
                 {formatMoney(peak.peak, { privacy })}{' '}

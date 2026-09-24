@@ -32,7 +32,7 @@ import type {
   Member,
   PersonalSpendPeriods,
 } from '../../repo/types.ts';
-import { Bar, Card, Notice, Pill, Stat } from '../../ui/primitives.tsx';
+import { Bar, Card, Notice, Pill, Qualifier, Stat, Unit } from '../../ui/primitives.tsx';
 
 type Period = 'month' | 'year';
 
@@ -464,7 +464,10 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
         <span className="num whitespace-nowrap" style={{ color: 'var(--ink)' }}>
           {formatMoney(row.spent, { privacy })}
           {row.planned !== null && (
-            <span className="note"> of {formatMoney(row.planned, { privacy })}</span>
+            <>
+              {' '}
+              <Qualifier word="of">{formatMoney(row.planned, { privacy })}</Qualifier>
+            </>
           )}
         </span>
       </div>
@@ -485,17 +488,19 @@ function ComparisonRow({ row, privacy }: { row: BudgetComparison; privacy: boole
 
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
         {row.pace !== null && (
-          <span className="num note">
-            pace {row.pace.toFixed(2)}
+          <span className="note">
+            <Unit>pace</Unit> <span className="num">{row.pace.toFixed(2)}</span>
           </span>
         )}
         {row.remaining !== null && (
-          <span className="num note" style={overspent ? { color: 'var(--coral)' } : undefined}>
-            {overspent ? 'over by ' : 'left '}
-            {formatMoney(
-              money(overspent ? -row.remaining.minor : row.remaining.minor, row.spent.currency),
-              { privacy },
-            )}
+          <span className="note" style={overspent ? { color: 'var(--coral)' } : undefined}>
+            <Unit inherit={overspent}>{overspent ? 'over by' : 'left'}</Unit>{' '}
+            <span className="num">
+              {formatMoney(
+                money(overspent ? -row.remaining.minor : row.remaining.minor, row.spent.currency),
+                { privacy },
+              )}
+            </span>
           </span>
         )}
         {/*

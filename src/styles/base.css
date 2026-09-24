@@ -281,6 +281,10 @@
     text-transform: none;
   }
 
+  .unit-inherit {
+    color: inherit;
+  }
+
   /*
    * A caveat marker, and the panel it opens.
    *

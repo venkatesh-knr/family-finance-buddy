@@ -555,8 +555,25 @@ export function Absent({
  * mono. This is the word, in the face a word takes, at the size and colour of a
  * note. The figure beside it stays mono and tabular.
  */
-export function Unit({ children }: { children: ReactNode }) {
-  return <span className="unit">{children}</span>;
+export function Unit({ children, inherit = false }: { children: ReactNode; inherit?: boolean }) {
+  // `inherit` for a word that must take its surroundings' colour — an overspend
+  // is coral, and "over by" is part of what is coral about it.
+  return <span className={inherit ? 'unit unit-inherit' : 'unit'}>{children}</span>;
+}
+
+/**
+ * A figure with its word: "of ₹1,25,000", "at 12.5%".
+ *
+ * The pattern repeated wherever a figure was qualified, and each copy set the
+ * whole thing in mono. The word is in the face a word takes and the figure stays
+ * mono and tabular, at the size of a note.
+ */
+export function Qualifier({ word, children }: { word: string; children: ReactNode }) {
+  return (
+    <span className="note">
+      <Unit>{word}</Unit> <span className="num">{children}</span>
+    </span>
+  );
 }
 
 /**

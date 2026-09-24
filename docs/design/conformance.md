@@ -43,7 +43,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 | card | component | built | `src/ui/primitives.tsx` — plus collapsible, which the prototype has no equivalent of |
 | pill | component | built | `src/ui/primitives.tsx` — five tones, `own` `ok` `warn` `due` `neutral` |
 | notice | component | built | `src/ui/primitives.tsx` — a caveat that stays visible, with its reasons folded away. Used where a card IS the caveat, or where there is no figure to attach to |
-| caveat | component | built | `src/ui/primitives.tsx` — a marker on the figure it qualifies, opening a native popover. No prototype equivalent; see Departures |
+| caveat | component | built | `src/ui/primitives.tsx` — a marker on the figure it qualifies, opening a native popover. A ringed `i` in `--muted` for a figure that is right, a ringed `!` in `--brass` for one that is wrong or incomplete: never coral and never a triangle, because coral is a loss and ▲ is the gain arrow (`docs/tokens.md` §2). `notice` and `problem` carry the same `!`. No prototype equivalent; see Departures |
 | problem | component | built | `src/ui/primitives.tsx` — `role="alert"`, no prototype equivalent |
 | field | component | built | `src/ui/primitives.tsx` |
 | button | component | built | `src/ui/primitives.tsx` |
@@ -55,6 +55,8 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 | progress-bar | component | built | `src/ui/primitives.tsx` — `Bar`; flips to coral past target, requires an accessible label |
 | table | component | built | `src/ui/primitives.tsx` — `Table`, with the scroll wrapper the page body must never need |
 | delta-chip | component | built | `src/ui/primitives.tsx` — `Delta`; the arrow carries the direction, the hue agrees |
+| absent | component | built | `src/ui/primitives.tsx` — `Absent`, a figure deliberately not given: a dash at the figure's own size and weight in `--muted`, named "not shown" for a screen reader, with a caveat marker carrying the reason. Replaces the words "not shown" set in mono where a figure goes, which read as a failed render. No prototype equivalent |
+| unit | component | built | `src/ui/primitives.tsx` — `Unit` and `Qualifier`, a word beside a figure in the prose face. `docs/tokens.md` §3 keeps mono for numbers and uppercase micro-labels; a word placed inside a figure's element inherits mono, and these undo it. No prototype equivalent |
 | sample-bar | component | not-built | The prototype's banner marking illustrative figures |
 
 ## Departures

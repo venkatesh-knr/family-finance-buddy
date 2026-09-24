@@ -49,7 +49,7 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -497,12 +497,11 @@ export function OverviewScreen({
                     // a portfolio with no return, and a number as one that made
                     // a fortune; neither happened.
                     <Stat label="Unrealised gain">
-                      <span className="note">not shown</span>
-                      <Caveat tone="warn" label={`Why there is no ${total.currency} gain`}>
+                      <Absent label={`Why there is no ${total.currency} gain`}>
                         {shortPositionsPhrase(total.costShort)} a statement that covers only part of
                         the history. {RETURN_REFUSED_BECAUSE} The total above is right, because the
                         units are the statement&rsquo;s own count; it is the cost that is short.
-                      </Caveat>
+                      </Absent>
                     </Stat>
                   ) : (
                     <>
