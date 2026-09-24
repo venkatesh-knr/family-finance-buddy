@@ -32,7 +32,7 @@ import type {
   Member,
   PersonalSpendPeriods,
 } from '../../repo/types.ts';
-import { Bar, Card, Notice, Pill, Qualifier, Stat, Unit } from '../../ui/primitives.tsx';
+import { Bar, Card, Caveat, Notice, Pill, Qualifier, Stat, Unit } from '../../ui/primitives.tsx';
 
 type Period = 'month' | 'year';
 
@@ -283,6 +283,19 @@ export function BudgetVsActual({
           <span className="note">
             day {daysElapsed} of {daysInPeriod}
           </span>
+          {/*
+            What pace IS, said once, on the heading. It was a paragraph under
+            the rows, and the only reader it helped was the one who had already
+            worked it out.
+          */}
+          <Caveat tone="info" label="What pace is">
+            Pace is what has been spent against how much of {period === 'month' ? 'the month' : 'the year'}{' '}
+            has passed — {formatIsoDate(bounds.start)} to {formatIsoDate(bounds.end)}. Above 1.0
+            means a category is ahead of the calendar, which is worth knowing now rather than at the
+            end.
+            {period === 'month' &&
+              ' A yearly figure is not counted here: a school fee is not a twelfth of itself each month.'}
+          </Caveat>
         </span>
       }
     >
@@ -294,8 +307,32 @@ export function BudgetVsActual({
       ) : (
         <>
           <dl className="mb-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
-            <Stat label="Planned">{formatMoney(totals.planned, { privacy })}</Stat>
-            <Stat label="Spent">{formatMoney(totals.spent, { privacy })}</Stat>
+            <Stat label="Planned">
+              {formatMoney(totals.planned, { privacy })}
+              {/*
+                Where the other half of every row on this card comes from. The
+                planned figures are set on FIRE, because they are also what the
+                FIRE target is a multiple of — but somebody looking at an
+                overspend here should not have to work out where to go and change
+                it. On the figure it explains, not under the card.
+              */}
+              <Caveat tone="info" label="Where the planned figures come from">
+                The planned figures come from the spending plan on <strong>FIRE</strong>, where
+                they are also what the retirement target is a multiple of. Change one there and both
+                this comparison and that target move.
+              </Caveat>
+            </Stat>
+            <Stat label="Spent">
+              {formatMoney(totals.spent, { privacy })}
+              {/* Only where there is a private line for it to explain. */}
+              {personal.length > 0 && (
+                <Caveat tone="info" label="What a private line is">
+                  A <strong>private</strong> line is one member&rsquo;s own spending, counted in the
+                  total and shown as a single figure. The detail is theirs; the total is the
+                  household&rsquo;s.
+                </Caveat>
+              )}
+            </Stat>
             <Stat
               label={totals.spent.minor > totals.planned.minor ? 'Over by' : 'Left'}
               tone={totals.spent.minor > totals.planned.minor ? 'loss' : 'gain'}
@@ -347,35 +384,6 @@ export function BudgetVsActual({
                 ))}
               </ul>
             </details>
-          )}
-
-          {/*
-            Where the other half of every row on this card comes from. The
-            planned figures are set on FIRE, because they are also what the
-            FIRE target is a multiple of — but somebody looking at an
-            overspend here should not have to work out where to go and change
-            it.
-          */}
-          <p className="note mt-3.5">
-            The planned figures come from the spending plan on <strong>FIRE</strong>, where they
-            are also what the retirement target is a multiple of. Change one there and both this
-            comparison and that target move.
-          </p>
-
-          <p className="note mt-2">
-            Pace is what has been spent against how much of{' '}
-            {period === 'month' ? 'the month' : 'the year'} has passed — {formatIsoDate(bounds.start)}{' '}
-            to {formatIsoDate(bounds.end)}. Above 1.0 means a category is ahead of the calendar, which
-            is worth knowing now rather than at the end.
-            {period === 'month' &&
-              ' A yearly figure is not counted here: a school fee is not a twelfth of itself each month.'}
-          </p>
-
-          {personal.length > 0 && (
-            <p className="note mt-2">
-              A <strong>private</strong> line is one member's own spending, counted in the total and
-              shown as a single figure. The detail is theirs; the total is the household's.
-            </p>
           )}
 
           {personalSpend === null && (

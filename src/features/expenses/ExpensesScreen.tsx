@@ -12,7 +12,7 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Button, Card, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -244,7 +244,22 @@ function QuickAdd({
   );
 
   return (
-    <Card title="Quick add" aside={<span className="note">{listing.household.name}</span>}>
+    <Card
+      title="Quick add"
+      aside={
+        <span className="flex items-center gap-2.5">
+          <span className="note">{listing.household.name}</span>
+          {/*
+            Said once, on the heading, rather than as a paragraph under the form
+            that was read on the first day and scrolled past on every day after.
+          */}
+          <Caveat tone="info" label="How an entry is recorded">
+            Dates are the calendar day in India, whatever this device is set to. Amounts are stored
+            in paise, in {currency}, exactly as entered.
+          </Caveat>
+        </span>
+      }
+    >
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
@@ -356,10 +371,6 @@ function QuickAdd({
         </div>
       )}
 
-      <p className="note mt-3">
-        Dates are the calendar day in India, whatever this device is set to. Amounts are stored in
-        paise, in {currency}, exactly as entered.
-      </p>
     </Card>
   );
 }
