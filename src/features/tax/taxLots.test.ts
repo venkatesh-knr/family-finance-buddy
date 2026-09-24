@@ -7,9 +7,10 @@
  * a household and netting it once would get both of them wrong in opposite
  * directions, which is why the first assertion below is about exactly that.
  *
- * The other thing worth holding: a sale this screen does not net is still
+ * The other thing worth holding: a sale the netter will not place is still
  * listed, with the reason. Nothing that happened in the year vanishes because
- * this slice does not know what to do with it yet.
+ * the arithmetic cannot handle it yet. Where a sale goes is decided by
+ * `placeParcel`, which the netter asks too, so nothing here re-derives it.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -79,6 +80,18 @@ const holding = (
 const long = (id: string, instrumentId: string, gain: bigint) =>
   parcel(id, instrumentId, '2024-08-01', '2026-09-18', gain);
 
+const lots = (
+  rows: readonly TaxHolding[],
+  over: { memberId?: string; fy?: number; kinds?: ReadonlyMap<string, string> } = {},
+) =>
+  taxLotsFor({
+    rows,
+    memberId: over.memberId ?? 'ravi',
+    fy: over.fy ?? 2026,
+    rules,
+    disposalKindOf: over.kinds ?? new Map(),
+  });
+
 describe('taxLotsFor', () => {
   it('takes one member at a time, so two allowances are never merged into one', () => {
     const rows = [
@@ -86,8 +99,8 @@ describe('taxLotsFor', () => {
       holding('meera', 'i2', 'Index fund', 'equity_fund', [long('b', 'i2', 12_500_000n)]),
     ];
 
-    const ravi = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules });
-    const meera = taxLotsFor({ rows, memberId: 'meera', fy: 2026, rules });
+    const ravi = lots(rows, { memberId: 'ravi' });
+    const meera = lots(rows, { memberId: 'meera' });
 
     expect(ravi.parcels).toHaveLength(1);
     expect(ravi.parcels[0]?.gain.minor).toBe(12_500_000n);
@@ -103,34 +116,37 @@ describe('taxLotsFor', () => {
         parcel('after', 'i1', '2024-08-01', '2027-04-01', 999n),
       ]),
     ];
-    const result = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules });
-    expect(result.lots.map((l) => l.parcel.disposalId)).toEqual(['late-sale', 'early-sale']);
+    expect(lots(rows).lots.map((l) => l.parcel.disposalId)).toEqual(['late-sale', 'early-sale']);
   });
 
-  it('says a class-known equity sale is netted, with its term', () => {
+  it('says a classified equity sale is placed, with its bucket and term', () => {
     const rows = [
       holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [
         long('a', 'i1', 500n),
         parcel('s', 'i1', '2026-06-01', '2026-09-18', 100n),
       ]),
     ];
-    const lots = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules }).lots;
-    const byId = Object.fromEntries(lots.map((l) => [l.parcel.disposalId, l]));
+    const byId = Object.fromEntries(lots(rows).lots.map((l) => [l.parcel.disposalId, l]));
 
-    expect(byId['a-sale']).toMatchObject({ treatment: 'netted', term: 'long' });
-    expect(byId['s-sale']).toMatchObject({ treatment: 'netted', term: 'short' });
+    expect(byId['a-sale']).toMatchObject({ term: 'long', placement: { placed: true, bucket: 'equity-long' } });
+    expect(byId['s-sale']).toMatchObject({ term: 'short', placement: { placed: true, bucket: 'equity-short' } });
   });
 
-  it('still lists a gold sale, and says it is not netted here rather than dropping it', () => {
+  it('places a gold sale in the other buckets now, rather than listing it as not netted', () => {
     const rows = [holding('ravi', 'g1', 'Gold ETF', 'gold', [long('a', 'g1', 700n)])];
-    const lot = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules }).lots[0];
-    expect(lot).toMatchObject({ treatment: 'other-class', term: 'long', assetClass: 'gold' });
+    expect(lots(rows).lots[0]).toMatchObject({
+      term: 'long',
+      assetClass: 'gold',
+      placement: { placed: true, bucket: 'other-long' },
+    });
   });
 
   it('marks a sale of an unclassified instrument, with no term at all', () => {
     const rows = [holding('ravi', 'i1', 'Mystery fund', null, [long('a', 'i1', 500n)])];
-    const lot = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules }).lots[0];
-    expect(lot).toMatchObject({ treatment: 'unclassified', term: null });
+    expect(lots(rows).lots[0]).toMatchObject({
+      term: null,
+      placement: { placed: false, reason: 'unclassified-asset' },
+    });
   });
 
   it('marks a sale no rule covers, rather than classifying it on today’s', () => {
@@ -139,43 +155,61 @@ describe('taxLotsFor', () => {
         parcel('old', 'i1', '2022-01-01', '2024-01-01', 500n),
       ]),
     ];
-    const lot = taxLotsFor({ rows, memberId: 'ravi', fy: 2023, rules }).lots[0];
-    expect(lot).toMatchObject({ treatment: 'no-rule', term: null });
+    expect(lots(rows, { fy: 2023 }).lots[0]).toMatchObject({
+      term: null,
+      placement: { placed: false, reason: 'no-rule-for-date' },
+    });
   });
 
-  it('marks an equity sale in another currency, which should not happen', () => {
+  it('marks foreign equity as needing the prescribed rate, and still says how long it was held', () => {
     const rows = [
-      holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [
-        parcel('usd', 'i1', '2024-08-01', '2026-09-18', 500n, 'USD'),
+      holding('ravi', 'f1', 'US index ETF', 'foreign_equity', [
+        parcel('usd', 'f1', '2024-08-01', '2026-09-18', 500n, 'USD'),
       ]),
     ];
-    const lot = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules }).lots[0];
-    expect(lot).toMatchObject({ treatment: 'currency-mismatch' });
+    expect(lots(rows).lots[0]).toMatchObject({
+      term: 'long',
+      placement: { placed: false, reason: 'needs-prescribed-rate' },
+    });
   });
 
-  it('gives the netter every parcel of the member and every instrument’s class', () => {
+  it('marks a gift as not a sale, using the kind of the disposal it came from', () => {
+    const rows = [holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [long('a', 'i1', -500n)])];
+    const kinds = new Map([['a-sale', 'gift']]);
+    expect(lots(rows, { kinds }).lots[0]).toMatchObject({
+      placement: { placed: false, reason: 'not-a-sale' },
+    });
+  });
+
+  it('marks matured gold as possibly exempt', () => {
+    const rows = [holding('ravi', 'g1', 'Sovereign Gold Bond', 'gold', [long('a', 'g1', 700n)])];
+    const kinds = new Map([['a-sale', 'maturity']]);
+    expect(lots(rows, { kinds }).lots[0]).toMatchObject({
+      placement: { placed: false, reason: 'possibly-exempt' },
+    });
+  });
+
+  it('gives the netter every parcel of the member’s and every instrument’s class', () => {
     const rows = [
       holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [long('a', 'i1', 500n)]),
       holding('ravi', 'g1', 'Gold ETF', 'gold', [long('b', 'g1', 700n)]),
       holding('ravi', 'u1', 'Mystery', null, [long('c', 'u1', 900n)]),
     ];
-    const result = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules });
+    const result = lots(rows);
     expect(result.parcels).toHaveLength(3);
     expect(result.assetClassOf.get('i1')).toBe('equity_fund');
     expect(result.assetClassOf.get('g1')).toBe('gold');
     expect(result.assetClassOf.get('u1')).toBeNull();
   });
 
-  it('carries the holding’s name onto each lot, for the table', () => {
+  it('carries the holding’s name onto each lot, for the list', () => {
     const rows = [holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [long('a', 'i1', 500n)])];
-    expect(taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules }).lots[0]?.holdingName).toBe(
-      'Nifty fund',
-    );
+    expect(lots(rows).lots[0]?.holdingName).toBe('Nifty fund');
   });
 
   it('is empty for a member with nothing sold', () => {
     const rows = [holding('ravi', 'i1', 'Nifty fund', 'equity_fund', [])];
-    const result = taxLotsFor({ rows, memberId: 'ravi', fy: 2026, rules });
+    const result = lots(rows);
     expect(result.lots).toEqual([]);
     expect(result.parcels).toEqual([]);
   });
