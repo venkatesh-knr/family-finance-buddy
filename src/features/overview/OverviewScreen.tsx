@@ -42,6 +42,7 @@ import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { assetHistory } from '../../domain/history.ts';
+import { AllocationDonut } from './AllocationDonut.tsx';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
@@ -775,64 +776,68 @@ export function OverviewScreen({
             {allocation.map((group) => (
               <div key={group.currency}>
                 {allocation.length > 1 && <p className="micro-label">{group.currency}</p>}
-                <ul className={allocation.length > 1 ? 'mt-1.5' : undefined}>
-                  {group.rows.map((row) => (
-                    <li key={row.kind} className="alloc-row">
-                      <span
-                        className="alloc-dot"
-                        aria-hidden="true"
-                        style={{ background: kindColour(row.kind) }}
-                      />
-                      <span className="min-w-0">
-                        {/*
-                          A name worth clicking. A class here is a total; the
-                          holdings behind it are on the other screen, and
-                          somebody clicking "Bonds" is asking to see them.
-                        */}
-                        <button
-                          type="button"
-                          className="alloc-name block underline"
-                          onClick={() => {
-                            onOpenHoldings({ kind: row.kind, currency: group.currency });
-                          }}
-                        >
-                          {kindLabel(row.kind)}
-                        </button>
-                        <span className="alloc-share block">
-                          {(row.share * 100).toFixed(1)}% of what is valued
-                        </span>
-                      </span>
-                      <span className="alloc-figures">
-                        <span className="alloc-value">{formatMoney(row.value, { privacy })}</span>
-                        {/*
-                          A return only where a cost was recorded. Null is not 0% —
-                          one is silence about a figure nobody entered, the other
-                          is a claim that it has gone nowhere.
-                        */}
-                        {row.returnOnCost !== null && row.gain !== null && (
-                          <Delta
-                            direction={
-                              row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
-                            }
+                {/* The ring beside the rows, not instead of them: it shows size, and the rows show what it is of. */}
+                <div className={allocation.length > 1 ? 'alloc-layout mt-1.5' : 'alloc-layout'}>
+                  <AllocationDonut rows={group.rows} currency={group.currency} privacy={privacy} />
+                  <ul className="alloc-rows">
+                    {group.rows.map((row) => (
+                      <li key={row.kind} className="alloc-row">
+                        <span
+                          className="alloc-dot"
+                          aria-hidden="true"
+                          style={{ background: kindColour(row.kind) }}
+                        />
+                        <span className="min-w-0">
+                          {/*
+                            A name worth clicking. A class here is a total; the
+                            holdings behind it are on the other screen, and
+                            somebody clicking "Bonds" is asking to see them.
+                          */}
+                          <button
+                            type="button"
+                            className="alloc-name block underline"
+                            onClick={() => {
+                              onOpenHoldings({ kind: row.kind, currency: group.currency });
+                            }}
                           >
-                            {(row.returnOnCost * 100).toFixed(1)}%
-                          </Delta>
-                        )}
-                        {/*
-                          A refused return says so. The column is otherwise
-                          silent for a class with no cost recorded, and this is
-                          a different silence: there is a cost, and it is short.
-                        */}
-                        {row.costShort > 0 && (
-                          <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
-                            {shortPositionsPhrase(row.costShort)} a statement that covers only part
-                            of the history. {RETURN_REFUSED_BECAUSE}
-                          </Caveat>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                            {kindLabel(row.kind)}
+                          </button>
+                          <span className="alloc-share block">
+                            {(row.share * 100).toFixed(1)}% of what is valued
+                          </span>
+                        </span>
+                        <span className="alloc-figures">
+                          <span className="alloc-value">{formatMoney(row.value, { privacy })}</span>
+                          {/*
+                            A return only where a cost was recorded. Null is not 0% —
+                            one is silence about a figure nobody entered, the other
+                            is a claim that it has gone nowhere.
+                          */}
+                          {row.returnOnCost !== null && row.gain !== null && (
+                            <Delta
+                              direction={
+                                row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
+                              }
+                            >
+                              {(row.returnOnCost * 100).toFixed(1)}%
+                            </Delta>
+                          )}
+                          {/*
+                            A refused return says so. The column is otherwise
+                            silent for a class with no cost recorded, and this is
+                            a different silence: there is a cost, and it is short.
+                          */}
+                          {row.costShort > 0 && (
+                            <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
+                              {shortPositionsPhrase(row.costShort)} a statement that covers only part
+                              of the history. {RETURN_REFUSED_BECAUSE}
+                            </Caveat>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ))}
           </div>

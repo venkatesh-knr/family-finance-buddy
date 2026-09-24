@@ -860,6 +860,44 @@
    * palette a chart would have used, so the class keeps its identity when a
    * donut arrives.
    */
+  /*
+   * The ring stacks above the rows on a phone and sits beside them when there
+   * is room. It is a share of the width and not a fixed size, so it cannot push
+   * the card wider than the screen at any text size.
+   */
+  .alloc-layout {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.75rem;
+  }
+
+  .alloc-donut {
+    flex: none;
+    height: auto;
+    margin-inline: auto;
+    width: min(13rem, 100%);
+  }
+
+  .alloc-rows {
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+
+  .donut-label {
+    fill: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 1.4px;
+  }
+
+  .donut-total {
+    fill: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
   .alloc-row {
     align-items: center;
     border-bottom: 1px solid var(--line);
