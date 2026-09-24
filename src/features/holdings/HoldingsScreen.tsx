@@ -21,7 +21,7 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Field, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Field, Money, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -189,7 +189,7 @@ export function HoldingsScreen({
                     style={{ color: 'var(--ink)' }}
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
                   >
-                    {formatMoney(money(total.value, total.currency), { privacy, compact: true })}
+                    <Money value={money(total.value, total.currency)} privacy={privacy} compact />
                     {total.unread > 0 && (
                       <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                         {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never

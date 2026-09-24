@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { exactMoney, formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
+import { exactMoney, formatMoney, money, parseAmountToMinor, type Money as MoneyValue } from '../../lib/money.ts';
 import { convert } from '../../domain/fx.ts';
 import { listRates, type FxRate } from '../../repo/rates.ts';
 import type {
@@ -23,7 +23,7 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Caveat, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Money, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -173,7 +173,7 @@ function AnnualSummary({
         style={{ color: 'var(--ink)' }}
         title={exactMoney(annual.total, privacy) ?? undefined}
       >
-        {formatMoney(annual.total, { privacy, compact: true })}
+        <Money value={annual.total} privacy={privacy} compact />
       </p>
 
       <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
@@ -248,7 +248,7 @@ function FireCard({
    * rate covers today the original is shown rather than a guess — the currency
    * in the formatted figure says which one it is.
    */
-  const read = (amount: Money): Money => {
+  const read = (amount: MoneyValue): MoneyValue => {
     const converted = convert(amount, reading, rates, today);
     return converted.ok ? converted.amount : amount;
   };
@@ -301,7 +301,7 @@ function FireCard({
             style={{ color: 'var(--ink)' }}
             title={exactMoney(read(target.target), privacy) ?? undefined}
           >
-            {formatMoney(read(target.target), { privacy, compact: true })}
+            <Money value={read(target.target)} privacy={privacy} compact />
           </p>
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices

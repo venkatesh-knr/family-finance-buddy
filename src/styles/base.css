@@ -286,6 +286,20 @@
   }
 
   /*
+   * A magnitude suffix — the L in ₹5.3 L (docs/tokens.md §3, Units).
+   *
+   * Sized in em so it follows the figure, and floored in rem so a 17px stat's
+   * unit is not set below the caption step; muted, and the same weight as the
+   * figure so it reads as part of it. No space either side: the figure and the
+   * unit are one thing.
+   */
+  .money-unit {
+    color: var(--muted);
+    font-size: max(0.6em, 0.6875rem);
+    font-weight: 500;
+  }
+
+  /*
    * A caveat marker, and the panel it opens.
    *
    * The mark is sized in em so it grows with the figure beside it rather than
@@ -709,7 +723,8 @@
   }
 
   /*
-   * The headline figure (docs/tokens.md §3).
+   * The headline figure (docs/tokens.md §3), in the sans face with tabular
+   * digits: the alignment guarantee of mono without its texture at this size.
    *
    * A class rather than an inline size, because it was written inline four
    * times at two different values — 32px on Overview, 28px on Plan — which is
@@ -717,7 +732,7 @@
    * enough that a lakh figure fits a 375px screen with room around it.
    */
   .figure {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: clamp(1.4375rem, 5vw, 2.125rem);
     font-variant-numeric: tabular-nums;
     font-weight: 600;
@@ -726,7 +741,7 @@
   }
 
   /*
-   * Stat tile. A micro-label above a mono figure (docs/tokens.md §5).
+   * Stat tile. A label above a figure in the sans face (docs/tokens.md §5).
    *
    * Three screens hand-rolled this before it existed, which is how the label
    * ended up three different sizes. Sign carries the meaning as well as
@@ -739,7 +754,7 @@
 
   .stat > .v {
     color: var(--ink);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 1.0625rem;
     font-variant-numeric: tabular-nums;
     font-weight: 500;

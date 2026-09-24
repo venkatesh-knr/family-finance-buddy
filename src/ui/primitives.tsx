@@ -7,6 +7,7 @@
 
 import { useId, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import { formatMoneyParts, type FormatMoneyOptions, type Money as MoneyValue } from '../lib/money.ts';
 
 export function Card({
   title,
@@ -246,6 +247,31 @@ export function Stat({
       <dt className="micro-label">{label}</dt>
       <dd className={tone === 'gain' ? 'v pos' : tone === 'loss' ? 'v neg' : 'v'}>{children}</dd>
     </div>
+  );
+}
+
+/**
+ * A figure with its magnitude suffix set as a unit (docs/tokens.md §3).
+ *
+ * `₹5.3 L` as a single string leaves the L wherever the typeface puts the
+ * space, and in a wide face that is a gap between the unit and the figure it
+ * belongs to. Here the suffix is a span: smaller, muted, and welded on. The
+ * currency symbol stays at the figure's size, and a figure shown whole, or
+ * hidden by privacy, has no unit and renders as plain text.
+ *
+ * For figures in the page. Text that cannot hold a span — an `aria-label`, a
+ * `title`, SVG text — still takes the string from `formatMoney`.
+ */
+export function Money({
+  value,
+  ...options
+}: { value: MoneyValue } & FormatMoneyOptions): React.JSX.Element {
+  const { figure, unit } = formatMoneyParts(value, options);
+  return (
+    <>
+      {figure}
+      {unit !== null && <span className="money-unit">{unit}</span>}
+    </>
   );
 }
 

@@ -52,7 +52,7 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, EyeIcon, Money, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -538,7 +538,7 @@ export function OverviewScreen({
             // hide would make the whole mode decorative.
             title={exactMoney(worth.amount, privacy) ?? undefined}
           >
-            {formatMoney(worth.amount, { privacy, compact: true })}
+            <Money value={worth.amount} privacy={privacy} compact />
             {/*
               Each of these qualifies this number and none is decoration, so
               they ride on it, and each appears only when it applies.
@@ -586,9 +586,12 @@ export function OverviewScreen({
             <div className="figure" style={{ color: 'var(--ink)' }}>
               {totals.length === 0
                 ? 'nothing valued yet'
-                : totals
-                    .map((total) => formatMoney(total.value, { privacy, compact: true }))
-                    .join('  +  ')}
+                : totals.map((total, index) => (
+                    <span key={total.currency}>
+                      {index > 0 && '  +  '}
+                      <Money value={total.value} privacy={privacy} compact />
+                    </span>
+                  ))}
               <Caveat tone="warn" label="Why these do not add into one figure">
                 {worth.missing.length === 1
                   ? 'One rate is missing: '
