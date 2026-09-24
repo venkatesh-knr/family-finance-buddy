@@ -387,8 +387,15 @@ export function Notice({
 
   return (
     <div className={`notice ${NOTICE_CLASS[tone]} text-caption`}>
-      {/* The glyph is what stops this meaning anything by colour alone. */}
-      <span aria-hidden="true">▲</span>
+      {/*
+        The mark is what stops this meaning anything by colour alone — and it is
+        not a triangle. A triangle is the gain arrow (docs/tokens.md §2), and a
+        panel that says something is wrong must not borrow the shape that says a
+        figure is up.
+      */}
+      <span className="notice-mark" aria-hidden="true">
+        !
+      </span>
       <div className="min-w-0">
         <span>{children}</span>
         {hasNames && (
@@ -433,9 +440,17 @@ export function Notice({
  *   Hiding a caveat behind an icon nobody notices would leave a false figure
  *   looking tidy, which is worse than the clutter it replaced.
  *
- * `warn` is a figure that is actually wrong — a peak below the true one.
- * `info` is something worth knowing about a figure that is right. The shapes
- * differ, not only the hue: "never encode meaning in colour alone".
+ * `warn` is a figure that is actually wrong or incomplete — a peak below the
+ * true one, a cost that covers part of the units. `info` is something worth
+ * knowing about a figure that is right.
+ *
+ * Neither borrows the signals that mean direction of money. Coral and teal are
+ * a loss and a gain, and ▲ ▼ are their arrows (docs/tokens.md §2): a marker
+ * that used them told somebody that a position was down when it was merely
+ * incompletely valued, with the shape and the colour agreeing on something
+ * false. So the marker is a circle in either case — a quiet `i` in `--muted`,
+ * and a `!` in `--brass`, the attention colour, for the one that matters. They
+ * differ by glyph as well as by hue.
  */
 export function Caveat({
   tone = 'info',
@@ -457,7 +472,7 @@ export function Caveat({
         aria-label={label}
         popoverTarget={panelId}
       >
-        <span aria-hidden="true">{tone === 'warn' ? '▲' : 'i'}</span>
+        <span aria-hidden="true">{tone === 'warn' ? '!' : 'i'}</span>
       </button>
 
       {/*
@@ -488,6 +503,63 @@ export function Caveat({
 }
 
 /**
+ * A figure that is deliberately not given, and the reason it is not.
+ *
+ * The app is careful to refuse a number it cannot stand behind — a gain
+ * measured against a cost that covers a tenth of the units, a total that would
+ * be short by a currency. It used to say so by printing the words "not shown" in
+ * the slot where the figure goes, in the mono face, beside a marker. That read as
+ * a failed render rather than as a decision: a sentence fragment in a number's
+ * place looks like the number did not load.
+ *
+ * A dash says "deliberately absent" in a way words in that slot do not, and the
+ * marker beside it carries the explanation. It takes the size and weight of the
+ * figure it stands for, so the row does not change shape.
+ *
+ * A dash alone would announce nothing, or "dash", so it is given a name: a
+ * screen reader hears "not shown", and then the marker's own label says why.
+ * `warn` by default, because a refused figure is a qualified one; `info` where
+ * the absence is simply how things are.
+ */
+export function Absent({
+  label,
+  tone = 'warn',
+  children,
+}: {
+  /** What the marker means, and the heading of the panel it opens. */
+  label: string;
+  tone?: 'warn' | 'info';
+  /** Why the figure is not given. */
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <span className="absent" role="img" aria-label="not shown">
+        —
+      </span>
+      <Caveat tone={tone} label={label}>
+        {children}
+      </Caveat>
+    </>
+  );
+}
+
+/**
+ * A word that sits beside a figure — "of", "at", "units", "holdings", "left".
+ *
+ * docs/tokens.md §3 gives mono to every number and to uppercase micro-labels,
+ * and Public Sans to everything read as prose. Mono is the ledger signal
+ * precisely because it is reserved for figures; a word set in it spends the
+ * signal, and reads as terminal output. But a word placed inside a figure's
+ * element inherits the figure's face, so "of ₹1,25,000" came out entirely in
+ * mono. This is the word, in the face a word takes, at the size and colour of a
+ * note. The figure beside it stays mono and tabular.
+ */
+export function Unit({ children }: { children: ReactNode }) {
+  return <span className="unit">{children}</span>;
+}
+
+/**
  * An error worth reading. Carries a word as well as a hue — nothing in this app
  * means anything by colour alone.
  */
@@ -502,7 +574,9 @@ export function Problem({ children }: { children: ReactNode }) {
         color: 'var(--coral)',
       }}
     >
-      <span aria-hidden="true">▲</span>
+      <span className="notice-mark" aria-hidden="true">
+        !
+      </span>
       <span>{children}</span>
     </p>
   );

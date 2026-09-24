@@ -237,6 +237,51 @@
   }
 
   /*
+   * The mark on a Notice or a Problem: the same ring and the same `!` as a
+   * caveat's, but not a control, so it takes no tap area and no cursor. Sized in
+   * em so it follows the text beside it at 200%.
+   */
+  .notice-mark {
+    align-items: center;
+    border: 1px solid currentcolor;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    flex: none;
+    font-size: 0.6875em;
+    font-weight: 700;
+    height: 1.45em;
+    justify-content: center;
+    letter-spacing: normal;
+    line-height: 1;
+    margin-block-start: 0.15em;
+    min-width: 1.45em;
+  }
+
+  /*
+   * A figure that is deliberately not given. It takes the size and weight of the
+   * figure it stands for and only the colour changes, to the caption colour, so
+   * a dash reads as an absence and not as a very small number.
+   */
+  .absent {
+    color: var(--muted);
+  }
+
+  /*
+   * A word beside a figure, in the face a word takes. The rest of a note's
+   * treatment — size, colour — is the same, so it can sit inside one or stand
+   * alone; what it undoes is the mono a figure's element would have imposed.
+   */
+  .unit {
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.78125rem;
+    font-variant-numeric: normal;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  /*
    * A caveat marker, and the panel it opens.
    *
    * The mark is sized in em so it grows with the figure beside it rather than
@@ -284,14 +329,21 @@
     inset: -0.85em;
   }
 
-  /* A figure that is wrong. The triangle carries it as much as the coral. */
+  /*
+   * A figure that is wrong or incomplete: a `!` in the attention colour.
+   *
+   * Not coral, and not a triangle. Coral is a loss and ▲ is a gain
+   * (docs/tokens.md §2), so a marker wearing either told somebody a position was
+   * down when it was merely incompletely valued. Brass is the attention colour
+   * and is not spoken for.
+   */
   .caveat-warn {
-    color: var(--coral);
+    color: var(--brass);
   }
 
-  /* Worth knowing about a figure that is right. A circle, and the plan colour. */
+  /* Worth knowing about a figure that is right: a quiet `i`, in the caption colour. */
   .caveat-info {
-    color: var(--brass);
+    color: var(--muted);
   }
 
   .caveat-panel {
