@@ -50,11 +50,8 @@ import {
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
 import { Absent, Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
-import { kindLabel } from '../../ui/labels.ts';
+import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
-
-/** Chart colours come from tokens in order, so a class keeps its colour. */
-const SERIES = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)'];
 
 export function OverviewScreen({
   privacy,
@@ -748,12 +745,12 @@ export function OverviewScreen({
               <div key={group.currency}>
                 {allocation.length > 1 && <p className="micro-label">{group.currency}</p>}
                 <ul className={allocation.length > 1 ? 'mt-1.5' : undefined}>
-                  {group.rows.map((row, index) => (
+                  {group.rows.map((row) => (
                     <li key={row.kind} className="alloc-row">
                       <span
                         className="alloc-dot"
                         aria-hidden="true"
-                        style={{ background: SERIES[index % SERIES.length] ?? 'var(--c1)' }}
+                        style={{ background: kindColour(row.kind) }}
                       />
                       <span className="min-w-0">
                         {/*

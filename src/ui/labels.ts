@@ -45,3 +45,31 @@ export const TAX_ASSET_CLASS_LABEL: Record<string, string> = {
 export function taxClassLabel(assetClass: string): string {
   return TAX_ASSET_CLASS_LABEL[assetClass] ?? assetClass.replace('_', ' ');
 }
+
+/**
+ * The colour a class carries, wherever it is drawn.
+ *
+ * Fixed by class, not by rank. Coloured by position, "Bonds" is green when it
+ * is the third largest and blue when it is the second, and a person who has
+ * learnt the palette from one screen is misled by the next. The donut and the
+ * allocation rows both read this, so a class is one colour everywhere.
+ *
+ * Tokens only — the categorical `--c1…--c7` — so both themes work. The order
+ * follows the prototype's class map: funds, equity, bonds, then ETFs (which
+ * carry the foreign equity slot), deposits, and anything unclassified last.
+ * `--c5` is the prototype's crypto slot and is left unused until a class needs
+ * it, rather than given to something else and taken back.
+ */
+export const INSTRUMENT_KIND_COLOUR: Record<string, string> = {
+  mutual_fund: 'var(--c1)',
+  equity: 'var(--c2)',
+  bond: 'var(--c3)',
+  etf: 'var(--c4)',
+  deposit: 'var(--c6)',
+  other: 'var(--c7)',
+};
+
+/** The colour for one kind; an unknown kind is drawn as `other`, not as nothing. */
+export function kindColour(kind: string): string {
+  return INSTRUMENT_KIND_COLOUR[kind] ?? 'var(--c7)';
+}
