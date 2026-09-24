@@ -442,6 +442,65 @@ export function Notice({
 }
 
 /**
+ * One item in a list of things that want attention: a line, and the rest behind it.
+ *
+ * A stack of full-width tinted panels, each carrying a paragraph, is triage
+ * that has not been done: every item at the same weight says nothing is more
+ * urgent than anything else, and the screen closes on what looks like an
+ * incident report. So an item is one line, the count and what follows from it
+ * in a clause, and the explanation and the names are behind it.
+ *
+ * Two weights, and only two. `gap` sits on a quiet surface with a brass mark,
+ * for something unplanned. `due` is coral and is reserved for the item that
+ * cannot be put right later. A native <details>, for the reasons `Notice` gives.
+ */
+export function Attention({
+  tone = 'gap',
+  headline,
+  children,
+  names,
+  namesLabel = 'Show them',
+}: {
+  tone?: NoticeTone;
+  /** The count and the consequence, as a clause. Always visible. */
+  headline: ReactNode;
+  /** The rest: why it matters and what to do. Behind the line. */
+  children?: ReactNode;
+  names?: readonly string[];
+  namesLabel?: string;
+}) {
+  const hasNames = names !== undefined && names.length > 0;
+  return (
+    <details className={`attention text-caption ${tone === 'due' ? 'attention-due' : 'attention-gap'}`}>
+      <summary className="attention-line">
+        <span className="notice-mark" aria-hidden="true">
+          !
+        </span>
+        <span className="min-w-0">{headline}</span>
+        <span className="attention-chevron" aria-hidden="true">
+          ▸
+        </span>
+      </summary>
+      <div className="attention-body">
+        {children !== undefined && <div>{children}</div>}
+        {hasNames && (
+          <>
+            <div className="mt-1.5">
+              {namesLabel} ({names.length})
+            </div>
+            <ul className="notice-names">
+              {names.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
+/**
  * A caveat that travels with the number it qualifies.
  *
  * The screens had grown a block of prose under every figure. Each sentence

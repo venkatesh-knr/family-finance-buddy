@@ -254,6 +254,61 @@
   }
 
   /*
+   * An item in a list that wants attention (docs/tokens.md §4: spend the fill
+   * by role). One line, and the rest behind it. `gap` is a quiet surface with a
+   * brass mark; `due` keeps the coral fill, because it is the one that cannot
+   * be put right later.
+   */
+  .attention {
+    border-radius: 8px;
+  }
+
+  .attention-gap {
+    background: var(--surface-2);
+    color: var(--ink-2);
+  }
+
+  .attention-gap .notice-mark {
+    color: var(--brass);
+  }
+
+  .attention-due {
+    background: var(--coral-soft);
+    color: var(--coral);
+  }
+
+  .attention-line {
+    align-items: flex-start;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+    list-style: none;
+    padding: 9px 11px;
+  }
+
+  .attention-line::-webkit-details-marker {
+    display: none;
+  }
+
+  .attention-line > .min-w-0 {
+    flex: 1 1 auto;
+  }
+
+  .attention-chevron {
+    color: var(--muted);
+    flex: none;
+    transition: transform 120ms;
+  }
+
+  .attention[open] .attention-chevron {
+    transform: rotate(90deg);
+  }
+
+  .attention-body {
+    padding: 0 11px 10px 34px;
+  }
+
+  /*
    * The mark on a Notice or a Problem: the same ring and the same `!` as a
    * caveat's, but not a control, so it takes no tap area and no cursor. Sized in
    * em so it follows the text beside it at 200%.

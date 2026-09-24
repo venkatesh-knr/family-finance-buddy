@@ -52,7 +52,7 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Delta, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -842,32 +842,59 @@ export function OverviewScreen({
             figure rather than a lower bound.
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            {/*
+              Three things, three lines. The two months with no reading are the
+              one that cannot be put right later — a peak cannot be rebuilt from
+              a year-end statement — so it keeps the coral fill and the others
+              sit on a quiet surface. Everything else is behind the line.
+            */}
             {gaps.missingMonths.length > 0 && (
-              <Notice tone="due" names={[...gaps.missingMonths]} namesLabel="Which months">
-                {gaps.missingMonths.length}{' '}
-                {gaps.missingMonths.length === 1 ? 'month has' : 'months have'} no reading at all, so
-                this year&rsquo;s peak is a lower bound rather than the figure. A peak cannot be
-                reconstructed from a year-end statement, which is why the gap matters now and not in
-                April.
-              </Notice>
+              <Attention
+                tone="due"
+                headline={
+                  <>
+                    {gaps.missingMonths.length}{' '}
+                    {gaps.missingMonths.length === 1 ? 'month has' : 'months have'} no reading, so
+                    this year&rsquo;s peak is a lower bound
+                  </>
+                }
+                names={[...gaps.missingMonths]}
+                namesLabel="Which months"
+              >
+                A peak cannot be reconstructed from a year-end statement, which is why the gap
+                matters now and not in April.
+              </Attention>
             )}
             {gaps.neverRead.length > 0 && (
-              <Notice>
-                {gaps.neverRead.length}{' '}
-                {gaps.neverRead.length === 1 ? 'holding has' : 'holdings have'} never been valued.
+              <Attention
+                headline={
+                  <>
+                    {gaps.neverRead.length}{' '}
+                    {gaps.neverRead.length === 1 ? 'holding has' : 'holdings have'} never been
+                    valued, and {gaps.neverRead.length === 1 ? 'is' : 'are'} left out of every total
+                  </>
+                }
+              >
                 They are absent from every total above rather than counted as zero.
-              </Notice>
+              </Attention>
             )}
             {shortPositions.length > 0 && (
-              <Notice tone="due" names={shortPositions} namesLabel="Which positions">
-                {shortPositionsPhrase(shortPositions.length)} a statement that covers only part of
-                the history. Once valued, {shortPositions.length === 1 ? 'it counts' : 'they count'}{' '}
-                in net worth in full, because the units are the registrar&rsquo;s own count; the
-                cost, the gain and the history are what is incomplete, and no return is shown for{' '}
-                {shortPositions.length === 1 ? 'it' : 'them'}. A statement requested from before
-                the first purchase fills the gap without doubling anything already recorded.
-              </Notice>
+              <Attention
+                headline={
+                  <>
+                    {shortPositionsPhrase(shortPositions.length)} a statement that covers only part
+                    of the history, so no return is shown
+                  </>
+                }
+                names={shortPositions}
+                namesLabel="Which positions"
+              >
+                Once valued, {shortPositions.length === 1 ? 'it counts' : 'they count'} in net worth
+                in full, because the units are the registrar&rsquo;s own count; the cost, the gain
+                and the history are what is incomplete. A statement requested from before the first
+                purchase fills the gap without doubling anything already recorded.
+              </Attention>
             )}
           </div>
         )}

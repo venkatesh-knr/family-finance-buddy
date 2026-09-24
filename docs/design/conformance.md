@@ -43,6 +43,7 @@ is the point: the failure is a prompt to decide when it gets built, not busywork
 | card | component | built | `src/ui/primitives.tsx` — plus collapsible, which the prototype has no equivalent of |
 | pill | component | built | `src/ui/primitives.tsx` — five tones, `own` `ok` `warn` `due` `neutral` |
 | notice | component | built | `src/ui/primitives.tsx` — a caveat that stays visible, with its reasons folded away. Used where a card IS the caveat, or where there is no figure to attach to |
+| attention | component | built | `src/ui/primitives.tsx` — `Attention`, one line per item that wants attention (the count and the consequence in a clause) with the explanation and the names behind it. Two weights: a quiet surface with a brass mark, and coral for the one that cannot be put right later. Replaces three full-width `Notice` panels on Overview. No prototype equivalent |
 | caveat | component | built | `src/ui/primitives.tsx` — a marker on the figure it qualifies, opening a native popover. A ringed `i` in `--muted` for a figure that is right, a ringed `!` in `--brass` for one that is wrong or incomplete: never coral and never a triangle, because coral is a loss and ▲ is the gain arrow (`docs/tokens.md` §2). `notice` and `problem` carry the same `!`. No prototype equivalent; see Departures |
 | problem | component | built | `src/ui/primitives.tsx` — `role="alert"`, no prototype equivalent |
 | field | component | built | `src/ui/primitives.tsx` |
