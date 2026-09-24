@@ -7,6 +7,7 @@ import {
   monthBounds,
   paceState,
   taxYearBounds,
+  taxYearOf,
   type BudgetComparison,
   type CategoryActual,
   type CategoryPlanned,
@@ -37,6 +38,32 @@ describe('taxYearBounds', () => {
     // FY 2027-28 contains February 2028, which has 29 days.
     const { start, end } = taxYearBounds(2027);
     expect(daysInclusive(start, end)).toBe(366);
+  });
+});
+
+describe('taxYearOf', () => {
+  it('names the year by the April it started in', () => {
+    // September 2026 is in the year that began on 1 April 2026.
+    expect(taxYearOf('2026-09-23')).toBe(2026);
+  });
+
+  it('puts January to March in the year that started the April before', () => {
+    // The mistake worth guarding: reading the calendar year off the date, which
+    // is right for nine months of twelve and wrong for the last three.
+    expect(taxYearOf('2027-01-15')).toBe(2026);
+  });
+
+  it('starts on the first of April and ends on the last day of March', () => {
+    expect(taxYearOf('2026-03-31')).toBe(2025);
+    expect(taxYearOf('2026-04-01')).toBe(2026);
+    expect(taxYearOf('2027-03-31')).toBe(2026);
+    expect(taxYearOf('2027-04-01')).toBe(2027);
+  });
+
+  it('agrees with taxYearBounds at both edges', () => {
+    const { start, end } = taxYearBounds(2026);
+    expect(taxYearOf(start)).toBe(2026);
+    expect(taxYearOf(end)).toBe(2026);
   });
 });
 

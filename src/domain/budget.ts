@@ -37,6 +37,18 @@ export function taxYearBounds(fy: number): { start: IsoDate; end: IsoDate } {
   return { start: `${String(fy)}-04-01`, end: `${String(fy + 1)}-03-31` };
 }
 
+/**
+ * Which tax year a date falls in, named as `taxYearBounds` names it.
+ *
+ * January to March belong to the year that started the April before, so the
+ * calendar year is the wrong answer for a quarter of every year.
+ */
+export function taxYearOf(date: IsoDate): number {
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+  return month >= 4 ? year : year - 1;
+}
+
 /** The calendar month containing a date, first day to last. */
 export function monthBounds(date: IsoDate): { start: IsoDate; end: IsoDate } {
   const year = Number(date.slice(0, 4));
