@@ -1,5 +1,5 @@
 /**
- * Tax — a working paper for one person's equity capital gains.
+ * Tax — a working paper for one person's capital gains.
  *
  * "It fills the schedules, it does not file the return." Everything here is the
  * household's own numbers arranged the way a return asks for them, with the
@@ -15,17 +15,19 @@
  * them, or set one person's loss against another's gain. So the screen asks
  * whose return it is, and starts with yours.
  *
- * ── what it does not do yet ─────────────────────────────────────────────
+ * ── what it nets, and what it lists but will not ────────────────────────
  *
- * Listed equity and equity mutual funds only. Salary, the slabs, surcharge and
- * cess, the regime comparison, every other asset class, losses brought forward
- * and foreign figures at the prescribed rate are all still to come — and the
- * screen lists them, so a page that computes one head is never read as the
- * whole return. A sale it cannot net is listed with the reason, not dropped.
+ * Listed equity, equity funds, gold and unlisted shares, netted together under
+ * the Act's set-off rules. Foreign shares, debt funds, property, a matured gold
+ * bond, and gifts and transfers are listed, each with the specific reason it is
+ * not in the figures — never dropped, and never guessed at. Salary, the slabs,
+ * surcharge and cess, the regime comparison and losses brought forward are all
+ * still to come, and the screen lists them, so a page that computes one head is
+ * never read as the whole return.
  */
 
 import { useMemo, useState } from 'react';
-import { equityTax, netEquityGains } from '../../domain/capital-gains.ts';
+import { capitalGainsTax, netCapitalGains, type ExclusionReason } from '../../domain/capital-gains.ts';
 import { taxYearBounds, taxYearOf } from '../../domain/budget.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
@@ -41,29 +43,37 @@ function signed(value: Money, privacy: boolean): string {
   return `${sign}${formatMoney(size, { privacy })}`;
 }
 
+/** A rate as a person reads it: `12.500` is 12.5%, `20.000` is 20%. */
+const rateText = (ratePct: string): string => `${String(Number(ratePct))}%`;
+
 const STILL_TO_COME: readonly string[] = [
   'Salary, other income and deductions — the other heads of a return',
-  'Slabs, rebate, surcharge and the 4% cess, and so the total liability',
+  'Slabs, rebate, surcharge and the 4% cess, and so the total liability — and the tax on short-term gold and unlisted gains, which is taxed at the slab',
   'The old and new regime, side by side',
-  'Gains on gold, debt funds, foreign shares, unlisted shares and property',
+  'Foreign shares, at the SBI prescribed exchange rate for the month of sale',
+  'Debt funds, whose treatment depends on when they were bought',
+  'Property, and the choice between 12.5% and 20% with indexation',
   'Losses brought forward from earlier years, and any carried on',
-  'Foreign figures at the prescribed exchange rate, and the foreign tax credit',
-  'Advance tax instalments',
+  'The foreign tax credit, and advance tax instalments',
 ];
 
 /** Why a sale that is listed is not in the figures, in a few words. */
-function why(lot: TaxLot): string {
-  switch (lot.treatment) {
-    case 'unclassified':
-      return 'its tax asset class is not set — set it under “Correct this holding” on Holdings';
-    case 'no-rule':
-      return 'no holding-period rule covers this date; earlier regimes are not loaded';
-    case 'currency-mismatch':
-      return `an equity holding recorded in ${lot.parcel.gain.currency}, which should be rupees`;
-    default:
-      return '';
-  }
-}
+const WHY: Record<ExclusionReason, (lot: TaxLot) => string> = {
+  'unclassified-asset': () =>
+    'its tax asset class is not set — set it under “Correct this holding” on Holdings',
+  'no-rule-for-date': () => 'no holding-period rule covers this date; earlier regimes are not loaded',
+  'currency-mismatch': (lot) =>
+    `recorded in ${lot.parcel.gain.currency}, which is not rupees — a data problem for an Indian holding`,
+  'needs-prescribed-rate': () =>
+    'a foreign holding needs the SBI prescribed exchange rate for the month of sale, which is not stored yet',
+  'debt-fund-not-modelled': () =>
+    'a debt fund’s treatment depends on when it was bought, which the rules here do not model yet',
+  'property-election': () =>
+    'property carries an election between 12.5% and 20% with indexation, which is not modelled',
+  'possibly-exempt': () =>
+    'gold disposed at maturity — a Sovereign Gold Bond redeemed with the RBI is exempt, so it is left out; check with your CA',
+  'not-a-sale': () => 'recorded as a gift or a transfer, which is not a sale',
+};
 
 export function TaxScreen({
   privacy,
@@ -81,21 +91,28 @@ export function TaxScreen({
   const fy = chosenFy ?? currentFy;
   const memberId = chosenMember ?? listing?.viewer.memberId ?? '';
 
+  // The kind of each disposal, so a gift or a matured bond is not netted as a sale.
+  const disposalKindOf = useMemo(
+    () => new Map((listing?.disposals ?? []).map((sale) => [sale.id, sale.kind as string])),
+    [listing],
+  );
+
   const lots = useMemo(
-    () => taxLotsFor({ rows, memberId, fy, rules: taxRules }),
-    [rows, memberId, fy, taxRules],
+    () => taxLotsFor({ rows, memberId, fy, rules: taxRules, disposalKindOf }),
+    [rows, memberId, fy, taxRules, disposalKindOf],
   );
   const gains = useMemo(
     () =>
-      netEquityGains({
+      netCapitalGains({
         parcels: lots.parcels,
         assetClassOf: lots.assetClassOf,
+        disposalKindOf,
         rules: taxRules,
         fy,
       }),
-    [lots, taxRules, fy],
+    [lots, disposalKindOf, taxRules, fy],
   );
-  const tax = useMemo(() => equityTax(gains, taxRules), [gains, taxRules]);
+  const tax = useMemo(() => capitalGainsTax(gains, taxRules), [gains, taxRules]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 
@@ -114,12 +131,12 @@ export function TaxScreen({
   const window = taxYearBounds(fy);
   const inProgress = fy === currentFy;
 
-  const unplaced = lots.lots.filter(
-    (lot) => lot.treatment !== 'netted' && lot.treatment !== 'other-class',
-  );
-  const otherClass = lots.lots.filter((lot) => lot.treatment === 'other-class');
-  const allowance = gains.longTerm.exemption;
+  const unplaced = lots.lots.filter((lot) => !lot.placement.placed);
+  const allowance = gains.equityLong.exemption;
   const daysLeft = inProgress ? daysBetween(today, window.end) : null;
+
+  const otherActivity = gains.otherLong.net.minor !== 0n || gains.otherShort.net.minor !== 0n;
+  const lossesSetOff = money(gains.losses.short.setOff.minor + gains.losses.long.setOff.minor, 'INR');
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -188,27 +205,11 @@ export function TaxScreen({
         </Notice>
       )}
 
-      <Card
-        title="Equity gains"
-        aside={<span className="note">listed shares and equity mutual funds</span>}
-      >
-        <dl className="flex flex-wrap gap-x-9 gap-y-3">
-          <Stat label="Long term, net">{signed(gains.longTerm.net, privacy)}</Stat>
-          <Stat label="Short term, net">{signed(gains.shortTerm.net, privacy)}</Stat>
-          {gains.setOffAgainstLongTerm.minor > 0n && (
-            <Stat label="Short-term loss set off">
-              {formatMoney(gains.setOffAgainstLongTerm, { privacy })}
-              <Caveat tone="info" label="What set-off means here">
-                A short-term loss reduces a long-term gain before the allowance is applied. A
-                long-term loss can only ever reduce a long-term gain, never a short-term one.
-              </Caveat>
-            </Stat>
-          )}
-        </dl>
-
-        <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
-
-        <dl className="flex flex-wrap gap-x-9 gap-y-3">
+      <Card title="Capital gains" aside={<span className="note">netted across asset classes</span>}>
+        <h3 className="micro-label">Listed shares and equity funds</h3>
+        <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
+          <Stat label="Long term, net">{signed(gains.equityLong.net, privacy)}</Stat>
+          <Stat label="Short term, net">{signed(gains.equityShort.net, privacy)}</Stat>
           <Stat label="Allowance used">
             {allowance === null ? (
               <>
@@ -225,28 +226,74 @@ export function TaxScreen({
               </>
             )}
           </Stat>
-
           <Stat label="Taxable, long term">
-            {tax.longTerm === null ? (
+            {tax.equityLong === null ? (
               <span className="note">not shown</span>
             ) : (
               <>
-                {formatMoney(tax.longTerm.taxable, { privacy })}
-                {tax.longTerm.ratePct !== null && (
-                  <span className="note"> at {Number(tax.longTerm.ratePct)}%</span>
+                {formatMoney(tax.equityLong.taxable, { privacy })}
+                {tax.equityLong.ratePct !== null && (
+                  <span className="note"> at {rateText(tax.equityLong.ratePct)}</span>
                 )}
               </>
             )}
           </Stat>
-
           <Stat label="Taxable, short term">
-            {formatMoney(tax.shortTerm.taxable, { privacy })}
-            {tax.shortTerm.ratePct !== null && (
-              <span className="note"> at {Number(tax.shortTerm.ratePct)}%</span>
+            {formatMoney(tax.equityShort.taxable, { privacy })}
+            {tax.equityShort.ratePct !== null && (
+              <span className="note"> at {rateText(tax.equityShort.ratePct)}</span>
             )}
           </Stat>
+        </dl>
 
-          <Stat label="Tax on equity gains">
+        {otherActivity && (
+          <>
+            <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
+            <h3 className="micro-label">
+              Gold and unlisted shares
+              <Caveat tone="info" label="How these differ from equity">
+                Long term is two years, not one, and the gain is taxed at 12.5% with no allowance —
+                the ₹1.25 lakh belongs to equity alone. A short-term gain is taxed at your slab
+                rate, which depends on the rest of your income.
+              </Caveat>
+            </h3>
+            <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
+              <Stat label="Long term, net">{signed(gains.otherLong.net, privacy)}</Stat>
+              <Stat label="Taxable, long term">
+                {formatMoney(tax.otherLong.taxable, { privacy })}
+                {tax.otherLong.ratePct !== null && (
+                  <span className="note"> at {rateText(tax.otherLong.ratePct)}</span>
+                )}
+              </Stat>
+              <Stat label="Short term, net">{signed(gains.otherShort.net, privacy)}</Stat>
+              <Stat label="Added to income, at your slab">
+                {formatMoney(tax.otherShortAtSlab, { privacy })}
+                <Caveat tone="warn" label="Why this has no tax figure">
+                  A short-term gain on gold or unlisted shares is added to your income and taxed
+                  at your slab rate. That needs the rest of your income, which is not here yet, so
+                  it is shown as an amount and never as a tax — and it is not in the total below.
+                </Caveat>
+              </Stat>
+            </dl>
+          </>
+        )}
+
+        <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
+
+        <dl className="flex flex-wrap gap-x-9 gap-y-3">
+          {lossesSetOff.minor > 0n && (
+            <Stat label="Losses set off">
+              {formatMoney(lossesSetOff, { privacy })}
+              <Caveat tone="info" label="How losses were set off">
+                A long-term loss can only reduce a long-term gain, so it is used first. A
+                short-term loss then goes against what is left — equity short term, then short-term
+                gold and unlisted, then long-term gold and unlisted, then long-term equity, where
+                the allowance may already cover it. The Act lets you choose the order; this is the
+                one used here, and your CA may choose another.
+              </Caveat>
+            </Stat>
+          )}
+          <Stat label="Tax on gains at their own rates">
             {tax.total === null ? (
               <>
                 <span className="note">not shown</span>
@@ -260,27 +307,28 @@ export function TaxScreen({
                 {formatMoney(tax.total, { privacy })}
                 <Caveat tone="info" label="What this figure leaves out">
                   Before surcharge and the 4% health and education cess, which depend on the rest
-                  of your income and are not here yet. Equity gains are taxed at their own rates
-                  and not at your slab, so this is the tax on these gains alone.
+                  of your income and are not here yet. It is the tax on the gains that have a rate
+                  of their own, and leaves out any short-term gold or unlisted gain, which is taxed
+                  at your slab.
                 </Caveat>
               </>
             )}
           </Stat>
         </dl>
 
-        {gains.unrelieved.shortTerm !== null && (
+        {gains.losses.short.unrelieved !== null && (
           <div className="mt-3.5">
             <Notice>
-              {formatMoney(gains.unrelieved.shortTerm, { privacy })} of short-term loss is left
+              {formatMoney(gains.losses.short.unrelieved, { privacy })} of short-term loss is left
               after set-off. It is not carried forward anywhere in this app yet — note it for next
               year&rsquo;s return, and file on time, because a late return forfeits it.
             </Notice>
           </div>
         )}
-        {gains.unrelieved.longTerm !== null && (
+        {gains.losses.long.unrelieved !== null && (
           <div className="mt-3.5">
             <Notice>
-              {formatMoney(gains.unrelieved.longTerm, { privacy })} of long-term loss is left,
+              {formatMoney(gains.losses.long.unrelieved, { privacy })} of long-term loss is left,
               with no long-term gain to reduce. It is not carried forward anywhere in this app yet
               — note it for next year&rsquo;s return, and file on time, because a late return
               forfeits it.
@@ -290,10 +338,7 @@ export function TaxScreen({
       </Card>
 
       {inProgress && allowance !== null && (
-        <Card
-          title="Expiring this year"
-          aside={<span className="note">use it or lose it</span>}
-        >
+        <Card title="Expiring this year" aside={<span className="note">use it or lose it</span>}>
           <div
             className="grid items-center gap-x-3"
             style={{ gridTemplateColumns: 'minmax(90px, 1fr) 3fr 110px' }}
@@ -316,7 +361,8 @@ export function TaxScreen({
             {daysLeft !== null && ` · ${String(daysLeft)} days left in the tax year`}.
             <Caveat tone="info" label="What counts as used">
               Only gains already realised by a sale. An unrealised gain is not used and does not
-              reduce what is left.
+              reduce what is left. It applies to equity alone — gold and unlisted shares do not use
+              it.
             </Caveat>
           </div>
         </Card>
@@ -325,23 +371,17 @@ export function TaxScreen({
       {unplaced.length > 0 && (
         <Notice
           tone="due"
-          names={unplaced.map(
-            (lot) =>
-              `${lot.holdingName} · sold ${formatIsoDate(lot.parcel.disposedOn)} — ${why(lot)}`,
+          names={unplaced.flatMap((lot) =>
+            lot.placement.placed
+              ? []
+              : [
+                  `${lot.holdingName} · sold ${formatIsoDate(lot.parcel.disposedOn)} — ${WHY[lot.placement.reason](lot)}`,
+                ],
           )}
           namesLabel="Which sales"
         >
-          {unplaced.length} {unplaced.length === 1 ? 'sale' : 'sales'} could not be placed, so{' '}
-          {unplaced.length === 1 ? 'it is' : 'they are'} not in the figures above. Nothing was
-          guessed at.
-        </Notice>
-      )}
-
-      {otherClass.length > 0 && (
-        <Notice>
-          {otherClass.length} {otherClass.length === 1 ? 'sale' : 'sales'} of other assets{' '}
-          {otherClass.length === 1 ? 'is' : 'are'} listed below but not netted here. Only listed
-          shares and equity funds are.
+          {unplaced.length} {unplaced.length === 1 ? 'sale is' : 'sales are'} listed below but not in
+          the figures above. Each says why. Nothing was guessed at.
         </Notice>
       )}
 
@@ -392,8 +432,9 @@ export function TaxScreen({
       </Card>
 
       <Notice names={STILL_TO_COME} namesLabel="What is still to come">
-        This page covers one part of one head: capital gains on listed equity and equity funds. It
-        is not the whole return, and the total above is not a total liability.
+        This page covers one part of one head: capital gains on listed equity, equity funds, gold
+        and unlisted shares. It is not the whole return, and the total above is not a total
+        liability.
       </Notice>
     </div>
   );
@@ -401,26 +442,42 @@ export function TaxScreen({
 
 /** The class of a sale, with its term — worded so no term is claimed where none can be. */
 function ClassPill({ lot }: { lot: TaxLot }) {
-  switch (lot.treatment) {
-    case 'netted':
-      return lot.term === 'long' ? (
-        <Pill tone="ok">Long term · equity</Pill>
-      ) : (
-        <Pill tone="warn">Short term · equity</Pill>
-      );
-    case 'other-class':
-      return (
-        <Pill tone="neutral">
-          {lot.assetClass === null ? '' : taxClassLabel(lot.assetClass)}
-          {lot.term === null ? '' : ` · ${lot.term === 'long' ? 'long' : 'short'} term`}
-          {' · not netted'}
-        </Pill>
-      );
-    case 'unclassified':
+  const label = lot.assetClass === null ? '' : taxClassLabel(lot.assetClass);
+  const term = lot.term === null ? '' : lot.term === 'long' ? 'long term' : 'short term';
+
+  if (lot.placement.placed) {
+    switch (lot.placement.bucket) {
+      case 'equity-long':
+        return <Pill tone="ok">Long term · equity</Pill>;
+      case 'equity-short':
+        return <Pill tone="warn">Short term · equity</Pill>;
+      case 'other-long':
+        return <Pill tone="ok">{`Long term · ${label}`}</Pill>;
+      case 'other-short':
+        return <Pill tone="warn">{`Short term · ${label} · at your slab`}</Pill>;
+    }
+  }
+
+  // Not placed. A data problem is `due`; a known limitation is neutral, and says
+  // which — the two ask different things of the person reading.
+  switch (lot.placement.placed ? null : lot.placement.reason) {
+    case 'unclassified-asset':
       return <Pill tone="due">Class not set</Pill>;
-    case 'no-rule':
+    case 'no-rule-for-date':
       return <Pill tone="due">No rule for this date</Pill>;
     case 'currency-mismatch':
       return <Pill tone="due">Not in rupees</Pill>;
+    case 'needs-prescribed-rate':
+      return <Pill tone="neutral">{`${label} · ${term} · needs the prescribed rate`}</Pill>;
+    case 'debt-fund-not-modelled':
+      return <Pill tone="neutral">Debt fund · not netted</Pill>;
+    case 'property-election':
+      return <Pill tone="neutral">{`Property · ${term} · election needed`}</Pill>;
+    case 'possibly-exempt':
+      return <Pill tone="neutral">{`${label} · at maturity · left out`}</Pill>;
+    case 'not-a-sale':
+      return <Pill tone="neutral">Gift or transfer · not a sale</Pill>;
+    default:
+      return null;
   }
 }

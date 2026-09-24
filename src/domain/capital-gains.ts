@@ -1,110 +1,224 @@
 /**
- * Netting equity capital gains for a tax year, and the ₹1.25 lakh allowance.
+ * Netting capital gains across asset classes, for one person and one tax year.
  *
- * `docs/blueprint.md`'s pipeline, steps 3 and 4, for the one asset group the
- * annual exemption applies to — listed equity and equity mutual funds, which
- * `tax_rule` seeds as a single combined allowance rather than one each:
+ * `docs/blueprint.md`'s pipeline, steps 3 and 4:
  *
  *   Net      short-term losses against any gains; long-term losses against
  *            long-term gains only.
  *   Exempt   apply the ₹1.25 lakh equity allowance to what is left of the
- *            long-term gain.
+ *            long-term equity gain.
  *
- * Deliberately narrower than the whole engine. `loss_carry_forward` does not
- * exist yet, so an unrelieved loss is reported and not carried anywhere — the
- * screen can say what is left over; only a later migration can remember it
- * into next year. Gold, debt funds, foreign equity, unlisted equity and
- * property are out of scope: netting every asset class together, and the
- * general "short-term loss against any gain" rule that spans them, belongs to
- * a wider netter this is not attempting to be.
+ * ── four buckets, because there are four ways to be taxed ────────────────
  *
- * Pure. No I/O, no `Date.now()` — the tax year is a plain number, and
- * `taxYearBounds` turns it into the dates this refuses sales outside of.
+ *   equity short   listed shares and equity funds held a year or less — 20%
+ *   equity long    the same held longer — 12.5% after the allowance, and this is
+ *                  the only bucket that has one
+ *   other long     gold and unlisted shares held two years or more — 12.5%, no
+ *                  allowance
+ *   other short    the same held less — taxed at the taxpayer's SLAB, which needs
+ *                  the rest of their income and is not built. So it is an amount
+ *                  to add to income here, and never a tax
+ *
+ * ── what it will not net, and says so by name ────────────────────────────
+ *
+ *   foreign equity   needs the prescribed exchange rate (the SBI rate on the last
+ *                    day of the month before the sale), which is not stored
+ *   debt funds       treatment turns on the ACQUISITION date, and `tax_rule` is
+ *                    dated by the date of sale
+ *   property         carries an election between 12.5% and 20% with indexation,
+ *                    and there is no index to apply
+ *   gold at maturity a Sovereign Gold Bond redeemed with the RBI is exempt, and
+ *                    a matured gold instrument is almost always one
+ *   gifts, transfers not sales; a gift recorded with no proceeds would book its
+ *                    whole cost as a capital loss and offset a real gain
+ *
+ * Each is listed with its reason and left out of every bucket. A sale that
+ * quietly vanishes from a tax page because the arithmetic cannot handle it yet is
+ * the failure this exists to avoid.
+ *
+ * ── the order losses are used in ─────────────────────────────────────────
+ *
+ * The Act says which losses may offset which gains, and leaves the choice of
+ * order to the taxpayer. The order here is a stated policy, not a law:
+ *
+ *   1. A long-term loss first. It can only ever go against long-term gains, so
+ *      it is used before the loss that can go anywhere — which leaves the
+ *      flexible short-term loss as the one that is carried forward.
+ *   2. Then a short-term loss, against the gain whose rate is known first:
+ *      equity short, then other short, then other long, then equity long. The
+ *      slab rate is not known until the slab step; other long comes before equity
+ *      long because the allowance may already cover that one.
+ *
+ * `loss_carry_forward` does not exist, so what is left is reported and not
+ * carried anywhere.
+ *
+ * Pure. No I/O, no `Date.now()` — the tax year is a plain number.
  */
 
 import { taxYearBounds } from './budget.ts';
 import type { Parcel } from './lots.ts';
-import { classify, longTermRate, type AssetClass, type TaxRule } from './tax-rules.ts';
+import { classify, longTermRate, type AssetClass, type Term, type TaxRule } from './tax-rules.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import { money, type Money } from '../lib/money.ts';
 
-/** The two `tax_rule` asset classes the ₹1.25 lakh allowance is seeded for. */
-const EQUITY_CLASSES: ReadonlySet<AssetClass> = new Set(['listed_equity', 'equity_fund']);
-
 /**
- * Whether a class is one this module nets and the allowance covers.
- *
- * Exported so a screen listing sales says "netted" by asking the same question
- * the netter asks, rather than keeping a second list that drifts from it.
- */
-export function isEquityClass(assetClass: AssetClass): boolean {
-  return EQUITY_CLASSES.has(assetClass);
-}
-
-/**
- * The exemption is minor units of INR — "the jurisdiction's currency" the
- * `tax_rule` migration's own comment names. Equity funds and listed shares are
- * bought and sold in India regardless of what they expose to, so a parcel in
- * any other currency is a data problem this refuses rather than guesses past.
+ * Everything here is minor units of INR — "the jurisdiction's currency" the
+ * `tax_rule` migration's own comment names. A parcel in any other currency is
+ * either foreign equity, which is refused by name, or a data problem this
+ * refuses rather than guesses past.
  */
 const CURRENCY = 'INR';
+
+export type Bucket = 'equity-short' | 'equity-long' | 'other-short' | 'other-long';
+
+/** Why a sale is not in any bucket. Each names something specific, never "unsupported". */
+export type ExclusionReason =
+  | 'unclassified-asset'
+  | 'no-rule-for-date'
+  | 'currency-mismatch'
+  | 'needs-prescribed-rate'
+  | 'debt-fund-not-modelled'
+  | 'property-election'
+  | 'possibly-exempt'
+  | 'not-a-sale';
+
+export type Placement =
+  | { readonly placed: true; readonly bucket: Bucket; readonly term: Term }
+  | {
+      readonly placed: false;
+      readonly reason: ExclusionReason;
+      /** Still given where the holding period is known, so a listing can say it. */
+      readonly term: Term | null;
+    };
+
+/**
+ * Where one sale goes, or why it goes nowhere.
+ *
+ * The single place that decides, asked by the netter and by the screen that
+ * lists sales — so "netted" on the page means exactly what it means in the
+ * arithmetic, and there is no second list of classes to drift from the first.
+ */
+export function placeParcel(options: {
+  readonly parcel: Parcel;
+  readonly assetClass: AssetClass | null;
+  /** The kind of the disposal the parcel came from. Null is treated as an ordinary sale. */
+  readonly disposalKind: string | null;
+  readonly rules: readonly TaxRule[];
+}): Placement {
+  const { parcel, assetClass, disposalKind, rules } = options;
+
+  const classification =
+    assetClass === null
+      ? null
+      : classify(rules, {
+          assetClass,
+          acquiredOn: parcel.acquiredOn,
+          disposedOn: parcel.disposedOn,
+        });
+  const term: Term | null = classification !== null && classification.known ? classification.term : null;
+  const refuse = (reason: ExclusionReason): Placement => ({ placed: false, reason, term });
+
+  // First, because it is about what happened rather than what was held.
+  if (disposalKind === 'gift' || disposalKind === 'transfer') return refuse('not-a-sale');
+
+  if (assetClass === null) return refuse('unclassified-asset');
+
+  switch (assetClass) {
+    case 'foreign_equity':
+      return refuse('needs-prescribed-rate');
+    case 'debt_fund':
+      return refuse('debt-fund-not-modelled');
+    case 'property':
+      return refuse('property-election');
+    case 'gold':
+      // A bond redeemed with the RBI at maturity is exempt. Matured gold is
+      // nearly always that, and being wrong would tax something the law does not.
+      if (disposalKind === 'maturity') return refuse('possibly-exempt');
+      break;
+    case 'listed_equity':
+    case 'equity_fund':
+    case 'unlisted_equity':
+      break;
+  }
+
+  if (parcel.gain.currency !== CURRENCY) return refuse('currency-mismatch');
+  if (classification === null || !classification.known) return refuse('no-rule-for-date');
+
+  const equity = assetClass === 'listed_equity' || assetClass === 'equity_fund';
+  const bucket: Bucket = equity
+    ? classification.term === 'long'
+      ? 'equity-long'
+      : 'equity-short'
+    : classification.term === 'long'
+      ? 'other-long'
+      : 'other-short';
+
+  return { placed: true, bucket, term: classification.term };
+}
 
 export interface ExcludedParcel {
   readonly lotId: string;
   readonly disposalId: string;
   readonly instrumentId: string;
-  /**
-   * 'unclassified-asset' and 'no-rule-for-date' are `classify`'s own reasons,
-   * carried through rather than re-decided. 'currency-mismatch' should not
-   * occur for a real equity holding — see `CURRENCY` — and exists so a data
-   * problem is named rather than silently netted into a total that would be
-   * wrong in a currency nobody chose.
-   */
-  readonly reason: 'unclassified-asset' | 'no-rule-for-date' | 'currency-mismatch';
+  readonly reason: ExclusionReason;
 }
 
-export interface EquityCapitalGains {
+export interface GainBucket {
+  /** Every sale in this bucket, summed. Negative is a loss. */
+  readonly net: Money;
+  /** How much loss from another bucket was set against it. Never negative. */
+  readonly setOff: Money;
+  /** What is left after set-off. Never negative — a loss shows in `losses`. */
+  readonly taxable: Money;
+}
+
+export interface EquityLongBucket {
+  readonly net: Money;
+  readonly setOff: Money;
+  readonly exemption: {
+    readonly available: Money;
+    /** Never more than `available`, and never more than there was gain left to use it on. */
+    readonly used: Money;
+    readonly authority: string;
+  } | null;
+  /**
+   * After set-off and the allowance. Null only when `exemption` is null — no
+   * rule covers this year, and a taxable figure computed without one would be a
+   * number this app is not willing to make up.
+   */
+  readonly taxable: Money | null;
+}
+
+export interface LossSummary {
+  /** Every loss of this term, summed, as a positive amount. */
+  readonly total: Money;
+  /** How much of it was set against gains. */
+  readonly setOff: Money;
+  /** What is left, or null. Not carried anywhere: there is nowhere yet to remember it. */
+  readonly unrelieved: Money | null;
+}
+
+export interface CapitalGains {
   readonly fy: number;
   readonly window: { readonly start: IsoDate; readonly end: IsoDate };
-  readonly shortTerm: {
-    /** Every short-term equity parcel in the year, summed. Can be negative — a net loss. */
-    readonly net: Money;
-    /** Never negative. A loss shows in `unrelieved.shortTerm`, not here. */
-    readonly taxable: Money;
-  };
-  readonly longTerm: {
-    /** Every long-term equity parcel in the year, summed, before set-off. */
-    readonly net: Money;
-    readonly exemption: {
-      readonly available: Money;
-      /** Never more than `available`, and never more than there was gain left to use it on. */
-      readonly used: Money;
-      readonly authority: string;
-    } | null;
-    /**
-     * Null only when `exemption` is null — no rule covers this year, and a
-     * taxable figure computed without one would be a number this app is not
-     * willing to make up. Otherwise never negative.
-     */
-    readonly taxable: Money | null;
-  };
-  /** How much of a short-term loss was used to reduce the long-term gain. Zero when there was none of either. */
-  readonly setOffAgainstLongTerm: Money;
-  readonly unrelieved: {
-    /** What is left of a short-term loss after set-off, or null. Not carried anywhere. */
-    readonly shortTerm: Money | null;
-    /** What is left of a long-term loss — never offered a short-term gain to absorb it. Not carried anywhere. */
-    readonly longTerm: Money | null;
-  };
-  /** Parcels this could not place, and why. Never silently dropped from the total. */
+  readonly equityShort: GainBucket;
+  readonly equityLong: EquityLongBucket;
+  readonly otherLong: GainBucket;
+  /** Taxed at the slab. `taxable` is an amount to add to income, never a tax. */
+  readonly otherShort: GainBucket;
+  readonly losses: { readonly short: LossSummary; readonly long: LossSummary };
+  /** Sales this could not place, and why. Never silently dropped from the total. */
   readonly excluded: readonly ExcludedParcel[];
 }
 
-/** The exemption band for this equity group, as of a date, or null. */
+/** The exemption band for the equity group, as of a date, or null. */
 function exemptionOn(rules: readonly TaxRule[], on: IsoDate): TaxRule | null {
   let best: TaxRule | null = null;
   for (const rule of rules) {
-    if (rule.kind !== 'exemption' || rule.assetClass === null || !EQUITY_CLASSES.has(rule.assetClass)) {
+    if (
+      rule.kind !== 'exemption' ||
+      (rule.assetClass !== 'listed_equity' && rule.assetClass !== 'equity_fund')
+    ) {
       continue;
     }
     if (rule.effectiveFrom > on) continue;
@@ -114,117 +228,132 @@ function exemptionOn(rules: readonly TaxRule[], on: IsoDate): TaxRule | null {
   return best;
 }
 
-export function netEquityGains(options: {
+const min = (a: bigint, b: bigint): bigint => (a < b ? a : b);
+const positive = (a: bigint): bigint => (a > 0n ? a : 0n);
+const negated = (a: bigint): bigint => (a < 0n ? -a : 0n);
+
+export function netCapitalGains(options: {
   readonly parcels: readonly Parcel[];
-  /** Every instrument's tax asset class this household holds, by id. Missing means unclassified. */
+  /** Every instrument's tax asset class by id. Missing means unclassified. */
   readonly assetClassOf: ReadonlyMap<string, AssetClass | null>;
+  /** The kind of each disposal, by disposal id. Missing means an ordinary sale. */
+  readonly disposalKindOf: ReadonlyMap<string, string>;
   readonly rules: readonly TaxRule[];
   readonly fy: number;
-}): EquityCapitalGains {
+}): CapitalGains {
   const window = taxYearBounds(options.fy);
 
-  let shortTermMinor = 0n;
-  let longTermMinor = 0n;
+  const nets: Record<Bucket, bigint> = {
+    'equity-short': 0n,
+    'equity-long': 0n,
+    'other-long': 0n,
+    'other-short': 0n,
+  };
   const excluded: ExcludedParcel[] = [];
 
   for (const parcel of options.parcels) {
     if (parcel.disposedOn < window.start || parcel.disposedOn > window.end) continue;
 
-    const assetClass = options.assetClassOf.get(parcel.instrumentId) ?? null;
-    if (assetClass === null) {
-      excluded.push({
-        lotId: parcel.lotId,
-        disposalId: parcel.disposalId,
-        instrumentId: parcel.instrumentId,
-        reason: 'unclassified-asset',
-      });
-      continue;
-    }
-
-    // Known, and known to be something this module does not net — a data
-    // problem for a different screen, not a reason to stop here.
-    if (!EQUITY_CLASSES.has(assetClass)) continue;
-
-    if (parcel.gain.currency !== CURRENCY) {
-      excluded.push({
-        lotId: parcel.lotId,
-        disposalId: parcel.disposalId,
-        instrumentId: parcel.instrumentId,
-        reason: 'currency-mismatch',
-      });
-      continue;
-    }
-
-    const classification = classify(options.rules, {
-      assetClass,
-      acquiredOn: parcel.acquiredOn,
-      disposedOn: parcel.disposedOn,
+    const placement = placeParcel({
+      parcel,
+      assetClass: options.assetClassOf.get(parcel.instrumentId) ?? null,
+      disposalKind: options.disposalKindOf.get(parcel.disposalId) ?? null,
+      rules: options.rules,
     });
-    if (!classification.known) {
+
+    if (!placement.placed) {
       excluded.push({
         lotId: parcel.lotId,
         disposalId: parcel.disposalId,
         instrumentId: parcel.instrumentId,
-        reason: classification.reason,
+        reason: placement.reason,
       });
       continue;
     }
 
-    if (classification.term === 'long') longTermMinor += parcel.gain.minor;
-    else shortTermMinor += parcel.gain.minor;
+    nets[placement.bucket] += parcel.gain.minor;
   }
 
-  // Short-term losses reduce a long-term gain; long-term losses never touch a
-  // short-term gain. "Long-term losses against long-term gains only" is the
-  // whole reason this is two variables and not one net figure.
-  const setOff =
-    shortTermMinor < 0n && longTermMinor > 0n
-      ? (-shortTermMinor < longTermMinor ? -shortTermMinor : longTermMinor)
-      : 0n;
+  // What is left of each gain, and how much loss has been set against it.
+  const left: Record<Bucket, bigint> = {
+    'equity-short': positive(nets['equity-short']),
+    'equity-long': positive(nets['equity-long']),
+    'other-long': positive(nets['other-long']),
+    'other-short': positive(nets['other-short']),
+  };
+  const setOff: Record<Bucket, bigint> = {
+    'equity-short': 0n,
+    'equity-long': 0n,
+    'other-long': 0n,
+    'other-short': 0n,
+  };
 
-  const shortTermAfterSetOff = shortTermMinor + setOff;
-  const longTermAfterSetOff = longTermMinor - setOff;
+  /** Use up to `amount` of a loss against these buckets, in order. Returns how much was used. */
+  const apply = (amount: bigint, order: readonly Bucket[]): bigint => {
+    let remaining = amount;
+    for (const bucket of order) {
+      if (remaining === 0n) break;
+      const take = min(remaining, left[bucket]);
+      left[bucket] -= take;
+      setOff[bucket] += take;
+      remaining -= take;
+    }
+    return amount - remaining;
+  };
 
+  // The loss that can only go one way is used first, so the one that can go
+  // anywhere is what is left to carry forward.
+  const longLoss = negated(nets['equity-long']) + negated(nets['other-long']);
+  const longUsed = apply(longLoss, ['other-long', 'equity-long']);
+
+  const shortLoss = negated(nets['equity-short']) + negated(nets['other-short']);
+  const shortUsed = apply(shortLoss, ['equity-short', 'other-short', 'other-long', 'equity-long']);
+
+  // The allowance applies to what is left of the long-term equity gain, after
+  // both kinds of loss have had their say.
   const exemptionRule = exemptionOn(options.rules, window.end);
-  const longTermGainToExempt = longTermAfterSetOff > 0n ? longTermAfterSetOff : 0n;
-
   const exemption =
     exemptionRule === null
       ? null
       : {
           available: money(exemptionRule.bandToMinor ?? 0n, CURRENCY),
-          used: money(
-            (exemptionRule.bandToMinor ?? 0n) < longTermGainToExempt
-              ? (exemptionRule.bandToMinor ?? 0n)
-              : longTermGainToExempt,
-            CURRENCY,
-          ),
+          used: money(min(exemptionRule.bandToMinor ?? 0n, left['equity-long']), CURRENCY),
           authority: exemptionRule.authority,
         };
+
+  const summary = (total: bigint, used: bigint): LossSummary => ({
+    total: money(total, CURRENCY),
+    setOff: money(used, CURRENCY),
+    unrelieved: total - used > 0n ? money(total - used, CURRENCY) : null,
+  });
+
+  const bucket = (id: Bucket): GainBucket => ({
+    net: money(nets[id], CURRENCY),
+    setOff: money(setOff[id], CURRENCY),
+    taxable: money(left[id], CURRENCY),
+  });
 
   return {
     fy: options.fy,
     window,
-    shortTerm: {
-      net: money(shortTermMinor, CURRENCY),
-      taxable: money(shortTermAfterSetOff > 0n ? shortTermAfterSetOff : 0n, CURRENCY),
-    },
-    longTerm: {
-      net: money(longTermMinor, CURRENCY),
+    equityShort: bucket('equity-short'),
+    equityLong: {
+      net: money(nets['equity-long'], CURRENCY),
+      setOff: money(setOff['equity-long'], CURRENCY),
       exemption,
-      taxable: exemption === null ? null : money(longTermGainToExempt - exemption.used.minor, CURRENCY),
+      taxable: exemption === null ? null : money(left['equity-long'] - exemption.used.minor, CURRENCY),
     },
-    setOffAgainstLongTerm: money(setOff, CURRENCY),
-    unrelieved: {
-      shortTerm: shortTermAfterSetOff < 0n ? money(-shortTermAfterSetOff, CURRENCY) : null,
-      longTerm: longTermAfterSetOff < 0n ? money(-longTermAfterSetOff, CURRENCY) : null,
-    },
+    otherLong: bucket('other-long'),
+    otherShort: bucket('other-short'),
+    losses: { short: summary(shortLoss, shortUsed), long: summary(longLoss, longUsed) },
     excluded,
   };
 }
 
-export interface TermTax {
-  /** What was taxable in this term after set-off and the allowance. */
+// ══════════════════════════════════════════════════════════════════ the tax
+
+export interface BucketTax {
+  /** What was taxable in this bucket after set-off and any allowance. */
   readonly taxable: Money;
   /** The rate applied, as `tax_rule` holds it. Null when nothing was taxable and none was needed. */
   readonly ratePct: string | null;
@@ -237,30 +366,26 @@ export interface TermTax {
   readonly tax: Money | null;
 }
 
-export interface EquityTax {
-  readonly shortTerm: TermTax;
+export interface CapitalGainsTax {
+  readonly equityShort: BucketTax;
   /** Null when the exemption is unknown: what is taxable long term cannot be said. */
-  readonly longTerm: TermTax | null;
-  /** Null unless every part of it is known. A total short by a refused part would read as complete. */
+  readonly equityLong: BucketTax | null;
+  readonly otherLong: BucketTax;
+  /**
+   * Short-term gain on gold and unlisted shares, to be added to income and taxed
+   * at the slab. Deliberately not a tax and not in `total`: the slab needs the
+   * rest of the income, and a total with this folded in as zero would read as
+   * complete.
+   */
+  readonly otherShortAtSlab: Money;
+  /**
+   * The tax on the three buckets with rates of their own. Null unless every one
+   * of them is known — a total short by a refused part would read as complete.
+   */
   readonly total: Money | null;
 }
 
-/**
- * The rate for a term, as of a date, when listed shares and equity funds agree.
- *
- * The allowance is combined across the two, and so is what is left of it, so
- * they are taxed as one bucket. Two rates for one bucket would mean choosing
- * one, which is a guess — so disagreement is a refusal. They are seeded equal
- * today; this is what makes that a fact the code checks rather than assumes.
- */
-function equityRate(rules: readonly TaxRule[], term: 'long' | 'short', on: IsoDate): TaxRule | null {
-  const listed = longTermRate(rules, 'listed_equity', term, on);
-  const fund = longTermRate(rules, 'equity_fund', term, on);
-  if (listed === null || fund === null || listed.ratePct === null || fund.ratePct === null) return null;
-  return thousandths(listed.ratePct) === thousandths(fund.ratePct) ? listed : null;
-}
-
-/** A rate in `numeric(6,3)` text — `12.5`, `12.500` — as an integer count of thousandths of a percent. */
+/** A rate in `numeric(6,3)` text — `12.5`, `12.500` — as thousandths of a percent. */
 function thousandths(ratePct: string): bigint {
   const [whole = '0', fraction = ''] = ratePct.split('.');
   return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0').slice(0, 3));
@@ -270,33 +395,60 @@ function thousandths(ratePct: string): bigint {
  * `minor × rate%`, half a paisa rounding up, entirely in bigint.
  *
  * Half up rather than truncating: a tax that always rounds down is a small
- * standing error in one direction, and the sum of several terms would carry it.
- * Non-negative only — a taxable figure never is anything else.
+ * standing error in one direction, and several terms would carry it. Non-negative
+ * only — a taxable figure never is anything else.
  */
 function percentOf(minor: bigint, ratePct: string): bigint {
   return (minor * thousandths(ratePct) + 50_000n) / 100_000n;
 }
 
 /**
+ * The rate for a bucket, when every class in it agrees.
+ *
+ * A bucket is taxed as one, so it needs one rate. Two rates would mean choosing,
+ * which is a guess — so disagreement is a refusal, and a class with no rate row is
+ * too. They are seeded equal today; this makes that a fact the code checks.
+ */
+function agreedRate(
+  rules: readonly TaxRule[],
+  classes: readonly AssetClass[],
+  term: 'long' | 'short',
+  on: IsoDate,
+): TaxRule | null {
+  const found = classes.map((assetClass) => longTermRate(rules, assetClass, term, on));
+  const first = found[0];
+  if (first === undefined || first === null || first.ratePct === null) return null;
+  const agree = found.every(
+    (rule) => rule !== null && rule.ratePct !== null && thousandths(rule.ratePct) === thousandths(first.ratePct ?? ''),
+  );
+  return agree ? first : null;
+}
+
+/**
  * What the netted gains cost, before surcharge and cess.
  *
- * Equity gains are taxed at rates of their own — 20% short term, 12.5% long
- * term after the allowance — and not at the slab, so this is a multiplication
- * and nothing more. Surcharge and the 4% cess sit on top of it, in a later step
- * that also needs the taxpayer's other income; nothing here pretends to be that.
+ * Three buckets have a rate of their own, and the tax on each is one
+ * multiplication. Surcharge and the 4% cess sit on top, in a later step that also
+ * needs the taxpayer's other income; nothing here pretends to be that.
  *
  * Rates are read as of the last day of the year, like the allowance. That is
- * sound while earlier regimes are not seeded, because a sale under one is
- * refused by `classify` and never reaches these totals.
+ * sound while earlier regimes are not seeded, because a sale under one is refused
+ * by `classify` and never reaches these totals.
  */
-export function equityTax(gains: EquityCapitalGains, rules: readonly TaxRule[]): EquityTax {
+export function capitalGainsTax(gains: CapitalGains, rules: readonly TaxRule[]): CapitalGainsTax {
   const on = gains.window.end;
+  const EQUITY: readonly AssetClass[] = ['listed_equity', 'equity_fund'];
+  const OTHER: readonly AssetClass[] = ['gold', 'unlisted_equity'];
 
-  const termTax = (taxable: Money, term: 'long' | 'short'): TermTax => {
+  const bucketTax = (
+    taxable: Money,
+    classes: readonly AssetClass[],
+    term: 'long' | 'short',
+  ): BucketTax => {
     if (taxable.minor === 0n) {
       return { taxable, ratePct: null, authority: null, tax: money(0n, CURRENCY) };
     }
-    const rule = equityRate(rules, term, on);
+    const rule = agreedRate(rules, classes, term, on);
     if (rule === null || rule.ratePct === null) {
       return { taxable, ratePct: null, authority: null, tax: null };
     }
@@ -308,13 +460,15 @@ export function equityTax(gains: EquityCapitalGains, rules: readonly TaxRule[]):
     };
   };
 
-  const shortTerm = termTax(gains.shortTerm.taxable, 'short');
-  const longTerm = gains.longTerm.taxable === null ? null : termTax(gains.longTerm.taxable, 'long');
+  const equityShort = bucketTax(gains.equityShort.taxable, EQUITY, 'short');
+  const equityLong =
+    gains.equityLong.taxable === null ? null : bucketTax(gains.equityLong.taxable, EQUITY, 'long');
+  const otherLong = bucketTax(gains.otherLong.taxable, OTHER, 'long');
 
   const total =
-    longTerm === null || shortTerm.tax === null || longTerm.tax === null
+    equityLong === null || equityShort.tax === null || equityLong.tax === null || otherLong.tax === null
       ? null
-      : money(shortTerm.tax.minor + longTerm.tax.minor, CURRENCY);
+      : money(equityShort.tax.minor + equityLong.tax.minor + otherLong.tax.minor, CURRENCY);
 
-  return { shortTerm, longTerm, total };
+  return { equityShort, equityLong, otherLong, otherShortAtSlab: gains.otherShort.taxable, total };
 }
