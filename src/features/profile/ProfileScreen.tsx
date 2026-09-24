@@ -73,15 +73,15 @@ export function ProfileScreen({ email, householdId }: { email: string | null; ho
       >
         <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
           <div>
-            <dt className="micro-label">Signed in as</dt>
+            <dt className="label">Signed in as</dt>
             <dd style={{ color: 'var(--ink)' }}>{email ?? '—'}</dd>
           </div>
           <div>
-            <dt className="micro-label">Household</dt>
+            <dt className="label">Household</dt>
             <dd style={{ color: 'var(--ink)' }}>{current?.household.name ?? '—'}</dd>
           </div>
           <div>
-            <dt className="micro-label">Role</dt>
+            <dt className="label">Role</dt>
             <dd style={{ color: 'var(--ink)' }}>{current?.role ?? '—'}</dd>
           </div>
         </dl>
@@ -142,7 +142,7 @@ export function ProfileScreen({ email, householdId }: { email: string | null; ho
                 <span className="flex items-center gap-2.5">
                   {entry.isMine && <Pill tone="own">You</Pill>}
                   {entry.actor === null && <Pill tone="neutral">Scheduled</Pill>}
-                  <span className="num note">{when(entry.at)}</span>
+                  <span className="tabular-nums note">{when(entry.at)}</span>
                 </span>
               </li>
             ))}

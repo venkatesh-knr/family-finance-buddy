@@ -317,7 +317,7 @@ export function ImportStatement({
 
       <div className="mt-3 flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="micro-label">The statement</span>
+          <span className="label">The statement</span>
           <input
             className="field"
             type="file"
@@ -426,7 +426,7 @@ export function ImportStatement({
               )}
 
               <label className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="micro-label">Whose holding</span>
+                <span className="label">Whose holding</span>
                 <select
                   className="field w-auto"
                   value={memberOf[entry.folio.folio] ?? viewerMemberId}

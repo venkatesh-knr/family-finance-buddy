@@ -107,32 +107,50 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 ```
 
 - **Newsreader** — page and section titles only. Weight 500. Never for UI chrome.
-- **Public Sans** — everything interactive and everything read as prose. 400/500/600.
-- **IBM Plex Mono** — *every number*, plus uppercase micro-labels. This is the strongest
-  single signal that the app is a ledger.
+- **Public Sans** — everything interactive and everything read as prose, every label, and
+  figures that stand alone (the hero and a stat value), set with `tabular-nums`. 400/500/600.
+- **IBM Plex Mono** — figures in a table and wherever figures stack in a column, plus the
+  uppercase micro-label on a table column header, and nothing else. Mono is the ledger
+  signal because it is reserved: a figure gets "this is money" from size, weight and
+  alignment when it stands alone, and from the typeface when it sits in a column and has to
+  line up.
 
 ### Scale
 
 | Role | Size | Weight | Face | Notes |
 |---|---|---|---|---|
-| Hero figure (net worth) | `clamp(23px, 5vw, 34px)` | 600 | mono | `letter-spacing:-.02em`. Lowered from `clamp(32px, 6vw, 48px)`: at 32px a lakh figure with a symbol filled a 375px screen edge to edge, and a number that large reads as a headline rather than a fact. |
+| Hero figure (net worth) | `clamp(23px, 5vw, 34px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.02em`. Lowered from `clamp(32px, 6vw, 48px)`: at 32px a lakh figure with a symbol filled a 375px screen edge to edge, and a number that large reads as a headline rather than a fact. |
 | Page title | 22px | 500 | display | `-.01em` |
 | Section title (doc) | 25–30px | 500 | display | `text-wrap:balance` |
 | Card title | 14.5px | 600 | ui | |
 | Body | 15px | 400 | ui | `line-height:1.55` |
-| Stat value | 17px | 500 | mono | |
-| Table cell | 13.4px | 400 | ui | numbers in mono |
+| Stat value | 17px | 500 | ui | `tabular-nums` |
+| Table cell | 13.4px | 400 | ui | figures in mono, so a column aligns |
 | Caption / note | 11.8–12.5px | 400 | ui | `--muted` |
-| Micro-label | 10.5px | 500 | mono | uppercase, `letter-spacing:.13em` |
-| Pill / badge | 9.5px | 500 | mono | uppercase, `letter-spacing:.1em` |
+| Label (stat tile, figure caption, form field) | 12px | 400 | ui | `--muted`, sentence case, no letter-spacing |
+| Table column header | 10.5px | 500 | mono | uppercase, `letter-spacing:.13em`. The only micro-label. |
+| Pill / badge | 9.5px | 500 | mono | uppercase, `letter-spacing:.1em`. **Deliberately exempt** from the label and mono rules above: a short status badge is a stamped tag, not a label describing a figure, and the uppercase mono is right for it. A chip that carries a figure and a phrase (the `Delta`, "▲ 22.9% on cost") is not a badge and follows them. |
 
 ### Numerals — non-negotiable
 
 ```css
-.num, td.n, .mono { font-variant-numeric: tabular-nums; }
+.num, td.n, .mono, .figure, .stat > .v { font-variant-numeric: tabular-nums; }
 ```
 
-Every figure in a column must align. Proportional digits in a money table is a bug.
+Every figure in a column must align. Proportional digits in a money table is a bug. A
+figure that stands alone is set in Public Sans and is tabular too, so the alignment
+guarantee holds in either face and only the texture differs: Plex Mono at display size is
+wide and evenly spaced, and reads as output rather than as a fact.
+
+### Units
+
+A magnitude suffix — `L`, `Cr`, `K` — is a **unit**: a span at `0.6em` in `--muted`,
+welded to the figure with no space, so `₹5.3` then `L` rather than `₹5.3 L`. It is never
+smaller than 11px (`0.6875rem`), or a stat value's unit would be set below the caption
+step. The currency symbol is not a unit and stays at the figure's size. One `Amount`
+component in `ui/primitives.tsx` renders it, so every figure does it the same way; a
+plain-string formatter remains for the places a span cannot go (an `aria-label`, a `title`,
+SVG text).
 
 ### Text scaling
 
@@ -186,9 +204,9 @@ hierarchy and makes nothing important.
 | Component | Spec |
 |---|---|
 | **Card** | `--surface` on `--line` 1px, radius 10, padding 18. Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. |
-| **Stat tile** | Micro-label above, mono value below, gap 3px. Positive `--teal`, negative `--coral`. |
+| **Stat tile** | Label above (12px, sentence case), value below in Public Sans with `tabular-nums`, gap 3px. Positive `--teal`, negative `--coral`. |
 | **Pill** | 9.5px mono uppercase. Variants: `own` (indigo-soft/indigo), `warn` (brass), `due` (coral), `ok` (teal), `neutral` (surface-3/muted). |
-| **Table** | Header: `--surface-2`, 10.5px mono uppercase `--muted`, bottom hairline. Rows: hairline separated, last row none. Total row: 1.5px `--line-strong` top border, weight 700. |
+| **Table** | Header: `--surface-2`, 10.5px mono uppercase `--muted`, bottom hairline — the one place the micro-label survives. Rows: hairline separated, last row none. Total row: 1.5px `--line-strong` top border, weight 700. |
 | **Segmented control** | `--surface-3` track, active pill `--surface` + weight 600 + 1px shadow. `aria-pressed` drives state. |
 | **Bar / progress** | 6–9px height, radius 3, `--surface-3` track. Over-target bars flip to `--coral`. |
 | **Quick-add** | Amount input in mono, 110px wide. Primary button `--brass` with light text. |

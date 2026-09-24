@@ -41,6 +41,9 @@ import {
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
+import { assetHistory } from '../../domain/history.ts';
+import { AllocationDonut } from './AllocationDonut.tsx';
+import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { istCalendarDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney } from '../../lib/money.ts';
@@ -49,12 +52,9 @@ import {
   type HoldingListing,
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
-import { Button, Card, Caveat, Delta, EyeIcon, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
-import { kindLabel } from '../../ui/labels.ts';
+import { Absent, Button, Card, Caveat, Delta, EyeIcon, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
-
-/** Chart colours come from tokens in order, so a class keeps its colour. */
-const SERIES = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)'];
 
 export function OverviewScreen({
   privacy,
@@ -111,6 +111,14 @@ export function OverviewScreen({
       asOf: string;
     }[]
   >([]);
+  /**
+   * Open loans nobody has entered a balance for.
+   *
+   * Not the same as "no debts": a loan with no balance is a debt the household
+   * has and the figure cannot subtract, which makes net worth high by exactly
+   * what is owed. No loans at all is a different fact, and does not warn.
+   */
+  const [unbalancedLoans, setUnbalancedLoans] = useState<readonly { memberId: string | null }[]>([]);
   const [newRate, setNewRate] = useState('');
   const [savingRate, setSavingRate] = useState(false);
 
@@ -159,6 +167,13 @@ export function OverviewScreen({
         listPersonalHoldingTotals(next.household.id),
       ]);
       setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
+      setUnbalancedLoans(
+        planResult.status === 'fulfilled'
+          ? planResult.value.liabilities
+              .filter((l) => !l.isClosed && l.outstanding === null)
+              .map((l) => ({ memberId: l.memberId }))
+          : [],
+      );
       setDebts(
         planResult.status === 'fulfilled'
           ? planResult.value.liabilities
@@ -316,6 +331,14 @@ export function OverviewScreen({
     [debts, scope, mine],
   );
 
+  const shownUnbalanced = useMemo(
+    () =>
+      unbalancedLoans.filter(
+        (l) => scope === 'household' || l.memberId === null || l.memberId === mine,
+      ).length,
+    [unbalancedLoans, scope, mine],
+  );
+
   /**
    * What the client cannot see, added back.
    *
@@ -344,6 +367,28 @@ export function OverviewScreen({
       on: asOf ?? today,
     });
   }, [totals, hiddenAssets, shownDebts, display, rates, asOf, today]);
+
+  /**
+   * What was held, month by month. Follows the same scope as everything else
+   * on the screen, and is drawn from the readings the client can see: another
+   * member's private holdings arrive as a sum with no dates, so they are named
+   * as missing from the line rather than added to it.
+   */
+  const history = useMemo(() => {
+    const opened = new Map((listing?.holdings ?? []).map((h) => [h.id, h.openedOn]));
+    return assetHistory({
+      holdings: holdings.map((h) => ({
+        id: h.id,
+        currency: h.currency,
+        openedOn: opened.get(h.id) ?? null,
+        isArchived: h.isArchived,
+      })),
+      readings: valuations,
+      rates,
+      display,
+      asOf: asOf ?? today,
+    });
+  }, [listing, holdings, valuations, rates, display, asOf, today]);
 
   const saveRate = useCallback(
     async (pair: { base: string; quote: string }) => {
@@ -395,26 +440,33 @@ export function OverviewScreen({
       {problem !== null && <Problem>{problem}</Problem>}
 
       {/*
-        Assets first, net worth second.
+        Net worth first, and the only hero figure on the screen.
 
-        It used to be the other way round, which reads well for a household
-        holding one currency and badly for one holding two: the first thing on
-        the screen was a red paragraph explaining why there was no figure,
-        above the figures that did exist. What somebody opens this screen to
-        find out is what they have. Whether it adds into a single number is the
-        next question, not the first — and when the answer is no, that belongs
-        on the figure as a mark rather than as a paragraph shouted above it.
+        docs/tokens.md §3 names net worth as the hero, and a hero only works if
+        one figure per screen uses that step: with three of them the person
+        opening the app had to read all three to find out how they were doing.
+
+        Assets used to sit above it. That was a fair answer to a real problem —
+        the first thing on the screen was a red paragraph explaining why there
+        was no total, printed above the figures that did exist — but the refusal
+        is a mark on the figure now, not a paragraph in place of one, so the
+        reason is gone. When there is still no total the hero slot carries the
+        per-currency figures with the refusal marked on them, exactly as before,
+        and the Assets card below carries the same figures as stat tiles.
+
+        The Household / Mine switch and the eye are here because they govern the
+        whole screen, not a card.
       */}
       <Card
-        title="Assets"
+        title="Net worth"
         aside={
           <span className="flex flex-wrap items-center gap-2.5">
             {/*
               Two questions people ask separately — "are we on track" and
               "what is mine" — so two answers rather than arithmetic done in
-              somebody's head. A group of pressed buttons, not tabs: nothing
-              here is a panel, and an incomplete tab pattern announces a
-              promise it does not keep.
+              a head. A group of pressed buttons, not tabs: nothing here is a
+              panel, and an incomplete tab pattern announces a promise it does
+              not keep.
             */}
             <span className="segmented" role="group" aria-label="Whose figures">
               {(['household', 'mine'] as const).map((option) => (
@@ -435,154 +487,17 @@ export function OverviewScreen({
             ) : (
               <span className="note">as at {asOf}</span>
             )}
+            {display !== base && <span className="note">read in {display}</span>}
             {/*
-              Said once, on the heading, rather than as a paragraph under every
-              figure it describes. Somebody who adds these up and finds they do
-              not match a statement needs it; everybody else has read it once.
+              What net worth IS, said once, on the heading. It was four lines of
+              prose in the card body, larger than the figure it described.
             */}
-            <Caveat tone="info" label="How these totals are put together">
-              Totalled per currency, untouched by any rate. These are what each holding is actually
-              worth in what it is actually priced in, which is the number that does not move when a
-              rate is corrected.
-            </Caveat>
-            <button
-              type="button"
-              className="iconbtn"
-              aria-pressed={privacy}
-              aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
-              onClick={onPrivacy}
-            >
-              <EyeIcon crossed={privacy} />
-            </button>
-          </span>
-        }
-      >
-        {totals.length === 0 ? (
-          <p className="note">
-            No holdings yet. Add one on the Holdings screen and record what it is worth; the figures
-            here follow from those readings and from nothing else.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4.5">
-            {totals.map((total) => (
-              <div key={total.currency}>
-                <p
-                  className="figure"
-                  style={{ color: 'var(--ink)' }}
-                  title={exactMoney(total.value, privacy) ?? undefined}
-                >
-                  {formatMoney(total.value, { privacy, compact: true })}
-                  {total.unvalued > 0 && (
-                    <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
-                      {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never
-                      been valued, so this total is short by whatever they are worth. The gain is
-                      measured only against what was valued, not against everything bought.
-                    </Caveat>
-                  )}
-                </p>
-                <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
-                  <Stat label="Invested">
-                    {formatMoney(total.investedValued, { privacy })}
-                    {total.costShort > 0 && (
-                      <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
-                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
-                        the history, so what was paid for the earlier units is not in this figure.
-                        It is the sum of the purchases that were recorded, and nothing has been made
-                        up to fill the rest.
-                      </Caveat>
-                    )}
-                  </Stat>
-                  {total.gain === null ? (
-                    // Said where the figure would be. Empty space would read as
-                    // a portfolio with no return, and a number as one that made
-                    // a fortune; neither happened.
-                    <Stat label="Unrealised gain">
-                      <span className="note">not shown</span>
-                      <Caveat tone="warn" label={`Why there is no ${total.currency} gain`}>
-                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
-                        the history. {RETURN_REFUSED_BECAUSE} The total above is right, because the
-                        units are the statement&rsquo;s own count; it is the cost that is short.
-                      </Caveat>
-                    </Stat>
-                  ) : (
-                    <>
-                      <Stat
-                        label={total.gain.minor < 0n ? 'Unrealised loss' : 'Unrealised gain'}
-                        tone={total.gain.minor < 0n ? 'loss' : 'gain'}
-                      >
-                        {formatMoney(total.gain, { privacy })}
-                      </Stat>
-                      <div className="stat">
-                        <dt className="micro-label">Change</dt>
-                        <dd>
-                          <Delta
-                            direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
-                          >
-                            {total.investedValued.minor === 0n
-                              ? 'no cost recorded'
-                              : `${String(
-                                  Math.round(
-                                    (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
-                                  ) / 10,
-                                )}% on cost`}
-                          </Delta>
-                        </dd>
-                      </div>
-                    </>
-                  )}
-                </dl>
-
-              </div>
-            ))}
-          </div>
-        )}
-
-      </Card>
-
-      <Card
-        title="Net worth"
-        aside={asOf === null ? undefined : <span className="note">as at {asOf}</span>}
-      >
-        {worth.ok ? (
-          <>
-            <p
-              className="figure"
-              style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
-              // The unabbreviated figure, for anybody who wants the digits.
-              // Null under privacy: a tooltip that gives away what the bullets
-              // hide would make the whole mode decorative.
-              title={exactMoney(worth.amount, privacy) ?? undefined}
-            >
-              {formatMoney(worth.amount, { privacy, compact: true })}
-              {/*
-                Both of these qualify this number and neither is decoration, so
-                they ride on it rather than under the card.
-              */}
-              {personalTotalsFailed && (
-                <Caveat tone="warn" label="Why this total may be short">
-                  The private holdings of other members could not be read, so this figure may be
-                  short by whatever they are worth. It is not that there are none — the request
-                  failed. Reload before relying on this number.
-                </Caveat>
-              )}
-              {!personalTotalsFailed && hiddenUnvalued > 0 && scope === 'household' && (
-                <Caveat tone="warn" label="Why this household total is short">
-                  {hiddenUnvalued}{' '}
-                  {hiddenUnvalued === 1
-                    ? 'private holding of another member has'
-                    : 'private holdings of other members have'}{' '}
-                  never been valued, so this total is short by whatever they are worth. Only they
-                  can record a value for them.
-                </Caveat>
-              )}
-            </p>
-            <p className="note mt-2">
+            <Caveat tone="info" label="What net worth is">
               {scope === 'household'
                 ? 'Everything the household owns'
                 : 'Everything you own, and the debts in your name'}
               , converted at the rate for {asOf ?? today}, less everything owed.
               {display !== base && ` Read in ${display}; this household's own currency is ${base}.`}
-              {shownDebts.length === 0 && ' No outstanding balances have been recorded, so nothing is subtracted.'}
               {scope === 'household' && hiddenAssets.length > 0 && (
                 <>
                   {' '}
@@ -597,38 +512,96 @@ export function OverviewScreen({
                   leaving it out would make your own figure better than it is.
                 </>
               )}
-            </p>
-          </>
+            </Caveat>
+            <button
+              type="button"
+              className="iconbtn"
+              aria-pressed={privacy}
+              aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
+              onClick={onPrivacy}
+            >
+              <EyeIcon crossed={privacy} />
+            </button>
+          </span>
+        }
+      >
+        {worth.ok ? (
+          /*
+            A div and not a p: a caveat opens a popover, and a div may not sit
+            inside a paragraph.
+          */
+          <div
+            className="figure"
+            style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
+            // The unabbreviated figure, for anybody who wants the digits.
+            // Null under privacy: a tooltip that gives away what the bullets
+            // hide would make the whole mode decorative.
+            title={exactMoney(worth.amount, privacy) ?? undefined}
+          >
+            <Amount value={worth.amount} privacy={privacy} compact />
+            {/*
+              Each of these qualifies this number and none is decoration, so
+              they ride on it, and each appears only when it applies.
+            */}
+            {personalTotalsFailed && (
+              <Caveat tone="warn" label="Why this total may be short">
+                The private holdings of other members could not be read, so this figure may be short
+                by whatever they are worth. It is not that there are none — the request failed.
+                Reload before relying on this number.
+              </Caveat>
+            )}
+            {!personalTotalsFailed && hiddenUnvalued > 0 && scope === 'household' && (
+              <Caveat tone="warn" label="Why this household total is short">
+                {hiddenUnvalued}{' '}
+                {hiddenUnvalued === 1
+                  ? 'private holding of another member has'
+                  : 'private holdings of other members have'}{' '}
+                never been valued, so this total is short by whatever they are worth. Only they can
+                record a value for them.
+              </Caveat>
+            )}
+            {shownUnbalanced > 0 && (
+              <Caveat tone="warn" label="Why this figure may be high">
+                {shownUnbalanced} {shownUnbalanced === 1 ? 'loan has' : 'loans have'} no outstanding
+                balance recorded, so nothing is subtracted for{' '}
+                {shownUnbalanced === 1 ? 'it' : 'them'}. This figure is high by whatever is still
+                owed. Record the balance on FIRE.
+              </Caveat>
+            )}
+            {shownUnbalanced === 0 && shownDebts.length === 0 && (
+              <Caveat tone="info" label="Why nothing is subtracted">
+                No debts are recorded, so nothing is subtracted. If the household owes anything,
+                record it under loans on FIRE and it comes off this figure.
+              </Caveat>
+            )}
+          </div>
         ) : (
           <>
             {/*
               The figures that exist, and the reason they do not add up, on
               them. The refusal is what it always was — a total short by an
               amount nobody can see is worse than no total — but it is a mark
-              on the number now rather than a paragraph standing in place of
-              one.
+              on the number rather than a paragraph standing in place of one.
             */}
-            <p className="figure" style={{ color: 'var(--ink)' }}>
+            <div className="figure" style={{ color: 'var(--ink)' }}>
               {totals.length === 0
                 ? 'nothing valued yet'
-                : totals
-                    .map((total) => formatMoney(total.value, { privacy, compact: true }))
-                    .join('  +  ')}
+                : totals.map((total, index) => (
+                    <span key={total.currency}>
+                      {index > 0 && '  +  '}
+                      <Amount value={total.value} privacy={privacy} compact />
+                    </span>
+                  ))}
               <Caveat tone="warn" label="Why these do not add into one figure">
                 {worth.missing.length === 1
                   ? 'One rate is missing: '
                   : String(worth.missing.length) + ' rates are missing: '}
                 {worth.missing.map((pair) => pair.base + ' to ' + pair.quote).join(', ')}. Rather
                 than show a total that quietly leaves the unconvertible holdings out, there is no
-                total — a number short by an amount nobody can see is worse than no number.
+                total — a number short by an amount nobody can see is worse than no number. Record
+                one and these become a single figure, less everything owed.
               </Caveat>
-            </p>
-            <p className="note mt-2">
-              Held in{' '}
-              {totals.length === 2 ? 'two currencies' : String(totals.length) + ' currencies'} with
-              no rate between them. Record one and these become a single figure, less everything
-              owed.
-            </p>
+            </div>
 
             {canClose && (
               <button
@@ -689,6 +662,103 @@ export function OverviewScreen({
         )}
       </Card>
 
+      <AssetsOverTime
+        history={history}
+        display={display}
+        privacy={privacy}
+        otherPrivate={hiddenAssets.length > 0}
+      />
+
+      {/*
+        What is held, per currency, at the stat step — 17px, not the hero's.
+        Totalled in the currency each holding is priced in, untouched by any rate.
+      */}
+      <Card
+        title="Assets"
+        aside={
+          <Caveat tone="info" label="How these totals are put together">
+            Totalled per currency, untouched by any rate. These are what each holding is actually
+            worth in what it is actually priced in, which is the number that does not move when a
+            rate is corrected.
+          </Caveat>
+        }
+      >
+        {totals.length === 0 ? (
+          <p className="note">
+            No holdings yet. Add one on the Holdings screen and record what it is worth; the figures
+            here follow from those readings and from nothing else.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4.5">
+            {totals.map((total) => (
+              <div key={total.currency}>
+                <h3 className="label">{total.currency}</h3>
+                <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-2.5">
+                  <Stat label="Valued">
+                    {formatMoney(total.value, { privacy })}
+                    {total.unvalued > 0 && (
+                      <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
+                        {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never
+                        been valued, so this total is short by whatever they are worth. The gain is
+                        measured only against what was valued, not against everything bought.
+                      </Caveat>
+                    )}
+                  </Stat>
+                  <Stat label="Invested">
+                    {formatMoney(total.investedValued, { privacy })}
+                    {total.costShort > 0 && (
+                      <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
+                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
+                        the history, so what was paid for the earlier units is not in this figure.
+                        It is the sum of the purchases that were recorded, and nothing has been made
+                        up to fill the rest.
+                      </Caveat>
+                    )}
+                  </Stat>
+                  {total.gain === null ? (
+                    // Said where the figure would be. Empty space would read as
+                    // a portfolio with no return, and a number as one that made
+                    // a fortune; neither happened.
+                    <Stat label="Unrealised gain">
+                      <Absent label={`Why there is no ${total.currency} gain`}>
+                        {shortPositionsPhrase(total.costShort)} a statement that covers only part of
+                        the history. {RETURN_REFUSED_BECAUSE} The value above is right, because the
+                        units are the statement&rsquo;s own count; it is the cost that is short.
+                      </Absent>
+                    </Stat>
+                  ) : (
+                    <>
+                      <Stat
+                        label={total.gain.minor < 0n ? 'Unrealised loss' : 'Unrealised gain'}
+                        tone={total.gain.minor < 0n ? 'loss' : 'gain'}
+                      >
+                        {formatMoney(total.gain, { privacy })}
+                      </Stat>
+                      <div className="stat">
+                        <dt className="label">Change</dt>
+                        <dd>
+                          <Delta
+                            direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
+                          >
+                            {total.investedValued.minor === 0n
+                              ? 'no cost recorded'
+                              : `${String(
+                                  Math.round(
+                                    (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
+                                  ) / 10,
+                                )}% on cost`}
+                          </Delta>
+                        </dd>
+                      </div>
+                    </>
+                  )}
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {allocation.length > 0 && (
         <Card
           title="Allocation"
@@ -708,65 +778,69 @@ export function OverviewScreen({
           <div className="flex flex-col gap-4.5">
             {allocation.map((group) => (
               <div key={group.currency}>
-                {allocation.length > 1 && <p className="micro-label">{group.currency}</p>}
-                <ul className={allocation.length > 1 ? 'mt-1.5' : undefined}>
-                  {group.rows.map((row, index) => (
-                    <li key={row.kind} className="alloc-row">
-                      <span
-                        className="alloc-dot"
-                        aria-hidden="true"
-                        style={{ background: SERIES[index % SERIES.length] ?? 'var(--c1)' }}
-                      />
-                      <span className="min-w-0">
-                        {/*
-                          A name worth clicking. A class here is a total; the
-                          holdings behind it are on the other screen, and
-                          somebody clicking "Bonds" is asking to see them.
-                        */}
-                        <button
-                          type="button"
-                          className="alloc-name block underline"
-                          onClick={() => {
-                            onOpenHoldings({ kind: row.kind, currency: group.currency });
-                          }}
-                        >
-                          {kindLabel(row.kind)}
-                        </button>
-                        <span className="alloc-share block">
-                          {(row.share * 100).toFixed(1)}% of what is valued
-                        </span>
-                      </span>
-                      <span className="alloc-figures">
-                        <span className="alloc-value">{formatMoney(row.value, { privacy })}</span>
-                        {/*
-                          A return only where a cost was recorded. Null is not 0% —
-                          one is silence about a figure nobody entered, the other
-                          is a claim that it has gone nowhere.
-                        */}
-                        {row.returnOnCost !== null && row.gain !== null && (
-                          <Delta
-                            direction={
-                              row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
-                            }
+                {allocation.length > 1 && <p className="label">{group.currency}</p>}
+                {/* The ring beside the rows, not instead of them: it shows size, and the rows show what it is of. */}
+                <div className={allocation.length > 1 ? 'alloc-layout mt-1.5' : 'alloc-layout'}>
+                  <AllocationDonut rows={group.rows} currency={group.currency} privacy={privacy} />
+                  <ul className="alloc-rows">
+                    {group.rows.map((row) => (
+                      <li key={row.kind} className="alloc-row">
+                        <span
+                          className="alloc-dot"
+                          aria-hidden="true"
+                          style={{ background: kindColour(row.kind) }}
+                        />
+                        <span className="min-w-0">
+                          {/*
+                            A name worth clicking. A class here is a total; the
+                            holdings behind it are on the other screen, and
+                            somebody clicking "Bonds" is asking to see them.
+                          */}
+                          <button
+                            type="button"
+                            className="alloc-name block underline"
+                            onClick={() => {
+                              onOpenHoldings({ kind: row.kind, currency: group.currency });
+                            }}
                           >
-                            {(row.returnOnCost * 100).toFixed(1)}%
-                          </Delta>
-                        )}
-                        {/*
-                          A refused return says so. The column is otherwise
-                          silent for a class with no cost recorded, and this is
-                          a different silence: there is a cost, and it is short.
-                        */}
-                        {row.costShort > 0 && (
-                          <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
-                            {shortPositionsPhrase(row.costShort)} a statement that covers only part
-                            of the history. {RETURN_REFUSED_BECAUSE}
-                          </Caveat>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                            {kindLabel(row.kind)}
+                          </button>
+                          <span className="alloc-share block">
+                            {(row.share * 100).toFixed(1)}% of what is valued
+                          </span>
+                        </span>
+                        <span className="alloc-figures">
+                          <span className="alloc-value">{formatMoney(row.value, { privacy })}</span>
+                          {/*
+                            A return only where a cost was recorded. Null is not 0% —
+                            one is silence about a figure nobody entered, the other
+                            is a claim that it has gone nowhere.
+                          */}
+                          {row.returnOnCost !== null && row.gain !== null && (
+                            <Delta
+                              direction={
+                                row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
+                              }
+                            >
+                              {(row.returnOnCost * 100).toFixed(1)}%
+                            </Delta>
+                          )}
+                          {/*
+                            A refused return says so. The column is otherwise
+                            silent for a class with no cost recorded, and this is
+                            a different silence: there is a cost, and it is short.
+                          */}
+                          {row.costShort > 0 && (
+                            <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
+                              {shortPositionsPhrase(row.costShort)} a statement that covers only part
+                              of the history. {RETURN_REFUSED_BECAUSE}
+                            </Caveat>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ))}
           </div>

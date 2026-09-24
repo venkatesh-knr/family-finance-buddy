@@ -322,6 +322,27 @@ function formatCompact(value: Money, exponent: number, negative: boolean): strin
 }
 
 /**
+ * A figure and its magnitude suffix, apart.
+ *
+ * `₹5.3 L` as one string leaves the unit wherever the typeface puts it, and in
+ * a wide face that is a gap between the L and the figure it belongs to. A
+ * screen that wants the unit small, muted and welded on (docs/tokens.md §3,
+ * Units) needs the two pieces; this is the same text as `formatMoney`, cut in
+ * one place so the two cannot disagree about what a unit is.
+ *
+ * `unit` is null for a figure shown whole and under privacy, where there is
+ * nothing to weld. The currency symbol is part of the figure, not the unit.
+ */
+export function formatMoneyParts(
+  value: Money,
+  options: FormatMoneyOptions = {},
+): { readonly figure: string; readonly unit: string | null } {
+  const text = formatMoney(value, options);
+  const match = /^(.*\d)\s?(Cr|L|K|M|B|T)$/.exec(text);
+  return match === null ? { figure: text, unit: null } : { figure: match[1] ?? text, unit: match[2] ?? null };
+}
+
+/**
  * The figure without abbreviation, for the title on a compact one.
  *
  * Null under privacy. A tooltip that gives away the amount the bullets are

@@ -12,7 +12,7 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Button, Card, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -244,7 +244,22 @@ function QuickAdd({
   );
 
   return (
-    <Card title="Quick add" aside={<span className="note">{listing.household.name}</span>}>
+    <Card
+      title="Quick add"
+      aside={
+        <span className="flex items-center gap-2.5">
+          <span className="note">{listing.household.name}</span>
+          {/*
+            Said once, on the heading, rather than as a paragraph under the form
+            that was read on the first day and scrolled past on every day after.
+          */}
+          <Caveat tone="info" label="How an entry is recorded">
+            Dates are the calendar day in India, whatever this device is set to. Amounts are stored
+            in paise, in {currency}, exactly as entered.
+          </Caveat>
+        </span>
+      }
+    >
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
@@ -288,7 +303,7 @@ function QuickAdd({
         </div>
 
         <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="micro-label">Category</span>
+          <span className="label">Category</span>
           <select
             className="field"
             value={categoryId}
@@ -306,7 +321,7 @@ function QuickAdd({
         </label>
 
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Member</span>
+          <span className="label">Member</span>
           <select
             className="field"
             value={memberId}
@@ -356,10 +371,6 @@ function QuickAdd({
         </div>
       )}
 
-      <p className="note mt-3">
-        Dates are the calendar day in India, whatever this device is set to. Amounts are stored in
-        paise, in {currency}, exactly as entered.
-      </p>
     </Card>
   );
 }
@@ -519,13 +530,13 @@ function StackedRow({
         <span style={{ color: 'var(--ink)' }}>
           {expense.payee ?? <span className="note">No payee</span>}
         </span>
-        <span className="num whitespace-nowrap" style={{ color: 'var(--ink)' }}>
+        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)' }}>
           {formatMoney(expense.amount, { privacy })}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="num note">{formatIsoDate(expense.date)}</span>
+        <span className="tabular-nums note">{formatIsoDate(expense.date)}</span>
         {/*
           The category, which the ledger simply never showed — the id was
           loaded and the name was never resolved, so an entry gave no clue what

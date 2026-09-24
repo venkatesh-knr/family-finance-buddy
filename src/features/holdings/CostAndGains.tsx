@@ -33,7 +33,7 @@ import {
 } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Caveat, Field, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Caveat, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
 import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
 import type { HoldingRow } from './useHoldings.ts';
 import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
@@ -83,10 +83,10 @@ export function CostAndGains({
     <div className="mt-3.5 border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
       <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
-          <dt className="micro-label">Cost of units held</dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dt className="label">Cost of units held</dt>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {cost.amount === null ? (
-              <span className="note">not recorded</span>
+              <Unit>not recorded</Unit>
             ) : (
               formatMoney(cost.amount, { privacy })
             )}
@@ -111,9 +111,9 @@ export function CostAndGains({
         </div>
 
         <div>
-          <dt className="micro-label">Realised</dt>
+          <dt className="label">Realised</dt>
           <dd
-            className="num"
+            className="tabular-nums"
             style={{
               color:
                 realisedGain === null
@@ -124,7 +124,7 @@ export function CostAndGains({
             }}
           >
             {realisedGain === null ? (
-              <span className="note">nothing sold</span>
+              <Unit>nothing sold</Unit>
             ) : (
               <>
                 {/* The sign carries it, never the colour alone. */}
@@ -140,7 +140,9 @@ export function CostAndGains({
                 */}
                 {realisedPercent !== null && <span className="note"> {realisedPercent}</span>}
                 <span className="note">
-                  {' '}over {parcels.length === 1 ? '1 parcel' : `${String(parcels.length)} parcels`}
+                  {' '}
+                  <Unit>over</Unit> <span className="tabular-nums">{parcels.length}</span>{' '}
+                  <Unit>{parcels.length === 1 ? 'parcel' : 'parcels'}</Unit>
                 </span>
               </>
             )}
@@ -324,7 +326,7 @@ function Workings({
 
       {parcels.length > 0 && (
         <div>
-          <h4 className="micro-label">Matched parcels</h4>
+          <h4 className="label">Matched parcels</h4>
           <p className="note mt-1">
             First in, first out, as the Act requires for demat shares and fund units. These are
             worked out fresh every time and never stored: entering a purchase you had forgotten
@@ -432,7 +434,7 @@ function Ledger({
 }) {
   return (
     <div>
-      <h4 className="micro-label">{heading}</h4>
+      <h4 className="label">{heading}</h4>
       {rows.length === 0 ? (
         <p className="note mt-1">{empty}</p>
       ) : (
@@ -456,8 +458,10 @@ function Ledger({
             ) : (
               <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="note">{formatIsoDate(entry.date)}</span>
-                <span className="num">{entry.quantity} units</span>
-                <span className="num" style={{ color: 'var(--ink)' }}>
+                <span>
+                  <span className="tabular-nums">{entry.quantity}</span> <Unit>units</Unit>
+                </span>
+                <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
                   {formatMoney(money(entry.amount.minor, entry.amount.currency), { privacy })}
                 </span>
                 {entry.tag !== null && <Pill tone="neutral">{entry.tag}</Pill>}

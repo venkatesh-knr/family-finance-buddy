@@ -128,7 +128,7 @@ export function SettingsScreen({
               </div>
             </div>
             <label className="flex items-center gap-2">
-              <span className="micro-label">Currency</span>
+              <span className="label">Currency</span>
               <select
                 className="field w-auto"
                 value={displayCurrency === '' ? base : displayCurrency}

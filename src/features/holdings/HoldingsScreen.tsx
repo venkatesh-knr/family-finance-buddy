@@ -21,7 +21,7 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Field, Amount, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -189,7 +189,7 @@ export function HoldingsScreen({
                     style={{ color: 'var(--ink)' }}
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
                   >
-                    {formatMoney(money(total.value, total.currency), { privacy, compact: true })}
+                    <Amount value={money(total.value, total.currency)} privacy={privacy} compact />
                     {total.unread > 0 && (
                       <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                         {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never
@@ -215,12 +215,11 @@ export function HoldingsScreen({
                       // empty space would read as a portfolio with no return;
                       // a number would read as a portfolio that made 1,300%.
                       <Stat label="Total return">
-                        <span className="note">not shown</span>
-                        <Caveat tone="warn" label={`Why there is no ${total.currency} return`}>
+                        <Absent label={`Why there is no ${total.currency} return`}>
                           {shortPositions(total.short)} a statement that covers only part of the
                           history. {RETURN_REFUSED_BECAUSE} The value above is right, because the
                           units are the statement&rsquo;s own count; it is the cost that is short.
-                        </Caveat>
+                        </Absent>
                       </Stat>
                     ) : (
                       <Stat
@@ -241,7 +240,7 @@ export function HoldingsScreen({
                     )}
                     {total.unread > 0 && (
                       <Stat label="Unread">
-                        {total.unread} {total.unread === 1 ? 'holding' : 'holdings'}
+                        {total.unread} <Unit>{total.unread === 1 ? 'holding' : 'holdings'}</Unit>
                       </Stat>
                     )}
                   </dl>
@@ -263,7 +262,7 @@ export function HoldingsScreen({
         }
         aside={
           <label className="flex items-center gap-2">
-            <span className="micro-label">
+            <span className="label">
               Peak for
               {/*
                 This explained the whole screen from the bottom of it, where
@@ -326,7 +325,7 @@ export function HoldingsScreen({
             )}
 
             <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-              <span className="micro-label">Sort</span>
+              <span className="label">Sort</span>
               <span className="segmented" role="group" aria-label="Sort holdings">
                 {(['value', 'name', 'member'] as const).map((option) => (
                   <button
@@ -410,7 +409,7 @@ function HoldingCard({
         <div className="flex flex-wrap items-center gap-2">
           <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{holding.instrument.name}</span>
           {holding.instrument.symbol !== null && (
-            <span className="num note">{holding.instrument.symbol}</span>
+            <span className="note">{holding.instrument.symbol}</span>
           )}
           {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
           {/*
@@ -427,17 +426,18 @@ function HoldingCard({
             </Pill>
           )}
         </div>
-        <span className="num note">
-          {formatQuantity(row.unitsHeld)} units · {holding.member.displayName}
+        <span className="note">
+          <span className="tabular-nums">{formatQuantity(row.unitsHeld)}</span> units ·{' '}
+          {holding.member.displayName}
         </span>
       </header>
 
       <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
         <div>
-          <dt className="micro-label">Latest reading</dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dt className="label">Latest reading</dt>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {latest === null ? (
-              <span className="note">none yet</span>
+              <Unit>none yet</Unit>
             ) : (
               <>
                 {formatMoney(money(latest.amountMinor, currency), { privacy })}{' '}
@@ -448,7 +448,7 @@ function HoldingCard({
         </div>
 
         <div>
-          <dt className="micro-label">
+          <dt className="label">
             Peak {peak.year}
             {/*
               Only against a figure. `isProvisional` means "a lower bound,
@@ -458,9 +458,9 @@ function HoldingCard({
             */}
             {peak.isProvisional && peak.peak !== null && ' (provisional)'}
           </dt>
-          <dd className="num" style={{ color: 'var(--ink)' }}>
+          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
             {peak.peak === null ? (
-              <span className="note">not known</span>
+              <Unit>not known</Unit>
             ) : (
               <>
                 {formatMoney(peak.peak, { privacy })}{' '}
@@ -819,7 +819,7 @@ function AddHolding({
         </div>
 
         <label className="flex w-full sm:w-[130px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Kind</span>
+          <span className="label">Kind</span>
           <select
             className="field"
             value={kind}
@@ -842,7 +842,7 @@ function AddHolding({
           produce a currency that does not exist.
         */}
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Priced in</span>
+          <span className="label">Priced in</span>
           <select
             className="field"
             value={currency}
@@ -855,7 +855,7 @@ function AddHolding({
         </label>
 
         <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">
+          <span className="label">
             Tracks
             {/*
               The distinction that made the two boxes look broken beside each
@@ -896,7 +896,7 @@ function AddHolding({
         </div>
 
         <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="micro-label">Member</span>
+          <span className="label">Member</span>
           <select
             className="field"
             value={memberId}
@@ -1114,8 +1114,8 @@ function QuotedValue({
 
   return (
     <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-      <span className="micro-label">Quoted</span>
-      <span className="num" style={{ color: 'var(--ink)' }}>
+      <span className="label">Quoted</span>
+      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
         {formatMoney(quoted.value, { privacy: false })}
       </span>
       <span className="note">

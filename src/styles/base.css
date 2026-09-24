@@ -67,6 +67,23 @@
     font-weight: 600;
   }
 
+  /*
+   * A label: over a stat, beside a field, above a caption (docs/tokens.md §3).
+   * Sentence case in the sans face, at the caption's colour. Nothing about it
+   * is a signal, because a signal on every label is a texture.
+   */
+  .label {
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+
+  /*
+   * The table column header, and only that: uppercase, letterspaced, mono.
+   * Kept as its own class for the tables that are not `.tbl`.
+   */
   .micro-label {
     color: var(--muted);
     font-family: var(--font-mono);
@@ -237,6 +254,69 @@
   }
 
   /*
+   * The mark on a Notice or a Problem: the same ring and the same `!` as a
+   * caveat's, but not a control, so it takes no tap area and no cursor. Sized in
+   * em so it follows the text beside it at 200%.
+   */
+  .notice-mark {
+    align-items: center;
+    border: 1px solid currentcolor;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    flex: none;
+    font-size: 0.6875em;
+    font-weight: 700;
+    height: 1.45em;
+    justify-content: center;
+    letter-spacing: normal;
+    line-height: 1;
+    margin-block-start: 0.15em;
+    min-width: 1.45em;
+  }
+
+  /*
+   * A figure that is deliberately not given. It takes the size and weight of the
+   * figure it stands for and only the colour changes, to the caption colour, so
+   * a dash reads as an absence and not as a very small number.
+   */
+  .absent {
+    color: var(--muted);
+  }
+
+  /*
+   * A word beside a figure, in the face a word takes. The rest of a note's
+   * treatment — size, colour — is the same, so it can sit inside one or stand
+   * alone; what it undoes is the mono a figure's element would have imposed.
+   */
+  .unit {
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.78125rem;
+    font-variant-numeric: normal;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  .unit-inherit {
+    color: inherit;
+  }
+
+  /*
+   * A magnitude suffix — the L in ₹5.3 L (docs/tokens.md §3, Units).
+   *
+   * Sized in em so it follows the figure, and floored in rem so a 17px stat's
+   * unit is not set below the caption step; muted, and the same weight as the
+   * figure so it reads as part of it. No space either side: the figure and the
+   * unit are one thing.
+   */
+  .amount-unit {
+    color: var(--muted);
+    font-size: max(0.6em, 0.6875rem);
+    font-weight: 500;
+  }
+
+  /*
    * A caveat marker, and the panel it opens.
    *
    * The mark is sized in em so it grows with the figure beside it rather than
@@ -284,14 +364,21 @@
     inset: -0.85em;
   }
 
-  /* A figure that is wrong. The triangle carries it as much as the coral. */
+  /*
+   * A figure that is wrong or incomplete: a `!` in the attention colour.
+   *
+   * Not coral, and not a triangle. Coral is a loss and ▲ is a gain
+   * (docs/tokens.md §2), so a marker wearing either told somebody a position was
+   * down when it was merely incompletely valued. Brass is the attention colour
+   * and is not spoken for.
+   */
   .caveat-warn {
-    color: var(--coral);
+    color: var(--brass);
   }
 
-  /* Worth knowing about a figure that is right. A circle, and the plan colour. */
+  /* Worth knowing about a figure that is right: a quiet `i`, in the caption colour. */
   .caveat-info {
-    color: var(--brass);
+    color: var(--muted);
   }
 
   .caveat-panel {
@@ -428,7 +515,7 @@
 
   .setrow .sv {
     color: var(--ink-2);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 0.7875rem;
   }
 
@@ -653,7 +740,8 @@
   }
 
   /*
-   * The headline figure (docs/tokens.md §3).
+   * The headline figure (docs/tokens.md §3), in the sans face with tabular
+   * digits: the alignment guarantee of mono without its texture at this size.
    *
    * A class rather than an inline size, because it was written inline four
    * times at two different values — 32px on Overview, 28px on Plan — which is
@@ -661,7 +749,7 @@
    * enough that a lakh figure fits a 375px screen with room around it.
    */
   .figure {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: clamp(1.4375rem, 5vw, 2.125rem);
     font-variant-numeric: tabular-nums;
     font-weight: 600;
@@ -670,7 +758,7 @@
   }
 
   /*
-   * Stat tile. A micro-label above a mono figure (docs/tokens.md §5).
+   * Stat tile. A label above a figure in the sans face (docs/tokens.md §5).
    *
    * Three screens hand-rolled this before it existed, which is how the label
    * ended up three different sizes. Sign carries the meaning as well as
@@ -683,7 +771,7 @@
 
   .stat > .v {
     color: var(--ink);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 1.0625rem;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
@@ -723,6 +811,7 @@
     border-radius: var(--radius-pill);
     display: inline-flex;
     font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
     gap: 6px;
     padding: 3px 9px;
@@ -744,7 +833,7 @@
   }
 
   /*
-   * Table (§5). Header in surface-2 with mono micro-labels, hairline rows,
+   * Table (§5). Header in surface-2 with a mono micro-label, hairline rows,
    * and a total row that is heavier because it is a different kind of claim.
    * The wrapper scrolls on its own so the page body never does.
    */
@@ -804,6 +893,44 @@
    * palette a chart would have used, so the class keeps its identity when a
    * donut arrives.
    */
+  /*
+   * The ring stacks above the rows on a phone and sits beside them when there
+   * is room. It is a share of the width and not a fixed size, so it cannot push
+   * the card wider than the screen at any text size.
+   */
+  .alloc-layout {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.75rem;
+  }
+
+  .alloc-donut {
+    flex: none;
+    height: auto;
+    margin-inline: auto;
+    width: min(13rem, 100%);
+  }
+
+  .alloc-rows {
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+
+  .donut-label {
+    fill: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 11px;
+  }
+
+  .donut-total {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
   .alloc-row {
     align-items: center;
     border-bottom: 1px solid var(--line);
@@ -815,6 +942,24 @@
 
   .alloc-row:last-child {
     border-bottom: none;
+  }
+
+  /* A chart is drawn at the width it has, in real pixels, so its text is real text. */
+  .chart {
+    width: 100%;
+  }
+
+  .chart-tick {
+    fill: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+  }
+
+  .chart-end {
+    fill: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
   }
 
   .alloc-dot {
@@ -846,7 +991,7 @@
 
   .alloc-value {
     color: var(--ink);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }

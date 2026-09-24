@@ -23,7 +23,7 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Caveat, Field, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, Field, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -173,7 +173,7 @@ function AnnualSummary({
         style={{ color: 'var(--ink)' }}
         title={exactMoney(annual.total, privacy) ?? undefined}
       >
-        {formatMoney(annual.total, { privacy, compact: true })}
+        <Amount value={annual.total} privacy={privacy} compact />
       </p>
 
       <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
@@ -277,7 +277,7 @@ function FireCard({
             ask for and recommends nothing.
           </Caveat>
         <label className="flex items-center gap-2">
-          <span className="micro-label">Retiring in</span>
+          <span className="label">Retiring in</span>
           <input
             className="field field-num w-[62px]"
             inputMode="numeric"
@@ -301,7 +301,7 @@ function FireCard({
             style={{ color: 'var(--ink)' }}
             title={exactMoney(read(target.target), privacy) ?? undefined}
           >
-            {formatMoney(read(target.target), { privacy, compact: true })}
+            <Amount value={read(target.target)} privacy={privacy} compact />
           </p>
           <p className="note">
             what {multiplier}× your spending would cost in <strong>{target.year}</strong>, if prices
@@ -317,7 +317,7 @@ function FireCard({
             something the app asserts and becomes something it shows.
           */}
           <p className="note mt-2.5">
-            <span className="num">{formatMoney(read(annual.total), { privacy })}</span> a year, ×{' '}
+            <span className="tabular-nums">{formatMoney(read(annual.total), { privacy })}</span> a year, ×{' '}
             {multiplier}, compounded at {inflationPct}% for{' '}
             {target.year - (ladder[0]?.year ?? target.year)}{' '}
             {target.year - (ladder[0]?.year ?? target.year) === 1 ? 'year' : 'years'}.
@@ -327,7 +327,7 @@ function FireCard({
 
       <div className="mb-3.5 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
-          <span className="micro-label">Multiple of annual spending</span>
+          <span className="label">Multiple of annual spending</span>
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="segmented" role="group" aria-label="Multiplier">
               {MULTIPLIERS.map((option) => (
@@ -358,7 +358,7 @@ function FireCard({
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="micro-label">Inflation</span>
+          <span className="label">Inflation</span>
           <span className="flex items-center gap-2">
             <input
               className="field field-num w-[62px]"
@@ -507,7 +507,7 @@ function Categories({
           {groups.map((group) =>
             group.rows.length === 0 ? null : (
               <div key={group.nature} className="flex flex-col gap-2.5">
-                <span className="micro-label">
+                <span className="label">
                   {group.label} · {group.rows.length}
                 </span>
                 {group.rows.map((row) => (
@@ -659,8 +659,8 @@ function BudgetField({
   if (!editable) {
     return (
       <span className="w-[112px] shrink-0">
-        <span className="micro-label">{label}</span>
-        <span className="num block" style={{ color: 'var(--ink-2)' }}>
+        <span className="label">{label}</span>
+        <span className="tabular-nums block" style={{ color: 'var(--ink-2)' }}>
           {current === null ? <span className="note">—</span> : formatMoney(current, { privacy })}
         </span>
       </span>
@@ -669,7 +669,7 @@ function BudgetField({
 
   return (
     <label className="flex w-[112px] shrink-0 flex-col gap-1">
-      <span className="micro-label">{label}</span>
+      <span className="label">{label}</span>
       <input
         className="field field-num"
         inputMode="decimal"
@@ -757,7 +757,7 @@ function SuggestionPicker({
 
         return (
           <div key={group.group} className="flex flex-col gap-1.5">
-            <span className="micro-label">
+            <span className="label">
               {group.group}
               {/*
                 Said where the choice is made, not in a note somebody scrolls
@@ -865,7 +865,7 @@ function NewCategory({
         />
       </div>
       <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-        <span className="micro-label">Nature</span>
+        <span className="label">Nature</span>
         <select
           className="field"
           value={nature}
@@ -974,7 +974,7 @@ function CommitmentRow({
         <Pill tone="neutral">{kind}</Pill>
         {inactive && <Pill tone="due">not counted</Pill>}
       </span>
-      <span className="num" style={{ color: 'var(--ink)' }}>
+      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
         {amount === null ? <span className="note">not set</span> : formatMoney(amount, { privacy })}
         <span className="note"> / {cadence.replace(/_/g, ' ')}</span>
       </span>
@@ -1047,7 +1047,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
       }}
     >
       <label className="flex w-full flex-col gap-1.5 sm:w-[130px] sm:shrink-0">
-        <span className="micro-label">Add</span>
+        <span className="label">Add</span>
         <select
           className="field"
           value={what}
@@ -1075,7 +1075,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
       </div>
 
       <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-        <span className="micro-label">Kind</span>
+        <span className="label">Kind</span>
         <select
           className="field"
           value={kind}
@@ -1106,7 +1106,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
       </div>
 
       <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-        <span className="micro-label">Every</span>
+        <span className="label">Every</span>
         <select
           className="field"
           value={cadence}

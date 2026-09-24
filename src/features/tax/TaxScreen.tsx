@@ -32,7 +32,7 @@ import { taxYearBounds, taxYearOf } from '../../domain/budget.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { taxClassLabel } from '../../ui/labels.ts';
-import { Bar, Card, Caveat, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Bar, Card, Caveat, Notice, Pill, Problem, Qualifier, Stat } from '../../ui/primitives.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
 import { IncomeTaxCard } from './IncomeTaxCard.tsx';
 import { taxLotsFor, type TaxLot } from './taxLots.ts';
@@ -147,7 +147,7 @@ export function TaxScreen({
         aside={
           <span className="flex flex-wrap items-center gap-2.5">
             <label className="flex items-center gap-2">
-              <span className="micro-label">Year</span>
+              <span className="label">Year</span>
               <select
                 className="field w-[130px]"
                 value={fy}
@@ -163,7 +163,7 @@ export function TaxScreen({
               </select>
             </label>
             <label className="flex items-center gap-2">
-              <span className="micro-label">
+              <span className="label">
                 Whose return
                 <Caveat tone="info" label="Why this is one person at a time">
                   Tax is filed per person, and the ₹1.25 lakh equity allowance is each
@@ -216,34 +216,37 @@ export function TaxScreen({
       )}
 
       <Card title="Capital gains" aside={<span className="note">netted across asset classes</span>}>
-        <h3 className="micro-label">Listed shares and equity funds</h3>
+        <h3 className="label">Listed shares and equity funds</h3>
         <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
           <Stat label="Long term, net">{signed(gains.equityLong.net, privacy)}</Stat>
           <Stat label="Short term, net">{signed(gains.equityShort.net, privacy)}</Stat>
           <Stat label="Allowance used">
             {allowance === null ? (
-              <>
-                <span className="note">not known</span>
-                <Caveat tone="warn" label="Why the allowance is not shown">
-                  No rule for the ₹1.25 lakh equity allowance covers this tax year, so what is
-                  taxable cannot be said. Nothing is assumed in its place.
-                </Caveat>
-              </>
+              <Absent label="Why the allowance is not shown">
+                No rule for the ₹1.25 lakh equity allowance covers this tax year, so what is
+                taxable cannot be said. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(allowance.used, { privacy })}{' '}
-                <span className="note">of {formatMoney(allowance.available, { privacy })}</span>
+                <Qualifier word="of">{formatMoney(allowance.available, { privacy })}</Qualifier>
               </>
             )}
           </Stat>
           <Stat label="Taxable, long term">
             {tax.equityLong === null ? (
-              <span className="note">not shown</span>
+              <Absent label="Why long-term tax is not shown">
+                The ₹1.25 lakh equity allowance for this year is not in the rules, so what is
+                taxable long term cannot be said. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(tax.equityLong.taxable, { privacy })}
                 {tax.equityLong.ratePct !== null && (
-                  <span className="note"> at {rateText(tax.equityLong.ratePct)}</span>
+                  <>
+                    {' '}
+                    <Qualifier word="at">{rateText(tax.equityLong.ratePct)}</Qualifier>
+                  </>
                 )}
               </>
             )}
@@ -251,7 +254,10 @@ export function TaxScreen({
           <Stat label="Taxable, short term">
             {formatMoney(tax.equityShort.taxable, { privacy })}
             {tax.equityShort.ratePct !== null && (
-              <span className="note"> at {rateText(tax.equityShort.ratePct)}</span>
+              <>
+                {' '}
+                <Qualifier word="at">{rateText(tax.equityShort.ratePct)}</Qualifier>
+              </>
             )}
           </Stat>
         </dl>
@@ -259,7 +265,7 @@ export function TaxScreen({
         {otherActivity && (
           <>
             <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
-            <h3 className="micro-label">
+            <h3 className="label">
               Gold and unlisted shares
               <Caveat tone="info" label="How these differ from equity">
                 Long term is two years, not one, and the gain is taxed at 12.5% with no allowance —
@@ -272,7 +278,10 @@ export function TaxScreen({
               <Stat label="Taxable, long term">
                 {formatMoney(tax.otherLong.taxable, { privacy })}
                 {tax.otherLong.ratePct !== null && (
-                  <span className="note"> at {rateText(tax.otherLong.ratePct)}</span>
+                  <>
+                    {' '}
+                    <Qualifier word="at">{rateText(tax.otherLong.ratePct)}</Qualifier>
+                  </>
                 )}
               </Stat>
               <Stat label="Short term, net">{signed(gains.otherShort.net, privacy)}</Stat>
@@ -305,13 +314,10 @@ export function TaxScreen({
           )}
           <Stat label="Tax on gains at their own rates">
             {tax.total === null ? (
-              <>
-                <span className="note">not shown</span>
-                <Caveat tone="warn" label="Why there is no tax figure">
-                  A rate or the allowance for this year is missing from the rules, so a total would
-                  be short by something that cannot be named. Nothing is assumed in its place.
-                </Caveat>
-              </>
+              <Absent label="Why there is no tax figure">
+                A rate or the allowance for this year is missing from the rules, so a total would
+                be short by something that cannot be named. Nothing is assumed in its place.
+              </Absent>
             ) : (
               <>
                 {formatMoney(tax.total, { privacy })}
@@ -362,13 +368,13 @@ export function TaxScreen({
             className="grid items-center gap-x-3"
             style={{ gridTemplateColumns: 'minmax(90px, 1fr) 3fr 110px' }}
           >
-            <span className="micro-label">Long-term allowance</span>
+            <span className="label">Long-term allowance</span>
             <Bar
               value={Number(allowance.used.minor)}
               target={Number(allowance.available.minor)}
               label="Long-term equity allowance used"
             />
-            <span className="num text-right">{formatMoney(allowance.used, { privacy })}</span>
+            <span className="tabular-nums text-right">{formatMoney(allowance.used, { privacy })}</span>
           </div>
           {/* A div, not a p: the caveat opens a popover, and a div may not sit inside a p. */}
           <div className="sm mt-2">
@@ -430,7 +436,7 @@ export function TaxScreen({
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{lot.holdingName}</span>
-                  <span className="num">{signed(lot.parcel.gain, privacy)}</span>
+                  <span className="tabular-nums">{signed(lot.parcel.gain, privacy)}</span>
                 </div>
                 <p className="note mt-1">
                   Sold {formatIsoDate(lot.parcel.disposedOn)} · bought{' '}

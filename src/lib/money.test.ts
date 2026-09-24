@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatMoney,
+  formatMoneyParts,
   isCurrencyCode,
   isKnownCurrency,
   knownCurrencyCodes,
@@ -254,6 +255,41 @@ describe('formatMoney compact', () => {
   it('changes nothing unless it is asked for', () => {
     // Ledgers, forms and anything reconciled against a statement stay exact.
     expect(formatMoney(inr(12550000000n))).toBe('₹12,55,00,000');
+  });
+});
+
+describe('formatMoneyParts', () => {
+  const inr = (minor: bigint) => money(minor, 'INR');
+
+  it('splits the magnitude suffix from the figure', () => {
+    expect(formatMoneyParts(inr(10750000n), { compact: true })).toEqual({ figure: '₹1.08', unit: 'L' });
+    expect(formatMoneyParts(inr(12550000000n), { compact: true })).toEqual({ figure: '₹12.55', unit: 'Cr' });
+    expect(formatMoneyParts(inr(-12550000000n), { compact: true })).toEqual({ figure: '-₹12.55', unit: 'Cr' });
+  });
+
+  it('splits a dollar figure the same way, from the K and M it already carries', () => {
+    expect(formatMoneyParts(money(10000000n, 'USD'), { compact: true })).toEqual({ figure: '$100', unit: 'K' });
+    expect(formatMoneyParts(money(1000000000n, 'USD'), { compact: true })).toEqual({ figure: '$10', unit: 'M' });
+  });
+
+  it('has no unit when the figure is shown whole', () => {
+    expect(formatMoneyParts(inr(5000000n), { compact: true })).toEqual({ figure: '₹50,000', unit: null });
+    expect(formatMoneyParts(inr(12550000000n))).toEqual({ figure: '₹12,55,00,000', unit: null });
+  });
+
+  it('has no unit under privacy, where the bullets are all there is', () => {
+    expect(formatMoneyParts(inr(12550000000n), { compact: true, privacy: true })).toEqual({
+      figure: '₹•••••',
+      unit: null,
+    });
+  });
+
+  it('is the same text as formatMoney with the unit put back', () => {
+    for (const value of [inr(10750000n), inr(5000000n), money(10000000n, 'USD'), inr(-12550000000n)]) {
+      const parts = formatMoneyParts(value, { compact: true });
+      const joined = parts.unit === null ? parts.figure : `${parts.figure}${value.currency === 'INR' ? ' ' : ''}${parts.unit}`;
+      expect(joined).toBe(formatMoney(value, { compact: true }));
+    }
   });
 });
 

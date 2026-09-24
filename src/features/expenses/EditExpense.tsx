@@ -142,7 +142,7 @@ export function EditExpense({
         </div>
 
         <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="micro-label">Category</span>
+          <span className="label">Category</span>
           <select
             className="field"
             value={categoryId}

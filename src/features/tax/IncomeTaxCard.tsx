@@ -30,7 +30,7 @@ import type { CapitalGains } from '../../domain/capital-gains.ts';
 import { freshness, type Regime, type TaxRule } from '../../domain/tax-rules.ts';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
-import { Card, Caveat, Field, Notice } from '../../ui/primitives.tsx';
+import { Absent, Card, Field, Notice } from '../../ui/primitives.tsx';
 
 const REFUSAL_TEXT: Record<Refusal, string> = {
   'no-rule-for-year':
@@ -104,12 +104,7 @@ export function IncomeTaxCard({
   /** A figure, or "not shown" with the reason it is not — never a blank. */
   const figure = (value: Money | null, why: string) =>
     value === null ? (
-      <>
-        <span className="note">not shown</span>
-        <Caveat tone="warn" label="Why there is no figure here">
-          {why}
-        </Caveat>
-      </>
+      <Absent label="Why there is no figure here">{why}</Absent>
     ) : (
       show(value)
     );
@@ -293,7 +288,7 @@ function Row({
         <dt style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 500 }}>{label}</dt>
         {note !== undefined && <span className="note">{note}</span>}
       </div>
-      <dd className="num" style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 400 }}>
+      <dd className="tabular-nums" style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 400 }}>
         {value}
       </dd>
     </div>
