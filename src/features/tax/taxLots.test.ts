@@ -31,6 +31,10 @@ const rule = (assetClass: AssetClass, months: number): TaxRule => ({
   authority: 'Finance (No. 2) Act 2024, s. 2(42A)',
   bandFromMinor: null,
   bandToMinor: null,
+  regime: null,
+  amountMinor: null,
+  subject: null,
+  verifiedOn: null,
 });
 
 const rules: readonly TaxRule[] = [

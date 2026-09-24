@@ -50,6 +50,10 @@ const base = {
   effectiveTo: null,
   bandFromMinor: null,
   bandToMinor: null,
+  regime: null,
+  amountMinor: null,
+  subject: null,
+  verifiedOn: null,
 } as const;
 
 const holdingPeriod = (assetClass: AssetClass, months: number): TaxRule => ({
@@ -590,5 +594,58 @@ describe('capitalGainsTax', () => {
     const tax = taxed([lt('a', inr(100_000), 'gold-1')], disagree);
     expect(tax.otherLong.tax).toBeNull();
     expect(tax.total).toBeNull();
+  });
+});
+
+/**
+ * The basic exemption, used up by capital gains when nothing else uses it.
+ *
+ * For a resident individual whose other income falls short of the basic
+ * exemption limit, the shortfall is set against the gains before they are taxed:
+ * a member with no salary and a small gain owes nothing on it. The order is
+ * short-term equity, then long-term equity, then other long-term — the short-term
+ * gain carries the highest rate. `capitalGainsTax` takes the shortfall as an
+ * amount, because working it out needs the other income, which is not this
+ * module's to know.
+ */
+describe('capitalGainsTax with a basic-exemption shortfall', () => {
+  const taxedWith = (parcels: readonly Parcel[], shortfallRupees: number) =>
+    capitalGainsTax(net(parcels), rules, { basicExemptionShortfall: inr(shortfallRupees) });
+
+  it('does nothing with no shortfall', () => {
+    const tax = taxedWith([lt('a', inr(300_000))], 0);
+    expect(tax.adjustedForBasicExemption).toEqual(inr(0));
+    expect(tax.equityLong?.taxable).toEqual(inr(175_000));
+  });
+
+  it('clears a gain the shortfall covers entirely', () => {
+    // ₹3,00,000 long-term leaves ₹1,75,000 after the allowance; a ₹4,00,000
+    // shortfall covers all of it, and only that much is used.
+    const tax = taxedWith([lt('a', inr(300_000))], 400_000);
+    expect(tax.adjustedForBasicExemption).toEqual(inr(175_000));
+    expect(tax.equityLong?.taxable).toEqual(inr(0));
+    expect(tax.total).toEqual(inr(0));
+  });
+
+  it('takes the short-term equity gain first, then the long-term, then other long-term', () => {
+    // Short ₹1,00,000 · long ₹3,25,000 (₹2,00,000 after the allowance) · gold
+    // long ₹50,000. A ₹2,50,000 shortfall clears the short (1,00,000) and
+    // ₹1,50,000 of the equity long, leaving ₹50,000 there and all of the gold.
+    const tax = taxedWith(
+      [st('s', inr(100_000)), lt('l', inr(325_000)), lt('g', inr(50_000), 'gold-1')],
+      250_000,
+    );
+    expect(tax.adjustedForBasicExemption).toEqual(inr(250_000));
+    expect(tax.equityShort.taxable).toEqual(inr(0));
+    expect(tax.equityLong?.taxable).toEqual(inr(50_000));
+    expect(tax.otherLong.taxable).toEqual(inr(50_000));
+    // 12.5% of 50,000 and of 50,000 = 6,250 + 6,250.
+    expect(tax.total).toEqual(inr(12_500));
+  });
+
+  it('never touches the short-term gold gain, which is income for the slab and not a gain', () => {
+    const tax = taxedWith([st('a', inr(20_000), 'gold-1')], 400_000);
+    expect(tax.adjustedForBasicExemption).toEqual(inr(0));
+    expect(tax.otherShortAtSlab).toEqual(inr(20_000));
   });
 });

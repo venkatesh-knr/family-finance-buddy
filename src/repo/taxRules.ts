@@ -18,11 +18,11 @@ import {
   requireString,
   toBigIntExact,
 } from '../lib/guards.ts';
-import type { AssetClass, TaxRule, Term } from '../domain/tax-rules.ts';
+import type { AssetClass, Regime, TaxRule, Term } from '../domain/tax-rules.ts';
 import type { IsoDate } from '../lib/dates.ts';
 
 const COLUMNS =
-  'jurisdiction, kind, asset_class, months, rate_pct::text, term, effective_from, effective_to, authority, band_from_minor::text, band_to_minor::text';
+  'jurisdiction, kind, asset_class, months, rate_pct::text, term, effective_from, effective_to, authority, band_from_minor::text, band_to_minor::text, regime, amount_minor::text, subject, verified_on';
 
 export async function listTaxRules(): Promise<readonly TaxRule[]> {
   const client = supabase();
@@ -43,6 +43,10 @@ export async function listTaxRules(): Promise<readonly TaxRule[]> {
     const term = optionalString(record['term'], 'tax_rule.term');
     if (term !== null && term !== 'long' && term !== 'short') {
       throw new MalformedRowError('tax_rule.term', `is ${term}, not long or short`);
+    }
+    const regime = optionalString(record['regime'], 'tax_rule.regime');
+    if (regime !== null && regime !== 'old' && regime !== 'new') {
+      throw new MalformedRowError('tax_rule.regime', `is ${regime}, not old or new`);
     }
     return {
       jurisdiction: requireString(record['jurisdiction'], 'tax_rule.jurisdiction'),
@@ -65,6 +69,13 @@ export async function listTaxRules(): Promise<readonly TaxRule[]> {
         record['band_to_minor'] === null || record['band_to_minor'] === undefined
           ? null
           : toBigIntExact(record['band_to_minor'], 'tax_rule.band_to_minor'),
+      regime: regime as Regime | null,
+      amountMinor:
+        record['amount_minor'] === null || record['amount_minor'] === undefined
+          ? null
+          : toBigIntExact(record['amount_minor'], 'tax_rule.amount_minor'),
+      subject: optionalString(record['subject'], 'tax_rule.subject'),
+      verifiedOn: optionalString(record['verified_on'], 'tax_rule.verified_on') as IsoDate | null,
     };
   });
 }

@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { classify, longTermRate, type TaxRule } from './tax-rules.ts';
+import { classify, freshness, longTermRate, type TaxRule } from './tax-rules.ts';
 
 const rules: readonly TaxRule[] = [
   // The regime from 23 July 2024.
@@ -26,6 +26,10 @@ const rules: readonly TaxRule[] = [
     authority: 'Finance (No. 2) Act 2024',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
   {
     jurisdiction: 'IN',
@@ -39,6 +43,10 @@ const rules: readonly TaxRule[] = [
     authority: 'Finance (No. 2) Act 2024',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
   {
     jurisdiction: 'IN',
@@ -52,6 +60,10 @@ const rules: readonly TaxRule[] = [
     authority: 's. 112A',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
   {
     jurisdiction: 'IN',
@@ -65,6 +77,10 @@ const rules: readonly TaxRule[] = [
     authority: 's. 111A',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
   // An earlier, closed rule — the case the dating exists for.
   {
@@ -79,6 +95,10 @@ const rules: readonly TaxRule[] = [
     authority: 'pre-2024 regime',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
   {
     jurisdiction: 'IN',
@@ -92,6 +112,10 @@ const rules: readonly TaxRule[] = [
     authority: 'Finance (No. 2) Act 2024',
     bandFromMinor: null,
     bandToMinor: null,
+    regime: null,
+    amountMinor: null,
+    subject: null,
+    verifiedOn: null,
   },
 ];
 
@@ -272,5 +296,43 @@ describe('longTermRate', () => {
 
   it('carries the authority, so a figure can be traced rather than argued about', () => {
     expect(longTermRate(rules, 'listed_equity', 'long', '2025-06-10')?.authority).toBe('s. 112A');
+  });
+});
+
+/**
+ * Whether the rules a year's figures rest on have been looked at since that
+ * year's Budget.
+ *
+ * The risk that matters is not a wrong rate today but a Budget changing one while
+ * the app quietly goes on using last year's. Nothing fetches the law, so the date
+ * somebody last checked is the only signal there is — and it is only worth
+ * showing if it can say "this is older than the Budget it should reflect".
+ *
+ * A heuristic, and stated as one: the Budget is taken to be on 1 February of the
+ * year the tax year starts. Some years have a second, in July, and this cannot
+ * see it.
+ */
+describe('freshness', () => {
+  it('is unrecorded when nobody has said they checked', () => {
+    expect(freshness(null, 2026)).toBe('unrecorded');
+  });
+
+  it('is fine when it was checked on or after the Budget of the year it is for', () => {
+    // Budget 2026 was on 1 February 2026, for tax year 2026-27.
+    expect(freshness('2026-02-01', 2026)).toBe('after-budget');
+    expect(freshness('2026-09-24', 2026)).toBe('after-budget');
+  });
+
+  it('warns when it was checked the day before the Budget', () => {
+    expect(freshness('2026-01-31', 2026)).toBe('before-budget');
+  });
+
+  it('warns when it was checked a year ago, for this year', () => {
+    expect(freshness('2025-06-01', 2026)).toBe('before-budget');
+  });
+
+  it('does not warn about a year that has since been checked well after its own Budget', () => {
+    // Tax year 2025-26, checked in September 2026: after its Budget of 1 Feb 2025.
+    expect(freshness('2026-09-24', 2025)).toBe('after-budget');
   });
 });
