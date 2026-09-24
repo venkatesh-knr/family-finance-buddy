@@ -60,6 +60,7 @@ import type { Parcel } from './lots.ts';
 import { classify, longTermRate, type AssetClass, type Term, type TaxRule } from './tax-rules.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import { money, type Money } from '../lib/money.ts';
+import { percentOf, thousandths } from './rate.ts';
 
 /**
  * Everything here is minor units of INR — "the jurisdiction's currency" the
@@ -379,27 +380,15 @@ export interface CapitalGainsTax {
    */
   readonly otherShortAtSlab: Money;
   /**
+   * How much of the basic exemption was used up by these gains — zero unless a
+   * shortfall was passed in. The `taxable` figures above are after it.
+   */
+  readonly adjustedForBasicExemption: Money;
+  /**
    * The tax on the three buckets with rates of their own. Null unless every one
    * of them is known — a total short by a refused part would read as complete.
    */
   readonly total: Money | null;
-}
-
-/** A rate in `numeric(6,3)` text — `12.5`, `12.500` — as thousandths of a percent. */
-function thousandths(ratePct: string): bigint {
-  const [whole = '0', fraction = ''] = ratePct.split('.');
-  return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0').slice(0, 3));
-}
-
-/**
- * `minor × rate%`, half a paisa rounding up, entirely in bigint.
- *
- * Half up rather than truncating: a tax that always rounds down is a small
- * standing error in one direction, and several terms would carry it. Non-negative
- * only — a taxable figure never is anything else.
- */
-function percentOf(minor: bigint, ratePct: string): bigint {
-  return (minor * thousandths(ratePct) + 50_000n) / 100_000n;
 }
 
 /**
@@ -435,8 +424,34 @@ function agreedRate(
  * sound while earlier regimes are not seeded, because a sale under one is refused
  * by `classify` and never reaches these totals.
  */
-export function capitalGainsTax(gains: CapitalGains, rules: readonly TaxRule[]): CapitalGainsTax {
+export function capitalGainsTax(
+  gains: CapitalGains,
+  rules: readonly TaxRule[],
+  options: {
+    /**
+     * What is left of the basic exemption after every other kind of income —
+     * for a resident individual, set against these gains before they are taxed.
+     * Working it out needs the other income, which is not this module's to know.
+     */
+    readonly basicExemptionShortfall?: Money;
+  } = {},
+): CapitalGainsTax {
   const on = gains.window.end;
+
+  // Short-term equity first, because it carries the highest rate; then long-term
+  // equity; then other long-term. Short-term gold and unlisted is never here — it
+  // is income for the slab, and the slab step has already used the exemption on it.
+  const initial = options.basicExemptionShortfall?.minor ?? 0n;
+  let remaining = initial;
+  const useExemptionOn = (taxable: Money): Money => {
+    const take = min(remaining, taxable.minor);
+    remaining -= take;
+    return money(taxable.minor - take, CURRENCY);
+  };
+  const equityShortTaxable = useExemptionOn(gains.equityShort.taxable);
+  const equityLongTaxable =
+    gains.equityLong.taxable === null ? null : useExemptionOn(gains.equityLong.taxable);
+  const otherLongTaxable = useExemptionOn(gains.otherLong.taxable);
   const EQUITY: readonly AssetClass[] = ['listed_equity', 'equity_fund'];
   const OTHER: readonly AssetClass[] = ['gold', 'unlisted_equity'];
 
@@ -460,15 +475,21 @@ export function capitalGainsTax(gains: CapitalGains, rules: readonly TaxRule[]):
     };
   };
 
-  const equityShort = bucketTax(gains.equityShort.taxable, EQUITY, 'short');
-  const equityLong =
-    gains.equityLong.taxable === null ? null : bucketTax(gains.equityLong.taxable, EQUITY, 'long');
-  const otherLong = bucketTax(gains.otherLong.taxable, OTHER, 'long');
+  const equityShort = bucketTax(equityShortTaxable, EQUITY, 'short');
+  const equityLong = equityLongTaxable === null ? null : bucketTax(equityLongTaxable, EQUITY, 'long');
+  const otherLong = bucketTax(otherLongTaxable, OTHER, 'long');
 
   const total =
     equityLong === null || equityShort.tax === null || equityLong.tax === null || otherLong.tax === null
       ? null
       : money(equityShort.tax.minor + equityLong.tax.minor + otherLong.tax.minor, CURRENCY);
 
-  return { equityShort, equityLong, otherLong, otherShortAtSlab: gains.otherShort.taxable, total };
+  return {
+    equityShort,
+    equityLong,
+    otherLong,
+    otherShortAtSlab: gains.otherShort.taxable,
+    adjustedForBasicExemption: money(initial - remaining, CURRENCY),
+    total,
+  };
 }

@@ -47,6 +47,9 @@ export type AssetClass =
 
 export type Term = 'long' | 'short';
 
+/** The two ways an individual can be taxed. The new regime is the default. */
+export type Regime = 'old' | 'new';
+
 export interface TaxRule {
   readonly jurisdiction: string;
   readonly kind: string;
@@ -72,6 +75,20 @@ export interface TaxRule {
    */
   readonly bandFromMinor: bigint | null;
   readonly bandToMinor: bigint | null;
+  /** 'old' or 'new' where the regimes differ — slabs, surcharge, rebate, deductions. Null where they do not. */
+  readonly regime: Regime | null;
+  /** A fixed amount in minor units: the most a rebate gives, or a standard deduction. Null otherwise. */
+  readonly amountMinor: bigint | null;
+  /** What a `deduction_cap` is a cap on. Null on every other kind. */
+  readonly subject: string | null;
+  /**
+   * When somebody last checked this row against the law.
+   *
+   * Shown, so a person can see the rules are old. The risk that matters is not
+   * a wrong rate today but a Budget changing one while the app goes on using
+   * last year's. Null where nobody has recorded a check.
+   */
+  readonly verifiedOn: IsoDate | null;
 }
 
 export type Classification =
@@ -184,4 +201,25 @@ export function longTermRate(
     if (best === null || rule.effectiveFrom > best.effectiveFrom) best = rule;
   }
   return best;
+}
+
+/**
+ * Whether rules checked on a date can be trusted to reflect a tax year's Budget.
+ *
+ * Nothing in this app fetches the law: a Budget arrives as a reviewed migration.
+ * So the risk that matters is not a wrong rate today but a Budget changing one
+ * while the app goes on using last year's, and the date somebody last checked is
+ * the only signal there is. It is worth showing only if it can say "older than
+ * the Budget this year's figures should reflect".
+ *
+ * A heuristic, and a stated one: the Budget is taken to be on 1 February of the
+ * year the tax year starts. Some years have a second, in July, and this cannot
+ * see it — so 'after-budget' means "not obviously stale", never "current".
+ */
+export function freshness(
+  verifiedOn: IsoDate | null,
+  fy: number,
+): 'unrecorded' | 'before-budget' | 'after-budget' {
+  if (verifiedOn === null) return 'unrecorded';
+  return verifiedOn >= `${String(fy)}-02-01` ? 'after-budget' : 'before-budget';
 }
