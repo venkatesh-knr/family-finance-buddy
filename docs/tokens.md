@@ -216,8 +216,13 @@ hierarchy and makes nothing important.
 
 ## 6. Charts
 
-- Colours come from `--c1…--c7` **in order**, so the same class gets the same colour on
-  every screen.
+- Colours come from `--c1…--c7`, never literals, and **a class has one colour, fixed, on every
+  screen** — chosen by the class and not by its rank or position. Coloured by position,
+  Bonds is one colour when it is third largest and another when it is second. The map is
+  `kindColour` in `src/ui/labels.ts`, following the prototype's own (funds `c1`, equity
+  `c2`, bonds `c3`, ETFs `c4`, deposits `c6`, other `c7`); `c5` is the prototype's
+  crypto slot and stays unused until a class needs it. A series that is not a class — the
+  since-inception total — takes a neutral token (`--ink-2`), never a class's colour.
 - Chart text uses `--muted` for axes and `--ink` for value callouts — always tokens, never
   literals, or the chart breaks in one theme.
 - Every axis label names a value the chart actually reaches.
