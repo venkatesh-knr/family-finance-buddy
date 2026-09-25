@@ -22,7 +22,7 @@ it stops describing the code.
 | 2 — Schema, policies, tests | done | 30 migrations, 205 assertions across 13 pgTAP files gating the deploy, audit triggers on every table holding household data |
 | 3 — The demo household | done | Switcher, demo badge, and reset-and-reseed: `public.reset_demo_household` (`20260916120000`) is the schema's one hard delete — owner only, second factor, households marked demo only — behind a confirmation in Settings → Data. The seed lives in `app.seed_demo_household`; `supabase/seed/demo_edge_cases.sql` calls it. Still to add to the seed, as its own change: a loss-making sale, a carried-forward loss and lots either side of twenty-four months, all recordable now that `lot`, `disposal` and `tax_rule` exist. The foreign dividend waits on a `dividend` table. The live project also holds a second demo household from the local-only fixture, its login banned; removing it is an open decision. |
 | 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Prices now come through a driver: `price` (`20260914120000`) holds dated public reference prices, the `fetch-prices` edge function fetches AMFI and is the only thing that talks to a vendor, and a holding linked to an ISIN shows the quoted value for somebody to record. Deliberately not on a cron — see the note in that function. The since-inception chart draws assets (`src/domain/history.ts`). The allocation has its donut beside the rows. Outstanding: a contributed line on that chart, member attribution, and drivers beyond AMFI (FX, gold). |
-| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. Nothing computes a tax figure yet — netting, the ₹1.25 lakh allowance, slabs, surcharge and the foreign tax credit are all ahead. **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
+| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. **The tax engine is built for the domestic case**: capital gains netted across asset classes, the ₹1.25 lakh equity allowance, and income tax on the slabs, rebate, surcharge and cess for both regimes (`src/domain/income-tax.ts`, `capital-gains.ts`), with a Tax screen, a folded card showing the rates a year applied, and a year picker that offers only years with a sale in them. Rules are dated `tax_rule` rows (`20260920120000`) and a test proves the bands in force on any date tile, so a Budget cannot leave old bands in force. Refused by name rather than guessed: a surcharge or rebate relief where there are capital gains, debt funds bought after 1 April 2023, property's 12.5% or 20% election, foreign holdings that need the prescribed exchange rate, and any year before 2025-26, which is not seeded. Ahead: the foreign tax credit and Form 67, advance-tax instalments, and a scheduled Budget-day reminder (below). **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
 | 6 — Onto the devices | not started | — |
 | 7 — Real data | not started | — |
 
@@ -131,6 +131,18 @@ gate is a round trip that needs one half built before the other half can be
 tested at all. Work down the list. If something has to move, move it here and say why, so
 that there is one order rather than two.
 
+One thing is planned and sits outside the order, for later: **a Budget-day
+reminder.** A scheduled GitHub Action that opens an issue around 1 February,
+and again after the Finance Act passes, with a checklist of the `tax_rule` kinds
+to review (slabs and rebate for both regimes, standard deduction, surcharge,
+cess, capital-gains rates, holding periods, the equity exemption) and where the
+seeded rows live. It fetches nothing, reads no database and holds no key; it only
+opens an issue with the built-in token. Its job is to reach the maintainer at the
+moment a Budget can change a rate, where the Tax screen's stale-rate warning
+reaches somebody only when they open it. A migration that changes the slab
+structure must end-date the rows it replaces; the test in
+`supabase/tests/tax_rule_in_force.test.sql` fails if it does not.
+
 Three things are already built and sit outside the order: `tax_rule` and its
 classification module, eCAS import, and the `lot`/`disposal` ledger they fill.
 What remains of each is noted where it belongs below.
@@ -218,11 +230,12 @@ these.
 
 **3. The tax engine, and the Tax screen on top of it.**
 
-The largest single piece left. `tax_rule` holds dated rows and
+The largest single piece. `tax_rule` holds dated rows and
 `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule
-that covered its sale, refusing where no rule covers the date. Nothing computes
-a figure yet: netting, the ₹1.25 lakh equity allowance, the slabs, surcharge and
-cess, the foreign tax credit and its Form 67, advance-tax instalments.
+that covered its sale, refusing where no rule covers the date. **Built since:**
+netting, the ₹1.25 lakh equity allowance, the slabs, rebate, surcharge and cess.
+**Still ahead:** the foreign tax credit and its Form 67, and advance-tax
+instalments.
 
 Pure functions, per `CLAUDE.md` — no I/O, no `Date.now()`, the date passed in —
 and fixtures with known answers written before the implementation.
