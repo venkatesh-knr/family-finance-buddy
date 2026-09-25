@@ -260,7 +260,9 @@ function SignedIn({
         more than a scroll that most people never need — the first tabs are
         the ones they want.
       */}
-      <nav className="inset-safe-x mx-auto mb-4.5 flex max-w-app items-center justify-between gap-3 scroll-x">
+      <nav
+        className={`inset-safe-x mx-auto mb-4.5 flex ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} items-center justify-between gap-3 scroll-x`}
+      >
         {/*
           Hidden on a phone, where the bar at the bottom does this job under
           somebody's thumb. Kept above the breakpoint because a bottom bar on a
@@ -290,7 +292,15 @@ function SignedIn({
         <HouseholdSwitcher />
       </nav>
 
-      <main className="inset-safe-x inset-safe-bottom mx-auto max-w-app pb-nav">
+      {/*
+        One measure for reading and one for a grid of blocks. 880px is right for a
+        column with a table or a form in it, and it is why every screen was a
+        single column with the rest of a laptop empty. Only Overview is a grid of
+        independent blocks; the nav takes the same width so the two line up.
+      */}
+      <main
+        className={`inset-safe-x inset-safe-bottom mx-auto ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} pb-nav`}
+      >
         {screen === 'fire' && (
           <FireScreen
             privacy={privacy}
@@ -313,9 +323,6 @@ function SignedIn({
         {screen === 'overview' && (
           <OverviewScreen
             privacy={privacy}
-            onPrivacy={() => {
-              setPrivacy((on) => !on);
-            }}
             householdId={householdId}
             displayCurrency={displayCurrency}
             onOpenHoldings={(filter) => {

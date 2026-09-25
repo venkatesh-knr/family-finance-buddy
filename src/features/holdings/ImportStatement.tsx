@@ -301,12 +301,7 @@ export function ImportStatement({
   if (!canRecord) return null;
 
   return (
-    <Card
-      title="Import a statement"
-      collapsible
-      defaultOpen={false}
-      summary="A CAMS or KFintech eCAS, read on this device. Every SIP instalment becomes a purchase."
-    >
+    <Card title="Import a statement">
       <p className="note">
         The file is opened here, by the browser, with your password. It is never uploaded, and
         nothing about it is kept — not the file, not its name, not the password, and not your folio

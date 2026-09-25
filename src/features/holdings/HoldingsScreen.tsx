@@ -57,6 +57,8 @@ export function HoldingsScreen({
   const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
+  /** Which of the two ways of adding is open beneath the controls, if either. */
+  const [panel, setPanel] = useState<'add' | 'import' | null>(null);
 
   /**
    * Totals per currency, on the same terms as Overview: never summed across
@@ -142,20 +144,50 @@ export function HoldingsScreen({
 
   return (
     <div className="flex flex-col gap-4.5">
-      {canWrite && <AddHolding listing={listing} onAdd={add} />}
-
       {/*
-        Beside adding a holding by hand, because it is the same errand done in
-        bulk: "imports are accelerants, not prerequisites" (§791). Folded away
-        by default — typing one purchase is the common case, and importing
-        three years of them is the occasional one.
+        Two ways of adding to what is below, as controls and not as two cards
+        the size of the data they act on. "Not everything is a card"
+        (docs/tokens.md §4): at 375px two folded cards took the first screen
+        and no holding was visible until you scrolled past them. A holding is
+        added a handful of times a year and read every week.
+
+        Beside each other because they are the same errand, one holding by hand
+        or a statement of many: "imports are accelerants, not prerequisites"
+        (§791). One panel at a time opens beneath the row.
       */}
-      <ImportStatement
-        listing={listing}
-        onImported={() => {
-          void reload();
-        }}
-      />
+      {canWrite && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="quiet"
+            type="button"
+            aria-expanded={panel === 'add'}
+            onClick={() => {
+              setPanel((was) => (was === 'add' ? null : 'add'));
+            }}
+          >
+            Add a holding
+          </Button>
+          <Button
+            variant="quiet"
+            type="button"
+            aria-expanded={panel === 'import'}
+            onClick={() => {
+              setPanel((was) => (was === 'import' ? null : 'import'));
+            }}
+          >
+            Import a statement
+          </Button>
+        </div>
+      )}
+      {canWrite && panel === 'add' && <AddHolding listing={listing} onAdd={add} />}
+      {canWrite && panel === 'import' && (
+        <ImportStatement
+          listing={listing}
+          onImported={() => {
+            void reload();
+          }}
+        />
+      )}
 
       {totals.length > 0 && (
         <Card
@@ -184,7 +216,8 @@ export function HoldingsScreen({
               const gain = total.value - total.invested;
               return (
                 <div key={total.currency}>
-                  <p
+                  {/* A div and not a p: a caveat opens a popover, and a div may not sit inside a p. */}
+                  <div
                     className="figure"
                     style={{ color: 'var(--ink)' }}
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
@@ -197,7 +230,7 @@ export function HoldingsScreen({
                         absent rather than counted as zero, which would make it look complete.
                       </Caveat>
                     )}
-                  </p>
+                  </div>
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">
                       {formatMoney(money(total.invested, total.currency), { privacy })}
@@ -779,16 +812,7 @@ function AddHolding({
   );
 
   return (
-    <Card
-      title="Add a holding"
-      // Folded by default. A holding is added a handful of times a year and
-      // read every week, so the form was costing a screen of scrolling on
-      // every visit to pay for something almost nobody was there to do.
-      collapsible
-      defaultOpen={false}
-      summary="Open to record a new instrument and position."
-      aside={<span className="note">{listing.household.name}</span>}
-    >
+    <Card title="Add a holding" aside={<span className="note">{listing.household.name}</span>}>
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {

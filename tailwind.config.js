@@ -89,6 +89,9 @@ export default {
       },
       maxWidth: {
         app: '880px',
+        // Overview alone: a grid of independent blocks, where 880px leaves a laptop
+        // screen mostly empty. Everything with a table or a form keeps `app`.
+        wide: '1200px',
       },
     },
   },
