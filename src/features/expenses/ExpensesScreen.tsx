@@ -12,7 +12,7 @@ import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Button, Card, Caveat, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
+import { Button, Card, Caveat, EditButton, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -393,6 +393,13 @@ function ExpenseList({
 }) {
   const { expenses } = listing;
 
+  // A member is an initial in a ring of their colour. Where two members share an
+  // initial the letter no longer says who, so the names come back for everyone.
+  const showNames = useMemo(() => {
+    const initials = listing.members.map((m) => m.displayName.trim().charAt(0).toUpperCase());
+    return new Set(initials).size !== initials.length;
+  }, [listing.members]);
+
   // Resolved once for the whole list rather than searched per row: a category
   // is referenced by id everywhere because "renaming a category changes the
   // label only", so the name has to be looked up somewhere, and the ledger is
@@ -434,6 +441,7 @@ function ExpenseList({
               <StackedRow
                 key={expense.id}
                 expense={expense}
+                showNames={showNames}
                 categoryName={
                   expense.categoryId === null ? null : (categoryNames.get(expense.categoryId) ?? null)
                 }
@@ -466,6 +474,7 @@ function ExpenseList({
                   <Row
                     key={expense.id}
                     expense={expense}
+                    showNames={showNames}
                     categoryName={
                       expense.categoryId === null
                         ? null
@@ -514,11 +523,13 @@ function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: str
  */
 function StackedRow({
   expense,
+  showNames,
   categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
+  showNames: boolean;
   /** Null for an uncategorised entry — "a state to show, not a gap to fill in". */
   categoryName: string | null;
   privacy: boolean;
@@ -545,7 +556,7 @@ function StackedRow({
           as "this one has no category".
         */}
         <span className="note">{categoryName ?? 'Uncategorised'}</span>
-        <MemberTag member={expense.member} />
+        <MemberTag member={expense.member} showName={showNames} />
         {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
         {expense.isVoided && <Pill tone="due">Voided</Pill>}
         {/*
@@ -561,15 +572,12 @@ function StackedRow({
           rather than an edit to a dead one.
         */}
         {onEdit !== null && !expense.isVoided && (
-          <button
-            type="button"
-            className="note underline"
+          <EditButton
+            label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}`}
             onClick={() => {
               onEdit(expense);
             }}
-          >
-            Correct
-          </button>
+          />
         )}
       </div>
     </li>
@@ -578,11 +586,13 @@ function StackedRow({
 
 function Row({
   expense,
+  showNames,
   categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
+  showNames: boolean;
   /** Null for an uncategorised entry. */
   categoryName: string | null;
   privacy: boolean;
@@ -616,15 +626,12 @@ function Row({
         {onEdit !== null && !expense.isVoided && (
           <>
             {' '}
-            <button
-              type="button"
-              className="note underline"
+            <EditButton
+              label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}`}
               onClick={() => {
                 onEdit(expense);
               }}
-            >
-              Correct
-            </button>
+            />
           </>
         )}
       </td>
@@ -632,7 +639,7 @@ function Row({
         {categoryName ?? <span className="note">Uncategorised</span>}
       </td>
       <td className="px-2.5 py-2 align-top">
-        <MemberTag member={expense.member} />
+        <MemberTag member={expense.member} showName={showNames} />
       </td>
       <td className="num px-2.5 py-2 text-right align-top" style={{ color: 'var(--ink)' }}>
         {formatMoney(expense.amount, { privacy })}
@@ -647,16 +654,28 @@ function Row({
   );
 }
 
-/** Ownership reads as the member's name, with the colour as reinforcement only. */
-function MemberTag({ member }: { member: Member }) {
+/**
+ * Whose entry it is: the member's initial in a ring of their colour.
+ *
+ * The name printed on every row was the loudest thing on the line after the
+ * amount, and it said the same two words down the whole list. The initial is
+ * text, so ownership is still not carried by colour alone, and the full name is
+ * the accessible name and the tooltip. Where two members share an initial the
+ * letter cannot tell them apart and the name is shown as well.
+ */
+function MemberTag({ member, showName }: { member: Member; showName: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span
-        aria-hidden="true"
-        className="inline-block h-2 w-2 rounded-pill"
-        style={{ background: `var(--${member.colour})` }}
-      />
-      <span style={{ color: 'var(--ink-2)' }}>{member.displayName}</span>
+        className="member-mark"
+        role="img"
+        aria-label={member.displayName}
+        title={member.displayName}
+        style={{ borderColor: `var(--${member.colour})` }}
+      >
+        {member.displayName.trim().charAt(0).toUpperCase()}
+      </span>
+      {showName && <span style={{ color: 'var(--ink-2)' }}>{member.displayName}</span>}
       {member.isArchived && <Pill tone="neutral">Archived</Pill>}
     </span>
   );

@@ -19,6 +19,7 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import { minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
 import type { Expense, ExpenseListing, Visibility } from '../../repo/types.ts';
 import { Button, Card, Field, Problem } from '../../ui/primitives.tsx';
+import { useFocusFirstField } from '../../ui/focus.ts';
 
 export interface ExpensePatch {
   id: string;
@@ -98,142 +99,148 @@ export function EditExpense({
     }
   }, [amount, categoryId, currency, date, expense.id, isMine, onSave, payee, personal]);
 
+  const focusRef = useFocusFirstField<HTMLDivElement>();
+
   return (
-    <Card
-      title="Correct an entry"
-      aside={
-        <span className="note">
-          {formatIsoDate(expense.date)} · {expense.member.displayName}
-        </span>
-      }
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-[130px] sm:shrink-0">
-          <Field
-            label={`Amount (${currency})`}
-            numeric
-            inputMode="decimal"
-            value={amount}
-            onChange={(event) => {
-              setAmount(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-auto sm:min-w-[160px] sm:flex-1">
-          <Field
-            label="Payee"
-            value={payee}
-            onChange={(event) => {
-              setPayee(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-[150px] sm:shrink-0">
-          <Field
-            label="Date"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              setDate(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="label">Category</span>
-          <select
-            className="field"
-            value={categoryId}
-            onChange={(event) => {
-              setCategoryId(event.target.value);
-            }}
-          >
-            <option value="">Uncategorised</option>
-            {listing.categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="button" disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save'}
-        </Button>
-        <button type="button" className="note underline" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-
-      {isMine && (
-        <label className="mt-3 flex items-start gap-2">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={personal}
-            onChange={(event) => {
-              setPersonal(event.target.checked);
-            }}
-          />
-          <span className="text-caption" style={{ color: 'var(--ink-2)' }}>
-            Keep this private — only you will see it. The amount still counts in the household
-            total, shown to everyone else as one figure without the detail.
+    // Where the person is taken when they press the pencil on a row that may be a
+    // screen away: the caret goes into the first field and the form scrolls to it.
+    <div ref={focusRef}>
+      <Card
+        title="Edit an entry"
+        aside={
+          <span className="note">
+            {formatIsoDate(expense.date)} · {expense.member.displayName}
           </span>
-        </label>
-      )}
+        }
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full sm:w-[130px] sm:shrink-0">
+            <Field
+              label={`Amount (${currency})`}
+              numeric
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => {
+                setAmount(event.target.value);
+              }}
+            />
+          </div>
 
-      {problem !== null && (
-        <div className="mt-3">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
+          <div className="w-full sm:w-auto sm:min-w-[160px] sm:flex-1">
+            <Field
+              label="Payee"
+              value={payee}
+              onChange={(event) => {
+                setPayee(event.target.value);
+              }}
+            />
+          </div>
 
-      <div className="mt-3.5 flex flex-wrap items-center gap-3">
-        {confirming ? (
-          <>
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                void onVoid().finally(() => {
-                  setBusy(false);
-                });
+          <div className="w-full sm:w-[150px] sm:shrink-0">
+            <Field
+              label="Date"
+              type="date"
+              value={date}
+              onChange={(event) => {
+                setDate(event.target.value);
+              }}
+            />
+          </div>
+
+          <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
+            <span className="label">Category</span>
+            <select
+              className="field"
+              value={categoryId}
+              onChange={(event) => {
+                setCategoryId(event.target.value);
               }}
             >
-              Yes, void it
-            </Button>
+              <option value="">Uncategorised</option>
+              {listing.categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <Button type="button" disabled={busy} onClick={() => void save()}>
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+          <button type="button" className="note underline" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+
+        {isMine && (
+          <label className="mt-3 flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={personal}
+              onChange={(event) => {
+                setPersonal(event.target.checked);
+              }}
+            />
+            <span className="text-caption" style={{ color: 'var(--ink-2)' }}>
+              Keep this private — only you will see it. The amount still counts in the household
+              total, shown to everyone else as one figure without the detail.
+            </span>
+          </label>
+        )}
+
+        {problem !== null && (
+          <div className="mt-3">
+            <Problem>{problem}</Problem>
+          </div>
+        )}
+
+        <div className="mt-3.5 flex flex-wrap items-center gap-3">
+          {confirming ? (
+            <>
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void onVoid().finally(() => {
+                    setBusy(false);
+                  });
+                }}
+              >
+                Yes, void it
+              </Button>
+              <button
+                type="button"
+                className="note underline"
+                onClick={() => {
+                  setConfirming(false);
+                }}
+              >
+                Keep it
+              </button>
+            </>
+          ) : (
             <button
               type="button"
               className="note underline"
               onClick={() => {
-                setConfirming(false);
+                setConfirming(true);
               }}
             >
-              Keep it
+              Void this entry
             </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="note underline"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Void this entry
-          </button>
-        )}
-      </div>
+          )}
+        </div>
 
-      <p className="note mt-2.5">
-        Correcting changes the entry. Voiding leaves it on the ledger, marked, and out of every
-        total — which is the right answer once a figure has been relied upon, because the history
-        then still explains itself. Neither deletes anything: there is no delete permission on this
-        table at all.
-      </p>
-    </Card>
+        <p className="note mt-2.5">
+          Editing changes the entry. Voiding leaves it on the ledger, marked, and out of every
+          total — which is the right answer once a figure has been relied upon, because the history
+          then still explains itself. Neither deletes anything: there is no delete permission on this
+          table at all.
+        </p>
+      </Card>
+    </div>
   );
 }

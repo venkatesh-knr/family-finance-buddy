@@ -613,6 +613,54 @@
     padding: 5px 11px;
   }
 
+  /*
+   * An icon that is an action inside a row: no fill until it is in use. Padded
+   * out to about 30px, because a pencil drawn at text size is not a touch
+   * target. The negative margin gives that room back so the row does not grow.
+   */
+  .icon-action {
+    align-items: center;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 1rem;
+    margin: -6px;
+    padding: 6px;
+  }
+
+  .icon-action:hover {
+    color: var(--ink);
+  }
+
+  .icon-action[aria-expanded='true'] {
+    background: var(--indigo-soft);
+    color: var(--indigo);
+  }
+
+  /*
+   * A member's mark: their initial in a ring of their colour. Sized in em so the
+   * letter and the ring grow together, and the ring is the only coloured part:
+   * the letter stays in ink, so contrast never depends on which colour they took.
+   */
+  .member-mark {
+    align-items: center;
+    border: 1.5px solid currentcolor;
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    display: inline-flex;
+    flex: none;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    height: 1.75em;
+    justify-content: center;
+    line-height: 1;
+    width: 1.75em;
+  }
+
   .iconbtn[aria-pressed='true'] {
     background: var(--indigo-soft);
     border-color: var(--indigo);

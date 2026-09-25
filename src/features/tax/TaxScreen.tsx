@@ -62,7 +62,7 @@ const STILL_TO_COME: readonly string[] = [
 /** Why a sale that is listed is not in the figures, in a few words. */
 const WHY: Record<ExclusionReason, (lot: TaxLot) => string> = {
   'unclassified-asset': () =>
-    'its tax asset class is not set — set it under “Correct this holding” on Holdings',
+    'its tax asset class is not set — set it by editing the holding on Holdings',
   'no-rule-for-date': () => 'no holding-period rule covers this date; earlier regimes are not loaded',
   'currency-mismatch': (lot) =>
     `recorded in ${lot.parcel.gain.currency}, which is not rupees — a data problem for an Indian holding`,

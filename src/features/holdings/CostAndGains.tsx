@@ -33,7 +33,8 @@ import {
 } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Caveat, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
+import { Button, Caveat, EditButton, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
+import { useFocusFirstField } from '../../ui/focus.ts';
 import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
 import type { HoldingRow } from './useHoldings.ts';
 import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
@@ -466,15 +467,12 @@ function Ledger({
                 </span>
                 {entry.tag !== null && <Pill tone="neutral">{entry.tag}</Pill>}
                 {canWrite && (
-                  <button
-                    type="button"
-                    className="note underline"
+                  <EditButton
+                    label={`Edit the ${formatIsoDate(entry.date)} entry`}
                     onClick={() => {
                       setEditing(entry.id);
                     }}
-                  >
-                    Correct
-                  </button>
+                  />
                 )}
               </li>
             ),
@@ -511,6 +509,8 @@ function EditRow({
   const [date, setDate] = useState(entry.date);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The row this replaced held the focus; the form takes it.
+  const focusRef = useFocusFirstField<HTMLDivElement>();
 
   const save = useCallback(async () => {
     setProblem(null);
@@ -533,7 +533,7 @@ function EditRow({
   }, [amount, currency, date, onSave, quantity]);
 
   return (
-    <div className="flex flex-wrap items-end gap-2.5">
+    <div ref={focusRef} className="flex flex-wrap items-end gap-2.5">
       <div className="w-full sm:w-[110px] sm:shrink-0">
         <Field
           label="Units"
@@ -750,7 +750,7 @@ function Held({
           }
         >
           {result.reason === 'unclassified-asset'
-            ? 'This holding has no tax asset class set, and the treatment depends on it — a fund is equity or debt according to what it holds, not what kind of wrapper it is. Set it in "Correct this holding" and the term appears here.'
+            ? 'This holding has no tax asset class set, and the treatment depends on it — a fund is equity or debt according to what it holds, not what kind of wrapper it is. Set it by editing this holding and the term appears here.'
             : 'No rule in the table covers this sale date, so the app will not say whether this is long or short term. Applying the current rule to an older sale would give a confident, wrong answer. Only the regime from 23 July 2024 is loaded; earlier years are added when somebody needs them.'}
         </Caveat>
       </>
