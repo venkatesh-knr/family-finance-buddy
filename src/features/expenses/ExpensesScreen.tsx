@@ -656,7 +656,7 @@ function Row({
 }
 
 /**
- * Whose entry it is: the member's initial in a ring of their colour.
+ * Whose entry it is: the member's initials in a ring of their colour.
  *
  * The name printed on every row was the loudest thing on the line after the
  * amount, and it said the same two words down the whole list. The initial is
