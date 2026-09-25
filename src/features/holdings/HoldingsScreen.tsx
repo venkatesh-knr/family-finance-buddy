@@ -21,7 +21,7 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, Field, Amount, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, EditButton, Field, Amount, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -543,16 +543,13 @@ function HoldingCard({
           >
             {recording ? 'Cancel this reading' : 'Record a value'}
           </button>
-          <button
-            type="button"
-            className="note underline"
-            aria-expanded={editing}
+          <EditButton
+            label={editing ? 'Cancel editing this holding' : 'Edit this holding'}
+            expanded={editing}
             onClick={() => {
               setEditing((was) => !was);
             }}
-          >
-            {editing ? 'Cancel correction' : 'Correct this holding'}
-          </button>
+          />
           <ArchiveHolding row={row} onDone={onReload} />
         </div>
       )}

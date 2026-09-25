@@ -26,6 +26,7 @@ import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import { updateHolding, type HoldingPatch } from '../../repo/holdings.ts';
 import { INSTRUMENT_KINDS, type Holding, type InstrumentKind } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
+import { useFocusFirstField } from '../../ui/focus.ts';
 
 export function EditHolding({
   holding,
@@ -145,8 +146,11 @@ export function EditHolding({
     assetClass, kind, name, onDone, openedOn, personal, priceId, priceSource, quantity, symbol,
   ]);
 
+  const focusRef = useFocusFirstField<HTMLDivElement>();
+
   return (
     <div
+      ref={focusRef}
       className="mt-3 rounded p-3"
       style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
     >

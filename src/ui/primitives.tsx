@@ -188,6 +188,63 @@ export function EyeIcon({ crossed }: { crossed: boolean }) {
 }
 
 /**
+ * A pencil, drawn like the eye: sized in `em` so it grows with the text around it.
+ */
+export function PencilIcon() {
+  return (
+    <svg
+      width="1.15em"
+      height="1.15em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+      <path d="m14.5 7.5 3 3" />
+    </svg>
+  );
+}
+
+/**
+ * The control that opens an editor: a pencil, with the words where they belong,
+ * in the accessible name and the tooltip.
+ *
+ * It replaced an underlined word that said "Correct" on every row. A word
+ * repeated down a list is noise, and "Correct" read as though the row were
+ * wrong. The name says what will be edited, because thirteen buttons all called
+ * "Edit" are unusable with a screen reader. `expanded` is for one that toggles
+ * an editor open beside it.
+ */
+export function EditButton({
+  label,
+  expanded,
+  onClick,
+}: {
+  /** What it will edit: "Edit Reliance Fresh, 14 Sept". */
+  label: string;
+  expanded?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="icon-action"
+      aria-label={label}
+      title={label}
+      aria-expanded={expanded}
+      onClick={onClick}
+    >
+      <PencilIcon />
+    </button>
+  );
+}
+
+/**
  * Five, as docs/tokens.md:179 defines them. `warn` was missing until Settings
  * needed it — brass, for something worth noticing that is not yet wrong.
  * Coral is spent on wrong.

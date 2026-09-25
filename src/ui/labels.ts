@@ -28,7 +28,7 @@ export function kindLabel(kind: string): string {
 /**
  * What a tax asset class is called, in the words the editor's own dropdown uses.
  *
- * A person sets the class in "Correct this holding" and reads it back on the
+ * A person sets the class by editing the holding and reads it back on the
  * Tax screen; the two saying different things for one class is how somebody
  * decides the second is a different setting.
  */

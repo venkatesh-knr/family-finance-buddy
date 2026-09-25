@@ -365,7 +365,7 @@ export function ImportStatement({
 
       {done !== null && (
         <p className="note mt-3" role="status">
-          {done} Figures that came out wrong can be corrected on the holding itself.
+          {done} Figures that came out wrong can be edited on the holding itself.
         </p>
       )}
 
