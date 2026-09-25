@@ -28,7 +28,7 @@
 
 import { useMemo, useState } from 'react';
 import { capitalGainsTax, netCapitalGains, type ExclusionReason } from '../../domain/capital-gains.ts';
-import { taxYearBounds, taxYearOf } from '../../domain/budget.ts';
+import { taxYearBounds, taxYearOf, taxYearsToOffer } from '../../domain/budget.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { taxClassLabel } from '../../ui/labels.ts';
@@ -91,6 +91,17 @@ export function TaxScreen({
 
   const currentFy = taxYearOf(today);
   const fy = chosenFy ?? currentFy;
+
+  // The years there is something to look at: this one, and every earlier one with
+  // a sale in it. Not the last four whatever they hold.
+  const years = useMemo(
+    () =>
+      taxYearsToOffer({
+        currentFy,
+        saleDates: (listing?.disposals ?? []).map((sale) => sale.disposedOn),
+      }),
+    [currentFy, listing],
+  );
   const memberId = chosenMember ?? listing?.viewer.memberId ?? '';
 
   // The kind of each disposal, so a gift or a matured bond is not netted as a sale.
@@ -148,19 +159,24 @@ export function TaxScreen({
           <span className="flex flex-wrap items-center gap-2.5">
             <label className="flex items-center gap-2">
               <span className="label">Year</span>
-              <select
-                className="field w-[130px]"
-                value={fy}
-                onChange={(event) => {
-                  setChosenFy(Number(event.target.value));
-                }}
-              >
-                {[0, 1, 2, 3].map((back) => (
-                  <option key={back} value={currentFy - back}>
-                    {`${String(currentFy - back)}–${String((currentFy - back + 1) % 100).padStart(2, '0')}`}
-                  </option>
-                ))}
-              </select>
+              {years.length === 1 ? (
+                // Nothing to choose between, so nothing to choose with.
+                <span className="tabular-nums">{`${String(fy)}–${String((fy + 1) % 100).padStart(2, '0')}`}</span>
+              ) : (
+                <select
+                  className="field w-[130px]"
+                  value={fy}
+                  onChange={(event) => {
+                    setChosenFy(Number(event.target.value));
+                  }}
+                >
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {`${String(year)}–${String((year + 1) % 100).padStart(2, '0')}`}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
             <label className="flex items-center gap-2">
               <span className="label">

@@ -146,6 +146,91 @@ function ruleOf(
 }
 
 /**
+ * The oldest check across the rules a figure used, or null when there were none
+ * or any of them was never checked. One rule shared by the computation and the
+ * card that explains it, so the two cannot show different dates.
+ */
+function oldestCheck(used: readonly (TaxRule | null)[]): IsoDate | null {
+  const rules = used.filter((rule): rule is TaxRule => rule !== null);
+  const dates = rules.map((rule) => rule.verifiedOn);
+  return rules.length === 0 || dates.some((date) => date === null)
+    ? null
+    : (dates as IsoDate[]).reduce((oldest, date) => (date < oldest ? date : oldest));
+}
+
+export interface AppliedBand {
+  readonly fromMinor: bigint;
+  /** Null is "and above". */
+  readonly toMinor: bigint | null;
+  readonly ratePct: string;
+}
+
+/** What a tax year rates income with, for a regime. */
+export interface RatesApplied {
+  readonly fy: number;
+  readonly regime: Regime;
+  readonly slabs: readonly AppliedBand[];
+  /** The most it gives, and the total income up to which it applies. Null where there is none. */
+  readonly rebate: { readonly ceilingMinor: bigint; readonly maxMinor: bigint } | null;
+  readonly standardDeductionMinor: bigint | null;
+  readonly surcharge: readonly AppliedBand[];
+  readonly cessPct: string | null;
+  /** When the oldest of these was last checked against the law. Null when any never was. */
+  readonly verifiedOn: IsoDate | null;
+  /** Where the rates are meant to come from, each named once. */
+  readonly authorities: readonly string[];
+}
+
+/**
+ * The rates a tax year applies, read the way the computation reads them.
+ *
+ * For the card that shows a person what their figure was rated with. It goes
+ * through the same lookups as `computeIncomeTax` and not a second query of its
+ * own, so what is shown is what was used: a card that could disagree with the
+ * calculation beside it would be worse than none. A year no rule covers is empty
+ * and says so; it never borrows another year's.
+ */
+export function ratesApplied(options: {
+  readonly rules: readonly TaxRule[];
+  readonly regime: Regime;
+  readonly fy: number;
+}): RatesApplied {
+  const { rules, regime, fy } = options;
+  const on = taxYearBounds(fy).end;
+
+  const slabs = bandsOf(rules, 'slab', regime, on);
+  const tiers = bandsOf(rules, 'surcharge', regime, on);
+  const cess = ruleOf(rules, 'cess', null, on);
+  const rebate = ruleOf(rules, 'rebate', regime, on);
+  const standard = ruleOf(rules, 'deduction_cap', regime, on, 'standard_deduction');
+
+  const band = (rule: TaxRule): AppliedBand => ({
+    fromMinor: rule.bandFromMinor ?? 0n,
+    toMinor: rule.bandToMinor,
+    ratePct: rule.ratePct ?? '0',
+  });
+
+  const used = [...slabs, ...tiers, cess, rebate, standard];
+  const authorities: string[] = [];
+  for (const rule of used) {
+    if (rule !== null && !authorities.includes(rule.authority)) authorities.push(rule.authority);
+  }
+
+  return {
+    fy,
+    regime,
+    slabs: slabs.map(band),
+    rebate:
+      rebate === null ? null : { ceilingMinor: rebate.bandToMinor ?? 0n, maxMinor: rebate.amountMinor ?? 0n },
+    standardDeductionMinor: standard?.amountMinor ?? null,
+    surcharge: tiers.map(band),
+    cessPct: cess?.ratePct ?? null,
+    verifiedOn: oldestCheck(used),
+    authorities,
+  };
+}
+
+/**
  * Tax on an income by progressive bands: each rate applies only to the part of
  * the income that falls inside its band.
  */
@@ -211,14 +296,7 @@ export function computeIncomeTax(options: {
     capitalGains.otherLong.taxable.minor;
   const totalIncome = ordinary + capitalGainsTaxable;
 
-  const used = [...slabs, ...tiers, cessRule, rebateRule, standardRule].filter(
-    (rule): rule is TaxRule => rule !== null,
-  );
-  const dates = used.map((rule) => rule.verifiedOn);
-  const verifiedOn: IsoDate | null =
-    used.length === 0 || dates.some((date) => date === null)
-      ? null
-      : (dates as IsoDate[]).reduce((oldest, date) => (date < oldest ? date : oldest));
+  const verifiedOn = oldestCheck([...slabs, ...tiers, cessRule, rebateRule, standardRule]);
 
   const shell = {
     fy,
