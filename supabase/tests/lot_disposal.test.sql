@@ -13,7 +13,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(16);
+select plan(18);
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -161,28 +161,55 @@ set local role authenticated;
 set local request.jwt.claim.sub to 'ba110000-0000-4000-8000-000000000002';
 set local request.jwt.claims   to '{"sub":"ba110000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal2"}';
 
+-- Narrowed by 20260925120000: a contributor reads the holdings that are theirs,
+-- and the lots hang off the holding, so the owner's household purchase is not
+-- one of them. What the Recorder sees is the personal position that is theirs.
 select is(
   (select count(*)::int from public.lot),
-  2,
-  'the member it belongs to sees both: the household purchase and their own personal one'
+  1,
+  'the member it belongs to sees their own personal purchase, and not the owner''s household one'
 );
 
--- ══════════════════════════════════ a contributor may record (2)
+-- ═════════════════ a contributor may record, against their own holding (4)
+--
+-- Their own: the position that is theirs. A holding of somebody else's is not one
+-- they can read any more, and "own expenses and assets only" (blueprint §11) is
+-- what the role is, so recording against it is refused as well as hidden.
 
 select lives_ok(
   $q$ insert into public.lot
         (household_id, holding_id, acquired_on, quantity, cost_minor, currency)
-      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b001',
+      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b002',
               date '2025-01-10', 10, 150000, 'INR') $q$,
-  'a contributor records a purchase, which is the role''s whole point'
+  'a contributor records a purchase against their own holding, which is the role''s whole point'
 );
 
 select lives_ok(
   $q$ insert into public.disposal
         (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency)
-      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b001',
+      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b002',
               date '2025-07-10', 5, 90000, 'INR') $q$,
   'and a sale'
+);
+
+select throws_ok(
+  $q$ insert into public.lot
+        (household_id, holding_id, acquired_on, quantity, cost_minor, currency)
+      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b001',
+              date '2025-01-10', 10, 150000, 'INR') $q$,
+  '42501'::char(5),
+  null::text,
+  'but not against somebody else''s holding, which they cannot read'
+);
+
+select throws_ok(
+  $q$ insert into public.disposal
+        (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency)
+      values ('bc330000-0000-4000-8000-00000000e001', 'bf660000-0000-4000-8000-00000000b001',
+              date '2025-07-10', 5, 90000, 'INR') $q$,
+  '42501'::char(5),
+  null::text,
+  'nor a sale'
 );
 
 -- ═══════════════════════════════════════ a viewer may not (2)

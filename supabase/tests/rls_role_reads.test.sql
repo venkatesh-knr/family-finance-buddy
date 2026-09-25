@@ -29,7 +29,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(36);
+select plan(37);
 
 -- ============================================================== the fixture
 
@@ -357,37 +357,41 @@ select throws_ok(
   'another member''s private asset total is not a contributor''s to read'
 );
 
--- ================================================== the viewer: a summary (8)
+-- ================================================== the viewer: a summary (9)
 
 set local request.jwt.claim.sub to 'c0000000-0000-4000-8000-0000000000a4';
 set local request.jwt.claims   to '{"sub":"c0000000-0000-4000-8000-0000000000a4","role":"authenticated","aal":"aal2"}';
 
 select is_empty(
-  $q$ select id from public.expense_txn
-     union all select id from public.holding
-     union all select id from public.valuation_snapshot $q$,
+  $q$ select id::text from public.expense_txn
+     union all select id::text from public.holding
+     union all select id::text from public.valuation_snapshot $q$,
   'a viewer reads no expense, no holding and no valuation'
 );
 
 select is_empty(
-  $q$ select id from public.liability
-     union all select id from public.insurance_policy $q$,
+  $q$ select id::text from public.liability
+     union all select id::text from public.insurance_policy $q$,
   'nor any loan or policy'
 );
 
 select is_empty(
-  $q$ select id from public.invite
-     union all select id from public.import_batch
-     union all select id from public.audit_log $q$,
+  $q$ select id::text from public.invite
+     union all select id::text from public.import_batch
+     union all select id::text from public.audit_log $q$,
   'nor any invitation, import or audit entry'
 );
 
 select is_empty(
-  $q$ select id from public.expense_category
-     union all select id from public.budget
-     union all select id from public.instrument
-     union all select id from public.fx_rate $q$,
-  'nor the plan, the catalogue or the rates: a viewer reads a summary'
+  $q$ select id::text from public.expense_category
+     union all select id::text from public.budget
+     union all select id::text from public.instrument $q$,
+  'nor the plan or the catalogue: a viewer reads a summary'
+);
+
+select isnt_empty(
+  $q$ select id from public.fx_rate $q$,
+  'but a viewer still reads the exchange rates, which are part of every figure shown and nobody''s record'
 );
 
 select is(

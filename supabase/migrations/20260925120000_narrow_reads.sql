@@ -18,11 +18,13 @@
 --   contributor      reads the rows that are theirs — their expenses, their
 --                    holdings and everything hanging off them, their loans and
 --                    policies, their audit trail, the imports they ran — plus the
---                    plan (categories and budgets), which they need to file an
---                    expense and to see how the household is doing against it.
---   viewer           reads no data table at all. What a viewer sees is a summary,
+--                    plan (categories and budgets) and the catalogue, which they
+--                    need to file an expense and to see how the household is
+--                    doing against it.
+--   viewer           reads no record at all. What a viewer sees is a summary,
 --                    returned by the functions at the bottom of this file, which
---                    hand back sums and never a row.
+--                    hand back sums and never a row. (The exchange rates, which
+--                    are the household's and not anybody's record, stay readable.)
 --
 -- The household, its members and the memberships stay readable by every role:
 -- a name on a screen and who else is in the household are not what this is
@@ -237,9 +239,13 @@ comment on policy invite_select_administrators on public.invite is
 
 -- ══════════════════════ what is not sensitive, but is not a viewer's either
 --
--- The plan, the catalogue and the rates: a contributor reads them, because they
--- cannot file an expense without a category or add a holding without an
--- instrument; a viewer reads a summary instead.
+-- The plan and the catalogue: a contributor reads them, because they cannot file
+-- an expense without a category or add a holding without an instrument; a viewer
+-- reads a summary instead.
+--
+-- Not the rates. `fx_rate` stays readable by every role, a viewer included: its
+-- own test says so on purpose ("they are part of every figure shown"), and a rate
+-- is neither a person's record nor an amount of money.
 
 drop policy if exists expense_category_select_same_household on public.expense_category;
 
@@ -274,25 +280,12 @@ create policy instrument_select_not_viewer
     and app.household_role(household_id) in ('owner', 'partner', 'contributor')
   );
 
-drop policy if exists fx_rate_select_same_household on public.fx_rate;
-
-create policy fx_rate_select_not_viewer
-  on public.fx_rate
-  for select
-  to authenticated
-  using (
-    household_id in (select app.household_ids())
-    and app.household_role(household_id) in ('owner', 'partner', 'contributor')
-  );
-
 comment on policy expense_category_select_not_viewer on public.expense_category is
   'Everyone who can file an expense reads the categories. A viewer reads a summary.';
 comment on policy budget_select_not_viewer on public.budget is
   'A contributor reads the household plan, to see how the household is doing against it; the actuals come from household_expense_totals. A viewer reads a summary.';
 comment on policy instrument_select_not_viewer on public.instrument is
   'The catalogue of what exists, with no quantity and no amount. Not narrowed per member: a contributor''s own insert reads its id back. A viewer reads a summary.';
-comment on policy fx_rate_select_not_viewer on public.fx_rate is
-  'Rates are the household''s and not sensitive; a viewer has no use for them because a summary is not converted.';
 
 -- ══════════════════════════════════════════════════════ what replaces a row
 --
