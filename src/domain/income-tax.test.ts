@@ -25,7 +25,7 @@
 import { describe, expect, it } from 'vitest';
 import { money, type Money } from '../lib/money.ts';
 import { netCapitalGains } from './capital-gains.ts';
-import { computeIncomeTax } from './income-tax.ts';
+import { computeIncomeTax, ratesApplied } from './income-tax.ts';
 import type { Parcel } from './lots.ts';
 import type { AssetClass, Regime, TaxRule } from './tax-rules.ts';
 
@@ -468,5 +468,69 @@ describe('when the rules were checked', () => {
   it('reports none, rather than the newest, when any rule it used was never checked', () => {
     const unchecked = rules.map((r) => (r.kind === 'cess' ? { ...r, verifiedOn: null } : r));
     expect(compute({ salary: 24 * LAKH, rules: unchecked }).verifiedOn).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════════ the rates a year applies
+
+describe('ratesApplied', () => {
+  it('lists the new regime for a year exactly as the computation reads it', () => {
+    const shown = ratesApplied({ rules, regime: 'new', fy: 2026 });
+    expect(
+      shown.slabs.map((s) => [s.fromMinor / 100n, s.toMinor === null ? null : s.toMinor / 100n, s.ratePct]),
+    ).toEqual([
+      [0n, 400_000n, '0'],
+      [400_000n, 800_000n, '5'],
+      [800_000n, 1_200_000n, '10'],
+      [1_200_000n, 1_600_000n, '15'],
+      [1_600_000n, 2_000_000n, '20'],
+      [2_000_000n, 2_400_000n, '25'],
+      [2_400_000n, null, '30'],
+    ]);
+    expect(shown.rebate).toEqual({ ceilingMinor: 120_000_000n, maxMinor: 6_000_000n });
+    expect(shown.standardDeductionMinor).toBe(7_500_000n);
+    expect(shown.surcharge.map((t) => t.ratePct)).toEqual(['10', '15', '25']);
+    expect(shown.cessPct).toBe('4');
+  });
+
+  it('lists the old regime, which has its own bands, rebate and surcharge', () => {
+    const shown = ratesApplied({ rules, regime: 'old', fy: 2026 });
+    expect(shown.slabs.map((s) => s.ratePct)).toEqual(['0', '5', '20', '30']);
+    expect(shown.rebate).toEqual({ ceilingMinor: 50_000_000n, maxMinor: 1_250_000n });
+    expect(shown.standardDeductionMinor).toBe(5_000_000n);
+    expect(shown.surcharge.map((t) => t.ratePct)).toEqual(['10', '15', '25', '37']);
+  });
+
+  it('is empty for a year no rule covers, and does not borrow another', () => {
+    // The rules start on 1 April 2025; the tax year 2024-25 ends 31 March 2025.
+    const shown = ratesApplied({ rules, regime: 'new', fy: 2024 });
+    expect(shown.slabs).toEqual([]);
+    expect(shown.rebate).toBeNull();
+    expect(shown.standardDeductionMinor).toBeNull();
+    expect(shown.surcharge).toEqual([]);
+    expect(shown.cessPct).toBeNull();
+    expect(shown.verifiedOn).toBeNull();
+  });
+
+  it('takes the rule a correction supersedes, as the computation does', () => {
+    const corrected = [...rules, { ...slab('new', 4 * LAKH, 8 * LAKH, '6'), effectiveFrom: '2025-06-01' }];
+    const shown = ratesApplied({ rules: corrected, regime: 'new', fy: 2026 });
+    expect(shown.slabs[1]?.ratePct).toBe('6');
+    expect(shown.slabs).toHaveLength(7);
+  });
+
+  it('shows the same last-checked date as the figure it explains', () => {
+    const shown = ratesApplied({ rules, regime: 'new', fy: 2026 });
+    expect(shown.verifiedOn).toBe(compute({ regime: 'new' }).verifiedOn);
+    const unchecked = rules.map((r) => (r.kind === 'cess' ? { ...r, verifiedOn: null } : r));
+    expect(ratesApplied({ rules: unchecked, regime: 'new', fy: 2026 }).verifiedOn).toBeNull();
+  });
+
+  it('names where each rate comes from, once each', () => {
+    const sourced = rules.map((r) => (r.kind === 'cess' ? { ...r, authority: 'Finance Act, cess' } : r));
+    expect(ratesApplied({ rules: sourced, regime: 'new', fy: 2026 }).authorities).toEqual([
+      'a test',
+      'Finance Act, cess',
+    ]);
   });
 });

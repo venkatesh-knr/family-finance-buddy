@@ -28,6 +28,8 @@ import { useMemo, useState } from 'react';
 import { computeIncomeTax, type Refusal } from '../../domain/income-tax.ts';
 import type { CapitalGains } from '../../domain/capital-gains.ts';
 import { freshness, type Regime, type TaxRule } from '../../domain/tax-rules.ts';
+import { ratesApplied } from '../../domain/income-tax.ts';
+import { RatesCard } from './RatesCard.tsx';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { Absent, Card, Field, Notice } from '../../ui/primitives.tsx';
@@ -98,6 +100,7 @@ export function IncomeTaxCard({
     [regime, fy, salary.amount.minor, other.amount.minor, gains, rules],
   );
 
+  const applied = useMemo(() => ratesApplied({ rules, regime, fy }), [rules, regime, fy]);
   const show = (value: Money): string => formatMoney(value, { privacy });
   const checked = freshness(result.verifiedOn, fy);
 
@@ -246,6 +249,8 @@ export function IncomeTaxCard({
           ? ', with no record of when they were last checked.'
           : `, last checked against the law on ${formatIsoDate(result.verifiedOn)}.`}
       </p>
+
+      <RatesCard applied={applied} />
 
       {checked !== 'after-budget' && (
         <div className="mt-3">
