@@ -658,7 +658,8 @@
     height: 1.75em;
     justify-content: center;
     line-height: 1;
-    width: 1.75em;
+    min-width: 1.75em;
+    padding-inline: 0.2em;
   }
 
   .iconbtn[aria-pressed='true'] {

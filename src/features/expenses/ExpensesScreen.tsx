@@ -16,6 +16,10 @@ import { Button, Card, Caveat, EditButton, Field, Pill, Problem, Table } from '.
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
+import { memberMarks, type MemberMark } from './memberMark.ts';
+
+/** For an entry whose member is somehow not in the list: the mark still says something. */
+const FALLBACK_MARK: MemberMark = { text: '?', showName: true };
 import { useExpenses } from './useExpenses.ts';
 import { listRates, type FxRate } from '../../repo/rates.ts';
 
@@ -393,12 +397,9 @@ function ExpenseList({
 }) {
   const { expenses } = listing;
 
-  // A member is an initial in a ring of their colour. Where two members share an
-  // initial the letter no longer says who, so the names come back for everyone.
-  const showNames = useMemo(() => {
-    const initials = listing.members.map((m) => m.displayName.trim().charAt(0).toUpperCase());
-    return new Set(initials).size !== initials.length;
-  }, [listing.members]);
+  // A member is an initial in a ring of their colour; two that collide grow to
+  // two letters, and the name comes back only where letters cannot separate them.
+  const marks = useMemo(() => memberMarks(listing.members), [listing.members]);
 
   // Resolved once for the whole list rather than searched per row: a category
   // is referenced by id everywhere because "renaming a category changes the
@@ -441,7 +442,7 @@ function ExpenseList({
               <StackedRow
                 key={expense.id}
                 expense={expense}
-                showNames={showNames}
+                mark={marks.get(expense.member.id) ?? FALLBACK_MARK}
                 categoryName={
                   expense.categoryId === null ? null : (categoryNames.get(expense.categoryId) ?? null)
                 }
@@ -474,7 +475,7 @@ function ExpenseList({
                   <Row
                     key={expense.id}
                     expense={expense}
-                    showNames={showNames}
+                    mark={marks.get(expense.member.id) ?? FALLBACK_MARK}
                     categoryName={
                       expense.categoryId === null
                         ? null
@@ -523,13 +524,13 @@ function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: str
  */
 function StackedRow({
   expense,
-  showNames,
+  mark,
   categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
-  showNames: boolean;
+  mark: MemberMark;
   /** Null for an uncategorised entry — "a state to show, not a gap to fill in". */
   categoryName: string | null;
   privacy: boolean;
@@ -556,7 +557,7 @@ function StackedRow({
           as "this one has no category".
         */}
         <span className="note">{categoryName ?? 'Uncategorised'}</span>
-        <MemberTag member={expense.member} showName={showNames} />
+        <MemberTag member={expense.member} mark={mark} />
         {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
         {expense.isVoided && <Pill tone="due">Voided</Pill>}
         {/*
@@ -586,13 +587,13 @@ function StackedRow({
 
 function Row({
   expense,
-  showNames,
+  mark,
   categoryName,
   privacy,
   onEdit,
 }: {
   expense: ExpenseRow;
-  showNames: boolean;
+  mark: MemberMark;
   /** Null for an uncategorised entry. */
   categoryName: string | null;
   privacy: boolean;
@@ -639,7 +640,7 @@ function Row({
         {categoryName ?? <span className="note">Uncategorised</span>}
       </td>
       <td className="px-2.5 py-2 align-top">
-        <MemberTag member={expense.member} showName={showNames} />
+        <MemberTag member={expense.member} mark={mark} />
       </td>
       <td className="num px-2.5 py-2 text-right align-top" style={{ color: 'var(--ink)' }}>
         {formatMoney(expense.amount, { privacy })}
@@ -661,9 +662,10 @@ function Row({
  * amount, and it said the same two words down the whole list. The initial is
  * text, so ownership is still not carried by colour alone, and the full name is
  * the accessible name and the tooltip. Where two members share an initial the
- * letter cannot tell them apart and the name is shown as well.
+ * ones that collide grow to two letters, and only where even that does not
+ * separate them is the name shown as well (see memberMark.ts).
  */
-function MemberTag({ member, showName }: { member: Member; showName: boolean }) {
+function MemberTag({ member, mark }: { member: Member; mark: MemberMark }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span
@@ -673,9 +675,9 @@ function MemberTag({ member, showName }: { member: Member; showName: boolean }) 
         title={member.displayName}
         style={{ borderColor: `var(--${member.colour})` }}
       >
-        {member.displayName.trim().charAt(0).toUpperCase()}
+        {mark.text}
       </span>
-      {showName && <span style={{ color: 'var(--ink-2)' }}>{member.displayName}</span>}
+      {mark.showName && <span style={{ color: 'var(--ink-2)' }}>{member.displayName}</span>}
       {member.isArchived && <Pill tone="neutral">Archived</Pill>}
     </span>
   );
