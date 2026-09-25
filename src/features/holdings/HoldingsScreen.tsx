@@ -216,7 +216,8 @@ export function HoldingsScreen({
               const gain = total.value - total.invested;
               return (
                 <div key={total.currency}>
-                  <p
+                  {/* A div and not a p: a caveat opens a popover, and a div may not sit inside a p. */}
+                  <div
                     className="figure"
                     style={{ color: 'var(--ink)' }}
                     title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
@@ -229,7 +230,7 @@ export function HoldingsScreen({
                         absent rather than counted as zero, which would make it look complete.
                       </Caveat>
                     )}
-                  </p>
+                  </div>
                   <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
                     <Stat label="Invested">
                       {formatMoney(money(total.invested, total.currency), { privacy })}

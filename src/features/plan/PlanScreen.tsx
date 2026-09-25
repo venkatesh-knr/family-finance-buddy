@@ -817,13 +817,13 @@ function SuggestionPicker({
 
       {problem !== null && <Problem>{problem}</Problem>}
 
-      <p className="note mt-2.5">
+      <div className="note mt-2.5">
         <Caveat tone="info" label="What compulsory means on these">
           Marked <strong>compulsory</strong> where the spend arrives whether or not anybody decides
           to — a fee, a premium, a bill. It is a starting guess: the same name is a commitment in
           one household and a choice in another, and it is editable afterwards.
         </Caveat>
-      </p>
+      </div>
 
     </div>
   );
