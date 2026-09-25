@@ -12,6 +12,7 @@ import {
   type CategoryActual,
   type CategoryPlanned,
   type PersonalTotal,
+  taxYearsToOffer,
 } from './budget.ts';
 
 const inr = (rupees: number) => money(BigInt(Math.round(rupees * 100)), 'INR');
@@ -386,5 +387,33 @@ describe('compareToBudget with other members private spending', () => {
     expect(rows.filter((r) => r.kind === 'category')).toHaveLength(2);
     expect(rows.filter((r) => r.kind === 'uncategorised')).toHaveLength(1);
     expect(rows.filter((r) => r.kind === 'personal')).toHaveLength(1);
+  });
+});
+
+describe('taxYearsToOffer', () => {
+  it('is the current year alone when nothing was ever sold', () => {
+    expect(taxYearsToOffer({ currentFy: 2026, saleDates: [] })).toEqual([2026]);
+  });
+
+  it('adds the tax year of every sale, newest first, each once', () => {
+    // 15 Mar 2026 is in 2025-26; 2 Apr 2026 is in 2026-27; 10 Jan 2025 is in 2024-25.
+    expect(
+      taxYearsToOffer({
+        currentFy: 2026,
+        saleDates: ['2026-03-15', '2026-04-02', '2025-01-10', '2026-03-31'],
+      }),
+    ).toEqual([2026, 2025, 2024]);
+  });
+
+  it('keeps the current year when every sale was in an earlier one', () => {
+    expect(taxYearsToOffer({ currentFy: 2026, saleDates: ['2025-01-10'] })).toEqual([2026, 2024]);
+  });
+
+  it('does not offer a year with no sale in it between two that have one', () => {
+    expect(taxYearsToOffer({ currentFy: 2026, saleDates: ['2024-05-01'] })).toEqual([2026, 2024]);
+  });
+
+  it('never offers a year after the current one', () => {
+    expect(taxYearsToOffer({ currentFy: 2026, saleDates: ['2027-04-05'] })).toEqual([2026]);
   });
 });

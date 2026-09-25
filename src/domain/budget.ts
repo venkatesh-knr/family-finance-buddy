@@ -49,6 +49,29 @@ export function taxYearOf(date: IsoDate): number {
   return month >= 4 ? year : year - 1;
 }
 
+/**
+ * The tax years worth putting in a picker: this one, and every earlier one in
+ * which something was sold.
+ *
+ * Driven by the data and not by a count. A list of the last four years offered
+ * three that have nothing in them, and a person who picked one landed on a
+ * refusal about rules for a year they had no reason to look at. A year with a
+ * sale in it is one they may need, so it is offered even if the rules for it are
+ * not loaded: the screen then says so, which is the signal that a backfill has
+ * something to do. A year after the current one is not offered.
+ */
+export function taxYearsToOffer(options: {
+  readonly currentFy: number;
+  readonly saleDates: readonly IsoDate[];
+}): number[] {
+  const years = new Set<number>([options.currentFy]);
+  for (const date of options.saleDates) {
+    const year = taxYearOf(date);
+    if (year <= options.currentFy) years.add(year);
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
 /** The calendar month containing a date, first day to last. */
 export function monthBounds(date: IsoDate): { start: IsoDate; end: IsoDate } {
   const year = Number(date.slice(0, 4));
