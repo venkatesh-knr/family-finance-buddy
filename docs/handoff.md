@@ -135,19 +135,24 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **Branch:** `role-screens`. Plan item 10, the app half: the screens for the contributor and viewer roles.
-  Built: `src/domain/access.ts` (which screens a role gets), `src/domain/summary.ts`, `src/repo/summary.ts`,
-  `src/features/summary/SummaryScreen.tsx`, the navigation gating in `src/app/App.tsx`, and role-aware
-  Expenses, Holdings and Tax. Plus a second migration, `20260926120000_summary_category_names.sql`, because a
-  viewer cannot read category names and the summary has to carry them.
-- **Not verified live:** the owner's screens after the change, and the Summary screen itself. The preview was
-  signed out and a session cannot sign in. There is also no contributor or viewer account on the demo household
-  to look through, and the live database does not have the summary functions until the maintainer applies the
-  migrations below. Unit tests, `tsc`, the build and CI are what ran.
-- **For the maintainer to do, in this order:** `supabase db push` for `20260925120000_narrow_reads.sql` and
-  `20260926120000_summary_category_names.sql`. Neither changes anything for an owner or a partner. The Summary
-  screen needs both.
-- **Merged earlier:** the database half of item 10 (PR #45).
-- **After this:** plan item 6 (property and the rest of the balance sheet) is the next piece the maintainer
-  wants. Bank and card import waits for redacted sample statements the maintainer is collecting, outside the
-  repository.
+- **Branch:** `accrual`. Plan item 6 (property and the rest of the balance sheet), first piece: the fixed-deposit
+  and bond accrual module, `src/domain/accrual.ts`, pure and tested first with hand-worked answers. No schema, no
+  screen yet.
+- **What the maintainer holds, which decides the shape of the rest of item 6:** property, fixed deposits, bonds,
+  PPF, EPF, NPS and other. **Their deposits compound yearly**, not quarterly as the blueprint's example does, so
+  compounding is a property of each deposit and never a default.
+- **Convention the module states, to be checked against a real FD advice:** interest is credited at the end of
+  each compounding period and rounded to the paisa then; a part-period at the end accrues simply on the balance,
+  actual/365; a bond coupon accrues as face x coupon x days / 365 from the last coupon date. A bank's own maturity
+  figure is the one that counts and may differ by a few rupees.
+- **Next, in this order:** (1) show the maintainer the schema for deposits, bonds and property before building a
+  screen on it: `instrument` already has `bond` and `deposit` kinds but no terms (rate, start, maturity,
+  compounding, coupon frequency); `property` and `property_improvement` are specified in the blueprint's data model
+  and not built. (2) A pure cost-basis function for property (purchase + stamp duty +
+  registration + capital improvements, not repairs), tested first. (3) PPF, EPF and NPS: EPF is typed from the
+  passbook, NPS is units x NAV, PPF is computed from the notified rate on the lowest balance of the month and needs
+  its own fixtures. (4) The screens.
+- **Merged and deployed this session:** the handoff (#46) and the app half of item 10 (#47). The maintainer has
+  applied `20260925120000` and `20260926120000` to the live project.
+- **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
+  repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
