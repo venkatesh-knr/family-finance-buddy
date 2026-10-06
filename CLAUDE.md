@@ -23,6 +23,11 @@ order of work and the gate each stage must pass — check it before starting som
 later-phase work doesn't get pulled forward ahead of its foundation. All three are
 authoritative; if something here conflicts with them, ask rather than choosing.
 
+**Read `docs/handoff.md` at the start of every session.** The work is done from the local machine or
+from a cloud session, one at a time, and handed over through git. It says how to arrive and how to
+leave (`npm run handoff -- --arriving` / `--leaving`), what differs between the two environments,
+the maintainer's standing working agreements, and where the last session stopped.
+
 ---
 
 ## Invariants — never violate without discussing first
