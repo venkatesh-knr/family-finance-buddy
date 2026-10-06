@@ -38,6 +38,9 @@ by changing a token, say so and change the token instead.
 | 10 | `max-w-app` caps every screen at 880px | low | `tailwind.config.js` |
 | 11 | Three type rules in `tokens.md` §3 are too broad | high | `docs/tokens.md`, then everywhere |
 | 12 | A labelled input is named by its placeholder | medium | `ui/primitives.tsx` — `Field`, `PasswordField`; 30 raw wrappers in screens |
+| 13 | The TOTP QR code does not render | high | `repo/auth.ts`, `features/auth/SignInScreen.tsx` |
+| 14 | Every MFA failure is reported as an expired code | high | `repo/auth.ts` — `verifyTotpCode` |
+| 15 | Three households all named "Demo household" | medium | seed / live project data |
 
 ---
 
@@ -305,7 +308,75 @@ accessible name other than its placeholder would stop it coming back.
 
 ---
 
+## 13. The TOTP QR code does not render
+
+Found 6 October while building the end-to-end suite, by enrolling a test
+account for the first time. Findings 13 to 15 all come from that, and all three
+sit on the sign-in path — the first thing anyone invited to this household will
+touch.
+
+**What you see.** On "Set up your authenticator", the QR box shows the literal
+text `data:image/svg+xml;utf-8,` above a solid black square. No scannable code.
+Enrolment is only possible through the hand-entry fallback.
+
+**Why.** `src/repo/auth.ts` passes Supabase's `data.totp.qr_code` straight
+through as `qrCodeSvg`. That value is a data URI, not SVG markup, and
+`SignInScreen.tsx` injects it with `dangerouslySetInnerHTML` — so the browser
+renders the URI prefix as text and whatever follows it as markup.
+
+**What to do.** Strip the prefix and URL-decode in the repository layer, so
+`qrCodeSvg` is what its name claims and the component keeps injecting markup.
+
+**Not** `<img src={dataUri}>`. `vite.config.ts` applies its Content-Security-
+Policy to the built bundle only, so a `data:` image renders in dev and is
+blocked by `img-src` in production — the QR would break on Pages and nowhere
+you would notice. Verify the fix by scanning it with a phone, not by looking at
+it: a QR that draws but does not decode is identical in a screenshot.
+
+## 14. Every MFA failure is reported as an expired code
+
+**What you see.** A correct six-digit code rejected four times in a row with
+"That code was not accepted. Codes expire every 30 seconds — try the current
+one." The code was never the problem; the enrolment screen had been left idle
+and the session had gone stale.
+
+**Why it is wrong.** `verifyTotpCode` in `src/repo/auth.ts` discards the error
+from `challengeAndVerify` and substitutes one sentence. A stale session, a
+discarded factor, a rate limit, a network failure and a genuinely wrong code are
+all reported identically — and that one sentence names the only cause that was
+not responsible, which sends a person round the loop fetching fresh codes.
+
+**What to do.** Keep the friendly sentence for an actual code mismatch. Report a
+stale session as what it is, with the action that resolves it. Do not surface
+raw Supabase strings, and do not collapse every cause into one message.
+
+The enrolment remint on reload is deliberate and documented in that file —
+an abandoned unverified factor cannot be listed, so reusing a fixed name would
+turn one failed attempt into a permanent lockout. Leave it. This finding is only
+about the error text.
+
+## 15. Three households all named "Demo household"
+
+**What you see.** The household switcher offers three options, every one of
+them reading `Demo household (demo)`. Nothing distinguishes them.
+
+**Why it matters.** `docs/build-plan.md` §00 already records a second demo
+household from the local-only fixture, "its login banned; removing it is an open
+decision". That decision has not been taken and there are now three. Somebody
+switching household is choosing blind, and the demo badge — which exists so
+there is "never a moment of wondering which numbers you are looking at" — cannot
+do its job when every option wears it.
+
+**What to do.** Decide which survive. Remove the rest, or name them so a person
+can tell them apart. Worth doing before the count reaches five.
+
 ## Order
+
+**13 and 14 jump the queue.** They were found after the rest and they are
+not design findings — they are two defects on the enrolment path, which is
+the first screen anyone invited to this household ever sees, and between
+them they make a first sign-in close to unusable without being told how.
+Fix those before resuming the list below. 15 can wait, but not indefinitely.
 
 Findings 11, 2, 3 and 8 are the first pass: 11 settles the type rules, then 2, 3
 and 8 apply them and fix the caveat marker and the absent-figure rendering. All
