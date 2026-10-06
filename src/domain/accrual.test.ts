@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { addMonths, bondAccrual, depositMaturity, depositValueOn } from './accrual.ts';
+import { addMonths, bondAccrual, depositChainValueOn, depositMaturity, depositValueOn } from './accrual.ts';
 
 const inr = (rupees: number, paise = 0) => money(BigInt(rupees) * 100n + BigInt(paise), 'INR');
 
@@ -244,5 +244,129 @@ describe('bondAccrual', () => {
         on: '2025-12-31',
       }),
     ).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════ a deposit that renews itself
+
+describe('depositChainValueOn', () => {
+  const first = {
+    principal: inr(100000),
+    ratePct: '7',
+    start: '2026-01-01',
+    maturity: '2027-01-01',
+    compounding: 'yearly' as const,
+  };
+  const renewing = { first, renewals: [], autoRenew: true, renewalRatePct: null };
+
+  it('is the first term, read as the deposit it is, while the first term runs', () => {
+    const result = depositChainValueOn(renewing, '2026-07-01');
+    expect(result).toEqual({ ok: true, value: inr(103471, 23), term: 1, projected: false, matured: false });
+  });
+
+  it('projects a renewal on the same term from the maturity value, at the same rate', () => {
+    // Term 1 pays 107000.00, which is redeposited for a year at 7%.
+    // 181 days into term 2: 107000 x 7% x 181 / 365 = 3714.22.
+    const result = depositChainValueOn(renewing, '2027-07-01');
+    expect(result).toEqual({ ok: true, value: inr(110714, 22), term: 2, projected: true, matured: false });
+  });
+
+  it('starts the next term from the maturity value on the day it matures', () => {
+    // 1,00,000 -> 1,07,000 -> 1,14,490: on 1 Jan 2028 term 3 begins at 114490.00.
+    expect(depositChainValueOn(renewing, '2028-01-01')).toEqual({
+      ok: true,
+      value: inr(114490),
+      term: 3,
+      projected: true,
+      matured: false,
+    });
+  });
+
+  it('projects at the rate it was told to assume, not the last', () => {
+    // Term 2 at 6%: 107000 x 1.06 = 113420.00, the start of term 3.
+    const result = depositChainValueOn({ ...renewing, renewalRatePct: '6' }, '2028-01-01');
+    expect(result).toMatchObject({ ok: true, value: inr(113420), term: 3, projected: true });
+  });
+
+  it('uses a renewal the bank has made, at the rate in its advice, and not a projection', () => {
+    // The bank renewed 107000.00 at 6.5%. 181 days in: 107000 x 6.5% x 181 / 365 = 3448.92.
+    const chain = {
+      ...renewing,
+      renewals: [
+        {
+          principal: inr(107000),
+          ratePct: '6.5',
+          start: '2027-01-01',
+          maturity: '2028-01-01',
+          compounding: 'yearly' as const,
+        },
+      ],
+    };
+    expect(depositChainValueOn(chain, '2027-07-01')).toEqual({
+      ok: true,
+      value: inr(110448, 92),
+      term: 2,
+      projected: false,
+      matured: false,
+    });
+  });
+
+  it('projects on from the last recorded renewal, at its rate, once it too has matured', () => {
+    // Recorded term 2 at 6.5%: 107000 x 1.065 = 113955.00, which term 3 starts from.
+    const chain = {
+      ...renewing,
+      renewals: [
+        {
+          principal: inr(107000),
+          ratePct: '6.5',
+          start: '2027-01-01',
+          maturity: '2028-01-01',
+          compounding: 'yearly' as const,
+        },
+      ],
+    };
+    expect(depositChainValueOn(chain, '2028-01-01')).toMatchObject({
+      ok: true,
+      value: inr(113955),
+      term: 3,
+      projected: true,
+    });
+  });
+
+  it('stays at the maturity value, and says it has matured, when it does not renew', () => {
+    const result = depositChainValueOn({ ...renewing, autoRenew: false }, '2027-06-01');
+    expect(result).toEqual({ ok: true, value: inr(107000), term: 1, projected: false, matured: true });
+  });
+
+  it('sorts renewals by start rather than trusting the order they were given', () => {
+    const second = { principal: inr(107000), ratePct: '6.5', start: '2027-01-01', maturity: '2028-01-01', compounding: 'yearly' as const };
+    const third = { principal: inr(113955), ratePct: '6', start: '2028-01-01', maturity: '2029-01-01', compounding: 'yearly' as const };
+    const chain = { ...renewing, renewals: [third, second] };
+    expect(depositChainValueOn(chain, '2028-01-01')).toMatchObject({ ok: true, value: inr(113955), term: 3, projected: false });
+  });
+
+  it('refuses before the deposit began, rather than guess', () => {
+    expect(depositChainValueOn(renewing, '2025-12-31')).toEqual({ ok: false, reason: 'before-start' });
+  });
+
+  it('refuses a chain with a gap or an overlap, and does not paper over it', () => {
+    const gap = { principal: inr(107000), ratePct: '6.5', start: '2027-02-01', maturity: '2028-02-01', compounding: 'yearly' as const };
+    expect(depositChainValueOn({ ...renewing, renewals: [gap] }, '2027-06-01')).toEqual({
+      ok: false,
+      reason: 'broken-chain',
+    });
+    const overlap = { ...gap, start: '2026-12-01', maturity: '2027-12-01' };
+    expect(depositChainValueOn({ ...renewing, renewals: [overlap] }, '2027-06-01')).toEqual({
+      ok: false,
+      reason: 'broken-chain',
+    });
+  });
+
+  it('refuses to project a term that is not a whole number of months, since "the same term" is then a guess', () => {
+    // 2026-01-01 to 2026-04-02 is three months and a day.
+    const odd = { ...renewing, first: { ...first, maturity: '2026-04-02' } };
+    expect(depositChainValueOn(odd, '2026-08-01')).toEqual({ ok: false, reason: 'cannot-project' });
+    // But inside its own term it is no problem.
+    expect(depositChainValueOn(odd, '2026-02-01')).toMatchObject({ ok: true, term: 1, projected: false });
   });
 });
