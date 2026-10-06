@@ -91,9 +91,9 @@ export function summariseAssets(input: readonly AssetRow[]): AssetGroup[] {
   return [...byCurrency.entries()]
     .sort(([a], [b]) => byText(a, b))
     .map(([currency, rows]) => {
-      // A kind with nothing valued has no share of anything.
+      // A kind with nothing valued, or valued at nothing, has no share of anything.
       const valued = rows
-        .filter((row) => row.valued > 0)
+        .filter((row) => row.valued > 0 && row.total.minor > 0n)
         .sort((a, b) => byAmountDescending(a.total.minor, b.total.minor));
       const sum = valued.reduce((acc, row) => acc + row.total.minor, 0n);
       return {

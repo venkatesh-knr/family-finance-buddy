@@ -74,6 +74,17 @@ describe('summariseAssets', () => {
     expect(group?.unvalued).toBe(2);
   });
 
+  it('leaves out a kind that was valued at nothing, as the allocation on Overview does', () => {
+    // A holding read as worth zero (sold, matured) was read, so it is not unvalued
+    // and it is not hidden as such; it simply has no share of anything.
+    const [group] = summariseAssets([
+      { kind: 'other', currency: 'INR', total: inr(0), valued: 1, unvalued: 0 },
+      { kind: 'etf', currency: 'INR', total: inr(400), valued: 1, unvalued: 0 },
+    ]);
+    expect(group?.rows.map((r) => r.kind)).toEqual(['etf']);
+    expect(group?.unvalued).toBe(0);
+  });
+
   it('is empty for no holdings', () => {
     expect(summariseAssets([])).toEqual([]);
   });
