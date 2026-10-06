@@ -22,16 +22,18 @@
  * all.
  *
  * "A router arrives when a URL has to be shareable" — that day is not here.
- * This is not a router: it maps one hash to one of seven names and refuses
+ * This is not a router: it maps one hash to one of eight names and refuses
  * anything else.
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { AppScreen } from '../domain/access.ts';
 
-export type Screen = 'overview' | 'expenses' | 'holdings' | 'tax' | 'fire' | 'profile' | 'settings';
+export type Screen = AppScreen;
 
 const SCREEN_NAMES: readonly Screen[] = [
   'overview',
+  'summary',
   'expenses',
   'holdings',
   'tax',

@@ -117,21 +117,37 @@ export function ExpensesScreen({
         is to never overwrite an original figure with a converted one — the
         currency pill on a foreign row says which is which.
       */}
-      <BudgetVsActual
-        categories={listing.categories}
-        budgets={budgets}
-        expenses={listing.expenses}
-        members={listing.members}
-        // Null means the sums could not be read, which is not the same as
-        // nobody having any. The card says which it is rather than showing a
-        // total that might be short by an unknown amount.
-        personalSpend={personalSpend}
-        today={today}
-        fy={fy}
-        currency={reading}
-        rates={rates}
-        privacy={privacy}
-      />
+      {/*
+        The comparison adds up the entries it can see and sets them against the
+        household's plan. A contributor can read only their own entries, so for
+        them it would show their spending as the household's, a partial figure
+        that looks whole. They get their own ledger below and the household's
+        totals on the Summary screen.
+      */}
+      {listing.viewer.role === 'contributor' ? (
+        <Card title="Budget vs actual">
+          <p className="note">
+            You can read your own entries. The household&rsquo;s spending, by category, is on the
+            Summary screen.
+          </p>
+        </Card>
+      ) : (
+        <BudgetVsActual
+          categories={listing.categories}
+          budgets={budgets}
+          expenses={listing.expenses}
+          members={listing.members}
+          // Null means the sums could not be read, which is not the same as
+          // nobody having any. The card says which it is rather than showing a
+          // total that might be short by an unknown amount.
+          personalSpend={personalSpend}
+          today={today}
+          fy={fy}
+          currency={reading}
+          rates={rates}
+          privacy={privacy}
+        />
+      )}
 
       {editing !== null && (
         <EditExpense
