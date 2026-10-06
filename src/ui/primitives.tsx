@@ -74,18 +74,51 @@ export function Card({
   );
 }
 
+/**
+ * A labelled input.
+ *
+ * The label is a real `<label htmlFor>` and the input has the matching `id`, and
+ * the two are siblings rather than the input sitting inside the label. Wrapping
+ * worked in a browser and not everywhere that reads the page: a tool that names a
+ * control from its label, a screen reader, an end-to-end test, all fell back to
+ * the placeholder ("0.00", "Optional") when they did not follow the implicit
+ * association. And with the hint inside the label, the hint became part of the
+ * name. The hint is now `aria-describedby`, which is what a description is.
+ *
+ * An `id` passed in is kept; otherwise one is made. Colons are stripped from it
+ * because `:r1:` is a valid id and an awkward selector.
+ */
 export function Field({
   label,
   hint,
   numeric = false,
+  id,
+  'aria-describedby': describedBy,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; numeric?: boolean }) {
+  // Always called, so the order of hooks does not depend on whether an id was passed.
+  const generated = useId().replace(/:/g, '');
+  const inputId = id ?? `field${generated}`;
+  const hintId = `${inputId}-hint`;
+  const described = [describedBy, hint === undefined ? undefined : hintId].filter(Boolean).join(' ');
+
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="label">{label}</span>
-      <input className={numeric ? 'field field-num' : 'field'} {...props} />
-      {hint !== undefined && <span className="note">{hint}</span>}
-    </label>
+    <div className="flex flex-col gap-1.5">
+      <label className="label" htmlFor={inputId}>
+        {label}
+      </label>
+      <input
+        id={inputId}
+        className={numeric ? 'field field-num' : 'field'}
+        aria-describedby={described === '' ? undefined : described}
+        {...props}
+      />
+      {hint !== undefined && (
+        <span className="note" id={hintId}>
+          {hint}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -112,17 +145,26 @@ export function Button({
 export function PasswordField({
   label,
   hint,
+  id,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: string; hint?: string }) {
   const [revealed, setRevealed] = useState(false);
-  const hintId = useId();
+  const generated = useId().replace(/:/g, '');
+  const inputId = id ?? `field${generated}`;
+  const hintId = `${inputId}-hint`;
 
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="label">{label}</span>
+    // A div, with the label beside the input and not around it: the reveal button
+    // is inside this block, and a button inside a label is announced as part of
+    // the field's name ("Password Show password"). See Field.
+    <div className="flex flex-col gap-1.5">
+      <label className="label" htmlFor={inputId}>
+        {label}
+      </label>
 
       <span className="relative flex items-center">
         <input
+          id={inputId}
           className="field pr-11"
           type={revealed ? 'text' : 'password'}
           aria-describedby={hint === undefined ? undefined : hintId}
@@ -150,7 +192,7 @@ export function PasswordField({
           {hint}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 

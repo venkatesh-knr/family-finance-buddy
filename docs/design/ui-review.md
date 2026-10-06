@@ -37,6 +37,7 @@ by changing a token, say so and change the token instead.
 | 9 | Privacy control wraps at 375px | low | `features/overview` |
 | 10 | `max-w-app` caps every screen at 880px | low | `tailwind.config.js` |
 | 11 | Three type rules in `tokens.md` §3 are too broad | high | `docs/tokens.md`, then everywhere |
+| 12 | A labelled input is named by its placeholder | medium | `ui/primitives.tsx` — `Field`, `PasswordField`; 30 raw wrappers in screens |
 
 ---
 
@@ -268,6 +269,39 @@ Overview was three heroes competing, not the size of any one of them.
 **Order for this finding:** edit `docs/tokens.md` §3 first and show me the diff,
 because everything else in this finding is mechanical once the rule is settled.
 `scripts/check-design-tokens.mjs` may encode the old rule — check it.
+
+## 12. A labelled input is named by its placeholder
+
+*Found by the end-to-end tests, after the rest of this review.*
+
+**What you see.** Playwright reads the amount field on Quick add as "0.00" and the payee field as "Optional":
+the placeholders, not the labels printed above them. The browser pane's accessibility tree does the same.
+
+**Why it is wrong.** `Field` rendered `<label><span class="label">Amount</span><input></label>`: the input
+*inside* the label, relying on the implicit association, with no `id` and no `for`. A browser follows that;
+a test tool, a screen reader and the pane's own tree do not reliably, and fall back to the placeholder, which
+is not a name. Two things made it worse. The hint sat inside the label, so it was part of the field's name.
+And in `PasswordField` the reveal button sat inside the label too, so the name was "Password Show password".
+A placeholder as the only name also disappears the moment somebody types, which is what a person using a screen
+reader hears.
+
+**What was done.** `Field` and `PasswordField` now render a real `<label htmlFor>` as a sibling of the input,
+with the input's `id` from `useId()` (colons stripped, an `id` passed in is kept), the same `label` class so
+nothing moves, and the hint as `aria-describedby`, which is what a description is. The reveal button is no longer
+inside a label. Checked on the sign-in screen: the fields are named "Email" and "Password" and the button is its
+own control.
+
+**The other primitives that take a `label`, checked for the same pattern.** None has it. `Stat` is a `dt`/`dd`
+pair; `Bar`, `EditButton` and `Table` carry the label as `aria-label`; for `Caveat` and `Absent` it is the
+panel's heading.
+
+**What is left, and not fixed here.** Thirty raw `<label>` wrappers in screens use the same shape around a
+`<span class="label">` and a control: 26 selects and 4 inputs, in eleven files (Plan 7, Holdings 5, Edit holding 5,
+Household 3, Expenses 2, Import 2, Tax 2, and one each in Edit expense, Settings, Summary and the household
+switcher). They are valid HTML and a browser names them, so this is the same weakness at a lower severity, and
+mechanical to fix with a `SelectField` primitive that does what `Field` now does. Not done in the same change
+because it touches eleven screens and is better as its own commit; a test that finds any control with no
+accessible name other than its placeholder would stop it coming back.
 
 ---
 
