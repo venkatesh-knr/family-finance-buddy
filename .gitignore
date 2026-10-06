@@ -50,3 +50,8 @@ env.txt
 # committed, whatever it is called or what format it is in.
 SampleDoc/
 *.pdf
+
+# Playwright — credentials, saved sessions, and run output.
+.env.e2e
+tests/e2e/.auth/
+/blob-report/
