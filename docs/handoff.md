@@ -135,13 +135,19 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **In flight:** the app half of plan item 10, on branch `role-screens`: screens for the contributor
-  and viewer roles that use `household_expense_totals` and `household_asset_totals`. Not started
-  beyond reading how `listing.viewer` carries the role.
-- **Done and merged:** the database half of item 10 (PR #45, `20260925120000_narrow_reads.sql`).
-- **For the maintainer to do:** apply `20260925120000_narrow_reads.sql` to the live project
-  (`supabase db push`). It changes nothing for an owner or a partner, so it is safe now. The new
-  screens need its functions.
-- **After that:** plan item 6 (property and the rest of the balance sheet) is the next piece the
-  maintainer wants. Bank and card import waits for redacted sample statements the maintainer is
-  collecting, outside the repository.
+- **Branch:** `role-screens`. Plan item 10, the app half: the screens for the contributor and viewer roles.
+  Built: `src/domain/access.ts` (which screens a role gets), `src/domain/summary.ts`, `src/repo/summary.ts`,
+  `src/features/summary/SummaryScreen.tsx`, the navigation gating in `src/app/App.tsx`, and role-aware
+  Expenses, Holdings and Tax. Plus a second migration, `20260926120000_summary_category_names.sql`, because a
+  viewer cannot read category names and the summary has to carry them.
+- **Not verified live:** the owner's screens after the change, and the Summary screen itself. The preview was
+  signed out and a session cannot sign in. There is also no contributor or viewer account on the demo household
+  to look through, and the live database does not have the summary functions until the maintainer applies the
+  migrations below. Unit tests, `tsc`, the build and CI are what ran.
+- **For the maintainer to do, in this order:** `supabase db push` for `20260925120000_narrow_reads.sql` and
+  `20260926120000_summary_category_names.sql`. Neither changes anything for an owner or a partner. The Summary
+  screen needs both.
+- **Merged earlier:** the database half of item 10 (PR #45).
+- **After this:** plan item 6 (property and the rest of the balance sheet) is the next piece the maintainer
+  wants. Bank and card import waits for redacted sample statements the maintainer is collecting, outside the
+  repository.
