@@ -20,7 +20,8 @@
     "check:sql": "node scripts/check-sql-uuids.mjs",
     "db:reset": "supabase db reset",
     "db:seed:local": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/seed/demo_household.sql",
-    "check:actions": "bash scripts/check-actions-pinned.sh"
+    "check:actions": "bash scripts/check-actions-pinned.sh",
+    "handoff": "node scripts/handoff-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",
