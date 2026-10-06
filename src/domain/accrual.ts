@@ -207,3 +207,110 @@ export function bondAccrual(options: Bond & { readonly on: IsoDate }): BondAccru
     couponAmount,
   };
 }
+
+// ─────────────────────────────────────────────── a deposit that renews itself
+
+/**
+ * A deposit as a chain of terms.
+ *
+ * With auto-renewal the interest is paid into the principal at maturity and the
+ * whole is redeposited for the same term, at the rate the bank is then offering,
+ * which can differ from the last. So a deposit's value on a day depends on which
+ * term the day falls in, and every term after the first starts from the last one's
+ * maturity value.
+ *
+ * A renewal the bank has *made* is a recorded term, carrying the principal, rate
+ * and compounding its advice states: the bank's figure is the authority and the new
+ * rate is a fact only the advice knows. One that has not been recorded yet is
+ * *projected* here, on the same term, from the previous maturity value, at
+ * `renewalRatePct` if one is assumed and otherwise the previous rate, and the
+ * answer says it was projected. A projection is an estimate and is never stored.
+ */
+export interface DepositChain {
+  readonly first: Deposit;
+  /** Recorded renewals, in any order; they are sorted by start. */
+  readonly renewals: readonly Deposit[];
+  readonly autoRenew: boolean;
+  /** The rate to project at, or null for the last term's. */
+  readonly renewalRatePct: string | null;
+}
+
+export type ChainValue =
+  | {
+      readonly ok: true;
+      readonly value: Money;
+      /** Which term the day falls in, from 1. */
+      readonly term: number;
+      /** True when that term is an assumption and not a renewal the bank has made. */
+      readonly projected: boolean;
+      /** True when the deposit has matured and does not renew: its value is the maturity value. */
+      readonly matured: boolean;
+    }
+  | { readonly ok: false; readonly reason: 'before-start' | 'broken-chain' | 'cannot-project' };
+
+/** A whole number of calendar months from `start` to `maturity`, or null if it is not one. */
+function wholeMonths(start: IsoDate, maturity: IsoDate): number | null {
+  for (let months = 1; months <= 600; months += 1) {
+    const reached = addMonths(start, months);
+    if (reached === maturity) return months;
+    if (reached > maturity) return null;
+  }
+  return null;
+}
+
+/** The deposit's value on a day, through its recorded renewals and then its projected ones. */
+export function depositChainValueOn(chain: DepositChain, on: IsoDate): ChainValue {
+  const terms = [chain.first, ...[...chain.renewals].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))];
+
+  // Each renewal begins on the day the last term ended. Anything else is a gap or
+  // an overlap, which is a mistake in what was recorded and is said, not smoothed over.
+  for (let i = 1; i < terms.length; i += 1) {
+    if (terms[i]?.start !== terms[i - 1]?.maturity) return { ok: false, reason: 'broken-chain' };
+  }
+  if (on < chain.first.start) return { ok: false, reason: 'before-start' };
+
+  for (let i = 0; i < terms.length; i += 1) {
+    const term = terms[i];
+    if (term !== undefined && on < term.maturity) {
+      const value = depositValueOn(term, on);
+      return value === null
+        ? { ok: false, reason: 'before-start' }
+        : { ok: true, value, term: i + 1, projected: false, matured: false };
+    }
+  }
+
+  const last = terms[terms.length - 1] ?? chain.first;
+  if (!chain.autoRenew) {
+    return {
+      ok: true,
+      value: depositMaturity(last).maturityValue,
+      term: terms.length,
+      projected: false,
+      matured: true,
+    };
+  }
+
+  const length = wholeMonths(last.start, last.maturity);
+  if (length === null) return { ok: false, reason: 'cannot-project' };
+
+  let previous: Deposit = last;
+  for (let k = 1; k <= 200; k += 1) {
+    const start = previous.maturity;
+    const next: Deposit = {
+      principal: depositMaturity(previous).maturityValue,
+      ratePct: chain.renewalRatePct ?? previous.ratePct,
+      start,
+      maturity: addMonths(start, length),
+      compounding: previous.compounding,
+    };
+    if (on < next.maturity) {
+      const value = depositValueOn(next, on);
+      return value === null
+        ? { ok: false, reason: 'before-start' }
+        : { ok: true, value, term: terms.length + k, projected: true, matured: false };
+    }
+    previous = next;
+  }
+  // Two hundred terms past: not a deposit, a mistake in a date.
+  return { ok: false, reason: 'cannot-project' };
+}
