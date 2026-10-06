@@ -4,6 +4,7 @@ The work happens in **one place at a time**: either the maintainer's Windows mac
 cloud session. Never both at once, and nothing is shared except what is in git. This file is
 what the next session reads first, so whichever side it is, it starts from the same facts.
 
+`docs/decisions.md` is the *why*: what was decided, by whom, and what it changed.
 `CLAUDE.md` is the rules. `docs/blueprint.md`, `docs/tokens.md` and `docs/build-plan.md` are the
 specification and the order of work. This file is the part that is neither: how to pick the work up,
 and where it was put down.
@@ -135,20 +136,19 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **In flight, two open pull requests, stacked:** (1) `audit-follows-holding` (#49): a privacy leak fix. The audit
-  log let an owner or partner read what a partner's *personal* holding cost and sold for, through the `lot` and
-  `disposal` audit rows. CI showed the test failing on the leak before the migration made it pass. (2)
-  `fixed-income-schema`: plan item 6's schema, for review before any screen: `fixed_income_terms` and
-  `deposit_renewal`, plus `depositChainValueOn` in `src/domain/accrual.ts` for a deposit that renews itself.
-  The second is based on the first and must be applied after it: `20260927120000` then `20260927130000`.
-- **Decisions the maintainer gave:** they hold property, FDs, bonds, PPF, EPF, NPS and other. Their deposits
-  compound **yearly**, and an auto-renewing FD pays its interest into the principal and is redeposited **for the same
-  term**. The new rate at renewal is a fact only the bank's advice knows, so a renewal that has happened is
-  recorded; one that has not is projected (same term, same rate unless an assumed rate is set) and shown as a
-  projection.
-- **For the maintainer to do:** review the two migrations, merge the PRs (the first, then the second), then
-  `supabase db push`. Neither changes what an owner reads, except that the first removes the leak.
-- **Not built yet, in this order:** the repository functions and the screen for deposits and bonds; the
-  `property` and `property_improvement` tables and a pure cost-basis function; PPF, EPF and NPS.
+- **Merged and deployed:** the audit-log leak fix (#49) and the fixed-income schema (#50), plus the decisions
+  record. **For the maintainer to do: `supabase db push`**, which applies `20260927120000` (the audit fix) then
+  `20260927130000` (`fixed_income_terms` and `deposit_renewal`). Nothing the app does needs them until the Deposits
+  screen is built.
+- **In flight:** plan item 6, the repository functions and the Deposits and bonds screen, on branch
+  `deposits-screen`. See the pull request for how far it got.
+- **Decisions the maintainer gave:** property, FDs, bonds, PPF, EPF, NPS and other are all held. Deposits compound
+  **yearly**; an auto-renewing FD pays its interest into the principal and is redeposited **for the same term**.
+  Written up in `docs/decisions.md`.
+- **Not built yet, in this order:** the screen; `property` and `property_improvement` with a cost-basis function;
+  PPF, EPF and NPS.
+- **Files in the working tree that are not part of this work:** an untracked `playwright.config.ts` and
+  `tests/e2e/`, and a `.gitignore` change for Playwright output, which a session did not create. They need
+  `@playwright/test` and `dotenv`, which are not in `package.json`. Left alone and uncommitted.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
