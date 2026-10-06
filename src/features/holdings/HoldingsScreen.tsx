@@ -194,7 +194,9 @@ export function HoldingsScreen({
           title="Portfolio"
           aside={
             <span className="flex flex-wrap items-center gap-2.5">
-              <span className="note">latest readings</span>
+              <span className="note">
+                {listing.viewer.role === 'contributor' ? 'your holdings, latest readings' : 'latest readings'}
+              </span>
               {/*
                 Said once, on the heading, rather than as a standing paragraph
                 under figures somebody has read a hundred times. The half of it

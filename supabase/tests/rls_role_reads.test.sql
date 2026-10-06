@@ -29,7 +29,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(37);
+select plan(40);
 
 -- ============================================================== the fixture
 
@@ -109,6 +109,10 @@ insert into public.expense_txn
 -- The plan.
 insert into public.expense_category (id, household_id, name, nature) values
   ('ca000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-0000000000f1', 'Utilities', 'fixed');
+
+update public.expense_txn
+   set category_id = 'ca000000-0000-4000-8000-000000000001'
+ where id = '10000000-0000-4000-8000-0000000000e1';
 
 insert into public.budget
   (id, household_id, category_id, fy, cadence, period, planned_minor, currency) values
@@ -357,7 +361,7 @@ select throws_ok(
   'another member''s private asset total is not a contributor''s to read'
 );
 
--- ================================================== the viewer: a summary (9)
+-- ================================================== the viewer: a summary (12)
 
 set local request.jwt.claim.sub to 'c0000000-0000-4000-8000-0000000000a4';
 set local request.jwt.claims   to '{"sub":"c0000000-0000-4000-8000-0000000000a4","role":"authenticated","aal":"aal2"}';
@@ -414,6 +418,31 @@ select is(
      from public.household_asset_totals('e0000000-0000-4000-8000-0000000000f1')),
   7000000::bigint,
   'and the shared holdings, 7000000, without a holding'
+);
+
+-- A viewer cannot read expense_category, so the summary has to carry the name
+-- itself: a heading of a uuid is not a summary. (20260926120000)
+select is(
+  (select category_name
+     from public.household_expense_totals(
+            'e0000000-0000-4000-8000-0000000000f1', date '2026-04-01', date '2026-04-30')
+    where total_minor = 100000),
+  'Utilities',
+  'the summary names the category, which the viewer could not otherwise read'
+);
+
+select is(
+  (select count(*)::int
+     from public.household_expense_totals(
+            'e0000000-0000-4000-8000-0000000000f1', date '2026-04-01', date '2026-04-30')
+    where category_id is null and category_name is null and total_minor = 600000),
+  1,
+  'and the uncategorised entries, 200000 + 400000, arrive as one row with no name, not as a guess'
+);
+
+select is_empty(
+  $q$ select id from public.expense_category $q$,
+  'while the viewer still cannot read the category table itself'
 );
 
 select throws_ok(

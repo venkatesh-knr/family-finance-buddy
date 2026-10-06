@@ -138,7 +138,12 @@ export function TaxScreen({
   }
   if (listing === null) return null;
 
-  const members = listing.members.filter((member) => !member.isArchived);
+  // A contributor reads only their own records, so another member's return would
+  // read as "nothing sold" when it is in fact not theirs to see.
+  const members = listing.members.filter(
+    (member) =>
+      !member.isArchived && (listing.viewer.role !== 'contributor' || member.id === listing.viewer.memberId),
+  );
   const member = members.find((m) => m.id === memberId);
   const isMine = memberId === listing.viewer.memberId;
   const window = taxYearBounds(fy);

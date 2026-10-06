@@ -11,7 +11,7 @@
  * supabase/tests, and they hold whether or not this file is running.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
 import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
@@ -24,6 +24,8 @@ import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../r
 import { isConfigured } from '../repo/client.ts';
 import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
 import { useScreen, type Screen } from './useScreen.ts';
+import { allowedScreen, screensFor } from '../domain/access.ts';
+import { SummaryScreen } from '../features/summary/SummaryScreen.tsx';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
 import {
@@ -58,8 +60,9 @@ import { AccountMenu } from './AccountMenu.tsx';
  * small to aim at. It never appears without its word: an icon on its own is a
  * guess, and this app is used by people who did not choose it.
  */
-const SCREENS: readonly (readonly [Screen, string, string])[] = [
+const ALL_SCREENS: readonly (readonly [Screen, string, string])[] = [
   ['overview', 'Overview', '◉'],
+  ['summary', 'Summary', '◉'],
   ['expenses', 'Expenses', '₹'],
   ['holdings', 'Holdings', '◧'],
   ['tax', 'Tax', '§'],
@@ -151,7 +154,7 @@ function SignedIn({
   choice,
   setChoice,
   email,
-  screen,
+  screen: requestedScreen,
   setScreen,
   hideAmountsByDefault,
   onHideAmountsByDefault,
@@ -173,6 +176,17 @@ function SignedIn({
 }) {
   const { current } = useHouseholdChoice();
   const householdId = current?.household.id ?? null;
+  const role = current?.role ?? null;
+
+  // What was asked for (a hash somebody typed, a link followed) is a request and
+  // not a grant: the role decides which screen is actually shown, and which
+  // appear in the navigation. The database enforces what each may read; this is
+  // what is worth showing for what is left.
+  const screen = allowedScreen(role, requestedScreen);
+  const SCREENS = useMemo(
+    () => screensFor(role).flatMap((id) => ALL_SCREENS.filter(([screenId]) => screenId === id)),
+    [role],
+  );
 
   /**
    * An asset class clicked on Overview, carried to Holdings.
@@ -349,6 +363,7 @@ function SignedIn({
           />
         )}
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'summary' && <SummaryScreen privacy={privacy} householdId={householdId} role={role} />}
       </main>
 
       {/*
