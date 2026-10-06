@@ -135,24 +135,20 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **Branch:** `accrual`. Plan item 6 (property and the rest of the balance sheet), first piece: the fixed-deposit
-  and bond accrual module, `src/domain/accrual.ts`, pure and tested first with hand-worked answers. No schema, no
-  screen yet.
-- **What the maintainer holds, which decides the shape of the rest of item 6:** property, fixed deposits, bonds,
-  PPF, EPF, NPS and other. **Their deposits compound yearly**, not quarterly as the blueprint's example does, so
-  compounding is a property of each deposit and never a default.
-- **Convention the module states, to be checked against a real FD advice:** interest is credited at the end of
-  each compounding period and rounded to the paisa then; a part-period at the end accrues simply on the balance,
-  actual/365; a bond coupon accrues as face x coupon x days / 365 from the last coupon date. A bank's own maturity
-  figure is the one that counts and may differ by a few rupees.
-- **Next, in this order:** (1) show the maintainer the schema for deposits, bonds and property before building a
-  screen on it: `instrument` already has `bond` and `deposit` kinds but no terms (rate, start, maturity,
-  compounding, coupon frequency); `property` and `property_improvement` are specified in the blueprint's data model
-  and not built. (2) A pure cost-basis function for property (purchase + stamp duty +
-  registration + capital improvements, not repairs), tested first. (3) PPF, EPF and NPS: EPF is typed from the
-  passbook, NPS is units x NAV, PPF is computed from the notified rate on the lowest balance of the month and needs
-  its own fixtures. (4) The screens.
-- **Merged and deployed this session:** the handoff (#46) and the app half of item 10 (#47). The maintainer has
-  applied `20260925120000` and `20260926120000` to the live project.
+- **In flight, two open pull requests, stacked:** (1) `audit-follows-holding` (#49): a privacy leak fix. The audit
+  log let an owner or partner read what a partner's *personal* holding cost and sold for, through the `lot` and
+  `disposal` audit rows. CI showed the test failing on the leak before the migration made it pass. (2)
+  `fixed-income-schema`: plan item 6's schema, for review before any screen: `fixed_income_terms` and
+  `deposit_renewal`, plus `depositChainValueOn` in `src/domain/accrual.ts` for a deposit that renews itself.
+  The second is based on the first and must be applied after it: `20260927120000` then `20260927130000`.
+- **Decisions the maintainer gave:** they hold property, FDs, bonds, PPF, EPF, NPS and other. Their deposits
+  compound **yearly**, and an auto-renewing FD pays its interest into the principal and is redeposited **for the same
+  term**. The new rate at renewal is a fact only the bank's advice knows, so a renewal that has happened is
+  recorded; one that has not is projected (same term, same rate unless an assumed rate is set) and shown as a
+  projection.
+- **For the maintainer to do:** review the two migrations, merge the PRs (the first, then the second), then
+  `supabase db push`. Neither changes what an owner reads, except that the first removes the leak.
+- **Not built yet, in this order:** the repository functions and the screen for deposits and bonds; the
+  `property` and `property_improvement` tables and a pure cost-basis function; PPF, EPF and NPS.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
