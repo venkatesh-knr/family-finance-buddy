@@ -568,6 +568,8 @@ accrued = P × coupon × days/365
 
 Quarterly compounding is the Indian bank default. Bond1 at 10.75% yearly and Bond2 at 11.5% monthly accrue differently between payout dates.
 
+*Decided since:* compounding is a property of each deposit and never a default (this household's deposits compound yearly), and a deposit that renews automatically is a chain of terms: the interest joins the principal and the whole is redeposited for the same term, at the rate the bank then offers. A renewal that has happened is recorded from the bank's advice; one that has not is projected and shown as a projection, never stored. See `docs/decisions.md`.
+
 **Budget variance**
 
 ```

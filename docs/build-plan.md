@@ -19,7 +19,7 @@ it stops describing the code.
 |---|---|---|
 | 0 — Irreversible choices | done | — |
 | 1 — Walking skeleton | done | — |
-| 2 — Schema, policies, tests | done | 30 migrations, 205 assertions across 13 pgTAP files gating the deploy, audit triggers on every table holding household data |
+| 2 — Schema, policies, tests | done | the migrations in `supabase/migrations/` and the pgTAP files in `supabase/tests/` that gate the deploy, audit triggers on every table holding household data. An audit row that names a `holding_id` is readable only by whoever can read that holding (`20260927120000`), so a position's purchases, sales and terms are as private in the log as in the table |
 | 3 — The demo household | done | Switcher, demo badge, and reset-and-reseed: `public.reset_demo_household` (`20260916120000`) is the schema's one hard delete — owner only, second factor, households marked demo only — behind a confirmation in Settings → Data. The seed lives in `app.seed_demo_household`; `supabase/seed/demo_edge_cases.sql` calls it. Still to add to the seed, as its own change: a loss-making sale, a carried-forward loss and lots either side of twenty-four months, all recordable now that `lot`, `disposal` and `tax_rule` exist. The foreign dividend waits on a `dividend` table. The live project also holds a second demo household from the local-only fixture, its login banned; removing it is an open decision. |
 | 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Prices now come through a driver: `price` (`20260914120000`) holds dated public reference prices, the `fetch-prices` edge function fetches AMFI and is the only thing that talks to a vendor, and a holding linked to an ISIN shows the quoted value for somebody to record. Deliberately not on a cron — see the note in that function. The since-inception chart draws assets (`src/domain/history.ts`). The allocation has its donut beside the rows. Outstanding: a contributed line on that chart, member attribution, and drivers beyond AMFI (FX, gold). |
 | 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. **The tax engine is built for the domestic case**: capital gains netted across asset classes, the ₹1.25 lakh equity allowance, and income tax on the slabs, rebate, surcharge and cess for both regimes (`src/domain/income-tax.ts`, `capital-gains.ts`), with a Tax screen, a folded card showing the rates a year applied, and a year picker that offers only years with a sale in them. Rules are dated `tax_rule` rows (`20260920120000`) and a test proves the bands in force on any date tile, so a Budget cannot leave old bands in force. Refused by name rather than guessed: a surcharge or rebate relief where there are capital gains, debt funds bought after 1 April 2023, property's 12.5% or 20% election, foreign holdings that need the prescribed exchange rate, and any year before 2025-26, which is not seeded. Ahead: the foreign tax credit and Form 67, advance-tax instalments, and a scheduled Budget-day reminder (below). **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
@@ -277,13 +277,30 @@ liabilities. Loans and policies already live on FIRE and stay there — see the
 Departures table in `docs/design/conformance.md`; what is missing is the assets
 side, not another home for the debts.
 
-FD and bond accrual is built as a calculation module (`src/domain/accrual.ts`,
-fixtures written first) with no screen or schema yet: compounding is a property of
-each deposit, because this household's deposits compound yearly where the
-blueprint's example is quarterly. What remains is the terms on `instrument`, the
-`property` tables, PPF/EPF/NPS, and the screens.
+**Built so far:** FD and bond accrual as a calculation module (`src/domain/accrual.ts`, fixtures
+written first); and the terms schema, `fixed_income_terms` and `deposit_renewal`
+(`20260927130000`), reviewed and merged. Compounding is a property of each deposit, because this
+household's deposits compound yearly where the blueprint's example is quarterly; a deposit that
+auto-renews is a chain of terms (the interest joins the principal and the whole is redeposited for
+the same term), where a renewal that has happened is recorded from the bank's advice and one that has
+not is projected and shown as a projection (`depositChainValueOn`). **Held by the household, which
+decides what is built:** property, fixed deposits, bonds, PPF, EPF, NPS and other.
+
+**Still to build, in this order:** the repository functions and the Deposits and bonds screen;
+`property` and `property_improvement` with a pure cost-basis function (purchase, stamp duty,
+registration and capital improvements, not repairs); then PPF (computed from the notified rate on the
+lowest balance of the month), EPF (typed from the passbook) and NPS (units x NAV).
 
 **7. Bank and card statement import.**
+
+*Sources, as the household has them:* an HDFC savings account (PDF, Excel, delimited and text), an ICICI savings
+account (PDF and XLS) and an ICICI credit card (PDF). Formats differ by bank and by file type (columns, a
+single signed amount or separate debit and credit, date formats, a preamble and footer), so a column-mapping
+step with a remembered profile per bank is the plan, not one parser. Order: the HDFC delimited file first
+(plain text, no new dependency), then the ICICI card PDF (the PDF reader is already in the app), then ICICI
+savings. **XLS needs a spreadsheet library, which is a new dependency: a decision for the maintainer.** Real
+sample statements are collected by the maintainer, redacted, **outside the repository** (it is public); the
+fixtures in the repo are synthetic ones with the same structure. Not started.
 
 "Import beats typing" (blueprint §158), and the entry flow is the project's
 stated failure mode — a month of card spending typed by hand is where somebody
@@ -335,18 +352,27 @@ and the deposits.
 
 **10. Narrow what a contributor and a viewer can read.**
 
-Section 11 of the blueprint says a contributor sees their own records plus
-household expense totals, and a viewer a household summary with no account
-identifiers. The database does not enforce either. Writes are right — a viewer
-writes nothing, a contributor writes only under their own name — but every role
-reads every household row, and the policy says so itself: "Household-wide read
-for every role in this slice. Narrowing contributor and viewer reads is a later
-slice" (`20260904120300_policies.sql`).
+**Built.** Section 11 of the blueprint says a contributor sees their own records plus household
+expense totals, and a viewer a household summary with no account identifiers. Until this the database
+enforced neither: every role read every household row. Now (`20260925120000`, tests in
+`rls_role_reads.test.sql`):
 
-Harmless while the household has one member, and it must be true before stage 6
-puts the app on anybody else's phone — a viewer login handed to an advisor today
-would show them every payee and every loan. Policy work with denial tests, on the
-same footing as the rest of stage 2's suite.
+- **Owner and partner** read what they always did.
+- **A contributor** reads their own expenses, holdings (and so their valuations, lots, disposals and
+  deposit terms, which read through the holding), loans, policies, audit entries and imports, plus the
+  categories, budgets and instruments. They can therefore no longer record a purchase or a sale against
+  somebody else's holding: that is the intended change, and `lot_disposal.test.sql` says so.
+- **A viewer** reads no record at all, only the household and its members, and the exchange rates, which
+  an existing test keeps readable on purpose. Invitations are owner and partner only (they carry emails).
+- **A summary** replaces rows: `household_expense_totals` (with category names, `20260926120000`) and
+  `household_asset_totals` return sums and never a row. `personal_holding_totals` is owner and partner only.
+- **The app** gives each role the screens that are true for it (`src/domain/access.ts`): a contributor
+  gets Summary, Expenses, Holdings and Tax; a viewer gets Summary alone. Overview and FIRE are household-wide
+  figures and are not offered to a role that can read only part of the household.
+
+Not yet: a budget-versus-plan comparison on the Summary for a contributor, and a contributor and a viewer
+account on the demo household to look through; the screens for those roles have so far been checked by
+unit tests and by the owner's view of the same code, not seen as that role.
 
 **11. Read-auditing on the tables carrying personal detail.**
 
