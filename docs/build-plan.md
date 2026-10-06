@@ -277,8 +277,11 @@ liabilities. Loans and policies already live on FIRE and stay there — see the
 Departures table in `docs/design/conformance.md`; what is missing is the assets
 side, not another home for the debts.
 
-FD and bond accrual is a calculation module with no home yet, and per the
-conventions it gets its fixtures before its implementation.
+FD and bond accrual is built as a calculation module (`src/domain/accrual.ts`,
+fixtures written first) with no screen or schema yet: compounding is a property of
+each deposit, because this household's deposits compound yearly where the
+blueprint's example is quarterly. What remains is the terms on `instrument`, the
+`property` tables, PPF/EPF/NPS, and the screens.
 
 **7. Bank and card statement import.**
 
