@@ -15,38 +15,26 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fixedIncomeView, trimRate, type FixedIncomePosition, type FixedIncomeRefusal } from '../../domain/fixed-income.ts';
-import { formatIsoDate, istCalendarDate, type IsoDate } from '../../lib/dates.ts';
-import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
-import { addDepositRenewal, addFixedIncome, addTermsToHolding, listFixedIncome } from '../../repo/fixedIncome.ts';
-import { recordValuation } from '../../repo/holdings.ts';
 import {
-  COMPOUNDINGS,
-  COUPON_FREQUENCIES,
-  type CompoundingKind,
-  type CouponFrequencyKind,
-  type FixedIncomeListing,
-  type Holding,
-  type HoldingListing,
+  fixedIncomeView,
+  MATURITY_NOTICE_DAYS,
+  trimRate,
+  type FixedIncomePosition,
+  type FixedIncomeRefusal,
+} from '../../domain/fixed-income.ts';
+import { formatIsoDate, istCalendarDate, type IsoDate } from '../../lib/dates.ts';
+import { formatMoney, money } from '../../lib/money.ts';
+import { listFixedIncome } from '../../repo/fixedIncome.ts';
+import { recordValuation } from '../../repo/holdings.ts';
+import type {
+  DepositRenewal,
+  FixedIncomeListing,
+  FixedIncomeTerms,
+  Holding,
+  HoldingListing,
 } from '../../repo/types.ts';
-import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
-
-const RATE = /^\d{1,3}(\.\d{1,3})?$/;
-
-const COMPOUNDING_LABEL: Record<CompoundingKind, string> = {
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  half_yearly: 'Half-yearly',
-  yearly: 'Yearly',
-  simple: 'Simple, paid at the end',
-};
-
-const FREQUENCY_LABEL: Record<CouponFrequencyKind, string> = {
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  half_yearly: 'Half-yearly',
-  yearly: 'Yearly',
-};
+import { Button, Card, Caveat, EditButton, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { COMPOUNDING_LABEL, FREQUENCY_LABEL, RenewalForm, TermsForm } from './FixedIncomeForms.tsx';
 
 const REFUSAL: Record<FixedIncomeRefusal, string> = {
   'before-start': 'It has not started yet, so there is nothing to value.',
@@ -59,6 +47,10 @@ const REFUSAL: Record<FixedIncomeRefusal, string> = {
 
 interface Row {
   readonly holdingId: string;
+  readonly holding: Holding;
+  readonly terms: FixedIncomeTerms;
+  /** The renewals recorded, oldest first. */
+  readonly renewals: readonly DepositRenewal[];
   readonly name: string;
   readonly member: string;
   readonly position: FixedIncomePosition;
@@ -115,8 +107,8 @@ export function FixedIncome({
       const holding = holdings.get(terms.holdingId);
       // Archived, or another member's private holding: not here, and not asked about.
       if (holding === undefined) continue;
-      const renewals = data.renewals
-        .filter((r) => r.holdingId === terms.holdingId)
+      const recorded = data.renewals.filter((r) => r.holdingId === terms.holdingId);
+      const renewals = recorded
         .map((r) => ({
           start: r.start,
           maturity: r.maturity,
@@ -140,6 +132,9 @@ export function FixedIncome({
       const ends = [terms.maturity, ...renewals.map((r) => r.maturity)].sort();
       built.push({
         holdingId: terms.holdingId,
+        holding,
+        terms,
+        renewals: recorded,
         name: holding.instrument.name,
         member: holding.member.displayName,
         position,
@@ -251,8 +246,12 @@ export function FixedIncome({
       )}
 
       {canWrite && adding && (
-        <AddFixedIncome
+        <TermsForm
           listing={listing}
+          mode={{ kind: 'new' }}
+          onCancel={() => {
+            setAdding(false);
+          }}
           onDone={() => {
             setAdding(false);
             void load();
@@ -269,10 +268,13 @@ export function FixedIncome({
       )}
 
       {canWrite && giving !== null && (
-        <AddFixedIncome
+        <TermsForm
           key={giving.id}
           listing={listing}
-          existing={giving}
+          mode={{ kind: 'existing', holding: giving }}
+          onCancel={() => {
+            setGiving(null);
+          }}
           onDone={() => {
             setGiving(null);
             void load();
@@ -319,6 +321,7 @@ export function FixedIncome({
               <li key={row.holdingId} className="py-3">
                 <PositionRow
                   row={row}
+                  listing={listing}
                   today={today}
                   privacy={privacy}
                   canWrite={canWrite}
@@ -368,6 +371,7 @@ export function FixedIncome({
 
 function PositionRow({
   row,
+  listing,
   today,
   privacy,
   canWrite,
@@ -375,6 +379,7 @@ function PositionRow({
   onChanged,
 }: {
   row: Row;
+  listing: HoldingListing;
   today: IsoDate;
   privacy: boolean;
   canWrite: boolean;
@@ -383,6 +388,8 @@ function PositionRow({
 }) {
   const { position, view } = row;
   const [renewing, setRenewing] = useState(false);
+  const [editingTerms, setEditingTerms] = useState(false);
+  const [editingRenewal, setEditingRenewal] = useState<DepositRenewal | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(false);
@@ -420,6 +427,17 @@ function PositionRow({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <span className="min-w-0">
           <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{row.name}</span>{' '}
+          {canWrite && (
+            <EditButton
+              label={`Correct the terms of ${row.name}`}
+              expanded={editingTerms}
+              onClick={() => {
+                setEditingTerms((was) => !was);
+                setRenewing(false);
+                setEditingRenewal(null);
+              }}
+            />
+          )}{' '}
           <span className="note">
             {[row.member, row.institution, row.last4 === null ? null : `…${row.last4}`]
               .filter((part) => part !== null)
@@ -504,7 +522,56 @@ function PositionRow({
         </dl>
       )}
 
+      {view.ok && !view.matured && view.daysToMaturity !== null && view.daysToMaturity <= MATURITY_NOTICE_DAYS && (
+        /*
+          The prompt the design calls for. It names the decision rather than making it:
+          what to do with the money is the household's, and the app only has to make sure
+          it is not discovered a month late.
+        */
+        <p
+          className="text-caption rounded px-3 py-2"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+        >
+          <strong>
+            {position.kind === 'deposit' && position.autoRenew ? 'Renews' : 'Matures'}{' '}
+            {daysPhrase(view.daysToMaturity)}.
+          </strong>{' '}
+          {position.kind === 'deposit' && position.autoRenew
+            ? 'The bank’s advice will give the new rate and amount; record the renewal when it arrives.'
+            : 'Decide where the money goes. When it is placed again, add it here as a new deposit or bond, and archive this one.'}
+        </p>
+      )}
+
       {problem !== null && <Problem>{problem}</Problem>}
+
+      {row.renewals.length > 0 && (
+        <details className="note">
+          <summary className="cursor-pointer">
+            {row.renewals.length === 1 ? '1 renewal recorded' : `${String(row.renewals.length)} renewals recorded`}
+          </summary>
+          <ul className="row-separated mt-1.5">
+            {row.renewals.map((renewal) => (
+              <li key={renewal.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span>
+                  {formatIsoDate(renewal.start)} to {formatIsoDate(renewal.maturity)} ·{' '}
+                  {trimRate(renewal.ratePct)}% · {formatMoney(renewal.principal, { privacy })}
+                </span>
+                {canWrite && (
+                  <EditButton
+                    label={`Correct the renewal starting ${formatIsoDate(renewal.start)}`}
+                    expanded={editingRenewal?.id === renewal.id}
+                    onClick={() => {
+                      setEditingRenewal((was) => (was?.id === renewal.id ? null : renewal));
+                      setEditingTerms(false);
+                      setRenewing(false);
+                    }}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {canWrite && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -528,6 +595,8 @@ function PositionRow({
               aria-expanded={renewing}
               onClick={() => {
                 setRenewing((was) => !was);
+                setEditingTerms(false);
+                setEditingRenewal(null);
               }}
             >
               {renewing ? 'Cancel the renewal' : 'Record a renewal'}
@@ -536,12 +605,37 @@ function PositionRow({
         </div>
       )}
 
-      {renewing && position.kind === 'deposit' && (
+      {editingTerms && (
+        <TermsForm
+          key={row.holdingId}
+          listing={listing}
+          mode={{ kind: 'edit', holding: row.holding, terms: row.terms }}
+          onCancel={() => {
+            setEditingTerms(false);
+          }}
+          onDone={() => {
+            setEditingTerms(false);
+            onChanged();
+          }}
+        />
+      )}
+
+      {(renewing || editingRenewal !== null) && position.kind === 'deposit' && (
         <RenewalForm
-          row={row}
+          key={editingRenewal?.id ?? 'new'}
+          holdingId={row.holdingId}
           householdId={householdId}
+          currency={position.principal.currency}
+          defaultCompounding={position.compounding ?? 'yearly'}
+          defaultStart={row.lastEnd}
+          {...(editingRenewal === null ? {} : { editing: editingRenewal })}
+          onCancel={() => {
+            setRenewing(false);
+            setEditingRenewal(null);
+          }}
           onDone={() => {
             setRenewing(false);
+            setEditingRenewal(null);
             onChanged();
           }}
         />
@@ -554,473 +648,4 @@ function daysPhrase(days: number): string {
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';
   return `in ${String(days)} days`;
-}
-
-function RenewalForm({
-  row,
-  householdId,
-  onDone,
-}: {
-  row: Row;
-  householdId: string;
-  onDone: () => void;
-}) {
-  const currency = row.position.principal.currency;
-  const [start, setStart] = useState<string>(row.lastEnd);
-  const [maturity, setMaturity] = useState('');
-  const [principal, setPrincipal] = useState('');
-  const [rate, setRate] = useState('');
-  const [compounding, setCompounding] = useState<CompoundingKind>(row.position.compounding ?? 'yearly');
-  const [problem, setProblem] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setProblem(null);
-    if (!RATE.test(rate.trim()) || Number(rate) > 100) {
-      setProblem('The rate is a percentage such as 7.25.');
-      return;
-    }
-    let minor: bigint;
-    try {
-      minor = parseAmountToMinor(principal, currency);
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'That amount is not a number.');
-      return;
-    }
-    setBusy(true);
-    try {
-      await addDepositRenewal({
-        householdId,
-        holdingId: row.holdingId,
-        start,
-        maturity,
-        principal: money(minor, currency),
-        ratePct: rate.trim(),
-        compounding,
-      });
-      onDone();
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'Could not record that.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form
-      className="flex flex-wrap items-end gap-3 rounded p-3"
-      style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label="New term starts"
-          type="date"
-          required
-          hint="the day the last one ended"
-          value={start}
-          onChange={(event) => {
-            setStart(event.target.value);
-          }}
-        />
-      </div>
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label="Matures"
-          type="date"
-          required
-          value={maturity}
-          onChange={(event) => {
-            setMaturity(event.target.value);
-          }}
-        />
-      </div>
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label={`Starts from (${currency})`}
-          numeric
-          inputMode="decimal"
-          required
-          hint="as the bank’s advice states it"
-          value={principal}
-          onChange={(event) => {
-            setPrincipal(event.target.value);
-          }}
-        />
-      </div>
-      <div className="w-full sm:w-[100px]">
-        <Field
-          label="Rate %"
-          numeric
-          inputMode="decimal"
-          required
-          value={rate}
-          onChange={(event) => {
-            setRate(event.target.value);
-          }}
-        />
-      </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[170px]">
-        <span className="label">Compounds</span>
-        <select
-          className="field"
-          value={compounding}
-          onChange={(event) => {
-            setCompounding(event.target.value as CompoundingKind);
-          }}
-        >
-          {COMPOUNDINGS.map((option) => (
-            <option key={option} value={option}>
-              {COMPOUNDING_LABEL[option]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <Button type="submit" disabled={busy}>
-        {busy ? 'Saving…' : 'Record the renewal'}
-      </Button>
-      {problem !== null && (
-        <div className="w-full">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-    </form>
-  );
-}
-
-function AddFixedIncome({
-  listing,
-  existing,
-  onDone,
-}: {
-  listing: HoldingListing;
-  /** A deposit or bond already held, given its terms rather than entered again. */
-  existing?: Holding;
-  onDone: () => void;
-}) {
-  const members = useMemo(
-    () =>
-      listing.viewer.canFileForOthers
-        ? listing.members.filter((member) => !member.isArchived)
-        : listing.members.filter((member) => member.id === listing.viewer.memberId),
-    [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
-  );
-
-  const [kind, setKind] = useState<'deposit' | 'bond'>(existing?.instrument.kind === 'bond' ? 'bond' : 'deposit');
-  const [name, setName] = useState('');
-  const [memberId, setMemberId] = useState(listing.viewer.memberId);
-  const [currency, setCurrency] = useState(existing?.instrument.currency ?? 'INR');
-  const [amount, setAmount] = useState('');
-  const [rate, setRate] = useState('');
-  const [start, setStart] = useState<string>(existing?.openedOn ?? '');
-  const [maturity, setMaturity] = useState('');
-  // Offered as yearly because this household's compound yearly; it is still a visible choice.
-  const [compounding, setCompounding] = useState<CompoundingKind>('yearly');
-  const [frequency, setFrequency] = useState<CouponFrequencyKind>('yearly');
-  const [autoRenew, setAutoRenew] = useState(false);
-  const [renewalRate, setRenewalRate] = useState('');
-  const [rating, setRating] = useState('');
-  const [institution, setInstitution] = useState('');
-  const [last4, setLast4] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setProblem(null);
-
-    if (!RATE.test(rate.trim()) || Number(rate) > 100) {
-      setProblem('The rate is a percentage such as 7.25.');
-      return;
-    }
-    if (autoRenew && renewalRate.trim() !== '' && (!RATE.test(renewalRate.trim()) || Number(renewalRate) > 100)) {
-      setProblem('The rate to project renewals at is a percentage such as 7.25, or leave it empty.');
-      return;
-    }
-    if (last4.trim() !== '' && !/^[0-9A-Za-z]{4}$/.test(last4.trim())) {
-      setProblem('Keep only the last four characters of the account or certificate, and nothing more.');
-      return;
-    }
-    let minor: bigint;
-    try {
-      minor = parseAmountToMinor(amount, currency);
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'That amount is not a number.');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const terms = {
-        householdId: listing.household.id,
-        kind,
-        principal: money(minor, currency),
-        ratePct: rate.trim(),
-        start,
-        maturity,
-        ...(kind === 'deposit'
-          ? { compounding, autoRenew, renewalRatePct: autoRenew ? renewalRate : null }
-          : { couponFrequency: frequency, rating }),
-        institution,
-        accountLast4: last4,
-      } as const;
-      if (existing === undefined) {
-        await addFixedIncome({ ...terms, memberId, name: name.trim() });
-      } else {
-        await addTermsToHolding({ ...terms, holdingId: existing.id });
-      }
-      onDone();
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'Could not add that.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form
-      className="mb-4 flex flex-wrap items-end gap-3 rounded p-3.5"
-      style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      {existing !== undefined && (
-        <p className="w-full" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-          Terms for {existing.instrument.name}{' '}
-          <span className="note">{existing.member.displayName}</span>
-        </p>
-      )}
-      {existing === undefined && (
-        <>
-      <div className="segmented w-full sm:w-auto" role="group" aria-label="What is being added">
-        {(['deposit', 'bond'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={kind === option}
-            onClick={() => {
-              setKind(option);
-            }}
-          >
-            {option === 'deposit' ? 'Fixed deposit' : 'Bond'}
-          </button>
-        ))}
-      </div>
-
-      <div className="w-full sm:min-w-[200px] sm:flex-1">
-        <Field
-          label="Name"
-          required
-          placeholder={kind === 'deposit' ? 'HDFC FD, 3 years' : 'Muthoot NCD 2027'}
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-        />
-      </div>
-
-      <label className="flex w-full flex-col gap-1.5 sm:w-[150px]">
-        <span className="label">Whose</span>
-        <select
-          className="field"
-          value={memberId}
-          onChange={(event) => {
-            setMemberId(event.target.value);
-          }}
-        >
-          {members.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex w-full flex-col gap-1.5 sm:w-[90px]">
-        <span className="label">Currency</span>
-        <select
-          className="field"
-          value={currency}
-          onChange={(event) => {
-            setCurrency(event.target.value);
-          }}
-        >
-          <option value="INR">INR</option>
-          <option value="USD">USD</option>
-        </select>
-      </label>
-        </>
-      )}
-
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label={kind === 'deposit' ? 'Principal' : 'Face value'}
-          numeric
-          inputMode="decimal"
-          required
-          value={amount}
-          onChange={(event) => {
-            setAmount(event.target.value);
-          }}
-        />
-      </div>
-
-      <div className="w-full sm:w-[100px]">
-        <Field
-          label={kind === 'deposit' ? 'Rate %' : 'Coupon %'}
-          numeric
-          inputMode="decimal"
-          required
-          value={rate}
-          onChange={(event) => {
-            setRate(event.target.value);
-          }}
-        />
-      </div>
-
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label="Starts"
-          type="date"
-          required
-          value={start}
-          onChange={(event) => {
-            setStart(event.target.value);
-          }}
-        />
-      </div>
-
-      <div className="w-full sm:w-[150px]">
-        <Field
-          label="Matures"
-          type="date"
-          required
-          value={maturity}
-          onChange={(event) => {
-            setMaturity(event.target.value);
-          }}
-        />
-      </div>
-
-      {kind === 'deposit' ? (
-        <>
-          <label className="flex w-full flex-col gap-1.5 sm:w-[190px]">
-            <span className="label">
-              Compounds
-              <Caveat tone="info" label="Why compounding is asked for">
-                It differs between banks and between deposits, so it is never assumed. Yearly is
-                offered because it is what this household’s deposits do; the bank’s
-                receipt says which.
-              </Caveat>
-            </span>
-            <select
-              className="field"
-              value={compounding}
-              onChange={(event) => {
-                setCompounding(event.target.value as CompoundingKind);
-              }}
-            >
-              {COMPOUNDINGS.map((option) => (
-                <option key={option} value={option}>
-                  {COMPOUNDING_LABEL[option]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex w-full items-center gap-2 sm:w-auto">
-            <input
-              type="checkbox"
-              checked={autoRenew}
-              onChange={(event) => {
-                setAutoRenew(event.target.checked);
-              }}
-            />
-            <span>Renews itself at maturity</span>
-          </label>
-
-          {autoRenew && (
-            <div className="w-full sm:w-[170px]">
-              <Field
-                label="Project renewals at %"
-                numeric
-                inputMode="decimal"
-                hint="empty means the same rate"
-                value={renewalRate}
-                onChange={(event) => {
-                  setRenewalRate(event.target.value);
-                }}
-              />
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <label className="flex w-full flex-col gap-1.5 sm:w-[160px]">
-            <span className="label">Coupon paid</span>
-            <select
-              className="field"
-              value={frequency}
-              onChange={(event) => {
-                setFrequency(event.target.value as CouponFrequencyKind);
-              }}
-            >
-              {COUPON_FREQUENCIES.map((option) => (
-                <option key={option} value={option}>
-                  {FREQUENCY_LABEL[option]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="w-full sm:w-[120px]">
-            <Field
-              label="Rating"
-              placeholder="CRISIL A"
-              maxLength={12}
-              value={rating}
-              onChange={(event) => {
-                setRating(event.target.value);
-              }}
-            />
-          </div>
-        </>
-      )}
-
-      <div className="w-full sm:w-[170px]">
-        <Field
-          label="Bank or issuer"
-          maxLength={80}
-          value={institution}
-          onChange={(event) => {
-            setInstitution(event.target.value);
-          }}
-        />
-      </div>
-      <div className="w-full sm:w-[130px]">
-        <Field
-          label="Last four"
-          maxLength={4}
-          hint="of the account, nothing more"
-          value={last4}
-          onChange={(event) => {
-            setLast4(event.target.value);
-          }}
-        />
-      </div>
-
-      <Button type="submit" disabled={busy}>
-        {busy ? 'Saving…' : existing === undefined ? `Add the ${kind}` : 'Save the terms'}
-      </Button>
-
-      {problem !== null && (
-        <div className="w-full">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-    </form>
-  );
 }
