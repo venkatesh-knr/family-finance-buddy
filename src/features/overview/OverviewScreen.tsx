@@ -21,7 +21,7 @@
  * gone" (§606), so the gaps get equal billing with the totals.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   allocationByKind,
   assetTotals,
@@ -507,6 +507,36 @@ export function OverviewScreen({
   }
   if (listing === null) return null;
 
+  // What is wrong with the figure, in one list behind one mark. Five marks in a row
+  // on the number were five buttons to open, and the two of them that were not
+  // warnings carried the same "i" as the heading's.
+  const heroWarnings: ReactNode[] = [];
+  if (personalTotalsFailed && scope === 'household') {
+    heroWarnings.push(
+      'The private holdings of other members could not be read, so this figure may be short by whatever they are worth. It is not that there are none: the request failed. Reload before relying on this number.',
+    );
+  }
+  if (!personalTotalsFailed && hiddenUnvalued > 0 && scope === 'household') {
+    heroWarnings.push(
+      `${String(hiddenUnvalued)} ${hiddenUnvalued === 1 ? 'private holding of another member has' : 'private holdings of other members have'} never been valued, so this total is short by whatever they are worth. Only they can record a value for them.`,
+    );
+  }
+  if (visibleUnvalued > 0) {
+    heroWarnings.push(
+      `${String(visibleUnvalued)} ${visibleUnvalued === 1 ? 'holding has' : 'holdings have'} never been valued, so this total is short by whatever ${visibleUnvalued === 1 ? 'it is' : 'they are'} worth. Record a value on Holdings and it is counted.`,
+    );
+  }
+  if (shownUnbalanced > 0) {
+    heroWarnings.push(
+      `${String(shownUnbalanced)} ${shownUnbalanced === 1 ? 'loan has' : 'loans have'} no outstanding balance recorded, so nothing is subtracted for ${shownUnbalanced === 1 ? 'it' : 'them'}. This figure is high by whatever is still owed. Record the balance on FIRE.`,
+    );
+  }
+  if (plansFailed) {
+    heroWarnings.push(
+      'The loans could not be read, so nothing has been subtracted for them and this figure may be high by whatever is owed. It is not that there are none: the request failed. Reload before relying on this number.',
+    );
+  }
+
   return (
     /*
       One column on a phone, in the order the cards are written. From 1024px two
@@ -598,6 +628,21 @@ export function OverviewScreen({
                     leaving it out would make your own figure better than it is.
                   </>
                 )}
+                {staleness.oldest !== null && staleness.oldest !== staleness.newest && (
+                  <p className="mt-2">
+                    Each holding is carried at its own latest reading, which runs from{' '}
+                    {formatIsoDate(staleness.oldest)} to{' '}
+                    {formatIsoDate(staleness.newest ?? staleness.oldest)}.
+                    {staleness.stale.length > 0 &&
+                      ` ${String(staleness.stale.length)} of them ${staleness.stale.length === 1 ? 'is' : 'are'} more than ${String(STALE_AFTER_DAYS)} days behind the newest; they are named under Needs attention.`}
+                  </p>
+                )}
+                {!plansFailed && shownUnbalanced === 0 && shownDebts.length === 0 && (
+                  <p className="mt-2">
+                    No debts are recorded, so nothing is subtracted. If the household owes anything,
+                    record it under loans on FIRE and it comes off this figure.
+                  </p>
+                )}
               </Caveat>
             </span>
           }
@@ -633,57 +678,19 @@ export function OverviewScreen({
                 Each of these qualifies this number and none is decoration, so
                 they ride on it, and each appears only when it applies.
               */}
-              {personalTotalsFailed && scope === 'household' && (
-                <Caveat tone="warn" label="Why this total may be short">
-                  The private holdings of other members could not be read, so this figure may be short
-                  by whatever they are worth. It is not that there are none — the request failed.
-                  Reload before relying on this number.
-                </Caveat>
-              )}
-              {!personalTotalsFailed && hiddenUnvalued > 0 && scope === 'household' && (
-                <Caveat tone="warn" label="Why this household total is short">
-                  {hiddenUnvalued}{' '}
-                  {hiddenUnvalued === 1
-                    ? 'private holding of another member has'
-                    : 'private holdings of other members have'}{' '}
-                  never been valued, so this total is short by whatever they are worth. Only they can
-                  record a value for them.
-                </Caveat>
-              )}
-              {visibleUnvalued > 0 && (
-                <Caveat tone="warn" label="Why this total is short">
-                  {visibleUnvalued} {visibleUnvalued === 1 ? 'holding has' : 'holdings have'} never been
-                  valued, so this total is short by whatever {visibleUnvalued === 1 ? 'it is' : 'they are'}{' '}
-                  worth. Record a value on Holdings and it is counted.
-                </Caveat>
-              )}
-              {staleness.oldest !== null && staleness.oldest !== staleness.newest && (
-                <Caveat tone="info" label="Why this is not all as at one date">
-                  Each holding is carried at its own latest reading, which runs from{' '}
-                  {formatIsoDate(staleness.oldest)} to {formatIsoDate(staleness.newest ?? staleness.oldest)}.
-                  {staleness.stale.length > 0 &&
-                    ` ${String(staleness.stale.length)} of them ${staleness.stale.length === 1 ? 'is' : 'are'} more than ${String(STALE_AFTER_DAYS)} days behind the newest; they are named under Needs attention.`}
-                </Caveat>
-              )}
-              {shownUnbalanced > 0 && (
-                <Caveat tone="warn" label="Why this figure may be high">
-                  {shownUnbalanced} {shownUnbalanced === 1 ? 'loan has' : 'loans have'} no outstanding
-                  balance recorded, so nothing is subtracted for{' '}
-                  {shownUnbalanced === 1 ? 'it' : 'them'}. This figure is high by whatever is still
-                  owed. Record the balance on FIRE.
-                </Caveat>
-              )}
-              {plansFailed && (
-                <Caveat tone="warn" label="Why this figure may be high">
-                  The loans could not be read, so nothing has been subtracted for them and this figure
-                  may be high by whatever is owed. It is not that there are none: the request failed.
-                  Reload before relying on this number.
-                </Caveat>
-              )}
-              {!plansFailed && shownUnbalanced === 0 && shownDebts.length === 0 && (
-                <Caveat tone="info" label="Why nothing is subtracted">
-                  No debts are recorded, so nothing is subtracted. If the household owes anything,
-                  record it under loans on FIRE and it comes off this figure.
+              {heroWarnings.length > 0 && (
+                <Caveat tone="warn" label="Why this figure may be wrong">
+                  {heroWarnings.length === 1 ? (
+                    heroWarnings[0]
+                  ) : (
+                    <ul className="list-disc pl-4.5">
+                      {heroWarnings.map((warning, index) => (
+                        <li key={index} className="mt-1.5 first:mt-0">
+                          {warning}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </Caveat>
               )}
             </div>
