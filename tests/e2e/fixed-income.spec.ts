@@ -165,3 +165,79 @@ test('a deposit maturing within a month is called out, with the decision named',
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
+
+async function archive(page: import('@playwright/test').Page, name: string) {
+  await page.goto('/#holdings');
+  const holding = page
+    .locator('section', { hasText: name })
+    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .last();
+  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: 'Yes, archive it' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
+}
+
+test('a cumulative bond pays everything at maturity, with no coupon along the way', async ({ page }) => {
+  const name = `e2e-cumulative-${Date.now()}`;
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a deposit or bond' }).click();
+  const form = page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await form.getByRole('button', { name: 'Bond', exact: true }).click();
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Face value').fill('100000');
+  await form.getByLabel('Coupon %').fill('8');
+  await form.getByLabel('Starts').fill('2024-01-01');
+  await form.getByLabel('Matures').fill('2026-01-01');
+  await form.getByRole('combobox', { name: 'Repay mode' }).selectOption('cumulative');
+  await form.getByRole('button', { name: 'Add the bond' }).click();
+
+  const entry = page.getByRole('listitem').filter({ hasText: name });
+  // 1,00,000 at 8% credited yearly for two years: 1,00,000 x 1.08 x 1.08.
+  await expect(entry).toContainText('1,16,640');
+  await expect(entry).toContainText('Interest earned');
+  await expect(entry).toContainText('16,640');
+  await expect(entry).toContainText('cumulative');
+  await expect(entry).not.toContainText('Next coupon');
+
+  await archive(page, name);
+});
+
+test('a downgrade is logged, shown on the bond, and called out on the Overview', async ({ page }) => {
+  const name = `e2e-rated-${Date.now()}`;
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a deposit or bond' }).click();
+  const form = page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await form.getByRole('button', { name: 'Bond', exact: true }).click();
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Face value').fill('100000');
+  await form.getByLabel('Coupon %').fill('10');
+  await form.getByLabel('Starts').fill('2026-01-01');
+  await form.getByLabel('Matures').fill('2030-01-01');
+  await form.getByLabel('Rating').fill('CRISIL AA');
+  await form.getByRole('button', { name: 'Add the bond' }).click();
+
+  const entry = page.getByRole('listitem').filter({ hasText: name });
+  await expect(entry).toContainText('CRISIL AA');
+  // The rating as first recorded is the first row of its log, and is not a downgrade.
+  await expect(entry).not.toContainText('Downgraded');
+
+  // The rating falls, and is corrected on the terms: the only way a row of the log is written.
+  await entry.getByRole('button', { name: `Correct the terms of ${name}` }).click();
+  const edit = page.locator('form').filter({ hasText: `Correct the terms of ${name}` });
+  await edit.getByLabel('Rating').fill('CRISIL A');
+  await edit.getByRole('button', { name: 'Save the corrections' }).click();
+
+  await expect(entry).toContainText('Downgraded from CRISIL AA to CRISIL A');
+  await entry.getByText(/Rating history/).click();
+  await expect(entry).toContainText('downgrade');
+
+  // A downgrade does not wait to be found on the Holdings screen.
+  await page.goto('/#overview');
+  await expect(page.getByText(/bonds? ha(s|ve) been downgraded recently/)).toBeVisible();
+
+  await archive(page, name);
+  await page.goto('/#overview');
+  await expect(page.getByText(/downgraded recently/)).toHaveCount(0);
+});

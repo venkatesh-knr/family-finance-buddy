@@ -319,6 +319,9 @@ export interface Valuation {
 export const COMPOUNDINGS = ['monthly', 'quarterly', 'half_yearly', 'yearly', 'simple'] as const;
 export type CompoundingKind = (typeof COMPOUNDINGS)[number];
 
+export const REPAY_MODES = ['payout', 'cumulative'] as const;
+export type RepayMode = (typeof REPAY_MODES)[number];
+
 export const COUPON_FREQUENCIES = ['monthly', 'quarterly', 'half_yearly', 'yearly'] as const;
 export type CouponFrequencyKind = (typeof COUPON_FREQUENCIES)[number];
 
@@ -341,6 +344,8 @@ export interface FixedIncomeTerms {
   readonly compounding: CompoundingKind | null;
   readonly couponFrequency: CouponFrequencyKind | null;
   readonly rating: string | null;
+  /** Bonds only. Null is payout. */
+  readonly repayMode: RepayMode | null;
   readonly autoRenew: boolean;
   readonly renewalRatePct: string | null;
   readonly institution: string | null;
@@ -361,6 +366,20 @@ export interface DepositRenewal {
   readonly note: string | null;
 }
 
+/** One change to a bond's rating, as the database logged it. Never written by the client. */
+export interface RatingChange {
+  readonly id: Uuid;
+  /** The order of the changes: several can fall on one day. */
+  readonly seq: number;
+  readonly holdingId: Uuid;
+  /** Null on the first row: the rating as first recorded. */
+  readonly from: string | null;
+  /** Null when a rating was removed. */
+  readonly to: string | null;
+  /** The day it was noticed, in IST. */
+  readonly changedOn: IsoDate;
+}
+
 export interface FixedIncomeListing {
   readonly terms: readonly FixedIncomeTerms[];
   readonly renewals: readonly DepositRenewal[];
@@ -378,6 +397,7 @@ export interface NewFixedIncome {
   readonly compounding?: CompoundingKind;
   readonly couponFrequency?: CouponFrequencyKind;
   readonly rating?: string | null;
+  readonly repayMode?: RepayMode;
   readonly autoRenew?: boolean;
   readonly renewalRatePct?: string | null;
   readonly institution?: string | null;

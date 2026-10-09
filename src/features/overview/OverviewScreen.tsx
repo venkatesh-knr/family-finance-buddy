@@ -43,6 +43,8 @@ import {
   unitsText,
 } from '../holdings/history.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
+import { listFixedIncome, listRatingChanges } from '../../repo/fixedIncome.ts';
+import { daysPhrase, fixedIncomeAlerts, type FixedIncomeAlert } from '../holdings/fixedIncomeRows.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { assetHistory } from '../../domain/history.ts';
@@ -174,6 +176,14 @@ export function OverviewScreen({
    */
   const [plansFailed, setPlansFailed] = useState(false);
   const [ratesFailed, setRatesFailed] = useState(false);
+  // What deposits and bonds have to say: a maturity close by, a downgrade. Read apart from
+  // the rest and its failure said, since a position that could not be read cannot warn.
+  const [fixedIncome, setFixedIncome] = useState<{
+    readonly terms: Awaited<ReturnType<typeof listFixedIncome>>['terms'];
+    readonly renewals: Awaited<ReturnType<typeof listFixedIncome>>['renewals'];
+    readonly ratingChanges: Awaited<ReturnType<typeof listRatingChanges>>;
+  } | null>(null);
+  const [fixedIncomeFailed, setFixedIncomeFailed] = useState(false);
 
   // Read once at the edge. Every calculation below takes it as an argument.
   const [today] = useState(() => istCalendarDate(new Date()));
@@ -192,10 +202,12 @@ export function OverviewScreen({
       // Rates and debts separately, and neither may take the screen down. The
       // asset figures stand on their own; these only add the conversion and
       // the subtraction on top of them.
-      const [rateResult, planResult, personalResult] = await Promise.allSettled([
+      const [rateResult, planResult, personalResult, fixedResult, ratingResult] = await Promise.allSettled([
         listRates(next.household.id),
         listPlan({ householdId: next.household.id, fy: Number(today.slice(0, 4)) }),
         listPersonalHoldingTotals(next.household.id),
+        listFixedIncome(next.household.id),
+        listRatingChanges(next.household.id),
       ]);
       setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
       setRatesFailed(rateResult.status === 'rejected');
@@ -226,6 +238,18 @@ export function OverviewScreen({
       // and said on the figure.
       setPersonalTotals(personalResult.status === 'fulfilled' ? personalResult.value : []);
       setPersonalTotalsFailed(personalResult.status === 'rejected');
+
+      if (fixedResult.status === 'fulfilled' && ratingResult.status === 'fulfilled') {
+        setFixedIncome({
+          terms: fixedResult.value.terms,
+          renewals: fixedResult.value.renewals,
+          ratingChanges: ratingResult.value,
+        });
+        setFixedIncomeFailed(false);
+      } else {
+        setFixedIncome(null);
+        setFixedIncomeFailed(true);
+      }
     } catch (error) {
       if (error instanceof NoHouseholdError) setNoHousehold(true);
       else setProblem(error instanceof Error ? error.message : 'Could not load the overview.');
@@ -338,6 +362,29 @@ export function OverviewScreen({
     () => new Set((listing?.holdings ?? []).filter((h) => h.instrument.isForeignAsset).map((h) => h.id)),
     [listing],
   );
+  const alerts = useMemo<readonly FixedIncomeAlert[]>(
+    () =>
+      fixedIncome === null || listing === null
+        ? []
+        : fixedIncomeAlerts({
+            terms: fixedIncome.terms,
+            renewals: fixedIncome.renewals,
+            ratingChanges: fixedIncome.ratingChanges,
+            // What is in view: in Mine, only the caller's own, as for everything else here.
+            visibleHoldingIds: new Set(
+              listing.holdings
+                .filter((h) => !h.isArchived && (scope === 'household' || h.member.id === mine))
+                .map((h) => h.id),
+            ),
+            today,
+          }),
+    [fixedIncome, listing, scope, mine, today],
+  );
+  const maturities = alerts.filter((a) => a.kind === 'matures');
+  const renewals = alerts.filter((a) => a.kind === 'renews');
+  const downgrades = alerts.filter((a) => a.kind === 'downgraded');
+  const ratingNotices = alerts.filter((a) => a.kind === 'rating-unclear' || a.kind === 'rating-removed');
+
   const gaps = useMemo(() => {
     const year = Number(today.slice(0, 4));
     const foreign = holdings.filter((h) => foreignIds.has(h.id));
@@ -1040,6 +1087,8 @@ export function OverviewScreen({
           gaps.line.missingMonths.length === 0 &&
           gaps.neverRead.length === 0 &&
           staleness.stale.length === 0 &&
+          alerts.length === 0 &&
+          !fixedIncomeFailed &&
           shortPositions.length === 0 ? (
             <p className="note">
               Every holding has a reading in every finished month this year it was held. That is what
@@ -1099,6 +1148,91 @@ export function OverviewScreen({
                   namesLabel="Which holdings"
                 >
                   They are absent from every total above rather than counted as zero.
+                </Attention>
+              )}
+              {downgrades.length > 0 && (
+                <Attention
+                  tone="due"
+                  headline={
+                    <>
+                      {downgrades.length} {downgrades.length === 1 ? 'bond has' : 'bonds have'} been
+                      downgraded recently
+                    </>
+                  }
+                  names={downgrades.map(
+                    (a) =>
+                      `${holdingName(a.holdingId)} — ${a.from ?? 'unrated'} to ${a.to ?? 'unrated'} on ${formatIsoDate(a.on)}`,
+                  )}
+                  namesLabel="Which bonds"
+                >
+                  A lower rating is a higher chance of not being repaid. Check the issuer&rsquo;s latest
+                  disclosure, and whether to hold it to maturity. The bond&rsquo;s own row on Holdings keeps
+                  its rating history.
+                </Attention>
+              )}
+              {maturities.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {maturities.length}{' '}
+                      {maturities.length === 1 ? 'deposit or bond matures' : 'deposits and bonds mature'} within
+                      thirty days
+                    </>
+                  }
+                  names={maturities.map(
+                    (a) =>
+                      `${holdingName(a.holdingId)} — ${formatIsoDate(a.on)}, ${daysPhrase(a.daysAway ?? 0)}`,
+                  )}
+                  namesLabel="Which"
+                >
+                  The money comes back. Decide where it goes before it does, and add it as a new deposit or
+                  bond when it is placed.
+                </Attention>
+              )}
+              {renewals.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {renewals.length} {renewals.length === 1 ? 'deposit renews' : 'deposits renew'} itself
+                      within thirty days
+                    </>
+                  }
+                  names={renewals.map(
+                    (a) =>
+                      `${holdingName(a.holdingId)} — ${formatIsoDate(a.on)}, ${daysPhrase(a.daysAway ?? 0)}`,
+                  )}
+                  namesLabel="Which"
+                >
+                  The money is not coming back: these renew on their own. The bank&rsquo;s advice will give
+                  the new rate and amount; record each renewal on Holdings when it arrives.
+                </Attention>
+              )}
+              {ratingNotices.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {ratingNotices.length}{' '}
+                      {ratingNotices.length === 1 ? 'bond has' : 'bonds have'} a rating change to look at
+                    </>
+                  }
+                  names={ratingNotices.map((a) =>
+                    a.kind === 'rating-removed'
+                      ? `${holdingName(a.holdingId)} — rating removed on ${formatIsoDate(a.on)}; it was ${a.from ?? 'unrated'}`
+                      : `${holdingName(a.holdingId)} — ${a.from ?? 'unrated'} to ${a.to ?? 'unrated'} on ${formatIsoDate(a.on)}, which way is not known`,
+                  )}
+                  namesLabel="Which bonds"
+                >
+                  This app reads long-term grades such as AA+, and says so when a change is a short-term
+                  rating or something it does not recognise, rather than call it no change. A rating that
+                  was removed is not good news either. Check each with the agency&rsquo;s letter.
+                </Attention>
+              )}
+              {fixedIncomeFailed && (
+                <Attention
+                  headline={<>Deposits, bonds or their rating history could not be read</>}
+                >
+                  A maturity close by or a downgrade would not show here. It is not that there are none:
+                  the request failed. Reload to try again.
                 </Attention>
               )}
               {staleness.stale.length > 0 && (

@@ -288,7 +288,7 @@ decides what is built:** property, fixed deposits, bonds, PPF, EPF, NPS and othe
 
 **Also built:** the Deposits and bonds card on Holdings (`src/features/holdings/FixedIncome.tsx`), its repository functions
 (`src/repo/fixedIncome.ts`) and the pure view over the accrual module (`src/domain/fixed-income.ts`), with an end-to-end test. Terms
-can be added, corrected in place and renewed, and a maturity within thirty days is called out. See `docs/decisions.md` for how a deposit reaches net worth.
+can be added, corrected in place and renewed, a bond pays out or is cumulative and keeps a rating history with a downgrade called out, and a maturity within thirty days is called out on the card and on the Overview. See `docs/decisions.md` for how a deposit reaches net worth.
 
 **Still to build, in this order:**
 `property` and `property_improvement` with a pure cost-basis function (purchase, stamp duty,

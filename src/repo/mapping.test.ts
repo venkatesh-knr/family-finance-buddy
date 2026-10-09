@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms } from './mapping.ts';
+import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
 import type { Member } from './types.ts';
 
 const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
@@ -449,6 +449,17 @@ describe('toFixedIncomeTerms', () => {
     expect(() => toFixedIncomeTerms({ ...row, compounding: 'daily' })).toThrow();
   });
 
+  it("reads a bond's repay mode, and reads an unset one as null, which means payout", () => {
+    expect(toFixedIncomeTerms({ ...row, repay_mode: 'cumulative' }).repayMode).toBe('cumulative');
+    expect(toFixedIncomeTerms({ ...row, repay_mode: 'payout' }).repayMode).toBe('payout');
+    expect(toFixedIncomeTerms({ ...row, repay_mode: null }).repayMode).toBeNull();
+    expect(toFixedIncomeTerms(row).repayMode).toBeNull();
+  });
+
+  it('refuses a repay mode it does not know rather than guess one', () => {
+    expect(() => toFixedIncomeTerms({ ...row, repay_mode: 'monthly' })).toThrow();
+  });
+
   it('refuses a kind that is neither a deposit nor a bond', () => {
     expect(() => toFixedIncomeTerms({ ...row, kind: 'ppf' })).toThrow();
   });
@@ -470,5 +481,41 @@ describe('toDepositRenewal', () => {
     expect(renewal.principal).toEqual({ minor: 10750000n, currency: 'INR' });
     expect(renewal.ratePct).toBe('7.000');
     expect(renewal.start).toBe('2026-10-01');
+  });
+});
+
+describe('toRatingChange', () => {
+  const row = {
+    id: 'rc-1',
+    seq: 7,
+    holding_id: 'h-1',
+    from_rating: 'CRISIL AA',
+    to_rating: 'CRISIL A',
+    changed_on: '2026-08-01',
+  };
+
+  it('reads a change from what it was to what it is', () => {
+    expect(toRatingChange(row)).toEqual({
+      id: 'rc-1',
+      seq: 7,
+      holdingId: 'h-1',
+      from: 'CRISIL AA',
+      to: 'CRISIL A',
+      changedOn: '2026-08-01',
+    });
+  });
+
+  it('reads a first rating and a removed one, which are a null on one side', () => {
+    expect(toRatingChange({ ...row, from_rating: null }).from).toBeNull();
+    expect(toRatingChange({ ...row, to_rating: null }).to).toBeNull();
+  });
+
+  it('reads the order as a number, however the database sent it', () => {
+    expect(toRatingChange({ ...row, seq: '12' }).seq).toBe(12);
+    expect(() => toRatingChange({ ...row, seq: 'later' })).toThrow();
+  });
+
+  it('refuses a date that is not one', () => {
+    expect(() => toRatingChange({ ...row, changed_on: 'yesterday' })).toThrow();
   });
 });

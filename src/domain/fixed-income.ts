@@ -22,6 +22,7 @@ import {
   depositChainValueOn,
   addMonths,
   depositMaturity,
+  depositValueOn,
   type Compounding,
   type CouponFrequency,
   type Deposit,
@@ -46,6 +47,12 @@ export interface FixedIncomePosition {
   readonly maturity: IsoDate;
   readonly compounding: Compounding | null;
   readonly couponFrequency: CouponFrequency | null;
+  /**
+   * A bond's repay mode. Null is payout, which every bond recorded before this existed
+   * is. Cumulative: interest is credited at `couponFrequency` and paid with the face at
+   * maturity, so no coupon is paid in between.
+   */
+  readonly repayMode: 'payout' | 'cumulative' | null;
   readonly autoRenew: boolean;
   readonly renewalRatePct: string | null;
   readonly renewals: readonly RecordedRenewal[];
@@ -78,10 +85,15 @@ export type FixedIncomeView =
   | {
       readonly ok: true;
       readonly kind: 'bond';
-      /** Face plus accrued interest: at par. */
+      readonly repay: 'payout' | 'cumulative';
+      /** Face plus accrued interest: at par. Once `matured`, the payout. */
       readonly value: Money;
+      /** Interest earned and not yet paid: since the last coupon, or all of it if cumulative. */
       readonly accrued: Money;
-      readonly couponAmount: Money;
+      /** What the bond pays at the end: the face, or the face and its compounded interest. */
+      readonly maturityValue: Money;
+      /** Null for a cumulative bond, which pays none. */
+      readonly couponAmount: Money | null;
       readonly nextCoupon: IsoDate | null;
       readonly matured: boolean;
       readonly daysToMaturity: number | null;
@@ -181,6 +193,35 @@ function monthsBetween(start: IsoDate, maturity: IsoDate): number {
 
 function bondView(position: FixedIncomePosition, on: IsoDate): FixedIncomeView {
   if (position.couponFrequency === null) return { ok: false, reason: 'invalid-terms' };
+  const currency = position.principal.currency;
+  const matured = on >= position.maturity;
+  const daysToMaturity = matured ? null : dayNumber(position.maturity) - dayNumber(on);
+
+  if (position.repayMode === 'cumulative') {
+    // Interest credited at the frequency and paid with the face at the end: a deposit's
+    // arithmetic, which is what the accrual module already does for one.
+    const asDeposit: Deposit = {
+      principal: position.principal,
+      ratePct: position.ratePct,
+      start: position.start,
+      maturity: position.maturity,
+      compounding: position.couponFrequency,
+    };
+    const value = depositValueOn(asDeposit, on);
+    if (value === null) return { ok: false, reason: 'before-start' };
+    return {
+      ok: true,
+      kind: 'bond',
+      repay: 'cumulative',
+      value,
+      accrued: money(value.minor - position.principal.minor, currency),
+      maturityValue: depositMaturity(asDeposit).maturityValue,
+      couponAmount: null,
+      nextCoupon: null,
+      matured,
+      daysToMaturity,
+    };
+  }
 
   const accrual = bondAccrual({
     face: position.principal,
@@ -192,15 +233,16 @@ function bondView(position: FixedIncomePosition, on: IsoDate): FixedIncomeView {
   });
   if (accrual === null) return { ok: false, reason: 'before-start' };
 
-  const matured = on >= position.maturity;
   return {
     ok: true,
     kind: 'bond',
-    value: money(position.principal.minor + accrual.accrued.minor, position.principal.currency),
+    repay: 'payout',
+    value: money(position.principal.minor + accrual.accrued.minor, currency),
     accrued: accrual.accrued,
+    maturityValue: position.principal,
     couponAmount: accrual.couponAmount,
     nextCoupon: accrual.nextCoupon,
     matured,
-    daysToMaturity: matured ? null : dayNumber(position.maturity) - dayNumber(on),
+    daysToMaturity,
   };
 }

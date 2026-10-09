@@ -947,6 +947,7 @@ function AddHolding({
           </span>
           <select
             className="field"
+            aria-label="Tracks"
             value={exposure}
             onChange={(event) => {
               setExposure(event.target.value);
