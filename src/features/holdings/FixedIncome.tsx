@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fixedIncomeView, trimRate, type FixedIncomePosition, type FixedIncomeRefusal } from '../../domain/fixed-income.ts';
 import { formatIsoDate, istCalendarDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
-import { addDepositRenewal, addFixedIncome, listFixedIncome } from '../../repo/fixedIncome.ts';
+import { addDepositRenewal, addFixedIncome, addTermsToHolding, listFixedIncome } from '../../repo/fixedIncome.ts';
 import { recordValuation } from '../../repo/holdings.ts';
 import {
   COMPOUNDINGS,
@@ -26,6 +26,7 @@ import {
   type CompoundingKind,
   type CouponFrequencyKind,
   type FixedIncomeListing,
+  type Holding,
   type HoldingListing,
 } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
@@ -84,6 +85,7 @@ export function FixedIncome({
   const [data, setData] = useState<FixedIncomeListing | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [giving, setGiving] = useState<Holding | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Read once at the edge; the calculation takes it as an argument.
@@ -159,13 +161,26 @@ export function FixedIncome({
     return built.sort((a, b) => rank(a) - rank(b) || (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0));
   }, [data, listing.holdings, today]);
 
+  /**
+   * Deposits and bonds the household already holds, entered before there were terms.
+   * Adding one again would be a second holding beside the first, counted twice, so each
+   * is offered its terms instead.
+   */
+  const withoutTerms = useMemo(() => {
+    const have = new Set((data?.terms ?? []).map((t) => t.holdingId));
+    return listing.holdings.filter(
+      (h) => (h.instrument.kind === 'deposit' || h.instrument.kind === 'bond') && !have.has(h.id),
+    );
+  }, [data, listing.holdings]);
+
   const totals = useMemo(() => {
     const byCurrency = new Map<string, { value: bigint; projected: number; refused: number }>();
     for (const row of rows) {
       const currency = row.position.principal.currency;
       const bucket = byCurrency.get(currency) ?? { value: 0n, projected: 0, refused: 0 };
       if (row.view.ok) {
-        bucket.value += row.view.value.minor;
+        // Paid out is not held: the money is somewhere else now.
+        if (!row.view.matured) bucket.value += row.view.value.minor;
         if (row.view.kind === 'deposit' && row.view.projected) bucket.projected += 1;
       } else {
         bucket.refused += 1;
@@ -175,7 +190,13 @@ export function FixedIncome({
     return [...byCurrency.entries()];
   }, [rows]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <Card title="Deposits and bonds">
+        <p className="note">Loading…</p>
+      </Card>
+    );
+  }
 
   if (problem !== null && data === null) {
     return (
@@ -205,7 +226,9 @@ export function FixedIncome({
             chain of terms; a renewal you have recorded is the bank’s figure, and one you have
             not is projected on the same term and marked as a projection. A bond is valued at par,
             its face plus the interest accrued since the last coupon, because there is no market
-            price for it.
+            price for it, and it is assumed to pay its coupons out: one that pays everything at
+            maturity is not valued correctly yet. Interest is counted term by term, so a bank that
+            pays interest out and renews the principal does not make the first term disappear.
           </Caveat>
         </span>
       }
@@ -232,6 +255,26 @@ export function FixedIncome({
           listing={listing}
           onDone={() => {
             setAdding(false);
+            void load();
+            onChanged();
+          }}
+        />
+      )}
+
+      {rows.length > 0 && (
+        <p className="note mb-3">
+          These are worked out here and are <strong>not in net worth</strong> until each is recorded as
+          a reading, with the link on its row.
+        </p>
+      )}
+
+      {canWrite && giving !== null && (
+        <AddFixedIncome
+          key={giving.id}
+          listing={listing}
+          existing={giving}
+          onDone={() => {
+            setGiving(null);
             void load();
             onChanged();
           }}
@@ -289,6 +332,35 @@ export function FixedIncome({
             ))}
           </ul>
         </>
+      )}
+
+      {canWrite && withoutTerms.length > 0 && (
+        <div className="mt-4 border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
+          <p className="label">Held, with no terms yet</p>
+          <p className="note mt-1">
+            Entered before terms were asked for. Give one its terms and it is valued from them; adding
+            it again would make a second holding and count it twice.
+          </p>
+          <ul className="row-separated mt-2">
+            {withoutTerms.map((holding) => (
+              <li key={holding.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span>
+                  {holding.instrument.name} <span className="note">{holding.member.displayName}</span>
+                </span>
+                <button
+                  type="button"
+                  className="note underline"
+                  onClick={() => {
+                    setAdding(false);
+                    setGiving(holding);
+                  }}
+                >
+                  Give its terms
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Card>
   );
@@ -357,7 +429,7 @@ function PositionRow({
         <span className="flex flex-wrap items-center gap-2">
           <Pill tone="neutral">{position.kind === 'deposit' ? 'Deposit' : 'Bond'}</Pill>
           {row.rating !== null && <Pill tone="neutral">{row.rating}</Pill>}
-          {position.autoRenew && <Pill tone="own">Renews itself</Pill>}
+          {position.autoRenew && <Pill tone="neutral">Renews itself</Pill>}
           {view.ok && view.matured && <Pill tone="neutral">Matured</Pill>}
           {view.ok && view.kind === 'deposit' && view.projected && <Pill tone="warn">Projected renewal</Pill>}
         </span>
@@ -373,6 +445,27 @@ function PositionRow({
         <p className="note" style={{ color: 'var(--ink-2)' }}>
           {REFUSAL[view.reason]}
         </p>
+      ) : view.matured ? (
+        /*
+          Paid out. The bank has the money back in an account, so it is no longer worth
+          anything as a holding: no "value today", nothing in the total, and nothing to
+          record as a reading. What was paid, and what comes next.
+        */
+        <>
+          <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
+            <Stat label={view.kind === 'bond' ? 'Repaid at par' : 'Paid out'}>
+              {formatMoney(view.value, { privacy })}
+            </Stat>
+            {view.kind === 'deposit' && (
+              <Stat label="Interest earned">{formatMoney(view.interestToDate, { privacy })}</Stat>
+            )}
+            <Stat label="Matured on">{formatIsoDate(view.kind === 'deposit' ? row.lastEnd : position.maturity)}</Stat>
+          </dl>
+          <p className="note">
+            It has paid out, so it is no longer a holding and is left out of the total. Record where
+            the money went, then archive this.
+          </p>
+        </>
       ) : (
         <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
           <Stat label={view.kind === 'bond' ? 'Value at par' : 'Value today'}>
@@ -415,7 +508,7 @@ function PositionRow({
 
       {canWrite && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          {view.ok && !(view.kind === 'deposit' && view.projected) && (
+          {view.ok && !view.matured && !(view.kind === 'deposit' && view.projected) && (
             <button
               type="button"
               className="note underline"
@@ -598,7 +691,16 @@ function RenewalForm({
   );
 }
 
-function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: () => void }) {
+function AddFixedIncome({
+  listing,
+  existing,
+  onDone,
+}: {
+  listing: HoldingListing;
+  /** A deposit or bond already held, given its terms rather than entered again. */
+  existing?: Holding;
+  onDone: () => void;
+}) {
   const members = useMemo(
     () =>
       listing.viewer.canFileForOthers
@@ -607,13 +709,13 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
     [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
   );
 
-  const [kind, setKind] = useState<'deposit' | 'bond'>('deposit');
+  const [kind, setKind] = useState<'deposit' | 'bond'>(existing?.instrument.kind === 'bond' ? 'bond' : 'deposit');
   const [name, setName] = useState('');
   const [memberId, setMemberId] = useState(listing.viewer.memberId);
-  const [currency, setCurrency] = useState('INR');
+  const [currency, setCurrency] = useState(existing?.instrument.currency ?? 'INR');
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
-  const [start, setStart] = useState('');
+  const [start, setStart] = useState<string>(existing?.openedOn ?? '');
   const [maturity, setMaturity] = useState('');
   // Offered as yearly because this household's compound yearly; it is still a visible choice.
   const [compounding, setCompounding] = useState<CompoundingKind>('yearly');
@@ -652,10 +754,8 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
 
     setBusy(true);
     try {
-      await addFixedIncome({
+      const terms = {
         householdId: listing.household.id,
-        memberId,
-        name: name.trim(),
         kind,
         principal: money(minor, currency),
         ratePct: rate.trim(),
@@ -666,7 +766,12 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
           : { couponFrequency: frequency, rating }),
         institution,
         accountLast4: last4,
-      });
+      } as const;
+      if (existing === undefined) {
+        await addFixedIncome({ ...terms, memberId, name: name.trim() });
+      } else {
+        await addTermsToHolding({ ...terms, holdingId: existing.id });
+      }
       onDone();
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not add that.');
@@ -683,6 +788,14 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
         void submit(event);
       }}
     >
+      {existing !== undefined && (
+        <p className="w-full" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+          Terms for {existing.instrument.name}{' '}
+          <span className="note">{existing.member.displayName}</span>
+        </p>
+      )}
+      {existing === undefined && (
+        <>
       <div className="segmented w-full sm:w-auto" role="group" aria-label="What is being added">
         {(['deposit', 'bond'] as const).map((option) => (
           <button
@@ -740,6 +853,8 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
           <option value="USD">USD</option>
         </select>
       </label>
+        </>
+      )}
 
       <div className="w-full sm:w-[150px]">
         <Field
@@ -898,7 +1013,7 @@ function AddFixedIncome({ listing, onDone }: { listing: HoldingListing; onDone: 
       </div>
 
       <Button type="submit" disabled={busy}>
-        {busy ? 'Saving…' : `Add the ${kind}`}
+        {busy ? 'Saving…' : existing === undefined ? `Add the ${kind}` : 'Save the terms'}
       </Button>
 
       {problem !== null && (
