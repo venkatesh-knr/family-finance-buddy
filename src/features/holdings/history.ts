@@ -107,6 +107,15 @@ export function historySentence(history: History): string | null {
 }
 
 /** "One position rests on" / "3 positions rest on", for the sentence that follows. */
+/** "One holding has no cost recorded" / "3 holdings have no cost recorded". */
+export function costMissing(count: number): string {
+  return count === 1 ? 'One holding has' : `${String(count)} holdings have`;
+}
+
+/** Why a gain is refused where a cost was never recorded; the sibling of the line below. */
+export const COST_MISSING_REFUSED_BECAUSE =
+  'A cost nobody recorded is not a cost of nothing: set against one, the gain would be larger than it was.';
+
 export function shortPositions(count: number): string {
   return count === 1 ? 'One position rests on' : `${String(count)} positions rest on`;
 }
