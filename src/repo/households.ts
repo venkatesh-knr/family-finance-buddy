@@ -10,6 +10,7 @@
  */
 
 import { supabase } from './client.ts';
+import { currentAccountId } from './account.ts';
 import { toHousehold, toRole } from './mapping.ts';
 import { NoHouseholdError, type Household, type HouseholdRole, type Uuid } from './types.ts';
 
@@ -30,9 +31,14 @@ export interface HouseholdMembership {
 export async function listHouseholds(): Promise<readonly HouseholdMembership[]> {
   const client = supabase();
 
+  // Only the caller's own memberships. The policy shows everybody's in each household,
+  // so unfiltered this listed a household once per person in it, and took the role of
+  // whoever joined first: see account.ts.
+  const accountId = await currentAccountId();
   const result = await client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
+    .eq('user_account_id', accountId)
     .is('revoked_at', null)
     .order('created_at', { ascending: true });
 
