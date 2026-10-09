@@ -19,6 +19,8 @@ import {
 import { money } from '../lib/money.ts';
 import {
   CATEGORY_NATURES,
+  COMPOUNDINGS,
+  COUPON_FREQUENCIES,
   DISPOSAL_KINDS,
   HOUSEHOLD_KINDS,
   HOUSEHOLD_ROLES,
@@ -28,7 +30,9 @@ import {
   PAYMENT_METHODS,
   VALUATION_SOURCES,
   VISIBILITIES,
+  type DepositRenewal,
   type Disposal,
+  type FixedIncomeTerms,
   type Expense,
   type Holding,
   type StatedBalanceRow,
@@ -356,5 +360,73 @@ export function toExpenseCategory(raw: unknown): ExpenseCategory {
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'expense_category.status') ===
       'archived',
+  };
+}
+
+const RATE_TEXT = /^\d+(\.\d+)?$/;
+
+/** A rate as the decimal string the database sent, refused if it is anything else. */
+function requireRate(value: unknown, field: string): string {
+  const text = requireString(value, field);
+  if (!RATE_TEXT.test(text)) {
+    throw new MalformedRowError(field, `is ${JSON.stringify(text)}, not a percentage`);
+  }
+  return text;
+}
+
+function optionalRate(value: unknown, field: string): string | null {
+  return value === null || value === undefined ? null : requireRate(value, field);
+}
+
+/**
+ * The terms of a deposit or a bond.
+ *
+ * The principal and the rates are read as text the query cast, so neither passes
+ * through a double; the rate stays a string all the way to the accrual module.
+ */
+export function toFixedIncomeTerms(raw: unknown): FixedIncomeTerms {
+  const row = requireRecord(raw, 'fixed_income_terms');
+  const currency = requireString(row['currency'], 'fixed_income_terms.currency');
+  const compounding = row['compounding'];
+  const frequency = row['coupon_frequency'];
+
+  return {
+    holdingId: requireString(row['holding_id'], 'fixed_income_terms.holding_id'),
+    householdId: requireString(row['household_id'], 'fixed_income_terms.household_id'),
+    kind: requireOneOf(row['kind'], ['deposit', 'bond'] as const, 'fixed_income_terms.kind'),
+    principal: money(toBigIntExact(row['principal_minor'], 'fixed_income_terms.principal_minor'), currency),
+    ratePct: requireRate(row['rate_pct'], 'fixed_income_terms.rate_pct'),
+    start: requireIsoDate(row['start_date'], 'fixed_income_terms.start_date'),
+    maturity: requireIsoDate(row['maturity_date'], 'fixed_income_terms.maturity_date'),
+    compounding:
+      compounding === null || compounding === undefined
+        ? null
+        : requireOneOf(compounding, COMPOUNDINGS, 'fixed_income_terms.compounding'),
+    couponFrequency:
+      frequency === null || frequency === undefined
+        ? null
+        : requireOneOf(frequency, COUPON_FREQUENCIES, 'fixed_income_terms.coupon_frequency'),
+    rating: optionalString(row['rating'], 'fixed_income_terms.rating'),
+    autoRenew: requireBoolean(row['auto_renew'], 'fixed_income_terms.auto_renew'),
+    renewalRatePct: optionalRate(row['renewal_rate_pct'], 'fixed_income_terms.renewal_rate_pct'),
+    institution: optionalString(row['institution'], 'fixed_income_terms.institution'),
+    accountLast4: optionalString(row['account_last4'], 'fixed_income_terms.account_last4'),
+    note: optionalString(row['note'], 'fixed_income_terms.note'),
+  };
+}
+
+export function toDepositRenewal(raw: unknown): DepositRenewal {
+  const row = requireRecord(raw, 'deposit_renewal');
+  const currency = requireString(row['currency'], 'deposit_renewal.currency');
+
+  return {
+    id: requireString(row['id'], 'deposit_renewal.id'),
+    holdingId: requireString(row['holding_id'], 'deposit_renewal.holding_id'),
+    start: requireIsoDate(row['start_date'], 'deposit_renewal.start_date'),
+    maturity: requireIsoDate(row['maturity_date'], 'deposit_renewal.maturity_date'),
+    principal: money(toBigIntExact(row['principal_minor'], 'deposit_renewal.principal_minor'), currency),
+    ratePct: requireRate(row['rate_pct'], 'deposit_renewal.rate_pct'),
+    compounding: requireOneOf(row['compounding'], COMPOUNDINGS, 'deposit_renewal.compounding'),
+    note: optionalString(row['note'], 'deposit_renewal.note'),
   };
 }

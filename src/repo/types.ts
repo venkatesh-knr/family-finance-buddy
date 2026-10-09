@@ -316,6 +316,85 @@ export interface Valuation {
   readonly note: string | null;
 }
 
+export const COMPOUNDINGS = ['monthly', 'quarterly', 'half_yearly', 'yearly', 'simple'] as const;
+export type CompoundingKind = (typeof COMPOUNDINGS)[number];
+
+export const COUPON_FREQUENCIES = ['monthly', 'quarterly', 'half_yearly', 'yearly'] as const;
+export type CouponFrequencyKind = (typeof COUPON_FREQUENCIES)[number];
+
+/**
+ * The terms of a deposit or a bond, one per holding.
+ *
+ * What the value is made of, never the value: that is worked out on a day from
+ * these (`domain/fixed-income.ts`) and is not stored.
+ */
+export interface FixedIncomeTerms {
+  readonly holdingId: Uuid;
+  readonly householdId: Uuid;
+  readonly kind: 'deposit' | 'bond';
+  /** A deposit's first-term principal, or a bond's face value. */
+  readonly principal: Money;
+  /** As the database holds it, a decimal string: 7.500, never a double. */
+  readonly ratePct: string;
+  readonly start: IsoDate;
+  readonly maturity: IsoDate;
+  readonly compounding: CompoundingKind | null;
+  readonly couponFrequency: CouponFrequencyKind | null;
+  readonly rating: string | null;
+  readonly autoRenew: boolean;
+  readonly renewalRatePct: string | null;
+  readonly institution: string | null;
+  /** The last four characters of the account or certificate: all this app keeps. */
+  readonly accountLast4: string | null;
+  readonly note: string | null;
+}
+
+/** A later term of a deposit, as the bank renewed it. */
+export interface DepositRenewal {
+  readonly id: Uuid;
+  readonly holdingId: Uuid;
+  readonly start: IsoDate;
+  readonly maturity: IsoDate;
+  readonly principal: Money;
+  readonly ratePct: string;
+  readonly compounding: CompoundingKind;
+  readonly note: string | null;
+}
+
+export interface FixedIncomeListing {
+  readonly terms: readonly FixedIncomeTerms[];
+  readonly renewals: readonly DepositRenewal[];
+}
+
+export interface NewFixedIncome {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly name: string;
+  readonly kind: 'deposit' | 'bond';
+  readonly principal: Money;
+  readonly ratePct: string;
+  readonly start: IsoDate;
+  readonly maturity: IsoDate;
+  readonly compounding?: CompoundingKind;
+  readonly couponFrequency?: CouponFrequencyKind;
+  readonly rating?: string | null;
+  readonly autoRenew?: boolean;
+  readonly renewalRatePct?: string | null;
+  readonly institution?: string | null;
+  readonly accountLast4?: string | null;
+}
+
+export interface NewDepositRenewal {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly start: IsoDate;
+  readonly maturity: IsoDate;
+  readonly principal: Money;
+  readonly ratePct: string;
+  readonly compounding: CompoundingKind;
+  readonly note?: string | null;
+}
+
 /** Everything the holdings screen needs in one load. */
 export interface HoldingListing {
   readonly household: Household;

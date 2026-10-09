@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation } from './mapping.ts';
+import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms } from './mapping.ts';
 import type { Member } from './types.ts';
 
 const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
@@ -407,5 +407,68 @@ describe('household kind', () => {
     // to badge play money as play money. Both are the mistake §423 exists to
     // prevent, so neither is a safe default.
     expect(() => toHousehold({ ...real, kind: 'sandbox' })).toThrow(/not one of/);
+  });
+});
+
+describe('toFixedIncomeTerms', () => {
+  const row = {
+    holding_id: 'h-1',
+    household_id: 'hh-1',
+    kind: 'deposit',
+    principal_minor: '10000000',
+    currency: 'INR',
+    rate_pct: '7.500',
+    start_date: '2025-10-01',
+    maturity_date: '2026-10-01',
+    compounding: 'yearly',
+    coupon_frequency: null,
+    rating: null,
+    auto_renew: true,
+    renewal_rate_pct: null,
+    institution: 'HDFC Bank',
+    account_last4: '1234',
+    note: null,
+  };
+
+  it('reads the principal as money and the rate as the text it came as', () => {
+    const terms = toFixedIncomeTerms(row);
+    expect(terms.principal).toEqual({ minor: 10000000n, currency: 'INR' });
+    expect(terms.ratePct).toBe('7.500');
+    expect(terms.compounding).toBe('yearly');
+    expect(terms.couponFrequency).toBeNull();
+    expect(terms.autoRenew).toBe(true);
+    expect(terms.institution).toBe('HDFC Bank');
+  });
+
+  it('refuses a rate that is a double, which has already lost its digits', () => {
+    expect(() => toFixedIncomeTerms({ ...row, rate_pct: 7.5 })).toThrow();
+    expect(() => toFixedIncomeTerms({ ...row, rate_pct: 'seven' })).toThrow(/percentage/);
+  });
+
+  it('refuses a compounding it does not know rather than guess one', () => {
+    expect(() => toFixedIncomeTerms({ ...row, compounding: 'daily' })).toThrow();
+  });
+
+  it('refuses a kind that is neither a deposit nor a bond', () => {
+    expect(() => toFixedIncomeTerms({ ...row, kind: 'ppf' })).toThrow();
+  });
+});
+
+describe('toDepositRenewal', () => {
+  it('reads a later term as the bank stated it', () => {
+    const renewal = toDepositRenewal({
+      id: 'r-1',
+      holding_id: 'h-1',
+      start_date: '2026-10-01',
+      maturity_date: '2027-10-01',
+      principal_minor: '10750000',
+      currency: 'INR',
+      rate_pct: '7.000',
+      compounding: 'yearly',
+      note: null,
+    });
+    expect(renewal.principal).toEqual({ minor: 10750000n, currency: 'INR' });
+    expect(renewal.ratePct).toBe('7.000');
+    expect(renewal.start).toBe('2026-10-01');
   });
 });
