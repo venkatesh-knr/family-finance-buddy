@@ -43,8 +43,14 @@ import {
   unitsText,
 } from '../holdings/history.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
-import { listFixedIncome, listRatingChanges } from '../../repo/fixedIncome.ts';
-import { daysPhrase, fixedIncomeAlerts, type FixedIncomeAlert } from '../holdings/fixedIncomeRows.ts';
+import { listFixedIncome, listRatingChanges, recordComputedReadings } from '../../repo/fixedIncome.ts';
+import { monthEndReadings } from '../../domain/fixed-income.ts';
+import {
+  buildPosition,
+  daysPhrase,
+  fixedIncomeAlerts,
+  type FixedIncomeAlert,
+} from '../holdings/fixedIncomeRows.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { assetHistory } from '../../domain/history.ts';
@@ -119,7 +125,16 @@ export function OverviewScreen({
   const [addingRate, setAddingRate] = useState(false);
   const [noHousehold, setNoHousehold] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [closed, setClosed] = useState<{ carried: number; unread: number } | null>(null);
+  const [closed, setClosed] = useState<{
+    carried: number;
+    unread: number;
+    /** Deposits and bonds worked out from their terms and written. */
+    worked: number;
+    /** Assumed renewals, left unread: an estimate is not a reading. */
+    projected: number;
+    /** True when the deposits and bonds could not be read, so none was worked out. */
+    fixedIncomeUnread: boolean;
+  } | null>(null);
   const [rates, setRates] = useState<readonly FxRate[]>([]);
   const [debts, setDebts] = useState<
     readonly {
@@ -184,12 +199,17 @@ export function OverviewScreen({
     readonly ratingChanges: Awaited<ReturnType<typeof listRatingChanges>>;
   } | null>(null);
   const [fixedIncomeFailed, setFixedIncomeFailed] = useState(false);
+  // Not yet read is not the same as could not be read. Close month needs to know which: it
+  // works deposits and bonds out from what was read, and "nothing read yet" must not be
+  // reported to somebody as a failure, nor acted on as if there were none.
+  const [fixedIncomeSettled, setFixedIncomeSettled] = useState(false);
 
   // Read once at the edge. Every calculation below takes it as an argument.
   const [today] = useState(() => istCalendarDate(new Date()));
 
   const load = useCallback(async () => {
     setLoading(true);
+    setFixedIncomeSettled(false);
     try {
       const next = await listHoldings({
         ...(householdId === null ? {} : { householdId }),
@@ -250,6 +270,7 @@ export function OverviewScreen({
         setFixedIncome(null);
         setFixedIncomeFailed(true);
       }
+      setFixedIncomeSettled(true);
     } catch (error) {
       if (error instanceof NoHouseholdError) setNoHousehold(true);
       else setProblem(error instanceof Error ? error.message : 'Could not load the overview.');
@@ -531,14 +552,36 @@ export function OverviewScreen({
     setClosing(true);
     setProblem(null);
     try {
-      setClosed(await closeMonth({ householdId: listing.household.id, monthEnd: lastMonthEnd }));
+      // Deposits and bonds first. They have no reading to carry, their value is a function of
+      // their terms, so it is worked out for the month end and written; and written before the
+      // function below runs, which would otherwise carry a stale mid-month reading into the
+      // month-end slot and leave the worked-out figure with nowhere to go.
+      let worked = 0;
+      let projected = 0;
+      if (fixedIncome !== null) {
+        const seen = new Set(listing.holdings.filter((h) => !h.isArchived).map((h) => h.id));
+        const { readings, skipped } = monthEndReadings(
+          fixedIncome.terms
+            .filter((terms) => seen.has(terms.holdingId))
+            .map((terms) => buildPosition(terms, fixedIncome.renewals)),
+          lastMonthEnd,
+        );
+        worked = await recordComputedReadings({
+          householdId: listing.household.id,
+          date: lastMonthEnd,
+          readings,
+        });
+        projected = skipped.filter((s) => s.why === 'projected').length;
+      }
+      const carried = await closeMonth({ householdId: listing.household.id, monthEnd: lastMonthEnd });
+      setClosed({ ...carried, worked, projected, fixedIncomeUnread: fixedIncome === null });
       await load();
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not close the month.');
     } finally {
       setClosing(false);
     }
-  }, [listing, lastMonthEnd, load]);
+  }, [listing, fixedIncome, lastMonthEnd, load]);
 
   if (loading && listing === null) return <p className="note py-4.5">Loading…</p>;
   if (noHousehold) return <JoinHousehold onJoined={() => void load()} />;
@@ -1276,20 +1319,29 @@ export function OverviewScreen({
           {canClose && (
             <div className="mt-3.5 flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" disabled={closing} onClick={() => void close()}>
+                <Button type="button" disabled={closing || !fixedIncomeSettled} onClick={() => void close()}>
                   {closing ? 'Closing…' : `Close ${monthYear(lastMonthEnd)}`}
                 </Button>
                 <Caveat tone="info" label="What closing a month does">
                   Closing carries each holding&rsquo;s latest reading in that month to the month end and
                   marks it <Pill tone="warn">backfill</Pill> — a defensible approximation, weaker than a
-                  reading taken on the day. It values nothing it was not told, so a holding nobody read
-                  stays unread. Nothing is overwritten, and running it twice does nothing.
+                  reading taken on the day. A deposit or bond has no reading to carry, so its value is
+                  worked out from its terms for the month end and written the same way; a renewal not
+                  yet recorded is an estimate and is left unread. Anything else it was not told stays
+                  unread. Nothing is overwritten, and running it twice does nothing.
                 </Caveat>
                 {closed !== null && (
                   <span className="note">
                     {closed.carried === 0
-                      ? 'Nothing to carry.'
+                      ? closed.worked > 0
+                        ? ''
+                        : 'Nothing to carry.'
                       : `Carried ${String(closed.carried)} ${closed.carried === 1 ? 'reading' : 'readings'} to the month end.`}
+                    {closed.worked > 0 &&
+                      ` Worked out ${String(closed.worked)} ${closed.worked === 1 ? 'deposit or bond' : 'deposits and bonds'} from ${closed.worked === 1 ? 'its' : 'their'} terms.`}
+                    {closed.projected > 0 &&
+                      ` ${String(closed.projected)} renewal${closed.projected === 1 ? '' : 's'} not recorded yet, left unread.`}
+                    {closed.fixedIncomeUnread && ' Deposits and bonds could not be read, so none was worked out.'}
                     {closed.unread > 0 && ` ${String(closed.unread)} unread.`}
                   </span>
                 )}

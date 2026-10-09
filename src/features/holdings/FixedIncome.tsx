@@ -277,7 +277,8 @@ export function FixedIncome({
       {rows.length > 0 && (
         <p className="note mb-3">
           These are worked out here and are <strong>not in net worth</strong> until each is recorded as
-          a reading, with the link on its row.
+          a reading, with the link on its row, or until the month is closed on the Overview, which
+          does it for every one that is not an assumed renewal.
         </p>
       )}
 
