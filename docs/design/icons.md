@@ -64,7 +64,14 @@ equity       M6 20V9   M12 20V4   M18 20v-7   M3 20h18
 etf          rect 3,8 18×12 r2       M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2      M3 13h18
 bond         rect 3,7 18×12 r2       M3 11h18
 deposit      rect 3,6 18×13 r2       M3 10h18      circle 12,14.5 r2
+other        circle r1 at 6,12      circle r1 at 12,12      circle r1 at 18,12
 ```
+
+The three dots are circles of radius 1 and not zero-length strokes. Stroked at 1.9, a
+dot is about 3.9 units across and solid (its hole is 0.1 wide), which is wider than
+a pixel-and-a-half at 20px. A zero-length stroke is only 1.9 across: at device pixel
+ratio 1 it sits on a pixel boundary and smears to a pale block, and measured as
+painted it was 2.6:1 in light, under the bar in §5.
 
 **Funds and equity are the pair that gets swapped.** A fund is a line you watch;
 a holding is a discrete thing you count. Keep the split in that direction — it is
@@ -129,6 +136,29 @@ A single tint percentage across seven hues does not produce a single ratio.
 Measure every kind in both themes and record the numbers. Gold and coral over a
 light surface are where this is expected to fail first, and a tint that works for
 five hues and fails for two is a per-hue tint, not a broken rule.
+
+Measured for the shipped 16% fill and 76% border (`src/ui/tileContrast.test.ts`
+holds every pair at 3:1; these are the figures it computes), glyph against its own
+fill, then border against `--surface`:
+
+| hue | token | light glyph | light border | dark glyph | dark border |
+| --- | --- | --- | --- | --- | --- |
+| periwinkle | `--c1` | 4.53 | 3.54 | 5.22 | 4.45 |
+| emerald | `--c2` | 4.28 | 3.41 | 6.78 | 5.83 |
+| gold | `--c3` | 4.15 | 3.26 | 6.94 | 5.98 |
+| violet | `--c4` | 5.01 | 3.85 | 4.68 | 3.94 |
+| coral | `--c5` | 4.34 | 3.59 | 5.18 | 4.22 |
+| cyan | `--c6` | 4.29 | 3.41 | 6.43 | 5.55 |
+| neutral | `--muted` | 4.42 | 3.31 | 5.34 | 4.57 |
+
+Gold and neutral over a light surface have the least margin on the border (3.26 and
+3.31). Every pair passes, so neither needed its own percentage.
+
+Those are the colours of a solid stroke. A thin stroke is rasterised, not solid, so
+`tests/e2e/asset-tile.spec.ts` also renders every kind at device pixel ratio 1, the
+case a 100% desktop monitor is, and measures the strongest glyph pixel against the
+fill in both themes. A dot of the first `other` glyph passed the table and measured
+2.57 painted; this is the check that sees that.
 
 ## 6. What has to be tested
 

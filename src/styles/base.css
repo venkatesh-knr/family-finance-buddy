@@ -1058,7 +1058,7 @@
   }
 
   /*
-   * An asset-class row: a colour, a name with its share beneath, and the
+   * An asset-class row: a tile, a name with its share beneath, and the
    * figures right-aligned.
    *
    * It replaced a bar chart. A bar shows one thing — relative size — and a
