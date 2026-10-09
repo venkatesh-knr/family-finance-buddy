@@ -12,6 +12,8 @@
  * Callers see the `AuthStage` union and nothing from a Supabase library.
  */
 
+import { svgMarkupFromQr } from '../lib/qr.ts';
+import { describeMfaFailure } from './authErrors.ts';
 import { supabase } from './client.ts';
 
 export type AuthStage =
@@ -31,8 +33,11 @@ export interface AuthState {
 
 export interface TotpEnrolment {
   readonly factorId: string;
-  /** An SVG served by our own auth server, for scanning from another device. */
-  readonly qrCodeSvg: string;
+  /**
+   * The QR code as SVG markup, for scanning from another device; null when the server
+   * sent something that is not a plain SVG, in which case the secret below is the way in.
+   */
+  readonly qrCodeSvg: string | null;
   /** The same secret as text, for someone typing or pasting it. */
   readonly secret: string;
   /**
@@ -189,7 +194,8 @@ export async function beginTotpEnrolment(): Promise<TotpEnrolment> {
 
     return {
       factorId: data.id,
-      qrCodeSvg: data.totp.qr_code,
+      // A data URI, not markup: see lib/qr.ts for why it is converted here and not drawn as an image.
+      qrCodeSvg: svgMarkupFromQr(data.totp.qr_code),
       secret: data.totp.secret,
       uri: data.totp.uri,
     };
@@ -212,7 +218,7 @@ export async function verifyTotpCode(code: string, factorId?: string): Promise<v
   let targetFactorId = factorId;
   if (targetFactorId === undefined) {
     const { data: factors, error: listError } = await client.auth.mfa.listFactors();
-    if (listError !== null) throw new Error(listError.message);
+    if (listError !== null) throw new Error(describeMfaFailure(listError));
     const verified = factors.totp[0];
     if (verified === undefined) {
       throw new Error('No authenticator app is enrolled on this account.');
@@ -225,7 +231,9 @@ export async function verifyTotpCode(code: string, factorId?: string): Promise<v
     code: code.trim(),
   });
   if (error !== null) {
-    throw new Error('That code was not accepted. Codes expire every 30 seconds — try the current one.');
+    // Said as what it was. One sentence for every cause sent a person round fetching fresh
+    // codes when the session had simply gone stale: see authErrors.ts.
+    throw new Error(describeMfaFailure(error));
   }
 
   forgetPendingFactor();

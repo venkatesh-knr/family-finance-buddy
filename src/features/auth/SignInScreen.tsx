@@ -268,12 +268,14 @@ function EnrolTotp({ email }: { email: string | null }) {
               <summary className="note cursor-pointer">Setting it up on another device?</summary>
 
               <div className="mt-3 flex flex-col gap-3">
-                <div
-                  className="mx-auto rounded bg-white p-3"
-                  // The SVG comes from our own auth server over TLS. It is
-                  // markup, not an image request, so it needs no img-src rule.
-                  dangerouslySetInnerHTML={{ __html: enrolment.qrCodeSvg }}
-                />
+                {enrolment.qrCodeSvg !== null && (
+                  <div
+                    className="mx-auto rounded bg-white p-3"
+                    // Markup, not an image request, so it needs no img-src rule, and checked in
+                    // lib/qr.ts before it gets here: anything that is not a plain SVG is null.
+                    dangerouslySetInnerHTML={{ __html: enrolment.qrCodeSvg }}
+                  />
+                )}
                 <SecretToType secret={enrolment.secret} />
               </div>
             </details>
