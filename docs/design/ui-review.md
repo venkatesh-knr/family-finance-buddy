@@ -47,6 +47,7 @@ by changing a token, say so and change the token instead.
 | 19 | FIRE has no projection — the mockup proposes one | note | `features/plan`, not a defect |
 | 20 | The activity log mixes friendly names with table names | low | `features/profile`, audit labels |
 | 21 | 200% text size is a requirement and nothing verifies it | medium | cross-cutting, `CLAUDE.md` |
+| 22 | The privacy spec failed once and the cause is not known | **open** | `tests/e2e/privacy-mode.spec.ts` |
 
 ---
 
@@ -578,3 +579,31 @@ recurred, which is what a missing check looks like.
 asserts no horizontal scroll on the page body and no text clipped by its container (a
 child's scroll width above its client width where `overflow` is hidden) would hold the
 claim. The capture could take a 200% set too, to read by eye until the assertion exists.
+
+## 22. The privacy spec failed once, and the cause is not known
+
+**Open. Not closed, and not to be recorded as closed.**
+
+`tests/e2e/privacy-mode.spec.ts`, desktop, "an amount is absent from the page, not merely
+hidden", failed once in a full `npm run test:e2e` on 9 October 2026, on the palette
+branch. In the same session it passed in an earlier full run, in a full re-run straight
+after, on its own, and eight times in a row with `--repeat-each=8`.
+
+**The log was lost.** The run's output was filtered as it streamed, to the lines that
+begin a failure and the final tally, and the message that said *why* it failed was not
+kept. That is the mistake, and it is why this is open and not explained.
+
+**Why it is worth more than its failure rate.** This is the only test that checks a
+promise made to the family: that an amount is absent from the DOM when privacy mode is on,
+and not merely hidden (`docs/tokens.md` §8). Everything else in the suite guards behaviour.
+Eight green repeats make a real leak unlikely, but a flaky test over this assertion is
+itself a defect: the next time it goes red nobody will believe it.
+
+**One suspect, unproven.** The test reads `document.documentElement.outerHTML` straight
+after clicking the toggle, without first waiting for the toggle to have flipped. If a
+re-render were ever late, the markup would still hold the digits. That would be a race in
+the test and not a leak, but it is a guess and has not been shown.
+
+**What to do.** If it recurs: keep the full log, and stop. Do not re-run until it passes.
+Capture a full-suite run whole (`2>&1 | tee test-results/e2e.log`) and filter the file,
+not the stream.

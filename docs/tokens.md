@@ -160,6 +160,20 @@ lighter than a card, so a pill edge borders the lighter side, and `#646D7A` was 
 axe does not test this. It checks text, not boundaries, so this pair has to be measured
 by hand or asserted directly.
 
+**Why the rule says a border and not "a visible boundary".** A border survives
+forced-colours mode and a shadow ring does not: that mode (Windows high contrast) keeps a
+border and recolours it to a system colour, and drops box-shadows altogether. A control whose
+edge is a shadow ring has no edge for the people who turned that mode on, and "make it
+visible" is satisfied on the designer's screen and not on theirs. This is not a stylistic
+preference, and a ring is not a substitute for a border.
+
+**The pressed segment is a border, and every segment carries one.** Each segment has a 1px
+transparent border and one pixel less padding than it would otherwise, so the pressed one only
+changes the border's colour and the control does not change size. Remove the transparent
+borders as tidying and the control resizes when pressed, moving its neighbours: the most
+visible thing a toggle can get wrong. The pressed segment's border is `--line-strong`, which
+is at least 3:1 against the track it sits in, in both themes.
+
 ---
 
 ## 3. Type
