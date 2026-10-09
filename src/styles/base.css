@@ -1136,11 +1136,27 @@
     font-weight: 600;
   }
 
-  .alloc-dot {
-    border-radius: 50%;
+  /*
+   * An asset class's tile (docs/tokens.md §4: icon tile radius 22.6%). The glyph is the class
+   * colour and the ground is a tint of it over the card, so a tile is right in both themes
+   * without a colour written here: --tile is set from the class's ramp slot. In em, so the tile
+   * grows with the text beside it.
+   */
+  .asset-tile {
+    align-items: center;
+    background: color-mix(in srgb, var(--tile) 16%, var(--surface));
+    border-radius: 22.6%;
+    color: var(--tile);
+    display: inline-flex;
     flex: none;
-    height: 0.7em;
-    width: 0.7em;
+    height: 1.9em;
+    justify-content: center;
+    width: 1.9em;
+  }
+
+  .asset-tile svg {
+    height: 62%;
+    width: 62%;
   }
 
   .alloc-name {

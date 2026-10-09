@@ -66,7 +66,8 @@ import {
   type PersonalHoldingTotal,
 } from '../../repo/types.ts';
 import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat } from '../../ui/primitives.tsx';
-import { kindColour, kindLabel } from '../../ui/labels.ts';
+import { AssetTile } from '../../ui/AssetTile.tsx';
+import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
 /** "Sep 2026" for a date in September 2026. */
@@ -1075,11 +1076,7 @@ export function OverviewScreen({
                     <ul className="alloc-rows">
                       {group.rows.map((row) => (
                         <li key={row.kind} className="alloc-row">
-                          <span
-                            className="alloc-dot"
-                            aria-hidden="true"
-                            style={{ background: kindColour(row.kind) }}
-                          />
+                          <AssetTile kind={row.kind} />
                           <span className="min-w-0">
                             {/*
                               A name worth clicking. A class here is a total; the
