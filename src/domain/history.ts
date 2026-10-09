@@ -23,7 +23,7 @@
  */
 
 import { type IsoDate } from '../lib/dates.ts';
-import { money, type Money } from '../lib/money.ts';
+import { money, percentOfCost, type Money } from '../lib/money.ts';
 import { convert, type MissingRate, type Rate } from './fx.ts';
 
 export interface HistoryHolding {
@@ -198,4 +198,29 @@ export function assetHistory(options: {
 
   if (points.length < 2) return { ok: false, reason: 'short' };
   return { ok: true, points, limitedBy };
+}
+
+export interface Movement {
+  /** The earlier of the two points the change is measured from. */
+  readonly from: IsoDate;
+  /** Last minus the one before it, in the history's own currency. */
+  readonly change: Money;
+  /** The change as a share of where it started, signed; null from a start of nothing. */
+  readonly percent: string | null;
+}
+
+/**
+ * What the last point is against the one before it.
+ *
+ * The points are month-ends, oldest first, and the last is the as-at date, so on most days this is
+ * "since the last month-end" and on a month-end it is "this month". It says which date it is measured
+ * from rather than calling it either, because the one word is right on some days and wrong on others.
+ * Null when there are not two points: a movement needs somewhere to have moved from.
+ */
+export function movementSince(points: readonly HistoryPoint[]): Movement | null {
+  const last = points[points.length - 1];
+  const before = points[points.length - 2];
+  if (last === undefined || before === undefined) return null;
+  const change = money(last.total.minor - before.total.minor, last.total.currency);
+  return { from: before.date, change, percent: percentOfCost(change.minor, before.total.minor) };
 }

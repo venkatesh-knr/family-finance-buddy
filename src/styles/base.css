@@ -871,7 +871,9 @@
     /* The warm disc of docs/design/vibrant-canvas.html: brass into the chart ramp's orange, with the
        primary button's ink. canvasStyle.test.ts holds the initial at 4.5:1 on both ends, both themes. */
     background: linear-gradient(140deg, var(--brass), var(--c7));
-    border: 0;
+    /* Transparent, and there for forced-colours mode: it drops a gradient and keeps a border, so without one
+       the control is a bare letter (docs/tokens.md §2). */
+    border: 1px solid transparent;
     border-radius: var(--radius-pill);
     color: var(--surface);
     cursor: pointer;
@@ -987,6 +989,203 @@
 
   .stat > .v.neg {
     color: var(--coral);
+  }
+
+  /*
+   * What is held, one card per currency (docs/design/vibrant-canvas.html): a label with the colour of
+   * its side of the world, the figure at the stat step, what was put in, and what it did. They sit two
+   * across where they fit and stack where they do not, so the row never forces the page wider.
+   */
+  .stat-cards {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  }
+
+  .stat-card {
+    display: grid;
+    gap: 0.35rem;
+    padding: 14px 16px;
+  }
+
+  .stat-card-label {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  /* The stat step (docs/tokens.md §3: 17px, 500), and not the hero's: at 22px and 600 a currency's figure
+     is the size of net worth on a phone, which is the three-hero-figures problem the hero rule exists to
+     prevent. */
+  .stat-card-value {
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 1.0625rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .stat-card-sub {
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .stat-card-gain {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+  }
+
+  .stat-card-gainfig {
+    color: var(--teal);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-card-loss {
+    color: var(--coral);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The FIRE read-out (docs/design/vibrant-canvas.html): a ring and three figures, a projection with
+   * its key, and a bar of what a year costs. Meaning is carried by words and shape beside every
+   * colour, so none of it is read from a hue alone.
+   */
+  .fire-progress {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+  }
+
+  .fire-ring {
+    flex: none;
+    height: auto;
+    width: clamp(5.5rem, 26vw, 7.5rem);
+  }
+
+  .fire-ring-text {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .fire-progress-rows {
+    display: grid;
+    flex: 1 1 12rem;
+    gap: 0.6rem;
+  }
+
+  .fire-progress-rows > div {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .fire-progress-rows dt {
+    color: var(--muted);
+  }
+
+  .fire-progress-rows dd {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .fire-target {
+    color: var(--brass);
+  }
+
+  .fire-short {
+    color: var(--coral);
+  }
+
+  .fire-legend {
+    align-items: center;
+    color: var(--ink-2);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.4rem 1.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .fire-legend li {
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .fire-assumes {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .fire-adjust {
+    align-items: center;
+    color: var(--brass);
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 600;
+    gap: 0.2rem;
+  }
+
+  .fire-cost-total {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .fire-cost-bar {
+    border-radius: var(--radius-pill);
+    display: flex;
+    gap: 2px;
+    height: 0.75rem;
+    overflow: hidden;
+  }
+
+  .fire-cost-bar > span {
+    flex-basis: 0;
+    min-width: 2px;
+  }
+
+  .fire-cost-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    margin-top: 0.75rem;
+  }
+
+  .fire-cost-legend li {
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .fire-cost-swatch {
+    border-radius: var(--radius-pill);
+    flex: none;
+    height: 0.6rem;
+    width: 0.6rem;
+  }
+
+  /* The movement under the hero: a chip and a note, on one line where they fit. */
+  .hero-move {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.6rem;
+    margin-top: 0.6rem;
   }
 
   /*
@@ -1106,31 +1305,35 @@
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem 1.75rem;
+    gap: 1rem 1.25rem;
   }
 
+  /* The ring is a compact mark beside the rows (docs/design/vibrant-canvas.html), a share of the width
+     and not a fixed size. Its rows ask for more room than is left once the text is scaled up, and
+     then wrap below it, which is how it stays readable at 200%. */
   .alloc-donut {
     flex: none;
     height: auto;
-    margin-inline: auto;
-    width: min(13rem, 100%);
+    margin-inline: 0;
+    width: clamp(5.75rem, 27vw, 8rem);
   }
 
   .alloc-rows {
-    flex: 1 1 16rem;
+    flex: 1 1 11.5rem;
     min-width: 0;
   }
 
-  .donut-label {
-    fill: var(--muted);
-    font-family: var(--font-ui);
-    font-size: 11px;
+  /* A currency's heading: its code, and what it adds up to. */
+  .alloc-head {
+    align-items: baseline;
+    display: flex;
+    justify-content: space-between;
   }
 
   .donut-total {
     fill: var(--ink);
     font-family: var(--font-ui);
-    font-size: 17px;
+    font-size: 24px;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
   }

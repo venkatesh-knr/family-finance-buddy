@@ -74,3 +74,15 @@ describe('the bottom bar', () => {
     }
   });
 });
+
+describe('the avatar border and the currency cards', () => {
+  it('keeps a transparent 1px border on the avatar: forced-colours mode drops a gradient and keeps a border', () => {
+    expect(ruleFor('.avatar')).toMatch(/border:\s*1px solid transparent/);
+  });
+
+  it('sets a currency card’s figure at the stat step, not the hero’s', () => {
+    const rule = ruleFor('.stat-card-value');
+    expect(rule).toMatch(/font-size:\s*1\.0625rem/);
+    expect(rule).toMatch(/font-weight:\s*500/);
+  });
+});
