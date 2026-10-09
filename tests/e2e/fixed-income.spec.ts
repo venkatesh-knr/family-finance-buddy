@@ -57,3 +57,45 @@ test('a bond is asked for a coupon and not for a compounding', async ({ page }) 
   await expect(page.getByLabel('Coupon paid')).toBeVisible();
   await expect(page.getByLabel(/Compounds/)).toHaveCount(0);
 });
+
+test('a deposit held without terms is given them, not entered a second time', async ({ page }) => {
+  const name = `e2e-held-${Date.now()}`;
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a holding' }).click();
+
+  // The way deposits were entered before there were terms: a holding of kind deposit.
+  const add = page.locator('form').filter({ hasText: 'Priced in' });
+  await add.getByLabel('Name', { exact: true }).fill(name);
+  await add.locator('select').nth(0).selectOption('deposit');
+  await add.locator('select').nth(1).selectOption('INR');
+  await add.locator('select').nth(2).selectOption('INR');
+  await page.getByLabel(/Foreign asset for disclosure/).uncheck();
+  await add.getByLabel('Quantity').fill('1');
+  await add.getByRole('button', { name: 'Add', exact: true }).click();
+
+  const without = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Give its terms' });
+  await expect(without).toBeVisible();
+  await without.getByRole('button', { name: 'Give its terms' }).click();
+
+  const terms = page.locator('form').filter({ hasText: `Terms for ${name}` });
+  await terms.getByLabel('Principal').fill('50000');
+  await terms.getByLabel('Rate %', { exact: true }).fill('7');
+  await terms.getByLabel('Starts').fill('2024-01-01');
+  await terms.getByLabel('Matures').fill('2025-01-01');
+  await terms.getByRole('button', { name: 'Save the terms' }).click();
+
+  // It is valued from them, as the same holding: it is no longer offered terms.
+  const entry = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Paid out' });
+  await expect(entry).toBeVisible();
+  await expect(entry).toContainText('53,500');
+  await expect(without).toHaveCount(0);
+
+  const holding = page
+    .locator('section', { hasText: name })
+    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .last();
+  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: 'Yes, archive it' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
+});
