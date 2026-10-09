@@ -282,7 +282,7 @@ function SignedIn({
           somebody's thumb. Kept above the breakpoint because a bottom bar on a
           wide screen is a long way from where the eye already is.
         */}
-        <div className="segmented shrink-0 hide-narrow-flex" role="group" aria-label="Screen">
+        <div className="segmented segmented-primary shrink-0 hide-narrow-flex" role="group" aria-label="Screen">
           {SCREENS.map(([id, label]) => (
             <button
               key={id}
