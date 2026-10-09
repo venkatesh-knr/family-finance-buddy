@@ -193,7 +193,7 @@ select lives_ok(
 select is(
   (select from_rating || ' > ' || to_rating from public.bond_rating_change
     where holding_id = 'b4000000-0000-4000-8000-000000000001'
-    order by id desc limit 1),
+    order by seq desc limit 1),
   'CRISIL AA > CRISIL A',
   'and the log has the change, from what it was to what it is'
 );
@@ -222,7 +222,7 @@ select lives_ok(
 select is(
   (select to_rating from public.bond_rating_change
     where holding_id = 'b4000000-0000-4000-8000-000000000001'
-    order by id desc limit 1),
+    order by seq desc limit 1),
   null::text,
   'and the removal is in the log as a change to nothing, not lost'
 );

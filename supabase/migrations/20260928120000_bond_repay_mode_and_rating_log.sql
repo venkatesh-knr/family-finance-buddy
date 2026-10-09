@@ -63,7 +63,10 @@ comment on column public.fixed_income_terms.repay_mode is
 -- ───────────────────────────────────────────── rating log
 
 create table public.bond_rating_change (
-  id            bigint      generated always as identity primary key,
+  -- A uuid like every other audited table: app.write_audit() reads the row's id as one.
+  id            uuid        primary key default gen_random_uuid(),
+  -- The order of the changes. Several can fall in one transaction, with one timestamp.
+  seq           bigint      generated always as identity unique,
   household_id  uuid        not null references public.household (id) on delete restrict,
   holding_id    uuid        not null,
 
@@ -90,7 +93,7 @@ create table public.bond_rating_change (
 comment on table public.bond_rating_change is
   'Each change to a bond''s rating, written by trigger on fixed_income_terms and by nothing else. Append-only: nobody inserts, updates or deletes.';
 
-create index bond_rating_change_holding_idx on public.bond_rating_change (holding_id, id);
+create index bond_rating_change_holding_idx on public.bond_rating_change (holding_id, seq);
 
 -- The ratings recorded before this table existed are the first rows of their logs.
 insert into public.bond_rating_change (household_id, holding_id, from_rating, to_rating, changed_on)
