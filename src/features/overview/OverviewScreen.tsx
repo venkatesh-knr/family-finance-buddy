@@ -36,6 +36,8 @@ import {
   historyForHolding,
   RETURN_REFUSED_BECAUSE,
   shortPositions as shortPositionsPhrase,
+  costMissing as costMissingPhrase,
+  COST_MISSING_REFUSED_BECAUSE,
   unitsText,
 } from '../holdings/history.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
@@ -138,6 +140,17 @@ export function OverviewScreen({
    */
   const [personalTotals, setPersonalTotals] = useState<readonly PersonalHoldingTotal[]>([]);
   const [personalTotalsFailed, setPersonalTotalsFailed] = useState(false);
+  /**
+   * The loans, and the exchange rates, could not be read.
+   *
+   * Not the same as there being none, and treated as none they say something false:
+   * no loans read as "No debts are recorded", which is a net worth high by the whole
+   * mortgage with a caveat telling you there is nothing to subtract; no rates read
+   * as "a rate is missing, add it", offered for a rate that exists. Recorded, and said
+   * on the figure, as the private holdings already are.
+   */
+  const [plansFailed, setPlansFailed] = useState(false);
+  const [ratesFailed, setRatesFailed] = useState(false);
 
   // Read once at the edge. Every calculation below takes it as an argument.
   const [today] = useState(() => istCalendarDate(new Date()));
@@ -159,6 +172,8 @@ export function OverviewScreen({
         listPersonalHoldingTotals(next.household.id),
       ]);
       setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
+      setRatesFailed(rateResult.status === 'rejected');
+      setPlansFailed(planResult.status === 'rejected');
       setUnbalancedLoans(
         planResult.status === 'fulfilled'
           ? planResult.value.liabilities
@@ -565,7 +580,14 @@ export function OverviewScreen({
                   owed. Record the balance on FIRE.
                 </Caveat>
               )}
-              {shownUnbalanced === 0 && shownDebts.length === 0 && (
+              {plansFailed && (
+                <Caveat tone="warn" label="Why this figure may be high">
+                  The loans could not be read, so nothing has been subtracted for them and this figure
+                  may be high by whatever is owed. It is not that there are none: the request failed.
+                  Reload before relying on this number.
+                </Caveat>
+              )}
+              {!plansFailed && shownUnbalanced === 0 && shownDebts.length === 0 && (
                 <Caveat tone="info" label="Why nothing is subtracted">
                   No debts are recorded, so nothing is subtracted. If the household owes anything,
                   record it under loans on FIRE and it comes off this figure.
@@ -590,6 +612,13 @@ export function OverviewScreen({
                       </span>
                     ))}
                 <Caveat tone="warn" label="Why these do not add into one figure">
+                  {ratesFailed ? (
+                    <>
+                      The exchange rates could not be read, so these cannot be added into one figure.
+                      It is not that a rate is missing: the request failed. Reload to try again.
+                    </>
+                  ) : (
+                    <>
                   {worth.missing.length === 1
                     ? 'One rate is missing: '
                     : String(worth.missing.length) + ' rates are missing: '}
@@ -597,10 +626,12 @@ export function OverviewScreen({
                   than show a total that quietly leaves the unconvertible holdings out, there is no
                   total — a number short by an amount nobody can see is worse than no number. Record
                   one and these become a single figure, less everything owed.
+                    </>
+                  )}
                 </Caveat>
               </div>
 
-              {canClose && (
+              {canClose && !ratesFailed && (
                 <button
                   type="button"
                   className="note mt-3 underline"
@@ -709,12 +740,23 @@ export function OverviewScreen({
                     </Stat>
                     <Stat label="Invested">
                       {formatMoney(total.investedValued, { privacy })}
-                      {total.costShort > 0 && (
+                      {(total.costShort > 0 || total.costMissing > 0) && (
                         <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
-                          {shortPositionsPhrase(total.costShort)} a statement that covers only part of
-                          the history, so what was paid for the earlier units is not in this figure.
-                          It is the sum of the purchases that were recorded, and nothing has been made
-                          up to fill the rest.
+                          {total.costShort > 0 && (
+                            <>
+                              {shortPositionsPhrase(total.costShort)} a statement that covers only part
+                              of the history, so what was paid for the earlier units is not in this
+                              figure.{' '}
+                            </>
+                          )}
+                          {total.costMissing > 0 && (
+                            <>
+                              {costMissingPhrase(total.costMissing)} no cost recorded, so nothing for{' '}
+                              {total.costMissing === 1 ? 'it is' : 'them is'} in this figure.{' '}
+                            </>
+                          )}
+                          It is the sum of the costs that were recorded, and nothing has been made up
+                          to fill the rest.
                         </Caveat>
                       )}
                     </Stat>
@@ -724,9 +766,19 @@ export function OverviewScreen({
                       // a fortune; neither happened.
                       <Stat label="Unrealised gain">
                         <Absent label={`Why there is no ${total.currency} gain`}>
-                          {shortPositionsPhrase(total.costShort)} a statement that covers only part of
-                          the history. {RETURN_REFUSED_BECAUSE} The value above is right, because the
-                          units are the statement&rsquo;s own count; it is the cost that is short.
+                          {total.costShort > 0 && (
+                            <>
+                              {shortPositionsPhrase(total.costShort)} a statement that covers only part
+                              of the history. {RETURN_REFUSED_BECAUSE}{' '}
+                            </>
+                          )}
+                          {total.costMissing > 0 && (
+                            <>
+                              {costMissingPhrase(total.costMissing)} no cost recorded.{' '}
+                              {COST_MISSING_REFUSED_BECAUSE}{' '}
+                            </>
+                          )}
+                          The value above is right; it is the cost that is not all there.
                         </Absent>
                       </Stat>
                     ) : (
@@ -744,7 +796,7 @@ export function OverviewScreen({
                               direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
                             >
                               {total.investedValued.minor === 0n
-                                ? 'no cost recorded'
+                                ? 'on a cost of nothing'
                                 : `${String(
                                     Math.round(
                                       (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
@@ -836,10 +888,20 @@ export function OverviewScreen({
                               silent for a class with no cost recorded, and this is
                               a different silence: there is a cost, and it is short.
                             */}
-                            {row.costShort > 0 && (
+                            {(row.costShort > 0 || row.costMissing > 0) && (
                               <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
-                                {shortPositionsPhrase(row.costShort)} a statement that covers only part
-                                of the history. {RETURN_REFUSED_BECAUSE}
+                                {row.costShort > 0 && (
+                                  <>
+                                    {shortPositionsPhrase(row.costShort)} a statement that covers only
+                                    part of the history. {RETURN_REFUSED_BECAUSE}{' '}
+                                  </>
+                                )}
+                                {row.costMissing > 0 && (
+                                  <>
+                                    {costMissingPhrase(row.costMissing)} no cost recorded.{' '}
+                                    {COST_MISSING_REFUSED_BECAUSE}
+                                  </>
+                                )}
                               </Caveat>
                             )}
                           </span>
