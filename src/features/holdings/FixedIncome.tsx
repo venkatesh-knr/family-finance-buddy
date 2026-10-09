@@ -24,8 +24,8 @@ import {
 } from '../../domain/fixed-income.ts';
 import { formatIsoDate, istCalendarDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
-import { DOWNGRADE_NOTICE_DAYS, ratingMove, recentDowngrade } from '../../domain/ratings.ts';
-import { buildPosition } from './fixedIncomeRows.ts';
+import { DOWNGRADE_NOTICE_DAYS, ratingMoves, ratingWatch, type RatingWatch } from '../../domain/ratings.ts';
+import { buildPosition, daysPhrase } from './fixedIncomeRows.ts';
 import { listFixedIncome, listRatingChanges } from '../../repo/fixedIncome.ts';
 import { recordValuation } from '../../repo/holdings.ts';
 import type {
@@ -56,7 +56,8 @@ interface Row {
   readonly renewals: readonly DepositRenewal[];
   /** This bond's rating changes, oldest first. */
   readonly ratingChanges: readonly RatingChange[];
-  readonly downgrade: ReturnType<typeof recentDowngrade>;
+  /** What to call out about the rating: a downgrade, a change not judged, a removal. */
+  readonly watch: RatingWatch | null;
   readonly name: string;
   readonly member: string;
   readonly position: FixedIncomePosition;
@@ -136,7 +137,7 @@ export function FixedIncome({
         terms,
         renewals: recorded,
         ratingChanges,
-        downgrade: recentDowngrade(
+        watch: ratingWatch(
           ratingChanges.map((c) => ({ seq: c.seq, from: c.from, to: c.to, changedOn: c.changedOn })),
           today,
           DOWNGRADE_NOTICE_DAYS,
@@ -227,8 +228,9 @@ export function FixedIncome({
             chain of terms; a renewal you have recorded is the bank’s figure, and one you have
             not is projected on the same term and marked as a projection. A bond is valued at par,
             its face plus the interest accrued since the last coupon, because there is no market
-            price for it, and it is assumed to pay its coupons out: one that pays everything at
-            maturity is not valued correctly yet. Interest is counted term by term, so a bank that
+            price for it. A bond that pays its coupons out is valued at par plus the interest since the
+            last coupon; a cumulative one, which pays everything at maturity, as interest that keeps
+            compounding at the frequency it is credited. Interest is counted term by term, so a bank that
             pays interest out and renews the principal does not make the first term disappear.
           </Caveat>
         </span>
@@ -461,7 +463,9 @@ function PositionRow({
         <span className="flex flex-wrap items-center gap-2">
           <Pill tone="neutral">{position.kind === 'deposit' ? 'Deposit' : 'Bond'}</Pill>
           {row.rating !== null && <Pill tone="neutral">{row.rating}</Pill>}
-          {row.downgrade !== null && <Pill tone="warn">▼ Downgraded</Pill>}
+          {row.watch?.kind === 'downgrade' && <Pill tone="due">▼ Downgraded</Pill>}
+          {row.watch?.kind === 'unclear' && <Pill tone="warn">Rating changed</Pill>}
+          {row.watch?.kind === 'withdrawn' && <Pill tone="warn">Rating removed</Pill>}
           {position.autoRenew && <Pill tone="neutral">Renews itself</Pill>}
           {view.ok && view.matured && <Pill tone="neutral">Matured</Pill>}
           {view.ok && view.kind === 'deposit' && view.projected && <Pill tone="warn">Projected renewal</Pill>}
@@ -545,17 +549,41 @@ function PositionRow({
         </dl>
       )}
 
-      {row.downgrade !== null && (
+      {row.watch !== null && (
         <p
           className="text-caption rounded px-3 py-2"
           style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
         >
-          <strong>
-            Downgraded from {row.downgrade.from ?? 'unrated'} to {row.downgrade.to ?? 'unrated'} on{' '}
-            {formatIsoDate(row.downgrade.changedOn)}.
-          </strong>{' '}
-          A lower rating is a higher chance of not being repaid. Check the issuer’s latest
-          disclosure before deciding whether to hold it to maturity.
+          {row.watch.kind === 'downgrade' && (
+            <>
+              <strong>
+                ▼ Downgraded from {row.watch.from ?? 'unrated'} to {row.watch.to ?? 'unrated'} on{' '}
+                {formatIsoDate(row.watch.changedOn)}.
+              </strong>{' '}
+              A lower rating is a higher chance of not being repaid. Check the issuer’s latest
+              disclosure before deciding whether to hold it to maturity.
+            </>
+          )}
+          {row.watch.kind === 'unclear' && (
+            <>
+              <strong>
+                The rating changed from {row.watch.from ?? 'unrated'} to {row.watch.to ?? 'unrated'} on{' '}
+                {formatIsoDate(row.watch.changedOn)}, and this app could not tell which way.
+              </strong>{' '}
+              It reads long-term grades such as AA+ and not short-term ones or anything it does not
+              recognise. Check the change with the agency’s letter.
+            </>
+          )}
+          {row.watch.kind === 'withdrawn' && (
+            <>
+              <strong>
+                The rating was removed on {formatIsoDate(row.watch.changedOn)}; it was{' '}
+                {row.watch.from ?? 'unrated'}.
+              </strong>{' '}
+              An agency withdrawing a rating is not good news. Check why with the issuer, and enter the
+              new rating if there is one.
+            </>
+          )}
         </p>
       )}
 
@@ -587,13 +615,17 @@ function PositionRow({
             Rating history ({row.ratingChanges.length})
           </summary>
           <ul className="row-separated mt-1.5">
-            {[...row.ratingChanges].reverse().map((change) => (
-              <li key={change.id} className="py-1.5">
-                {formatIsoDate(change.changedOn)} · {change.from ?? 'first recorded'} →{' '}
-                {change.to ?? 'removed'}{' '}
-                <strong>{MOVE_WORDS[ratingMove(change.from, change.to)]}</strong>
-              </li>
-            ))}
+            {[...ratingMoves(row.ratingChanges.map((c) => ({ seq: c.seq, from: c.from, to: c.to, changedOn: c.changedOn })))]
+              .reverse()
+              .map((judged) => (
+                <li key={judged.seq} className="py-1.5">
+                  {formatIsoDate(judged.changedOn)} ·{' '}
+                  {judged.move === 'first'
+                    ? 'first recorded'
+                    : (row.ratingChanges.find((c) => c.seq === judged.seq)?.from ?? 'rated again')}{' '}
+                  → {judged.to ?? 'removed'} <strong>{MOVE_WORDS[judged.move]}</strong>
+                </li>
+              ))}
           </ul>
         </details>
       )}
@@ -699,17 +731,12 @@ function PositionRow({
 }
 
 /** Said in words and a mark, so a move is never only a colour. */
-const MOVE_WORDS: Record<ReturnType<typeof ratingMove>, string> = {
+const MOVE_WORDS: Record<ReturnType<typeof ratingMoves>[number]['move'], string> = {
   upgrade: '▲ upgrade',
   downgrade: '▼ downgrade',
   'same-grade': '— same grade',
   first: '',
   withdrawn: '— withdrawn',
-  unknown: '',
+  unknown: '? could not tell which way',
 };
 
-function daysPhrase(days: number): string {
-  if (days === 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  return `in ${String(days)} days`;
-}

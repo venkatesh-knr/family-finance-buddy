@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { DepositRenewal, FixedIncomeTerms, RatingChange } from '../../repo/types.ts';
-import { fixedIncomeAlerts } from './fixedIncomeRows.ts';
+import { daysPhrase, fixedIncomeAlerts } from './fixedIncomeRows.ts';
 
 const terms = (over: Partial<FixedIncomeTerms> = {}): FixedIncomeTerms => ({
   holdingId: 'h1',
@@ -72,11 +72,12 @@ describe('fixedIncomeAlerts', () => {
     expect(run({ terms: [terms({ start: '2025-01-01', maturity: '2026-01-01' })] })).toEqual([]);
   });
 
-  it('counts the term the day is in, so a renewing deposit is named for its next renewal', () => {
+  it('says a deposit that renews itself renews, since the money does not come back', () => {
+    // The advice the bank sends is what is awaited, and "decide where it goes" would be wrong.
     const alerts = run({
       terms: [terms({ start: '2024-10-20', maturity: '2025-10-20', autoRenew: true })],
     });
-    expect(alerts).toEqual([{ holdingId: 'h1', kind: 'matures', on: '2026-10-20', daysAway: 11 }]);
+    expect(alerts).toEqual([{ holdingId: 'h1', kind: 'renews', on: '2026-10-20', daysAway: 11 }]);
   });
 
   it('names a bond downgraded recently, from what it was to what it is', () => {
@@ -96,6 +97,35 @@ describe('fixedIncomeAlerts', () => {
     ).toEqual([]);
   });
 
+  it('says so when a rating change could not be judged, instead of staying silent', () => {
+    const alerts = run({
+      terms: [bond()],
+      ratingChanges: [change({ from: 'CRISIL A1+', to: 'CRISIL A4' })],
+    });
+    expect(alerts).toEqual([
+      { holdingId: 'b1', kind: 'rating-unclear', on: '2026-09-01', from: 'CRISIL A1+', to: 'CRISIL A4' },
+    ]);
+  });
+
+  it('says so when a rating was removed', () => {
+    const alerts = run({ terms: [bond()], ratingChanges: [change({ from: 'CRISIL AA', to: null })] });
+    expect(alerts).toEqual([
+      { holdingId: 'b1', kind: 'rating-removed', on: '2026-09-01', from: 'CRISIL AA', to: null },
+    ]);
+  });
+
+  it('calls a downgrade made as a clear and a re-entry a downgrade', () => {
+    const alerts = run({
+      terms: [bond()],
+      ratingChanges: [
+        change({ seq: 1, from: null, to: 'CRISIL AA', changedOn: '2026-01-01' }),
+        change({ seq: 2, from: 'CRISIL AA', to: null, changedOn: '2026-09-01' }),
+        change({ seq: 3, from: null, to: 'CRISIL BB', changedOn: '2026-09-02' }),
+      ],
+    });
+    expect(alerts.map((a) => a.kind)).toEqual(['downgraded']);
+  });
+
   it('is silent about a position the caller cannot see', () => {
     // Another member's private deposit: its maturity and its rating are theirs to hear about.
     expect(run({ terms: [terms(), bond()], ratingChanges: [change()], visible: [] })).toEqual([]);
@@ -103,5 +133,14 @@ describe('fixedIncomeAlerts', () => {
 
   it('is empty when there is nothing, and does not read the clock', () => {
     expect(run({})).toEqual([]);
+  });
+});
+
+describe('daysPhrase', () => {
+  it('says today and tomorrow, and is right about one day', () => {
+    expect(daysPhrase(0)).toBe('today');
+    expect(daysPhrase(1)).toBe('tomorrow');
+    expect(daysPhrase(2)).toBe('in 2 days');
+    expect(daysPhrase(30)).toBe('in 30 days');
   });
 });

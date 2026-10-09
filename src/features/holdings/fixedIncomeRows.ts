@@ -12,7 +12,7 @@ import {
   MATURITY_NOTICE_DAYS,
   type FixedIncomePosition,
 } from '../../domain/fixed-income.ts';
-import { DOWNGRADE_NOTICE_DAYS, recentDowngrade } from '../../domain/ratings.ts';
+import { DOWNGRADE_NOTICE_DAYS, ratingWatch } from '../../domain/ratings.ts';
 import type { IsoDate } from '../../lib/dates.ts';
 import type { DepositRenewal, FixedIncomeTerms, RatingChange } from '../../repo/types.ts';
 
@@ -44,9 +44,21 @@ export function buildPosition(
   };
 }
 
+/** "today", "tomorrow", "in 5 days": the one way a maturity is said, on every screen. */
+export function daysPhrase(days: number): string {
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return `in ${String(days)} days`;
+}
+
 export interface FixedIncomeAlert {
   readonly holdingId: string;
-  readonly kind: 'matures' | 'downgraded';
+  /**
+   * `matures`: the money comes back. `renews`: a deposit that renews itself, where it does not,
+   * and the bank's advice is what is awaited. `downgraded`, `rating-unclear` and `rating-removed`
+   * are what happened to a bond's rating.
+   */
+  readonly kind: 'matures' | 'renews' | 'downgraded' | 'rating-unclear' | 'rating-removed';
   /** For a maturity: the day, and how many days off. For a downgrade: the day it was noticed. */
   readonly on: IsoDate;
   readonly daysAway?: number;
@@ -77,23 +89,29 @@ export function fixedIncomeAlerts(options: {
     const view = fixedIncomeView(buildPosition(terms, options.renewals), options.today);
     if (view.ok && !view.matured && view.daysToMaturity !== null && view.daysToMaturity <= MATURITY_NOTICE_DAYS) {
       const on = view.kind === 'deposit' ? (view.nextMaturity ?? terms.maturity) : terms.maturity;
-      alerts.push({ holdingId: terms.holdingId, kind: 'matures', on, daysAway: view.daysToMaturity });
+      alerts.push({
+        holdingId: terms.holdingId,
+        kind: terms.autoRenew ? 'renews' : 'matures',
+        on,
+        daysAway: view.daysToMaturity,
+      });
     }
 
-    const downgrade = recentDowngrade(
+    const watch = ratingWatch(
       options.ratingChanges
         .filter((c) => c.holdingId === terms.holdingId)
         .map((c) => ({ seq: c.seq, from: c.from, to: c.to, changedOn: c.changedOn })),
       options.today,
       DOWNGRADE_NOTICE_DAYS,
     );
-    if (downgrade !== null) {
+    if (watch !== null) {
       alerts.push({
         holdingId: terms.holdingId,
-        kind: 'downgraded',
-        on: downgrade.changedOn,
-        from: downgrade.from,
-        to: downgrade.to,
+        kind:
+          watch.kind === 'downgrade' ? 'downgraded' : watch.kind === 'unclear' ? 'rating-unclear' : 'rating-removed',
+        on: watch.changedOn,
+        from: watch.from,
+        to: watch.to,
       });
     }
   }

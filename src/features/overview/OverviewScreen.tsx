@@ -44,7 +44,7 @@ import {
 } from '../holdings/history.ts';
 import { addRate, listRates, type FxRate } from '../../repo/rates.ts';
 import { listFixedIncome, listRatingChanges } from '../../repo/fixedIncome.ts';
-import { fixedIncomeAlerts, type FixedIncomeAlert } from '../holdings/fixedIncomeRows.ts';
+import { daysPhrase, fixedIncomeAlerts, type FixedIncomeAlert } from '../holdings/fixedIncomeRows.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { netWorth } from '../../domain/fx.ts';
 import { assetHistory } from '../../domain/history.ts';
@@ -381,7 +381,9 @@ export function OverviewScreen({
     [fixedIncome, listing, scope, mine, today],
   );
   const maturities = alerts.filter((a) => a.kind === 'matures');
+  const renewals = alerts.filter((a) => a.kind === 'renews');
   const downgrades = alerts.filter((a) => a.kind === 'downgraded');
+  const ratingNotices = alerts.filter((a) => a.kind === 'rating-unclear' || a.kind === 'rating-removed');
 
   const gaps = useMemo(() => {
     const year = Number(today.slice(0, 4));
@@ -1179,12 +1181,50 @@ export function OverviewScreen({
                   }
                   names={maturities.map(
                     (a) =>
-                      `${holdingName(a.holdingId)} — ${formatIsoDate(a.on)}, in ${String(a.daysAway ?? 0)} days`,
+                      `${holdingName(a.holdingId)} — ${formatIsoDate(a.on)}, ${daysPhrase(a.daysAway ?? 0)}`,
                   )}
                   namesLabel="Which"
                 >
                   The money comes back. Decide where it goes before it does, and add it as a new deposit or
                   bond when it is placed.
+                </Attention>
+              )}
+              {renewals.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {renewals.length} {renewals.length === 1 ? 'deposit renews' : 'deposits renew'} itself
+                      within thirty days
+                    </>
+                  }
+                  names={renewals.map(
+                    (a) =>
+                      `${holdingName(a.holdingId)} — ${formatIsoDate(a.on)}, ${daysPhrase(a.daysAway ?? 0)}`,
+                  )}
+                  namesLabel="Which"
+                >
+                  The money is not coming back: these renew on their own. The bank&rsquo;s advice will give
+                  the new rate and amount; record each renewal on Holdings when it arrives.
+                </Attention>
+              )}
+              {ratingNotices.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {ratingNotices.length}{' '}
+                      {ratingNotices.length === 1 ? 'bond has' : 'bonds have'} a rating change to look at
+                    </>
+                  }
+                  names={ratingNotices.map((a) =>
+                    a.kind === 'rating-removed'
+                      ? `${holdingName(a.holdingId)} — rating removed on ${formatIsoDate(a.on)}; it was ${a.from ?? 'unrated'}`
+                      : `${holdingName(a.holdingId)} — ${a.from ?? 'unrated'} to ${a.to ?? 'unrated'} on ${formatIsoDate(a.on)}, which way is not known`,
+                  )}
+                  namesLabel="Which bonds"
+                >
+                  This app reads long-term grades such as AA+, and says so when a change is a short-term
+                  rating or something it does not recognise, rather than call it no change. A rating that
+                  was removed is not good news either. Check each with the agency&rsquo;s letter.
                 </Attention>
               )}
               {fixedIncomeFailed && (
