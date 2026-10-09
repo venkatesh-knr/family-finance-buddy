@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { donutArcs, lineChart, monthLabel, niceTicks, type ChartFrame } from './chartGeometry.ts';
+import {
+  donutArcs,
+  lineChart,
+  monthLabel,
+  niceTicks,
+  projectionChart,
+  type ChartFrame,
+} from './chartGeometry.ts';
 
 describe('niceTicks', () => {
   it('rounds up to a figure a person would choose', () => {
@@ -145,5 +152,59 @@ describe('donutArcs', () => {
   it('draws nothing where there is nothing', () => {
     expect(donutArcs([])).toEqual([]);
     expect(donutArcs([{ key: 'a', value: 0 }])).toEqual([]);
+  });
+});
+
+describe('projectionChart', () => {
+  const frame: ChartFrame = { width: 400, height: 200, top: 20, right: 10, bottom: 30, left: 50, maxLabels: 5 };
+  // A corpus that climbs through a target that climbs more slowly, so they cross between 2028 and 2029.
+  const series = [
+    { year: 2026, corpus: 100, target: 400 },
+    { year: 2027, corpus: 200, target: 410 },
+    { year: 2028, corpus: 300, target: 420 },
+    { year: 2029, corpus: 450, target: 430 },
+    { year: 2030, corpus: 600, target: 440 },
+  ];
+
+  it('spaces the years evenly from the left edge of the plot to the right', () => {
+    const c = projectionChart(series, frame);
+    expect(c.plot).toEqual({ left: 50, right: 390 });
+    expect(c.labels[0]).toEqual({ index: 0, x: 50 });
+    expect(c.labels[c.labels.length - 1]).toEqual({ index: 4, x: 390 });
+    expect(c.corpus.end.x).toBe(390);
+    expect(c.target.end.x).toBe(390);
+  });
+
+  it('scales both lines to one axis that starts at zero and covers the larger of the two', () => {
+    const c = projectionChart(series, frame);
+    // ceiling is the first tick at or above 600; the baseline is the zero line.
+    expect(c.baseline).toBe(170);
+    expect(c.ticks[0]).toEqual({ value: 0, y: 170 });
+    const top = c.ticks[c.ticks.length - 1];
+    expect(top?.value).toBeGreaterThanOrEqual(600);
+    expect(top?.y).toBe(20);
+  });
+
+  it('draws the corpus below the target before they cross and above it after', () => {
+    const c = projectionChart(series, frame);
+    // A smaller y is higher up the page.
+    expect(c.corpus.points[0]?.y).toBeGreaterThan(c.target.points[0]?.y ?? 0);
+    expect(c.corpus.points[4]?.y).toBeLessThan(c.target.points[4]?.y ?? 0);
+  });
+
+  it('closes the corpus area down to the baseline, and the target is a line only', () => {
+    const c = projectionChart(series, frame);
+    expect(c.corpus.area.endsWith('Z')).toBe(true);
+    expect(c.corpus.area).toContain('170');
+    expect(c.target.line.startsWith('M50')).toBe(true);
+  });
+
+  it('refuses fewer than two years, which is a dot and not a projection', () => {
+    expect(() => projectionChart(series.slice(0, 1), frame)).toThrow(/two/i);
+  });
+
+  it('never labels more years than fit', () => {
+    const c = projectionChart(series, { ...frame, maxLabels: 2 });
+    expect(c.labels.map((l) => l.index)).toEqual([0, 4]);
   });
 });

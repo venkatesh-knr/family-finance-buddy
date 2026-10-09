@@ -110,3 +110,101 @@ export function fireLadder(options: FireLadderOptions): readonly LadderStep[] {
 
   return steps;
 }
+
+export interface ProjectionOptions {
+  /** What is held today, in the ladder's currency. */
+  readonly corpus: Money;
+  /** What is put in each month, to begin with. */
+  readonly monthlyContribution: Money;
+  /** Per cent a year the corpus grows. An assumption the household sets, never a constant. */
+  readonly returnPct: number;
+  /** Per cent a year the contribution is raised by. Zero is a flat SIP. */
+  readonly stepUpPct: number;
+  /** The inflated target by year, from `fireLadder`; its first step is today and sets the horizon. */
+  readonly ladder: readonly LadderStep[];
+}
+
+export interface ProjectionStep {
+  readonly year: number;
+  readonly corpus: Money;
+  readonly target: Money;
+}
+
+export interface Projection {
+  readonly steps: readonly ProjectionStep[];
+  /** The first year the corpus meets that year's target; null if no year of the ladder does. */
+  readonly reachedYear: number | null;
+}
+
+/**
+ * The corpus year by year against the inflated target (blueprint §06):
+ *
+ *   c(n+1)   = c(n) x (1 + r) + sip(n)
+ *   sip(n+1) = sip(n) x (1 + step_up),   sip(0) = twelve months of the monthly contribution
+ *
+ * The crossing point is the FIRE date. Integer minor units throughout, each year's growth truncated
+ * to the paisa the way the ladder's is, so the same inputs give the same answer on every device and
+ * a test can say exactly which paisa. The rates are arguments: 10% is whatever the household said, and
+ * a projection that assumed one would be advice dressed as arithmetic.
+ *
+ * A projection is only as good as its inputs and says nothing about them: it does not know whether
+ * the corpus is complete (property, deposits and the rest of the balance sheet arrive in later
+ * stages), so whoever shows it has to say what it assumes.
+ *
+ * A target of nothing is never "reached": it means nothing is planned, and every corpus meets it.
+ */
+export function fireProjection(options: ProjectionOptions): Projection {
+  const { corpus, monthlyContribution, returnPct, stepUpPct, ladder } = options;
+
+  const first = ladder[0];
+  if (first === undefined) throw new Error('A projection needs a ladder to measure against, and this one is empty.');
+  const currency = first.target.currency;
+  if (corpus.currency !== currency || monthlyContribution.currency !== currency) {
+    throw new Error(
+      `The corpus, the contribution and the target must share a currency, not ${corpus.currency}, ${monthlyContribution.currency} and ${currency}.`,
+    );
+  }
+  if (!Number.isFinite(returnPct) || returnPct < 0) {
+    throw new Error(`The expected return must be zero or more, not ${String(returnPct)}.`);
+  }
+  if (!Number.isFinite(stepUpPct) || stepUpPct < 0) {
+    throw new Error(`The step-up must be zero or more, not ${String(stepUpPct)}.`);
+  }
+
+  const scale = 1_000_000n;
+  const growth = scale + BigInt(Math.round((returnPct / 100) * Number(scale)));
+  const raise = scale + BigInt(Math.round((stepUpPct / 100) * Number(scale)));
+
+  const steps: ProjectionStep[] = [];
+  let held = corpus.minor;
+  let sip = monthlyContribution.minor * 12n;
+  let reachedYear: number | null = null;
+
+  for (const step of ladder) {
+    steps.push({ year: step.year, corpus: money(held, currency), target: step.target });
+    if (reachedYear === null && step.target.minor > 0n && held >= step.target.minor) {
+      reachedYear = step.year;
+    }
+    held = (held * growth) / scale + sip;
+    sip = (sip * raise) / scale;
+  }
+
+  return { steps, reachedYear };
+}
+
+export interface Progress {
+  /** Whole per cent of today's target the corpus is. Not clamped: 116 means the target is passed. */
+  readonly percent: number;
+  /** Target less corpus, or nothing once the corpus has passed it. */
+  readonly shortfall: Money;
+}
+
+/** How far along: the corpus against today's target. Null with no target to be a share of. */
+export function fireProgress(corpus: Money, target: Money): Progress | null {
+  if (target.minor <= 0n) return null;
+  const left = target.minor - corpus.minor;
+  return {
+    percent: Number((corpus.minor * 100n) / target.minor),
+    shortfall: money(left > 0n ? left : 0n, target.currency),
+  };
+}

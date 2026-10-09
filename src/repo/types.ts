@@ -88,6 +88,14 @@ export interface Household {
     readonly multiplier: string;
     readonly inflationPct: string;
     readonly yearsAhead: number;
+    /**
+     * What the corpus projection assumes (blueprint §06), the household's to set and never a constant.
+     * Per cent a year the corpus grows, per cent a year the contribution is raised, and what is put in
+     * each month, in the household's own currency, in minor units.
+     */
+    readonly returnPct: string;
+    readonly stepUpPct: string;
+    readonly monthlyContributionMinor: bigint;
   };
 }
 

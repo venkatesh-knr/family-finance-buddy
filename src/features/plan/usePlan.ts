@@ -33,6 +33,9 @@ import {
   type PlanListing,
 } from '../../repo/types.ts';
 
+/** How many years the projection looks ahead for the crossing. */
+const PROJECTION_YEARS = 40;
+
 /** The tax year containing a given IST date. April starts a new one. */
 export function taxYearOf(today: string): number {
   const year = Number(today.slice(0, 4));
@@ -61,6 +64,18 @@ export interface PlanState {
   /** How far ahead to project. The horizon is the reader's, not the app's. */
   readonly yearsAhead: number;
   readonly setYearsAhead: (next: number) => void;
+  /**
+   * What the projection assumes: the corpus's yearly return, the yearly raise to the contribution,
+   * and the contribution itself, in the household's currency. The household's, like the rest.
+   */
+  readonly returnPct: number;
+  readonly setReturnPct: (next: number) => void;
+  readonly stepUpPct: number;
+  readonly setStepUpPct: (next: number) => void;
+  readonly monthlyContributionMinor: bigint;
+  readonly setMonthlyContributionMinor: (next: bigint) => void;
+  /** The target year by year over a horizon long enough to find where the corpus crosses it. */
+  readonly projectionLadder: readonly LadderStep[];
   readonly fy: number;
   readonly today: string;
   readonly loading: boolean;
@@ -99,6 +114,9 @@ export function usePlan(householdId: string | null): PlanState & {
   const [multiplier, setMultiplierState] = useState(25);
   const [inflationPct, setInflationPctState] = useState(6);
   const [yearsAhead, setYearsAheadState] = useState(10);
+  const [returnPct, setReturnPctState] = useState(10);
+  const [stepUpPct, setStepUpPctState] = useState(0);
+  const [monthlyContributionMinor, setMonthlyContributionMinorState] = useState(0n);
 
   const generation = useRef(0);
 
@@ -111,6 +129,9 @@ export function usePlan(householdId: string | null): PlanState & {
         setMultiplierState(Number(next.household.fire.multiplier));
         setInflationPctState(Number(next.household.fire.inflationPct));
         setYearsAheadState(next.household.fire.yearsAhead);
+        setReturnPctState(Number(next.household.fire.returnPct));
+        setStepUpPctState(Number(next.household.fire.stepUpPct));
+        setMonthlyContributionMinorState(next.household.fire.monthlyContributionMinor);
         setProblem(null);
         setNoHousehold(false);
       }
@@ -211,6 +232,18 @@ export function usePlan(householdId: string | null): PlanState & {
     });
   }, [annual, multiplier, inflationPct, today, yearsAhead]);
 
+  /** Forty years: far enough to find the crossing for any plan worth making, and no further. */
+  const projectionLadder = useMemo<readonly LadderStep[]>(() => {
+    if (annual === null) return [];
+    return fireLadder({
+      annualExpense: annual.total,
+      multiplier,
+      inflationPct,
+      fromYear: fireBaseYear(today),
+      years: PROJECTION_YEARS,
+    });
+  }, [annual, multiplier, inflationPct, today]);
+
   const after = useCallback(
     async <T,>(action: Promise<T>): Promise<void> => {
       await action;
@@ -228,7 +261,14 @@ export function usePlan(householdId: string | null): PlanState & {
    * puts it back to the household's answer, which is the honest correction.
    */
   const persist = useCallback(
-    (patch: { multiplier?: number; inflationPct?: number; yearsAhead?: number }) => {
+    (patch: {
+      multiplier?: number;
+      inflationPct?: number;
+      yearsAhead?: number;
+      returnPct?: number;
+      stepUpPct?: number;
+      monthlyContributionMinor?: bigint;
+    }) => {
       if (listing === null) return;
       void setFireSettings({ householdId: listing.household.id, ...patch }).catch(() => {
         /* the reload after the next change restores what the household says */
@@ -261,6 +301,30 @@ export function usePlan(householdId: string | null): PlanState & {
     [persist],
   );
 
+  const setReturnPct = useCallback(
+    (next: number) => {
+      setReturnPctState(next);
+      persist({ returnPct: next });
+    },
+    [persist],
+  );
+
+  const setStepUpPct = useCallback(
+    (next: number) => {
+      setStepUpPctState(next);
+      persist({ stepUpPct: next });
+    },
+    [persist],
+  );
+
+  const setMonthlyContributionMinor = useCallback(
+    (next: bigint) => {
+      setMonthlyContributionMinorState(next);
+      persist({ monthlyContributionMinor: next });
+    },
+    [persist],
+  );
+
   return {
     listing,
     rows,
@@ -272,6 +336,13 @@ export function usePlan(householdId: string | null): PlanState & {
     setInflationPct,
     yearsAhead,
     setYearsAhead,
+    returnPct,
+    setReturnPct,
+    stepUpPct,
+    setStepUpPct,
+    monthlyContributionMinor,
+    setMonthlyContributionMinor,
+    projectionLadder,
     fy,
     today,
     loading,

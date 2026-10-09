@@ -23,6 +23,8 @@ import { SignInScreen } from '../features/auth/SignInScreen.tsx';
 import { currentAuthState, signOut, subscribeToAuth, type AuthState } from '../repo/auth.ts';
 import { isConfigured } from '../repo/client.ts';
 import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
+import { NavGlyph } from './NavGlyph.tsx';
+import { NAV_GLYPHS } from './navGlyphs.ts';
 import { useScreen, type Screen } from './useScreen.ts';
 import { allowedScreen, screensFor } from '../domain/access.ts';
 import { SummaryScreen } from '../features/summary/SummaryScreen.tsx';
@@ -56,17 +58,17 @@ import { AccountMenu } from './AccountMenu.tsx';
  * hash rather than a path, and why sixty lines there is still not a router.
  */
 /**
- * The glyph is for the bottom bar on a phone, where a label alone is too
- * small to aim at. It never appears without its word: an icon on its own is a
- * guess, and this app is used by people who did not choose it.
+ * The glyph in the bottom bar is `NavGlyph`, keyed by the screen. It is for a phone, where a label
+ * alone is too small to aim at, and never appears without its word: an icon on its own is a guess, and
+ * this app is used by people who did not choose it.
  */
-const ALL_SCREENS: readonly (readonly [Screen, string, string])[] = [
-  ['overview', 'Overview', '◉'],
-  ['summary', 'Summary', '◉'],
-  ['expenses', 'Expenses', '₹'],
-  ['holdings', 'Holdings', '◧'],
-  ['tax', 'Tax', '§'],
-  ['fire', 'FIRE', '△'],
+const ALL_SCREENS: readonly (readonly [Screen, string])[] = [
+  ['overview', 'Overview'],
+  ['summary', 'Summary'],
+  ['expenses', 'Expenses'],
+  ['holdings', 'Holdings'],
+  ['tax', 'Tax'],
+  ['fire', 'FIRE'],
 ];
 
 export function App() {
@@ -380,7 +382,7 @@ function SignedIn({
         menu; five destinations in a bar is one more than a thumb can aim at.
       */}
       <nav className="bottom-nav hide-wide" role="group" aria-label="Screen">
-        {SCREENS.map(([id, label, glyph]) => (
+        {SCREENS.map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -394,7 +396,7 @@ function SignedIn({
             }}
           >
             <span aria-hidden="true" className="bottom-nav-glyph">
-              {glyph}
+              {id in NAV_GLYPHS && <NavGlyph screen={id as keyof typeof NAV_GLYPHS} />}
             </span>
             <span>{label}</span>
           </button>

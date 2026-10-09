@@ -607,3 +607,27 @@ the test and not a leak, but it is a guess and has not been shown.
 **What to do.** If it recurs: keep the full log, and stop. Do not re-run until it passes.
 Capture a full-suite run whole (`2>&1 | tee test-results/e2e.log`) and filter the file,
 not the stream.
+
+### Recurrence — 10 October 2026, with the log
+
+It recurred in a full `npm run test:e2e` on the `canvas-style-pass` branch (desktop; mobile passed in the
+same run, and the same spec had passed on desktop in the full run before it). The whole run was written
+to a file and kept. It says *why*, and it is not a leak of anything privacy mode is meant to remove.
+
+The failing assertion is the second one, `not.toContain('4242.42')`. The first, for the rendered
+`4,242.42`, passed. The digits in the markup are the **`value` of the quick-add form's Amount input**,
+still `4242.42`: the test had typed it and pressed Add, the new row was on screen, and the form had not
+yet cleared. In `src/features/expenses/ExpensesScreen.tsx` the form is cleared after `await onAdd(...)`
+resolves (`setAmount('')`, line 255), and `onAdd` reloads the ledger first, so for a moment the new row
+is visible and the typed amount is still in the field. The spec asserts the row is visible, which it
+is, and then turns privacy on in that moment.
+
+Two things follow, neither done here because this was a stop-and-record. The race is in the spec and
+the form, not in the formatter: it should wait for the form to be empty, or the form should clear
+before it waits on the ledger. And there is a separate, smaller question the spec exposed: an amount
+**typed into a field** is its digits in the page, and turning privacy on does not blank it. The new FIRE
+contribution field avoids that by rendering masked text instead of an input while privacy is on; the
+older fields (a budget, the quick-add) do not.
+
+Still **open**: the cause is now known for this recurrence, the fix is not made, and one recurrence
+with a cause is not the same as the first one being explained.

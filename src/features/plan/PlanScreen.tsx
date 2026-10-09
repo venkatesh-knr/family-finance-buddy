@@ -24,6 +24,7 @@ import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
 import { Button, Card, Caveat, Field, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { FireReadout } from './FireReadout.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -100,6 +101,7 @@ export function FireScreen({
 
   return (
     <div className="flex flex-col gap-4.5">
+      <FireReadout plan={plan} privacy={privacy} editable={editable} displayCurrency={displayCurrency} />
       <FireCard
         plan={plan}
         privacy={privacy}

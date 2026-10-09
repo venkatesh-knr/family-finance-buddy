@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
 import type { Rate } from './fx.ts';
-import { assetHistory, monthEndsThrough, type HistoryHolding, type HistoryReading } from './history.ts';
+import {
+  assetHistory,
+  monthEndsThrough,
+  movementSince,
+  type HistoryHolding,
+  type HistoryPoint,
+  type HistoryReading,
+} from './history.ts';
 
 const inr = (rupees: number) => money(BigInt(rupees) * 100n, 'INR');
 const usd = (dollars: number) => money(BigInt(dollars) * 100n, 'USD');
@@ -305,5 +312,35 @@ describe('assetHistory', () => {
   it('refuses a single point, which is a dot and not a history', () => {
     const result = run([holding('a')], [reading('a', '2026-03-10', inr(1000))], '2026-03-20');
     expect(result).toEqual({ ok: false, reason: 'short' });
+  });
+});
+
+describe('movementSince', () => {
+  const pt = (date: string, rupees: number): HistoryPoint => ({ date, total: inr(rupees) });
+
+  it('is the change from the point before the last to the last, and the date it is measured from', () => {
+    const m = movementSince([pt('2026-08-31', 5_000_000), pt('2026-09-30', 5_100_000)]);
+    expect(m).not.toBeNull();
+    expect(m?.from).toBe('2026-08-31');
+    expect(m?.change).toEqual(inr(100_000));
+    expect(m?.percent).toBe('+2%');
+  });
+
+  it('uses only the last two points, however many came before', () => {
+    const m = movementSince([pt('2026-06-30', 1), pt('2026-07-31', 9), pt('2026-08-31', 400), pt('2026-09-30', 300)]);
+    expect(m?.from).toBe('2026-08-31');
+    expect(m?.change).toEqual(inr(-100));
+  });
+
+  it('is a fall with its sign, and flat is a movement of nothing', () => {
+    expect(movementSince([pt('2026-08-31', 200), pt('2026-09-30', 100)])?.percent).toBe('-50%');
+    const flat = movementSince([pt('2026-08-31', 100), pt('2026-09-30', 100)]);
+    expect(flat?.change.minor).toBe(0n);
+  });
+
+  it('gives no percentage from a start of nothing, and no movement from fewer than two points', () => {
+    expect(movementSince([pt('2026-08-31', 0), pt('2026-09-30', 100)])?.percent).toBeNull();
+    expect(movementSince([pt('2026-09-30', 100)])).toBeNull();
+    expect(movementSince([])).toBeNull();
   });
 });

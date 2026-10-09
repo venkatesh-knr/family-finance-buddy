@@ -394,6 +394,9 @@ export async function setFireSettings(input: {
   multiplier?: number;
   inflationPct?: number;
   yearsAhead?: number;
+  returnPct?: number;
+  stepUpPct?: number;
+  monthlyContributionMinor?: bigint;
 }): Promise<void> {
   const client = supabase();
 
@@ -401,6 +404,13 @@ export async function setFireSettings(input: {
   if (input.multiplier !== undefined) patch['fire_multiplier'] = input.multiplier;
   if (input.inflationPct !== undefined) patch['fire_inflation_pct'] = input.inflationPct;
   if (input.yearsAhead !== undefined) patch['fire_years_ahead'] = input.yearsAhead;
+  if (input.returnPct !== undefined) patch['fire_return_pct'] = input.returnPct;
+  if (input.stepUpPct !== undefined) patch['fire_step_up_pct'] = input.stepUpPct;
+  // A bigint does not survive JSON.stringify; the column is a bigint, and a string of digits is what
+  // PostgREST reads into one exactly.
+  if (input.monthlyContributionMinor !== undefined) {
+    patch['fire_monthly_contribution_minor'] = input.monthlyContributionMinor.toString();
+  }
   if (Object.keys(patch).length === 0) return;
 
   const result = await client

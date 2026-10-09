@@ -18,6 +18,10 @@ import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { donutArcs } from './chartGeometry.ts';
 
 const SIZE = 208;
+// A thinner ring than the prototype's 82 and 52: it is a compact mark beside the rows now, and a thin
+// ring leaves the hole room for its total at that size (docs/design/vibrant-canvas.html).
+const OUTER = 100;
+const INNER = 72;
 
 export function AllocationDonut({
   rows,
@@ -31,7 +35,12 @@ export function AllocationDonut({
   // Sizes are drawn from the amounts, as doubles, only as far as an arc: the
   // total on the ring is summed as bigint and formatted from that.
   const total = rows.reduce((sum, row) => sum + row.value.minor, 0n);
-  const arcs = donutArcs(rows.map((row) => ({ key: row.kind, value: Number(row.value.minor) })));
+  const arcs = donutArcs(
+    rows.map((row) => ({ key: row.kind, value: Number(row.value.minor) })),
+    SIZE,
+    OUTER,
+    INNER,
+  );
   if (arcs.length === 0) return null;
 
   const shares = new Map(rows.map((row) => [row.kind, row.share]));
@@ -51,10 +60,7 @@ export function AllocationDonut({
           <title>{`${kindLabel(arc.key)} ${((shares.get(arc.key) ?? 0) * 100).toFixed(1)}%`}</title>
         </path>
       ))}
-      <text className="donut-label" x={SIZE / 2} y={SIZE / 2 - 4} textAnchor="middle">
-        Total
-      </text>
-      <text className="donut-total" x={SIZE / 2} y={SIZE / 2 + 16} textAnchor="middle">
+      <text className="donut-total" x={SIZE / 2} y={SIZE / 2 + 9} textAnchor="middle">
         {formatMoney(money(total, currency), { privacy, compact: true })}
       </text>
     </svg>

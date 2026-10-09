@@ -199,3 +199,81 @@ export function donutArcs(
 function n2(value: number): string {
   return value.toFixed(2);
 }
+
+export interface ProjectionPoint {
+  readonly year: number;
+  readonly corpus: number;
+  readonly target: number;
+}
+
+export interface ProjectionLine {
+  /** The stroke: `M x y L x y …`. */
+  readonly line: string;
+  /** The same closed down to the baseline, for a fill. */
+  readonly area: string;
+  /** Each year's place, for a mark or a label. */
+  readonly points: readonly { readonly x: number; readonly y: number }[];
+  readonly end: { readonly x: number; readonly y: number };
+}
+
+export interface ProjectionChart {
+  readonly corpus: ProjectionLine;
+  readonly target: ProjectionLine;
+  readonly ticks: readonly { readonly value: number; readonly y: number }[];
+  readonly baseline: number;
+  /** Indexes into the series that carry a year label, first to last. */
+  readonly labels: readonly { readonly index: number; readonly x: number }[];
+  readonly plot: { readonly left: number; readonly right: number };
+}
+
+/**
+ * The corpus and the inflated target on one axis, year by year. At least two years, oldest first.
+ *
+ * The years are evenly spaced, because they are: a year is a year however far along. One axis for
+ * both lines, from zero to a round number at or above the larger of them, since two lines on two
+ * scales would cross wherever the scales said and not where the money does.
+ */
+export function projectionChart(series: readonly ProjectionPoint[], frame: ChartFrame): ProjectionChart {
+  if (series.length < 2) throw new Error('A projection needs at least two years to draw.');
+
+  const left = frame.left;
+  const right = frame.width - frame.right;
+  const top = frame.top;
+  const baseline = frame.height - frame.bottom;
+
+  const max = series.reduce((m, p) => Math.max(m, p.corpus, p.target), 0);
+  const ticks = niceTicks(max);
+  const ceiling = ticks[ticks.length - 1] ?? 1;
+
+  const last = series.length - 1;
+  const x = (i: number): number => left + (i / last) * (right - left);
+  const y = (value: number): number =>
+    ceiling === 0 ? baseline : baseline - (value / ceiling) * (baseline - top);
+
+  const lineOf = (pick: (p: ProjectionPoint) => number): ProjectionLine => {
+    const points = series.map((p, i) => ({ x: x(i), y: y(pick(p)) }));
+    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${n(p.x)} ${n(p.y)}`).join('');
+    return {
+      line,
+      area: `${line}L${n(right)} ${n(baseline)}L${n(left)} ${n(baseline)}Z`,
+      points,
+      end: points[points.length - 1] ?? { x: right, y: baseline },
+    };
+  };
+
+  const wanted = Math.max(1, Math.min(frame.maxLabels, series.length));
+  const chosen = new Set<number>();
+  if (wanted === 1) chosen.add(last);
+  for (let j = 0; wanted > 1 && j < wanted; j += 1) {
+    chosen.add(Math.round((j * last) / (wanted - 1)));
+  }
+
+  return {
+    corpus: lineOf((p) => p.corpus),
+    target: lineOf((p) => p.target),
+    ticks: ticks.map((value) => ({ value, y: y(value) })),
+    baseline,
+    labels: [...chosen].sort((a, b) => a - b).map((index) => ({ index, x: x(index) })),
+    plot: { left, right },
+  };
+}
