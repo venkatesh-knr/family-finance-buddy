@@ -136,18 +136,19 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **Merged and deployed:** everything up to #57 (membership lookups). The migrations `20260927120000` and
+- **Merged and deployed:** everything up to #60 (the screenshot notes). The migrations `20260927120000` and
   `20260927130000` have been applied by the maintainer.
-- **In flight:** branch `reviewer-truth`, the findings of the two design-conformance reports on Overview that were not the
-  honesty fixes: reading gaps per holding, archived holdings kept in the history before they were archived, the as-at date and
-  stale readings, then consistent signs and percentages, the loading state, and the conformance ledger. See the pull request.
+- **In flight:** branch `deposits-slice`, the Deposits and bonds card on Holdings: repository functions, a pure view over the
+  accrual module, the card with an add form and a renewal form, and `tests/e2e/fixed-income.spec.ts`. See the pull request.
 - **Decisions the maintainer gave:** property, FDs, bonds, PPF, EPF, NPS and other are all held. Deposits compound
   **yearly**; an auto-renewing FD pays its interest into the principal and is redeposited **for the same term**.
   Written up in `docs/decisions.md`.
 - **Open for the maintainer:** whether "Mine" should subtract the household's debts in full or a share (see the Departures
   table); whether to add a spreadsheet library for the ICICI savings XLS statement; the contributor and viewer screens have
   never been seen as those roles because there are no such demo accounts.
-- **Not built yet, in this order:** the Deposits and bonds screen and its repository functions (plan item 6); `property` and
+- **Open for the maintainer, from the deposits slice:** whether a deposit's reading should be taken automatically rather than by the
+  "Record as today's reading" button (see `docs/decisions.md`).
+- **Not built yet, in this order:** editing a deposit's terms in place; `property` and
   `property_improvement` with a cost-basis function; PPF, EPF and NPS.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).

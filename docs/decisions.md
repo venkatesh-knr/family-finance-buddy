@@ -181,6 +181,42 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
   ₹62.58 L less that is the other members' private holdings, which the line says it leaves out. It has two points, 31 Aug and 18 Sep, on an
   axis that starts at zero, so a small move does not show; it starts at 31 Aug because no USD rate exists before then.
 
+## Deposits and bonds (October 2026)
+
+- **A card on Holdings, not a tab.** The design puts the fixed-income ladder on the investments screen, and a deposit is a holding, so it
+  lives there (`FixedIncome.tsx`). Adding a sixth tab would have been a departure from the mock with no reason behind it.
+- **The terms are typed and the value is worked out, on the day**, by `domain/fixed-income.ts` over `accrual.ts`: a deposit through
+  its chain of terms, a bond at par (face plus accrued interest, since an unlisted bond has no market price). Nothing worked out is stored.
+- **A renewal the bank has made is recorded from its advice; one it has not is projected and marked as one.** A projection is never
+  offered as a reading.
+- **A deposit joins net worth through a reading.** "Record as today's reading" writes the day's worked-out value as an ordinary
+  `valuation_snapshot` (source `manual`, note "Worked out from the terms"), so net worth, the line over time, the reading gaps and the
+  month close treat a deposit like anything else and none of them learn about terms. The alternative, computing a value for every
+  fixed-income holding on every screen, would put a new point on the history line each day and make the reading-gap check meaningless
+  for them. **Open decision for the maintainer:** whether the reading should be taken automatically (the close-month button already writes
+  readings, and could write these), since as built a deposit is absent from net worth until somebody presses the button.
+- **Three inserts, not one.** The instrument, the holding and the terms are separate writes because the client has no transaction. If the
+  terms are refused after the holding exists, the holding is archived. A function that does all three in one statement is a migration of
+  its own, and is the better answer if this ever fails in practice.
+- **A matured position has paid out and is not a holding any more.** The card shows what it paid and when, leaves it out of the total,
+  offers no reading for it, and says to record where the money went and archive it. Keeping its payout as its value indefinitely, as the
+  first version did, counted money the bank had already returned.
+- **Interest is counted term by term.** The value less the first principal was wrong whenever a renewal started from a different
+  figure: interest paid out and the principal renewed, tax taken at source, a top-up. Each term's interest is its end value less its own
+  principal, summed. Three fixtures, one for each of those.
+- **An existing deposit or bond is given its terms, not entered again.** The household's deposits and bonds were holdings before there
+  were terms, and entering one again makes a second holding, counted twice. "Give its terms" writes the terms against the holding that
+  is there.
+- **A worked-out reading is stored as `manual`** with a note, which is an accepted shortcut: a `computed` source would be clearer and
+  needs a migration. Revisit it with the decision above.
+- **The slice was reviewed once** (design-conformance, eight findings). Agreed and fixed: the matured payout counted as a value (1),
+  interest per term (3), terms for an existing holding (4), the loading state (7), the tone of the "renews itself" pill (8). Agreed and
+  recorded, not built: repay mode, rating changes and a reinvestment prompt (5), and the source label (6). Agreed, and the substance of
+  the open decision: that a deposit reaches net worth only by pressing a button (2). Not changed: the specification's quarterly
+  compounding formula in blueprint §8, which is the maintainer's document.
+- **Not built:** correcting a deposit's terms or a renewal in place (the policies allow it), coupons received, repay mode, rating
+  changes, and PPF, EPF and NPS.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan

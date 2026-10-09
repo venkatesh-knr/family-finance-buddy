@@ -286,7 +286,11 @@ the same term), where a renewal that has happened is recorded from the bank's ad
 not is projected and shown as a projection (`depositChainValueOn`). **Held by the household, which
 decides what is built:** property, fixed deposits, bonds, PPF, EPF, NPS and other.
 
-**Still to build, in this order:** the repository functions and the Deposits and bonds screen;
+**Also built:** the Deposits and bonds card on Holdings (`src/features/holdings/FixedIncome.tsx`), its repository functions
+(`src/repo/fixedIncome.ts`) and the pure view over the accrual module (`src/domain/fixed-income.ts`), with an end-to-end test. Terms
+can be added and a renewal recorded; editing them in place is not built. See `docs/decisions.md` for how a deposit reaches net worth.
+
+**Still to build, in this order:**
 `property` and `property_improvement` with a pure cost-basis function (purchase, stamp duty,
 registration and capital improvements, not repairs); then PPF (computed from the notified rate on the
 lowest balance of the month), EPF (typed from the passbook) and NPS (units x NAV).
