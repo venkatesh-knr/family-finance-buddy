@@ -241,3 +241,50 @@ test('a downgrade is logged, shown on the bond, and called out on the Overview',
   await page.goto('/#overview');
   await expect(page.getByText(/downgraded recently/)).toHaveCount(0);
 });
+
+/** The last day of last month, in IST: what the Close button on the Overview closes. */
+function lastMonthEndIst(): string {
+  const [year, month] = new Date()
+    .toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+    .split('-')
+    .map(Number) as [number, number];
+  return new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10);
+}
+
+test('closing the month writes a deposit its value from the terms, and it is in net worth', async ({ page }) => {
+  const name = `e2e-close-${Date.now()}`;
+  const monthEnd = lastMonthEndIst();
+  const day = (offsetDays: number, from = monthEnd) => {
+    const d = new Date(`${from}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  };
+  const start = day(-100);
+  const maturity = `${String(Number(start.slice(0, 4)) + 2)}${start.slice(4)}`;
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a deposit or bond' }).click();
+  const form = page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Principal').fill('100000');
+  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
+  await form.getByLabel('Starts').fill(start);
+  await form.getByLabel('Matures').fill(maturity);
+  await form.getByRole('button', { name: 'Add the deposit' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: name })).toBeVisible();
+
+  // Nobody has recorded a reading: it is worked out on its own card and nowhere else.
+  await page.goto('/#overview');
+  await page.getByRole('button', { name: /^Close / }).click();
+  // 100 days of 7.5% on 1,00,000, which is 2,054.79: a year has not passed, so no credit yet.
+  await expect(page.getByText(/Worked out \d+ deposits? (and bonds?|or bond)? ?from/)).toBeVisible();
+
+  // It is a reading now, dated the month end and marked as reconstructed.
+  await page.goto('/#holdings');
+  const holding = page.locator('section', { hasText: name }).filter({
+    has: page.getByRole('button', { name: 'Archive this holding' }),
+  });
+  await expect(holding.last()).toContainText('1,02,054.79');
+
+  await archive(page, name);
+});
