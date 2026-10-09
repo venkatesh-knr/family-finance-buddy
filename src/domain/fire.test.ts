@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { fireBaseYear, fireLadder, fireTarget } from './fire.ts';
+import { fireBaseYear, fireLadder, fireProgress, fireProjection, fireTarget } from './fire.ts';
 
 /**
  * The FIRE target, and the ladder of what it becomes as prices rise.
@@ -221,5 +221,109 @@ describe('a horizon and a multiple the reader chooses', () => {
       years: 20,
     });
     expect(direct[20]).toEqual(viaTwenty[20]);
+  });
+});
+
+/**
+ * The corpus projection (blueprint §06): c(n+1) = c(n)(1 + r) + sip(n), sip(n+1) = sip(n)(1 + step_up).
+ *
+ * The expected figures are worked by hand in rupees and paise, year by year, so a change to the
+ * arithmetic has to disagree with a person and not only with itself. A corpus of 10 lakh, 10,000 a
+ * month, 10% a year, against 25 times 1.08 lakh (27 lakh) with no inflation:
+ *   flat       10,00,000  12,20,000  14,62,000  17,28,200  20,21,020  23,43,122  26,97,434.20  30,87,177.62
+ *   5% step-up 10,00,000  12,20,000  14,68,000  17,47,100  20,60,725  24,12,658.25  28,07,077.85
+ * so flat reaches 27 lakh in year 7 and the step-up in year 6: the step-up is what the sheet's flat
+ * SIP cannot see.
+ */
+describe('fireProjection', () => {
+  const ladder = (inflationPct: number, years = 20) =>
+    fireLadder({ annualExpense: inr(108_000), multiplier: 25, inflationPct, fromYear: 2026, years });
+
+  const run = (over: Partial<Parameters<typeof fireProjection>[0]> = {}) =>
+    fireProjection({
+      corpus: inr(1_000_000),
+      monthlyContribution: inr(10_000),
+      returnPct: 10,
+      stepUpPct: 0,
+      ladder: ladder(0),
+      ...over,
+    });
+
+  it('compounds the corpus and adds a year of contributions, to the paisa', () => {
+    const p = run();
+    expect(p.steps.slice(0, 7).map((s) => s.corpus.minor)).toEqual([
+      100_000_000n,
+      122_000_000n,
+      146_200_000n,
+      172_820_000n,
+      202_102_000n,
+      234_312_200n,
+      269_743_420n,
+    ]);
+  });
+
+  it('names the first year the corpus meets the target', () => {
+    expect(run().reachedYear).toBe(2033);
+  });
+
+  it('raises the contribution each year by the step-up, and that can bring the year forward', () => {
+    const p = run({ stepUpPct: 5 });
+    expect(p.steps[2]?.corpus.minor).toBe(146_800_000n);
+    expect(p.steps[5]?.corpus.minor).toBe(241_265_825n);
+    expect(p.steps[6]?.corpus.minor).toBe(280_707_785n);
+    expect(p.reachedYear).toBe(2032);
+  });
+
+  it('measures each year against that year’s inflated target, not today’s', () => {
+    const p = run({ ladder: ladder(6) });
+    expect(p.steps[1]?.target.minor).toBe(286_200_000n);
+    // 27 lakh at 6% is 28.62 lakh a year on, and the corpus chases it: later than with no inflation.
+    expect(p.reachedYear).not.toBeNull();
+    expect(p.reachedYear as number).toBeGreaterThan(2033);
+  });
+
+  it('is already reached in the first year when the corpus covers the target today', () => {
+    expect(run({ corpus: inr(3_000_000) }).reachedYear).toBe(2026);
+  });
+
+  it('is never reached when the ladder ends first, and says so with null and not a guess', () => {
+    const p = run({ monthlyContribution: inr(0), returnPct: 0, ladder: ladder(6, 10) });
+    expect(p.reachedYear).toBeNull();
+    expect(p.steps).toHaveLength(11);
+  });
+
+  it('has no FIRE year when nothing is planned: a target of nothing is met by anything', () => {
+    const empty = fireLadder({ annualExpense: inr(0), multiplier: 25, inflationPct: 6, fromYear: 2026, years: 5 });
+    expect(run({ ladder: empty }).reachedYear).toBeNull();
+  });
+
+  it('refuses a contribution or corpus in another currency than the target, and a negative rate', () => {
+    expect(() => run({ corpus: money(1_000_000n, 'USD') })).toThrow(/currency/i);
+    expect(() => run({ monthlyContribution: money(1n, 'USD') })).toThrow(/currency/i);
+    expect(() => run({ returnPct: -1 })).toThrow(/return/i);
+    expect(() => run({ stepUpPct: -1 })).toThrow(/step/i);
+  });
+
+  it('refuses a ladder with nothing in it', () => {
+    expect(() => run({ ladder: [] })).toThrow(/ladder/i);
+  });
+});
+
+describe('fireProgress', () => {
+  it('is the corpus as a share of today’s target, with what is still short', () => {
+    // 62.58 lakh against 3.42 crore, the canvas's own figures.
+    const p = fireProgress(inr(6_258_000), inr(34_200_000));
+    expect(p?.percent).toBe(18);
+    expect(p?.shortfall.minor).toBe(2_794_200_000n);
+  });
+
+  it('has no shortfall once the target is met, and passes a hundred per cent without clamping', () => {
+    const p = fireProgress(inr(40_000_000), inr(34_200_000));
+    expect(p?.percent).toBe(116);
+    expect(p?.shortfall.minor).toBe(0n);
+  });
+
+  it('is null when there is no target to be a share of', () => {
+    expect(fireProgress(inr(1), inr(0))).toBeNull();
   });
 });

@@ -25,7 +25,7 @@ import { lineChart, monthLabel, type ChartFrame } from './chartGeometry.ts';
  * when there is a line to draw, and an effect that ran once while it was absent
  * would never look again.
  */
-function useMeasure(present: boolean): { ref: React.RefObject<HTMLDivElement | null>; width: number; rem: number } {
+export function useMeasure(present: boolean): { ref: React.RefObject<HTMLDivElement | null>; width: number; rem: number } {
   const ref = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 0, rem: 16 });
   useEffect(() => {

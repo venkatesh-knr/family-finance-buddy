@@ -11,7 +11,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(22);
+select plan(26);
 
 -- ─────────────────────────────────────────────────────────────── fixtures
 --
@@ -49,6 +49,11 @@ insert into public.household (id, name, kind, fire_multiplier) values
   ('d1000000-0000-4000-8000-0000000000d1', 'Sandbox',       'demo', 40),
   ('e1000000-0000-4000-8000-0000000000e1', 'The real one',  'real', 25),
   ('d2000000-0000-4000-8000-0000000000d2', 'Other sandbox', 'demo', 25);
+
+-- The FIRE projection's inputs, moved off their defaults, so a reset has something to put back.
+update public.household
+   set fire_return_pct = 7, fire_step_up_pct = 5, fire_monthly_contribution_minor = 500000
+ where id = 'd1000000-0000-4000-8000-0000000000d1';
 
 insert into public.member (id, household_id, display_name, colour) values
   ('aa000000-0000-4000-8000-0000000000a1', 'd1000000-0000-4000-8000-0000000000d1', 'Owner',   'c1'),
@@ -93,6 +98,15 @@ insert into public.instrument (id, household_id, name, kind, currency, exposure_
 insert into public.holding (id, household_id, member_id, instrument_id, quantity) values
   ('b0000000-0000-4000-8000-0000000000b1', 'd1000000-0000-4000-8000-0000000000d1',
    'aa000000-0000-4000-8000-0000000000a1', 'f1000000-0000-4000-8000-0000000000f1', 100);
+
+-- Terms for that bond, with a rating, which the trigger logs. Both hang off the holding by a
+-- restricting foreign key: a reset that does not clear them cannot delete the holding at all.
+insert into public.fixed_income_terms
+  (holding_id, household_id, kind, principal_minor, currency, rate_pct, start_date, maturity_date,
+   coupon_frequency, rating, created_by) values
+  ('b0000000-0000-4000-8000-0000000000b1', 'd1000000-0000-4000-8000-0000000000d1', 'bond', 10000000,
+   'INR', 9.5, date '2025-01-01', date '2030-01-01', 'yearly', 'CRISIL AA',
+   'ac000000-0000-4000-8000-0000000000a1');
 
 -- An import, and a purchase that cites it. Both belong to the sandbox and
 -- both have to go: a batch left behind is the record of a file whose rows are
@@ -260,6 +274,32 @@ select is(
   (select fire_multiplier from public.household where id = 'd1000000-0000-4000-8000-0000000000d1'),
   25::numeric,
   'and the FIRE inputs are back at their defaults'
+);
+
+select is(
+  (select fire_return_pct from public.household where id = 'd1000000-0000-4000-8000-0000000000d1'),
+  10::numeric,
+  'including the projection''s yearly return'
+);
+
+select is(
+  (select fire_monthly_contribution_minor from public.household where id = 'd1000000-0000-4000-8000-0000000000d1'),
+  0::bigint,
+  'and what the household was putting in each month'
+);
+
+select is(
+  (select count(*)::int from public.fixed_income_terms
+    where holding_id = 'b0000000-0000-4000-8000-0000000000b1'),
+  0,
+  'the terms of a deposit or bond go with its holding'
+);
+
+select is(
+  (select count(*)::int from public.bond_rating_change
+    where holding_id = 'b0000000-0000-4000-8000-0000000000b1'),
+  0,
+  'and so does its rating log'
 );
 
 -- ═══════════════════════════════════════════════════════ what stayed (5)

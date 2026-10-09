@@ -118,12 +118,22 @@ describe('toHousehold', () => {
         fire_multiplier: '30.00',
         fire_inflation_pct: '7.00',
         fire_years_ahead: 15,
+        fire_return_pct: '8.50',
+        fire_step_up_pct: '5.00',
+        fire_monthly_contribution_minor: 1500000,
       }),
     ).toEqual({
       id: 'h-1',
       name: 'Demo household',
       kind: 'demo',
-      fire: { multiplier: '30.00', inflationPct: '7.00', yearsAhead: 15 },
+      fire: {
+        multiplier: '30.00',
+        inflationPct: '7.00',
+        yearsAhead: 15,
+        returnPct: '8.50',
+        stepUpPct: '5.00',
+        monthlyContributionMinor: 1_500_000n,
+      },
       baseCurrency: 'INR',
       displayCurrency: 'INR',
       fyStartMonth: 4,
@@ -399,7 +409,16 @@ describe('household kind', () => {
       display_currency: 'INR',
       fy_start_month: 4,
     });
-    expect(household.fire).toEqual({ multiplier: '25', inflationPct: '6', yearsAhead: 10 });
+    // The projection's inputs too, so a database that has not had their migration yet still loads, with
+    // 10% a year, a flat contribution and nothing put in: a projection that assumes the least.
+    expect(household.fire).toEqual({
+      multiplier: '25',
+      inflationPct: '6',
+      yearsAhead: 10,
+      returnPct: '10',
+      stepUpPct: '0',
+      monthlyContributionMinor: 0n,
+    });
   });
 
   it('refuses a kind it does not know rather than guessing', () => {
