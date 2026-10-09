@@ -226,6 +226,25 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
   higher than its neighbours', which is how the first version came out crooked.
 - **Not built:** coupons received, repay mode, rating changes (both need a migration, proposed separately), and PPF, EPF and NPS.
 
+## A bond's repay mode and its rating log (October 2026), schema proposed
+
+Migration `20260928120000`, for review. It adds no new access rule beyond one new table, and the code that uses it is a separate change
+that waits for the migration to be applied.
+
+- **Repay mode** is `payout` (coupons paid on each coupon date) or `cumulative` (interest compounds at the coupon frequency and is paid
+  with the face at maturity). Null means payout, which is what every bond recorded so far is, so nothing stored changes meaning and
+  nothing is backfilled. It is nullable for a second reason: a NOT NULL would refuse every bond the application inserts between the
+  migration being applied and the code that sets it being deployed. Bonds only, because a deposit has its own compounding.
+- **The rating log is written by a trigger on the terms and by nothing else.** Nobody inserts, updates or deletes a row: a downgrade
+  cannot be edited into something milder, filed as an upgrade, or tidied away. It is the shape of `audit_log`, so RLS is enabled and
+  not forced, because the definer trigger writes it as the table's owner. It records each change with the day it was noticed, in IST;
+  the first row of a bond is the rating as first recorded, and a removed rating is a change to nothing, not a gap. A save that changes
+  nothing writes nothing.
+- **It is as private as the holding**, by the holding's own policy, and its audit rows follow the holding by the rule already in place.
+- **Tests:** `supabase/tests/bond_repay_mode_and_rating_log.test.sql`, 23 assertions: nobody can write the log, only the trigger does,
+  the privacy by role, a password alone reads nothing, and the repay mode's two checks. It runs in CI; it has not been run locally,
+  because Docker is blocked on the maintainer's machine.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
