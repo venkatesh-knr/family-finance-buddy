@@ -136,18 +136,16 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **Merged and deployed:** everything up to #60 (the screenshot notes). The migrations `20260927120000` and
-  `20260927130000` have been applied by the maintainer.
-- **In flight:** branch `bond-repay-ratings-code`: a bond's repay mode, its rating history with a downgrade called out, and the
-  Overview alerts for a downgrade and a maturity within thirty days. The migration `20260928120000` is applied. See the pull request.
+- **Merged and deployed:** everything up to #64 (a bond repay mode and rating history). The migrations `20260927120000`,
+  `20260927130000` and `20260928120000` have all been applied by the maintainer.
+- **In flight:** branch `close-month-deposits`: Close month works each deposit and bond out for the month end from its terms and writes it
+  as a reading, so a deposit reaches net worth without a button on every row. See the pull request.
 - **Decisions the maintainer gave:** property, FDs, bonds, PPF, EPF, NPS and other are all held. Deposits compound
   **yearly**; an auto-renewing FD pays its interest into the principal and is redeposited **for the same term**.
   Written up in `docs/decisions.md`.
 - **Open for the maintainer:** whether "Mine" should subtract the household's debts in full or a share (see the Departures
   table); whether to add a spreadsheet library for the ICICI savings XLS statement; the contributor and viewer screens have
   never been seen as those roles because there are no such demo accounts.
-- **Open for the maintainer, from the deposits slice:** whether a deposit's reading should be taken automatically rather than by the
-  "Record as today's reading" button (see `docs/decisions.md`).
 - **Not built yet, in this order:** `property` and
   `property_improvement` with a cost-basis function; PPF, EPF and NPS.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the

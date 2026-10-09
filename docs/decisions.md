@@ -193,8 +193,7 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
   `valuation_snapshot` (source `manual`, note "Worked out from the terms"), so net worth, the line over time, the reading gaps and the
   month close treat a deposit like anything else and none of them learn about terms. The alternative, computing a value for every
   fixed-income holding on every screen, would put a new point on the history line each day and make the reading-gap check meaningless
-  for them. **Open decision for the maintainer:** whether the reading should be taken automatically (the close-month button already writes
-  readings, and could write these), since as built a deposit is absent from net worth until somebody presses the button.
+  for them. **Decided: Close month does it** (see "Close month works deposits out" below).
 - **Three inserts, not one.** The instrument, the holding and the terms are separate writes because the client has no transaction. If the
   terms are refused after the holding exists, the holding is archived. A function that does all three in one statement is a migration of
   its own, and is the better answer if this ever fails in practice.
@@ -287,6 +286,27 @@ change (3); the card's caveat still said a cumulative bond was not valued correc
 back" (5); the same downgrade was brass on Holdings and coral on Overview (6); "in 1 days" (7). Blueprint §8 now says the deposit formula
 covers a cumulative bond. The demo household has no rated, cumulative or soon-maturing bond, so `test:screens` shows none of it; the
 e2e spec is what exercises these states, against the demo household, and archives what it makes.
+
+## Close month works deposits out (October 2026)
+
+The maintainer's decision, on the open question above: a deposit reaches net worth without a button on every row.
+
+- **The worked-out value is written when the month is closed.** For each deposit and bond the caller can read, Close month works the
+  month-end value out from its terms (`monthEndReadings`, the same `fixedIncomeView` the card uses, so a reading and a row cannot
+  disagree) and writes it as a `backfill` reading, which is what the schema calls a month reconstructed afterwards. Nothing is
+  overwritten: a day that already has a reading keeps it.
+- **It is orchestrated in the client and not done in SQL.** `close_month` is a SQL function that carries a reading forward; a deposit has
+  none to carry, and its value is arithmetic, which this project keeps in pure functions and not in the database. So the Close button
+  works the values out in TypeScript and writes them (`recordComputedReadings`, insert-if-absent), then runs the function as before.
+- **In that order, deliberately.** Run first, `close_month` would carry a mid-month reading into the month-end slot of a deposit, and
+  the worked-out figure would have nowhere to go.
+- **What it leaves out, and says so.** A position that has paid out is not a holding any more; an assumed renewal is an estimate and is
+  never written as a reading, so a renewing deposit whose renewal has not been recorded stays unread and shows as a gap, which is the
+  prompt to record it; one that has not started, or cannot be valued, has no value to give. The Close message names the counts.
+- **Unread is not failed.** The button waits until deposits and bonds have been read. A first version let a quick click through while they
+  were still loading and told the person they "could not be read", which was false; found by the end-to-end test.
+- **Still true:** the current month is not in net worth until it is closed, or the link on the row is used, and the row's link stores
+  source `manual`, since a `computed` source would need a migration.
 
 ## Bank and card import (October 2026), not started
 
