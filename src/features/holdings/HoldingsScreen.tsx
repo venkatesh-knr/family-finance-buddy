@@ -7,6 +7,7 @@
  * month is only fixable while you can still remember to fix it.
  */
 
+import { splitFundName } from './fundName.ts';
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
@@ -464,6 +465,7 @@ function HoldingCard({
   const currency = holding.instrument.currency;
   const [editing, setEditing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const fund = splitFundName(holding.instrument.name);
 
   return (
     <section
@@ -471,8 +473,18 @@ function HoldingCard({
       style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{holding.instrument.name}</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          {/*
+            The fund, then its plan and former name beneath, in the quiet type.
+            The registered name is one long line at 360px; every word is still
+            here, in the order it was read.
+          */}
+          <span className="min-w-0" title={holding.instrument.name}>
+            <span className="block" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+              {fund.title}
+            </span>
+            {fund.detail !== null && <span className="note block">{fund.detail}</span>}
+          </span>
           {holding.instrument.symbol !== null && (
             <span className="note">{holding.instrument.symbol}</span>
           )}
