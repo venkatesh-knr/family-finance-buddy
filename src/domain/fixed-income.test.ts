@@ -140,6 +140,53 @@ describe('fixedIncomeView, a deposit', () => {
   });
 });
 
+describe('fixedIncomeView, the interest a deposit has earned', () => {
+  const renewed = (principal: number, on: string) =>
+    fixedIncomeView(
+      deposit({
+        start: '2024-10-01',
+        maturity: '2025-10-01',
+        autoRenew: true,
+        renewals: [
+          {
+            start: '2025-10-01',
+            maturity: '2026-10-01',
+            principal: inr(principal),
+            ratePct: '7',
+            compounding: 'yearly',
+          },
+        ],
+      }),
+      on,
+    );
+
+  it('counts the first term when the bank paid its interest out and renewed the principal', () => {
+    // 750,000 earned in year one, then 182 days at 7% on 10,000,000 = 349,041.
+    const view = renewed(10_000_000, '2026-04-01');
+    expect(view.ok && view.kind === 'deposit' && view.interestToDate).toEqual(inr(1_099_041));
+  });
+
+  it('does not count tax the bank took at renewal as interest lost or earned', () => {
+    // Renewed on 10,675,000 after 75,000 of TDS: on the renewal day, year one's 750,000 and nothing since.
+    const view = renewed(10_675_000, '2025-10-01');
+    expect(view.ok && view.kind === 'deposit' && view.interestToDate).toEqual(inr(750_000));
+  });
+
+  it('does not count a top-up at renewal as interest', () => {
+    const view = renewed(15_750_000, '2025-10-01');
+    expect(view.ok && view.kind === 'deposit' && view.interestToDate).toEqual(inr(750_000));
+  });
+
+  it('adds up every term of a projected chain', () => {
+    // Term one 750,000; term two on 10,750,000 for 182 days at 7.5% = 402,021.
+    const view = fixedIncomeView(
+      deposit({ start: '2024-10-01', maturity: '2025-10-01', autoRenew: true }),
+      '2026-04-01',
+    );
+    expect(view.ok && view.kind === 'deposit' && view.interestToDate).toEqual(inr(1_152_021));
+  });
+});
+
 describe('fixedIncomeView, a bond', () => {
   it('is its face value plus what has accrued since the last coupon, at par', () => {
     // 182 days of 10.75% on 10,000,000 = 536,027.4 -> 536,027.

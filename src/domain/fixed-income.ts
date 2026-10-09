@@ -20,6 +20,7 @@ import { money, type Money } from '../lib/money.ts';
 import {
   bondAccrual,
   depositChainValueOn,
+  addMonths,
   depositMaturity,
   type Compounding,
   type CouponFrequency,
@@ -56,6 +57,11 @@ export type FixedIncomeView =
   | {
       readonly ok: true;
       readonly kind: 'deposit';
+      /**
+       * What it is worth on the day. Once `matured` this is the payout, which is money
+       * the bank has paid out and not a holding's worth: a screen shows it as paid out
+       * and does not add it to what is held.
+       */
       readonly value: Money;
       /** What the current term pays at its end. */
       readonly maturityValue: Money;
@@ -119,29 +125,32 @@ function depositView(position: FixedIncomePosition, on: IsoDate): FixedIncomeVie
   const result = depositChainValueOn(chain, on);
   if (!result.ok) return result;
 
-  // The term the day falls in, for what it pays and when. A projected term is not a
-  // recorded one, so it is rebuilt here the same way the chain builds it: the previous
-  // maturity value, for the same length, ending a term later.
+  // Every term up to and including the one the day falls in: the recorded ones, then
+  // any that are projected, built the way the chain builds them (the previous maturity
+  // value, the same length, the assumed rate).
   const terms = [first, ...[...renewals].sort((a, b) => (a.start < b.start ? -1 : 1))];
-  const recorded = terms[result.term - 1];
-
-  let current: Deposit | undefined = recorded;
-  if (current === undefined) {
-    // Projected: walk forward from the last recorded term.
-    let previous = terms[terms.length - 1] as Deposit;
-    const rate = position.renewalRatePct ?? previous.ratePct;
-    for (let k = result.term - terms.length; k > 0; k -= 1) {
-      const next: Deposit = {
-        principal: depositMaturity(previous).maturityValue,
-        ratePct: rate,
-        start: previous.maturity,
-        maturity: shiftBy(previous),
-        compounding: previous.compounding,
-      };
-      previous = next;
-    }
-    current = previous;
+  const rate = position.renewalRatePct ?? (terms[terms.length - 1] as Deposit).ratePct;
+  while (terms.length < result.term) {
+    const previous = terms[terms.length - 1] as Deposit;
+    terms.push({
+      principal: depositMaturity(previous).maturityValue,
+      ratePct: rate,
+      start: previous.maturity,
+      maturity: addMonths(previous.maturity, monthsBetween(previous.start, previous.maturity)),
+      compounding: previous.compounding,
+    });
   }
+  const current = terms[result.term - 1] as Deposit;
+
+  // Interest is per term, and not the value less the first principal. A bank that pays a
+  // term's interest out and renews the principal, takes tax at source, or takes a top-up
+  // starts the next term from a figure that is not the last maturity value; the difference
+  // is not interest and must not be counted as if it were.
+  let interest = 0n;
+  for (const term of terms.slice(0, result.term - 1)) {
+    interest += depositMaturity(term).maturityValue.minor - term.principal.minor;
+  }
+  interest += result.value.minor - current.principal.minor;
 
   const maturityValue = depositMaturity(current).maturityValue;
   const nextMaturity = result.matured ? null : current.maturity;
@@ -150,7 +159,7 @@ function depositView(position: FixedIncomePosition, on: IsoDate): FixedIncomeVie
     kind: 'deposit',
     value: result.value,
     maturityValue,
-    interestToDate: money(result.value.minor - position.principal.minor, position.principal.currency),
+    interestToDate: money(interest, position.principal.currency),
     term: result.term,
     projected: result.projected,
     matured: result.matured,
@@ -159,17 +168,12 @@ function depositView(position: FixedIncomePosition, on: IsoDate): FixedIncomeVie
   };
 }
 
-/** The end of the term after `previous`, the same whole number of months on. */
-function shiftBy(previous: Deposit): IsoDate {
-  const months =
-    (Number(previous.maturity.slice(0, 4)) - Number(previous.start.slice(0, 4))) * 12 +
-    (Number(previous.maturity.slice(5, 7)) - Number(previous.start.slice(5, 7)));
-  const index = Number(previous.maturity.slice(0, 4)) * 12 + (Number(previous.maturity.slice(5, 7)) - 1) + months;
-  const year = Math.floor(index / 12);
-  const month = (index % 12) + 1;
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const day = Math.min(Number(previous.maturity.slice(8, 10)), lastDay);
-  return `${String(year)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+/** Whole calendar months from a start to a maturity that is a whole number of them. */
+function monthsBetween(start: IsoDate, maturity: IsoDate): number {
+  return (
+    (Number(maturity.slice(0, 4)) - Number(start.slice(0, 4))) * 12 +
+    (Number(maturity.slice(5, 7)) - Number(start.slice(5, 7)))
+  );
 }
 
 function bondView(position: FixedIncomePosition, on: IsoDate): FixedIncomeView {
