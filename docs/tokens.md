@@ -267,7 +267,7 @@ An 8px base, with 2px steps where density demands it.
 | Pill padding / radius | 3px 9px / 100px |
 | Input padding / radius | 7px 10px / 7px |
 | Segmented control | 2.5px track pad, 6px inner radius |
-| Icon tile radius | 22.6% (iOS squircle approximation) |
+| App icon tile radius | 22.6% (iOS squircle approximation); an asset-class tile uses `--radius` |
 
 **Layout uses flex/grid `gap`, never per-element margins.** Wide content — tables, charts,
 code — scrolls inside its own `overflow-x:auto` container so the page body never scrolls
@@ -296,6 +296,7 @@ room inside the card does not.
 | Component | Spec |
 |---|---|
 | **Card** | `--surface` on `--line` 1px, `--radius`, padding 18. Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. |
+| **Asset tile** | 40×40, radius `--radius` (the token, never a pixel value), 1px border. The glyph is 20×20 on a 24-unit viewBox, stroke 1.9, round caps and joins, never filled, in the class colour. The fill is a 16% tint of that colour over `--surface`; the border is a 76% tint of it. Both themes follow without a hex per theme. **Held to 3:1**: the glyph against its fill, and the border against `--surface`, which in light takes the 76% (72% is the least that reaches 3.0). Measured for every kind in both themes by `src/ui/tileContrast.test.ts`, reading the shipped rule. The border is there for the forced-colours reason given in §2, and is held to the same 3:1 as any border that is the sole marker of a shape. Decorative beside its label, hidden from assistive technology. **Which glyph a kind gets, what `other` looks like and why, and which tiles are drawn and unwired: `docs/design/icons.md`.** Colour of `other` is neutral `--muted`, never a hue; coral is reserved to liabilities. |
 | **Stat tile** | Label above (12px, sentence case), value below in Public Sans with `tabular-nums`, gap 3px. Positive `--teal`, negative `--coral`. |
 | **Pill** | 9.5px mono uppercase. Variants: `own` (indigo-soft/indigo), `warn` (brass), `due` (coral), `ok` (teal), `neutral` (surface-3/muted). |
 | **Table** | Header: `--surface-2`, 10.5px mono uppercase `--muted`, bottom hairline — the one place the micro-label survives. Rows: hairline separated, last row none. Total row: 1.5px `--line-strong` top border, weight 700. |
@@ -312,7 +313,7 @@ room inside the card does not.
   screen** — chosen by the class and not by its rank or position. Coloured by position,
   Bonds is one colour when it is third largest and another when it is second. The map is
   `kindColour` in `src/ui/labels.ts`, following the prototype's own (funds `c1`, equity
-  `c2`, bonds `c3`, ETFs `c4`, deposits `c6`, other `c7`); `c5` is the prototype's
+  `c2`, bonds `c3`, ETFs `c4`, deposits `c6`; `other` is the neutral `--muted` and takes no slot, because it is a stored value and not a sixth class); `c5` is the prototype's
   crypto slot and stays unused until a class needs it. A series that is not a class — the
   since-inception total — takes a neutral token (`--ink-2`), never a class's colour.
 - Chart text uses `--muted` for axes and `--ink` for value callouts — always tokens, never
