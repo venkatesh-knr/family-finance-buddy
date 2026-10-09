@@ -88,6 +88,9 @@ export type FixedIncomeView =
     }
   | { readonly ok: false; readonly reason: FixedIncomeRefusal };
 
+/** How far ahead a maturity is called out: the setting the design shows for "Bond and deposit maturity". */
+export const MATURITY_NOTICE_DAYS = 30;
+
 /** "7.500" as "7.5": the database pads a rate to three places, a person does not say it so. */
 export function trimRate(rate: string): string {
   if (!/^\d+(\.\d+)?$/.test(rate)) return rate;
