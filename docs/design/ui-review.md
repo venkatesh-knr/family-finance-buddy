@@ -41,6 +41,8 @@ by changing a token, say so and change the token instead.
 | 13 | The TOTP QR code does not render | high | `repo/auth.ts`, `features/auth/SignInScreen.tsx` |
 | 14 | Every MFA failure is reported as an expired code | high | `repo/auth.ts` — `verifyTotpCode` |
 | 15 | Three households all named "Demo household" | medium | seed / live project data |
+| 16 | A trend chart drawn from a single reading | medium | `features/overview/AssetsOverTime.tsx` |
+| 17 | Two headline figures differ by ₹12 lakh, unexplained | medium | `features/overview` |
 
 ---
 
@@ -409,6 +411,46 @@ update public.household set name = 'Demo household (old fixture)' where id = '<t
 ```
 
 Never run `supabase db reset --linked`, and never use `reset_demo_household` on one whose contents you want.
+
+## 16. A trend chart drawn from a single reading
+
+Found 9 October, from the screenshots `npm run test:screens` produces. Findings
+16 and 17 both come from looking at Overview as an image rather than as code,
+which is the point of that command.
+
+**What you see.** "Assets over time" spans Aug 26 to Sep 26 as a perfectly flat
+line at ₹50.01 L, with the area beneath it filled, axis ticks to ₹60 L, and an
+endpoint dot and label. It looks like a measured trend. It is one data point.
+
+**Why it is wrong.** The flatness is not a finding about the household's assets;
+it is an artifact of having nothing to compare. A line between one point and
+itself asserts stability that was never observed, and this project is otherwise
+careful never to show a figure as more settled than it is — the same instinct
+behind refusing a total that cannot be converted honestly.
+
+**What to do.** An empty state until there are two readings: the figure, and a
+line of text saying the series starts with the next month-end close. The chart
+arrives when it has something to draw. Keep the card — its absence would be
+worse than its emptiness, because the card is also what tells you the close is
+running.
+
+## 17. Two headline figures differ by ₹12 lakh, unexplained
+
+**What you see.** Net worth reads ₹62.58 L at hero scale, top left. Assets over
+time reads ₹50.01 L at its endpoint, top right, at a similar weight. Twelve lakh
+apart, side by side, on the screen a person opens first.
+
+**Why it is wrong.** Both figures are correct and the reason they differ is
+stated — "Other members' private holdings are not in this line: their detail is
+theirs, and a sum without dates cannot be placed on a month." But that sentence
+is grey body text below the chart, and the eye reaches the two numbers first.
+A reader who notices the gap before the explanation concludes one of them is
+wrong, and the private-entry design depends on people trusting that the totals
+add up.
+
+**What to do.** Put the qualification where the figure is, not beneath the card
+— the caveat marker already exists for exactly this and is used well elsewhere
+on the same screen. The chart's endpoint label is the place for it.
 
 ## Order
 

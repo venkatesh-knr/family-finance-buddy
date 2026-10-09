@@ -111,6 +111,15 @@ the maintainer's standing working agreements, and where the last session stopped
   *looks* like its mock is a person with both open; the check only stops the
   ledger becoming fiction. Deliberate departures go in that file's Departures
   table with the reason, so they are decisions rather than drift.
+- **A finished vertical slice gets a design-conformance review before I see it.** Invoke the
+  `design-conformance` subagent, read what it says, and tell me which findings you agree with and
+  which you reject and why — do not silently act on all of them, and do not silently discard one.
+  Invoke it by naming the slice and the documents, never the conclusion. Good: "Review the
+  currency control slice against blueprint §7 and tokens.md". Bad: "Check the currency control is
+  correct" and "Verify the currency control follows the spec": they tell it what answer to come
+  back with. It has its own context and reads the specification itself; point at the work, do not
+  frame the verdict. Never tell it what you expect it to find, and never mention that you wrote the
+  code under review.
 - Respect OS text size to 200%; no fixed-height container holds text.
 - **Never encode meaning in colour alone** — a gain carries a sign or arrow as well as a hue.
 - Charts read colours from tokens, never literals, or they break in one theme.
