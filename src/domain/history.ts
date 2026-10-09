@@ -120,7 +120,15 @@ export function assetHistory(options: {
   const { rates, display, asOf } = options;
   // Archived holdings stay in the dates before they were archived. Dropping them
   // outright made the past change whenever somebody tidied up.
-  const holdings = options.holdings.filter((h) => !h.isArchived || h.archivedOn !== null);
+  //
+  // Only if it was ever read. An archived holding nobody ever gave a value to has nothing to
+  // draw and nothing that was known: counted as held before its archive date it was "unread" on
+  // every date, which stopped the line at the last reading for a holding that was added and
+  // archived since.
+  const everRead = new Set(options.readings.map((r) => r.holdingId));
+  const holdings = options.holdings.filter(
+    (h) => !h.isArchived || (h.archivedOn !== null && everRead.has(h.id)),
+  );
   if (!holdings.some((h) => !h.isArchived)) return { ok: false, reason: 'nothing' };
   const heldOn = (h: HistoryHolding, date: IsoDate): boolean =>
     !h.isArchived || (h.archivedOn !== null && date < h.archivedOn);

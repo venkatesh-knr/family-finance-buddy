@@ -582,6 +582,27 @@ describe('readingGaps, holding by holding', () => {
     expect(gaps.missingMonths).toEqual(['April', 'May']);
   });
 
+  it('asks nothing of an archived holding that was never read, whatever months it was held through', () => {
+    // Added and archived without a value ever being given: there is no peak to be a lower bound of.
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'gone', isArchived: true, archivedOn: '2026-08-15' })],
+      valuations: monthly('h1', 1, 9),
+      year: 2026,
+      today: '2026-10-09',
+    });
+    expect(gaps.missingMonths).toEqual([]);
+  });
+
+  it('still asks for the months a read holding was held, before it was archived', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'gone', isArchived: true, archivedOn: '2026-08-15' })],
+      valuations: monthly('gone', 1, 3),
+      year: 2026,
+      today: '2026-10-09',
+    });
+    expect(gaps.missingMonths).toEqual(['April', 'May', 'June', 'July']);
+  });
+
   it('asks nothing of an archived holding whose archive date is not known, and never lists it as unread', () => {
     const gaps = readingGaps({
       holdings: [holding({ id: 'h2', isArchived: true, archivedOn: null })],

@@ -276,7 +276,8 @@ const MONTHS = [
  * reading from the month it was opened (from January if nobody said when) until
  * the month before it was archived, because its peak may have fallen in those
  * months and the archive does not unwrite them. An archived holding with no
- * archive date cannot be placed and is owed nothing.
+ * archive date cannot be placed and is owed nothing, and neither is one that was
+ * never read at all: there is no peak to be a lower bound of.
  *
  * A month that has not finished is not missing — it is unfinished. Calling it a
  * gap would show a permanent-looking fault every single month.
@@ -288,6 +289,9 @@ export function readingGaps(options: {
   readonly today: IsoDate;
 }): ReadingGaps {
   const { holdings, valuations, year, today } = options;
+
+  const everRead = new Set(valuations.map((v) => v.holdingId));
+  const owed = holdings.filter((h) => !h.isArchived || everRead.has(h.id));
 
   const readIn = new Map<string, Set<number>>();
   for (const v of valuations) {
@@ -317,14 +321,13 @@ export function readingGaps(options: {
 
   const missing: MonthGap[] = [];
   for (let month = 1; month <= lastComplete; month++) {
-    const holdingIds = holdings
+    const holdingIds = owed
       .filter((h) => month >= owedFrom(h) && month <= owedThrough(h))
       .filter((h) => readIn.get(h.id)?.has(month) !== true)
       .map((h) => h.id);
     if (holdingIds.length > 0) missing.push({ month: MONTHS[month - 1] as string, holdingIds });
   }
 
-  const everRead = new Set(valuations.map((v) => v.holdingId));
   const neverRead = holdings.filter((h) => !h.isArchived && !everRead.has(h.id)).map((h) => h.id);
 
   return { missing, missingMonths: missing.map((m) => m.month), neverRead };

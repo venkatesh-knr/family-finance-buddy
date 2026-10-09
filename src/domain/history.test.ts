@@ -180,6 +180,39 @@ describe('assetHistory', () => {
     expect(before.ok && after.ok && before.points[1]).toEqual(after.ok && after.points[1]);
   });
 
+  it('does not count an archived holding that was never read, which nothing was ever known of', () => {
+    // Added and archived since the last reading: as-at is the day of that reading, which is before
+    // the archive, so the holding was "held" then and "unread", and stopped the whole line.
+    const never = { ...holding('never'), openedOn: '2024-01-01', isArchived: true, archivedOn: '2026-10-09' };
+    const withIt = run(
+      [holding('a'), never],
+      [reading('a', '2026-01-10', inr(1000)), reading('a', '2026-09-30', inr(1000))],
+      '2026-09-30',
+    );
+    const without = run(
+      [holding('a')],
+      [reading('a', '2026-01-10', inr(1000)), reading('a', '2026-09-30', inr(1000))],
+      '2026-09-30',
+    );
+    expect(withIt.ok).toBe(true);
+    expect(withIt).toEqual(without);
+  });
+
+  it('still counts an archived holding that was read, for the dates before it was archived', () => {
+    const gone = { ...holding('gone'), isArchived: true, archivedOn: '2026-10-09' };
+    const result = run(
+      [holding('a'), gone],
+      [
+        reading('a', '2026-08-31', inr(1000)),
+        reading('a', '2026-09-30', inr(1000)),
+        reading('gone', '2026-08-31', inr(500)),
+        reading('gone', '2026-09-30', inr(500)),
+      ],
+      '2026-09-30',
+    );
+    expect(result.ok && result.points[result.points.length - 1]).toEqual({ date: '2026-09-30', total: inr(1500) });
+  });
+
   it('leaves an archived holding with no known archive date out of every point', () => {
     const gone = { ...holding('gone'), isArchived: true, archivedOn: null };
     const result = run(
