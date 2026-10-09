@@ -305,6 +305,21 @@ The maintainer's decision, on the open question above: a deposit reaches net wor
   prompt to record it; one that has not started, or cannot be valued, has no value to give. The Close message names the counts.
 - **Unread is not failed.** The button waits until deposits and bonds have been read. A first version let a quick click through while they
   were still loading and told the person they "could not be read", which was false; found by the end-to-end test.
+- **A position that has paid out is left out from the day it did, worked out from the terms.** Found by the review of this slice: with a
+  reading written at every close, every maturity would have left its last month-end value in net worth at the pre-maturity figure until
+  somebody archived it by hand, and counted twice once the money was in a bank balance. A zero reading would show a false loss, since
+  the cost stays counted; auto-archiving would drop it with no way back from the screen. So it is derived (`paidOutHoldings`) and applied
+  where the totals are made, on Overview and on the Holdings portfolio alike so the two cannot disagree: nothing is written or archived,
+  its history before the day it paid out is kept, it stops being owed readings, and correcting the terms puts it back. A deposit that
+  renews itself is never paid out.
+- **Close does not run if deposits and bonds could not be read.** It would carry a stale mid-month reading into the month-end slot for
+  good, which is the thing the order above exists to prevent. The button is disabled and says why. A failure to read the rating history
+  alone is a separate failure, and does not stop a close.
+- **The Close message names what was left out and does not count it twice.** Renewals not recorded, paid out, not started and could not
+  be valued are each named; "unread in all" is the SQL function's own count, which includes them.
+- **The Holdings note names the Overview only to an owner or a partner**, who alone can close a month.
+- **The end-to-end test closes last month for the whole demo household,** which writes readings that cannot be deleted. The first run
+  carried three; after that it is idempotent and writes only for each run's own deposit, which is archived.
 - **Still true:** the current month is not in net worth until it is closed, or the link on the row is used, and the row's link stores
   source `manual`, since a `computed` source would need a migration.
 

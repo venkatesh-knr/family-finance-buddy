@@ -251,7 +251,7 @@ function lastMonthEndIst(): string {
   return new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10);
 }
 
-test('closing the month writes a deposit its value from the terms, and it is in net worth', async ({ page }) => {
+test('closing the month writes a deposit its month-end reading from the terms', async ({ page }) => {
   const name = `e2e-close-${Date.now()}`;
   const monthEnd = lastMonthEndIst();
   const day = (offsetDays: number, from = monthEnd) => {
