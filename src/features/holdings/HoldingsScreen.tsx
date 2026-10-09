@@ -7,6 +7,7 @@
  * month is only fixable while you can still remember to fix it.
  */
 
+import { FixedIncome } from './FixedIncome.tsx';
 import { splitFundName } from './fundName.ts';
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
@@ -317,6 +318,15 @@ export function HoldingsScreen({
 
         </Card>
       )}
+
+      <FixedIncome
+        listing={listing}
+        privacy={privacy}
+        canWrite={canWrite}
+        onChanged={() => {
+          void reload();
+        }}
+      />
 
       <Card
         title={
