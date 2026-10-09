@@ -105,6 +105,20 @@ an authoritative document, it says which and what.
 - **The switcher tells households of the same name apart** (role, then date created, then a short id). Which households
   exist is the maintainer's decision, and a client cannot rename or remove one.
 
+## Honest figures (October 2026, from the first design-conformance review)
+
+- **A cost nobody recorded is not a cost of zero.** `assetTotals` and `allocationByKind` summed a valued holding's
+  missing cost as nothing, which turned a gain into a larger gain and a class return into +200%, with an up-arrow beside it.
+  The gain and the return are now refused where a valued holding has no cost (`costMissing`, beside `costShort`), on Overview
+  and on Holdings, which had the same sum. A cost recorded as nothing (bonus units) is a cost; a holding nobody has read is on
+  neither side of the comparison, so it is not a reason to refuse.
+- **A failed request is not an empty result.** A rejected loans request was read as "no loans", so net worth showed high by
+  the whole debt under a caveat saying nothing was owed; a rejected rates request was read as "a rate is missing, add it". Each
+  is now recorded and said on the figure, as the private-holdings failure already was, and the "no debts" note and the add-a-rate
+  button are not shown when the request failed.
+- **Both were found by running the design-conformance subagent twice** (opus, then sonnet) on the same slice. Each found two real
+  high-severity problems the other missed, so the review is not run on one model alone without knowing that.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan

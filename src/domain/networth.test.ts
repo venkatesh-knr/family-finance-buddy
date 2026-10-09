@@ -174,7 +174,7 @@ describe('assetTotals', () => {
       expect(totals[0]?.costShort).toBe(0);
     });
 
-    it('refuses in its own currency and no other', () => {
+    it('refuses in its own currency and no other (short cost)', () => {
       const totals = assetTotals({
         holdings: [short, holding({ id: 'h3', currency: 'USD', cost: usd(1_000) })],
         valuations: [
@@ -184,6 +184,84 @@ describe('assetTotals', () => {
       });
       expect(totals.find((t) => t.currency === 'INR')?.gain).toBeNull();
       expect(totals.find((t) => t.currency === 'USD')?.gain?.minor).toBe(25_000n);
+    });
+  });
+
+  /**
+   * A cost nobody recorded is not a cost of zero ("lots.ts"). Summed as zero, one
+   * holding read at 5 lakh and never given a cost turns a 5 lakh gain into a
+   * 10 lakh one and a class return into +200%, and the arrow beside it says so.
+   */
+  describe('a valued holding whose cost was never recorded', () => {
+    const known = holding({ id: 'h1', cost: inr(500_000) });
+    const unknown = holding({ id: 'h2', cost: null });
+
+    it('refuses the gain, and counts why', () => {
+      const totals = assetTotals({
+        holdings: [known, unknown],
+        valuations: [
+          reading('h1', '2026-09-30', inr(1_000_000)),
+          reading('h2', '2026-09-30', inr(500_000)),
+        ],
+      });
+      expect(totals[0]?.gain).toBeNull();
+      expect(totals[0]?.costMissing).toBe(1);
+      expect(totals[0]?.costShort).toBe(0);
+    });
+
+    it('keeps the value, which is right, and the invested figure of what is known', () => {
+      const totals = assetTotals({
+        holdings: [known, unknown],
+        valuations: [
+          reading('h1', '2026-09-30', inr(1_000_000)),
+          reading('h2', '2026-09-30', inr(500_000)),
+        ],
+      });
+      expect(totals[0]?.value.minor).toBe(150_000_000n);
+      expect(totals[0]?.investedValued.minor).toBe(50_000_000n);
+    });
+
+    it('does not refuse until the holding has been read, since it is then on neither side', () => {
+      const totals = assetTotals({
+        holdings: [known, unknown],
+        valuations: [reading('h1', '2026-09-30', inr(600_000))],
+      });
+      expect(totals[0]?.gain?.minor).toBe(10_000_000n);
+      expect(totals[0]?.costMissing).toBe(0);
+    });
+
+    it('treats a cost recorded as nothing as a cost: bonus units really did cost nothing', () => {
+      const totals = assetTotals({
+        holdings: [holding({ id: 'h1', cost: inr(0) })],
+        valuations: [reading('h1', '2026-09-30', inr(1_000))],
+      });
+      expect(totals[0]?.gain?.minor).toBe(100_000n);
+      expect(totals[0]?.costMissing).toBe(0);
+    });
+
+    it('refuses in its own currency and no other', () => {
+      const totals = assetTotals({
+        holdings: [unknown, holding({ id: 'h3', currency: 'USD', cost: usd(1_000) })],
+        valuations: [
+          reading('h2', '2026-09-30', inr(500_000)),
+          reading('h3', '2026-09-30', usd(1_250)),
+        ],
+      });
+      expect(totals.find((t) => t.currency === 'INR')?.gain).toBeNull();
+      expect(totals.find((t) => t.currency === 'USD')?.gain?.minor).toBe(25_000n);
+    });
+
+    it('reports a short cost and a missing one separately when both are present', () => {
+      const totals = assetTotals({
+        holdings: [holding({ id: 'h1', cost: inr(1_000), costIsShort: true }), unknown],
+        valuations: [
+          reading('h1', '2026-09-30', inr(50_000)),
+          reading('h2', '2026-09-30', inr(5_000)),
+        ],
+      });
+      expect(totals[0]?.gain).toBeNull();
+      expect(totals[0]?.costShort).toBe(1);
+      expect(totals[0]?.costMissing).toBe(1);
     });
   });
 });
@@ -384,5 +462,34 @@ describe('readingGaps', () => {
       today: '2026-06-01',
     };
     expect(readingGaps(input)).toEqual(readingGaps(input));
+  });
+});
+
+describe('allocationByKind, a class holding a cost nobody recorded', () => {
+  const valuations = [
+    reading('h1', '2026-09-30', inr(1_000_000)),
+    reading('h2', '2026-09-30', inr(500_000)),
+    reading('h3', '2026-09-30', inr(200_000)),
+  ];
+  const holdings = [
+    holding({ id: 'h1', kind: 'mutual_fund', cost: inr(500_000) }),
+    holding({ id: 'h2', kind: 'mutual_fund', cost: null }),
+    holding({ id: 'h3', kind: 'bond', cost: inr(150_000) }),
+  ];
+
+  it('has no gain and no return, rather than +200% on a cost of what is known', () => {
+    const rows = allocationByKind({ holdings, valuations, currency: 'INR' });
+    const funds = rows.find((r) => r.kind === 'mutual_fund');
+    expect(funds?.gain).toBeNull();
+    expect(funds?.returnOnCost).toBeNull();
+    expect(funds?.costMissing).toBe(1);
+  });
+
+  it('leaves a class that has all its costs alone', () => {
+    const rows = allocationByKind({ holdings, valuations, currency: 'INR' });
+    const bonds = rows.find((r) => r.kind === 'bond');
+    expect(bonds?.gain?.minor).toBe(5_000_000n);
+    expect(bonds?.returnOnCost).toBeCloseTo(1 / 3, 10);
+    expect(bonds?.costMissing).toBe(0);
   });
 });

@@ -79,13 +79,19 @@ export interface CurrencyTotal {
   /**
    * value − investedValued. Negative is a loss and is shown as one.
    *
-   * Null where a valued holding's cost is short: the difference would be a
-   * number that never happened, and printing it would be worse than saying
+   * Null where a valued holding's cost is short or missing: the difference would be
+   * a number that never happened, and printing it would be worse than saying
    * there is none. The value, and `invested`, are still true and still here.
    */
   readonly gain: Money | null;
   /** How many valued holdings have a cost covering only part of their units. */
   readonly costShort: number;
+  /**
+   * How many valued holdings have no cost recorded at all. A cost nobody recorded is
+   * not a cost of zero: counted as one it would turn a gain into a larger gain, so
+   * the gain is refused, for the same reason it is where the cost is short.
+   */
+  readonly costMissing: number;
   /** How many holdings have never been read. A total with these in it is short. */
   readonly unvalued: number;
 }
@@ -97,7 +103,14 @@ export function assetTotals(options: {
   const latest = latestValuationPerHolding(options.valuations);
   const buckets = new Map<
     string,
-    { value: bigint; invested: bigint; investedValued: bigint; unvalued: number; costShort: number }
+    {
+      value: bigint;
+      invested: bigint;
+      investedValued: bigint;
+      unvalued: number;
+      costShort: number;
+      costMissing: number;
+    }
   >();
 
   for (const holding of options.holdings) {
@@ -109,6 +122,7 @@ export function assetTotals(options: {
       investedValued: 0n,
       unvalued: 0,
       costShort: 0,
+      costMissing: 0,
     };
 
     const reading = latest.get(holding.id);
@@ -123,6 +137,7 @@ export function assetTotals(options: {
       // Only once it has been read: an unvalued holding is on neither side of
       // the comparison, so its short cost is not a reason to refuse it.
       if (holding.costIsShort) bucket.costShort += 1;
+      if (holding.cost === null) bucket.costMissing += 1;
     }
 
     buckets.set(holding.currency, bucket);
@@ -134,8 +149,9 @@ export function assetTotals(options: {
       value: money(b.value, currency),
       invested: money(b.invested, currency),
       investedValued: money(b.investedValued, currency),
-      gain: b.costShort > 0 ? null : money(b.value - b.investedValued, currency),
+      gain: b.costShort > 0 || b.costMissing > 0 ? null : money(b.value - b.investedValued, currency),
       costShort: b.costShort,
+      costMissing: b.costMissing,
       unvalued: b.unvalued,
     }))
     .sort((a, b) => (b.value.minor > a.value.minor ? 1 : b.value.minor < a.value.minor ? -1 : 0));
@@ -148,10 +164,12 @@ export interface AllocationRow {
   readonly share: number;
   /** What was paid for the holdings in this class that have been valued. */
   readonly invested: Money;
-  /** value − invested. Negative is a loss, and shown as one. Null where the cost is short. */
+  /** value − invested. Negative is a loss, and shown as one. Null where the cost is short or missing. */
   readonly gain: Money | null;
   /** How many holdings in this class have a cost covering only part of their units. */
   readonly costShort: number;
+  /** How many valued holdings in this class have no cost recorded: see `CurrencyTotal`. */
+  readonly costMissing: number;
   /**
    * Gain as a fraction of cost, or null when nothing was paid — a class with
    * no recorded cost has no return, and 0% would be a claim rather than an
@@ -166,7 +184,10 @@ export function allocationByKind(options: {
   readonly currency: string;
 }): readonly AllocationRow[] {
   const latest = latestValuationPerHolding(options.valuations);
-  const byKind = new Map<string, { value: bigint; invested: bigint; costShort: number }>();
+  const byKind = new Map<
+    string,
+    { value: bigint; invested: bigint; costShort: number; costMissing: number }
+  >();
   let total = 0n;
 
   for (const holding of options.holdings) {
@@ -174,10 +195,11 @@ export function allocationByKind(options: {
     const reading = latest.get(holding.id);
     if (reading === undefined) continue;
 
-    const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n, costShort: 0 };
+    const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n, costShort: 0, costMissing: 0 };
     bucket.value += reading.amount.minor;
     bucket.invested += holding.cost?.minor ?? 0n;
     if (holding.costIsShort) bucket.costShort += 1;
+    if (holding.cost === null) bucket.costMissing += 1;
     byKind.set(holding.kind, bucket);
     total += reading.amount.minor;
   }
@@ -198,10 +220,11 @@ export function allocationByKind(options: {
       invested: money(b.invested, options.currency),
       // A short cost has no return, for the same reason it has no gain: a class
       // holding one would print a percentage set against money never paid.
-      gain: b.costShort > 0 ? null : money(b.value - b.invested, options.currency),
+      gain: b.costShort > 0 || b.costMissing > 0 ? null : money(b.value - b.invested, options.currency),
       costShort: b.costShort,
+      costMissing: b.costMissing,
       returnOnCost:
-        b.costShort > 0 || b.invested === 0n
+        b.costShort > 0 || b.costMissing > 0 || b.invested === 0n
           ? null
           : Number(b.value - b.invested) / Number(b.invested),
     }))
