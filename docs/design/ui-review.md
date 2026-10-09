@@ -333,6 +333,14 @@ blocked by `img-src` in production — the QR would break on Pages and nowhere
 you would notice. Verify the fix by scanning it with a phone, not by looking at
 it: a QR that draws but does not decode is identical in a screenshot.
 
+**Status: fixed in code, not yet scanned.** `src/lib/qr.ts` (`svgMarkupFromQr`, 7 tests) strips the prefix in
+the repository layer, accepts the raw, percent-encoded, `charset` and base64 spellings, and keeps a literal `%`
+in raw markup instead of failing to decode it. As the finding says, the component keeps injecting markup, not an
+`<img>`. One addition: because it is injected as markup, anything that is not a plain SVG, or has a script, an
+event handler, a `javascript:` URL or a `foreignObject`, comes back null and the screen falls back to typing the
+secret. **Still to do, by a person: scan it with a phone**, since a QR that draws but does not decode looks the same
+in a screenshot. Unit tests prove the markup; they cannot prove the code.
+
 ## 14. Every MFA failure is reported as an expired code
 
 **What you see.** A correct six-digit code rejected four times in a row with
@@ -355,6 +363,14 @@ an abandoned unverified factor cannot be listed, so reusing a fixed name would
 turn one failed attempt into a permanent lockout. Leave it. This finding is only
 about the error text.
 
+**Status: fixed in code.** `src/repo/authErrors.ts` (`classifyMfaFailure` and `describeMfaFailure`, 14 tests)
+classifies the failure before describing it: a wrong code keeps the friendly sentence, now naming the phone's
+clock as the other usual cause; a stale session says the sign-in has timed out and to sign in again, and that
+the code was not the problem; a vanished factor says to start the setup again; a rate limit, a network failure and
+a late code each say so. A stale session is checked **before** a mismatch, because that ordering is the fault. No raw
+server text is shown, and an unknown failure keeps only its status and code as a short reference. The reload remint
+is untouched, as the finding asks.
+
 ## 15. Three households all named "Demo household"
 
 **What you see.** The household switcher offers three options, every one of
@@ -369,6 +385,30 @@ do its job when every option wears it.
 
 **What to do.** Decide which survive. Remove the rest, or name them so a person
 can tell them apart. Worth doing before the count reaches five.
+
+**Status: half fixed.** What is code is done: the switcher no longer offers options that read alike. A repeated name
+now gets the least that tells its group apart (the role, then the date created, then a short piece of the id), so
+three `Demo household` become `Demo household · created 7 Sept 2026` and so on; a name that is not repeated is
+untouched (`src/app/householdLabels.ts`, 7 tests). **What is data is the maintainer's:** which of the three survive,
+and renaming or removing the rest. A client cannot rename a household (there is no write policy on `household`), and
+nothing here deletes one. To see them, in the Supabase SQL editor:
+
+```sql
+select h.id, h.name, h.kind, h.created_at,
+       (select count(*) from public.membership m where m.household_id = h.id and m.revoked_at is null) as members,
+       (select count(*) from public.expense_txn e where e.household_id = h.id) as expenses,
+       (select count(*) from public.holding x where x.household_id = h.id) as holdings
+  from public.household h
+ order by h.created_at;
+```
+
+and, to rename one so it is recognisable in the switcher:
+
+```sql
+update public.household set name = 'Demo household (old fixture)' where id = '<the id from above>';
+```
+
+Never run `supabase db reset --linked`, and never use `reset_demo_household` on one whose contents you want.
 
 ## Order
 

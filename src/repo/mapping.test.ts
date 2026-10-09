@@ -127,7 +127,23 @@ describe('toHousehold', () => {
       baseCurrency: 'INR',
       displayCurrency: 'INR',
       fyStartMonth: 4,
+      createdOn: null,
     });
+  });
+
+  it('carries the day it was created, in IST, to tell two of one name apart', () => {
+    const base = {
+      id: 'h-1',
+      name: 'Demo household',
+      kind: 'demo',
+      base_currency: 'INR',
+      display_currency: 'INR',
+      fy_start_month: 4,
+    };
+    // 22:00 UTC on the 6th is 03:30 on the 7th in Kolkata.
+    expect(toHousehold({ ...base, created_at: '2026-09-06T22:00:00Z' }).createdOn).toBe('2026-09-07');
+    expect(toHousehold({ ...base, created_at: 'not a date' }).createdOn).toBeNull();
+    expect(toHousehold(base).createdOn).toBeNull();
   });
 });
 

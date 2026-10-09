@@ -72,6 +72,11 @@ export interface Household {
   /** 4 for the Indian tax year. */
   readonly fyStartMonth: number;
   /**
+   * The calendar day, in IST, the household was created; null when the row did not say.
+   * Only for telling two households of the same name apart.
+   */
+  readonly createdOn: IsoDate | null;
+  /**
    * The FIRE assumptions, which belong to the household and not to a phone.
    *
    * They were React state until now, so two members of one household saw two
