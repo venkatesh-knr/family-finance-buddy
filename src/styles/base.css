@@ -1058,7 +1058,7 @@
   }
 
   /*
-   * An asset-class row: a colour, a name with its share beneath, and the
+   * An asset-class row: a tile, a name with its share beneath, and the
    * figures right-aligned.
    *
    * It replaced a bar chart. A bar shows one thing — relative size — and a
@@ -1136,11 +1136,32 @@
     font-weight: 600;
   }
 
-  .alloc-dot {
-    border-radius: 50%;
+  /*
+   * An asset class's tile: 40px, radius --radius, a 20px glyph, a 1px border. The glyph is the
+   * class colour and the ground is a tint of it over the card, so a tile is right in both themes
+   * without a colour written here: --tile is set from the class. In rem, so it grows with the
+   * reader's text size. The border is the same reasoning as the pressed segment's: forced-colours
+   * mode drops a tint and keeps a border. It is held to 3:1 against the card (docs/design/icons.md §5),
+   * which in light takes a 76% tint, nearly the glyph colour; tileContrast.test.ts reads this rule and
+   * measures it, in both themes, for every kind.
+   */
+  .asset-tile {
+    align-items: center;
+    background: color-mix(in srgb, var(--tile) 16%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--tile) 76%, var(--surface));
+    border-radius: var(--radius);
+    box-sizing: border-box;
+    color: var(--tile);
+    display: inline-flex;
     flex: none;
-    height: 0.7em;
-    width: 0.7em;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+  }
+
+  .asset-tile svg {
+    height: 1.25rem;
+    width: 1.25rem;
   }
 
   .alloc-name {

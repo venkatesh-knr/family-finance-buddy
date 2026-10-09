@@ -22,7 +22,8 @@ import {
 import { istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { householdAssets, householdSpending } from '../../repo/summary.ts';
-import { kindColour, kindLabel } from '../../ui/labels.ts';
+import { AssetTile } from '../../ui/AssetTile.tsx';
+import { kindLabel } from '../../ui/labels.ts';
 import { Card, Caveat, Problem } from '../../ui/primitives.tsx';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -187,11 +188,7 @@ export function SummaryScreen({
                 <ul className="mt-1.5">
                   {group.rows.map((row) => (
                     <li key={row.kind} className="alloc-row">
-                      <span
-                        className="alloc-dot"
-                        aria-hidden="true"
-                        style={{ background: kindColour(row.kind) }}
-                      />
+                      <AssetTile kind={row.kind} />
                       <span className="min-w-0">
                         <span className="alloc-name block">{kindLabel(row.kind)}</span>
                         <span className="alloc-share block">{(row.share * 100).toFixed(1)}% of what is valued</span>

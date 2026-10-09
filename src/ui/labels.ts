@@ -1,3 +1,5 @@
+import { ASSET_CLASSES, assetClass, classColour } from './assetClass.ts';
+
 /**
  * What an asset class is called on screen.
  *
@@ -8,17 +10,13 @@
  * headed "bond" is exactly the sort of small wrongness that makes an app feel
  * unfinished.
  *
- * Labels only. What the classes are, and which exist, belongs to
- * `INSTRUMENT_KINDS` in the repository layer.
+ * Derived from `ASSET_CLASSES` (`assetClass.ts`), where a class's label, its ramp slot and its
+ * tile are one record. What the classes are, and which exist, belongs to `INSTRUMENT_KINDS` in the
+ * repository layer.
  */
-export const INSTRUMENT_KIND_LABEL: Record<string, string> = {
-  equity: 'Equity',
-  etf: 'ETF',
-  mutual_fund: 'Mutual funds',
-  bond: 'Bonds',
-  deposit: 'Deposits',
-  other: 'Other',
-};
+export const INSTRUMENT_KIND_LABEL: Record<string, string> = Object.fromEntries(
+  ASSET_CLASSES.map((c) => [c.kind, c.label]),
+);
 
 /** The label for one kind, falling back to the stored value rather than to nothing. */
 export function kindLabel(kind: string): string {
@@ -54,22 +52,18 @@ export function taxClassLabel(assetClass: string): string {
  * learnt the palette from one screen is misled by the next. The donut and the
  * allocation rows both read this, so a class is one colour everywhere.
  *
- * Tokens only — the categorical `--c1…--c7` — so both themes work. The order
+ * Tokens only — the categorical `--c1…--c7`, and `--muted` for `other`, which is not a hue — so
+ * both themes work. The order
  * follows the prototype's class map: funds, equity, bonds, then ETFs (which
  * carry the foreign equity slot), deposits, and anything unclassified last.
  * `--c5` is the prototype's crypto slot and is left unused until a class needs
  * it, rather than given to something else and taken back.
  */
-export const INSTRUMENT_KIND_COLOUR: Record<string, string> = {
-  mutual_fund: 'var(--c1)',
-  equity: 'var(--c2)',
-  bond: 'var(--c3)',
-  etf: 'var(--c4)',
-  deposit: 'var(--c6)',
-  other: 'var(--c7)',
-};
+export const INSTRUMENT_KIND_COLOUR: Record<string, string> = Object.fromEntries(
+  ASSET_CLASSES.map((c) => [c.kind, classColour(c)]),
+);
 
 /** The colour for one kind; an unknown kind is drawn as `other`, not as nothing. */
 export function kindColour(kind: string): string {
-  return INSTRUMENT_KIND_COLOUR[kind] ?? 'var(--c7)';
+  return classColour(assetClass(kind));
 }

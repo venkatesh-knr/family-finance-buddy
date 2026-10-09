@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibrant direction — design canvas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  body { margin: 0; background: #05070C; font-family: 'Public Sans', system-ui, sans-serif; color: #C3CEDF; }
+  .n { font-variant-numeric: tabular-nums; }
+  .m { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  .cap { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8595AD; }
+  a { color: #F0B429; } a:hover { color: #FFC84D; }
+  .doc { max-width: 1900px; margin: 0 auto; padding: 40px 24px 80px; }
+  .doc > header { margin: 0 0 40px; }
+  .doc h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 40px; line-height: 1.15; margin: 0 0 12px; color: #EEF3FA; }
+  .doc > header p { margin: 0; max-width: 70ch; font-size: 15px; line-height: 1.6; color: #8595AD; }
+  .boards { display: flex; flex-wrap: wrap; gap: 44px; align-items: flex-start; }
+  .board > h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8595AD; margin: 0 0 10px; }
+  .board > div { border: 1px solid #1C2330; border-radius: 14px; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="doc">
+<header>
+<h1>Saturation, depth and warmth &mdash; same structure, new tokens</h1>
+<p>Static export of the design canvas that set the vibrant direction. Four artboards: two screens redrawn at phone
+width, the token change itself, and the icon and component kit. <strong>This file is a reference, not an authority.</strong>
+It is drawn dark-only, so no hex in it settles light theme; where it disagrees with <code>docs/tokens.md</code>,
+tokens.md wins. The icon rules extracted from the Kit board live in <code>docs/design/icons.md</code>, which is
+the authority for those.</p>
+</header>
+<div class="boards">
+<section class="board">
+<h2>Overview — phone</h2>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 14px 12px 0; display: flex; flex-direction: column; gap: 13px">
+
+    <!-- household strip -->
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #8595AD">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #F0B429; background: #3A2C0C; border: 1px solid #5C4612; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+
+    <!-- hero -->
+    <div style="position: relative; border-radius: 18px; padding: 20px 18px 18px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden">
+      <div style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8595AD">Net worth</span>
+        <div style="display: flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px">
+          <span style="font-size: 11.5px; font-weight: 600; color: #0B1220; background: #EEF3FB; border-radius: 999px; padding: 4px 11px">Household</span>
+          <span style="font-size: 11.5px; color: #8595AD; padding: 4px 11px">Mine</span>
+        </div>
+      </div>
+
+      <div class="n" style="font-size: 44px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05">₹62.58<span style="font-size: 28px; font-weight: 600; color: #D7E1F0; margin-left: 2px">L</span></div>
+
+      <div style="display: flex; align-items: center; gap: 9px; margin-top: 11px">
+        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: #2ED3A8; background: #0C2F28; border: 1px solid #16513F; border-radius: 999px; padding: 4px 10px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+          <span class="n">+₹1.24 L</span>
+        </span>
+        <span style="font-size: 12px; color: #8595AD">this month · <span class="n">+2.0%</span></span>
+      </div>
+    </div>
+
+    <!-- two currencies -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div style="border-radius: 15px; padding: 14px; background: #121825; border: 1px solid #222C41">
+        <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 8px">
+          <span style="width: 7px; height: 7px; border-radius: 999px; background: #7B9CFF"></span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8595AD">India</span>
+        </div>
+        <div class="n" style="font-size: 19px; font-weight: 600">₹13.04<span style="font-size: 14.5px; font-weight: 600; color: #D7E1F0; margin-left: 1px">L</span></div>
+        <div class="n" style="font-size: 11.5px; color: #8595AD; margin-top: 3px">invested ₹2.75 L</div>
+      </div>
+      <div style="border-radius: 15px; padding: 14px; background: #121825; border: 1px solid #222C41">
+        <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 8px">
+          <span style="width: 7px; height: 7px; border-radius: 999px; background: #B07CF0"></span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8595AD">Abroad</span>
+        </div>
+        <div class="n" style="font-size: 19px; font-weight: 600">$41.8<span style="font-size: 14.5px; font-weight: 600; color: #D7E1F0; margin-left: 1px">K</span></div>
+        <div style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: #2ED3A8; margin-top: 3px">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+          <span class="n">22.9% on cost</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- allocation -->
+    <div style="border-radius: 18px; padding: 17px; background: #121825; border: 1px solid #222C41">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px">
+        <span style="font-size: 14.5px; font-weight: 600">Allocation</span>
+        <span style="font-size: 11.5px; color: #8595AD">India · <span class="n">₹13.04 L</span></span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 16px">
+        <svg width="112" height="112" viewBox="0 0 120 120" aria-label="Mutual funds 91.8 percent, bonds 8.2 percent" role="img" style="flex-shrink: 0">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#1A2234" stroke-width="15"/>
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#7B9CFF" stroke-width="15" stroke-linecap="round" stroke-dasharray="261 28" transform="rotate(-90 60 60)"/>
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#F0B429" stroke-width="15" stroke-linecap="round" stroke-dasharray="20 269" transform="rotate(176 60 60)"/>
+          <text x="60" y="56" text-anchor="middle" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="9.5" letter-spacing="0.08em">TOTAL</text>
+          <text x="60" y="73" text-anchor="middle" fill="#EEF3FB" font-family="Public Sans, sans-serif" font-size="16" font-weight="600">₹13.04L</text>
+        </svg>
+
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 13px; min-width: 0">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="width: 32px; height: 32px; border-radius: 10px; background: #182448; border: 1px solid #2B3C6B; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #7B9CFF">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg>
+            </span>
+            <span style="flex: 1; min-width: 0">
+              <span style="display: block; font-size: 13.5px; font-weight: 500">Mutual funds</span>
+              <span class="n" style="display: block; font-size: 11px; color: #8595AD">91.8% of valued</span>
+            </span>
+            <span style="text-align: right">
+              <span class="n" style="display: block; font-size: 13.5px; font-weight: 600">₹11.96 L</span>
+              <span style="display: block; font-size: 10.5px; color: #8595AD">—</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="width: 32px; height: 32px; border-radius: 10px; background: #3A2C0C; border: 1px solid #5C4612; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #F0B429">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg>
+            </span>
+            <span style="flex: 1; min-width: 0">
+              <span style="display: block; font-size: 13.5px; font-weight: 500">Bonds</span>
+              <span class="n" style="display: block; font-size: 11px; color: #8595AD">8.2% of valued</span>
+            </span>
+            <span style="text-align: right">
+              <span class="n" style="display: block; font-size: 13.5px; font-weight: 600">₹1,07,500</span>
+              <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; color: #2ED3A8">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                <span class="n">7.5%</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- needs attention -->
+    <div style="border-radius: 18px; padding: 15px 17px; background: #121825; border: 1px solid #222C41">
+      <div style="font-size: 14.5px; font-weight: 600; margin-bottom: 11px">Needs attention</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 12px; background: #2A1310; border: 1px solid #5A2720">
+        <span style="color: #FF6F61; flex-shrink: 0; display: flex" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        </span>
+        <span style="flex: 1; font-size: 12.5px; color: #FFC2B9">1 month has no reading — this year's peak is a lower bound</span>
+        <span style="color: #8595AD; flex-shrink: 0" aria-hidden="true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 12px; background: #1A2234; border: 1px solid #27324A; margin-top: 8px">
+        <span style="color: #F0B429; flex-shrink: 0; display: flex" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        </span>
+        <span style="flex: 1; font-size: 12.5px; color: #C3CEDF">3 positions rest on a partial statement, so no return is shown</span>
+        <span style="color: #8595AD; flex-shrink: 0" aria-hidden="true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- bottom bar -->
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="Main.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Overview</span>
+    </a>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M6 14h6"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="m11 14 6 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px">Holdings</span>
+    </span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8"/><path d="M12 4v16"/><path d="M6 20h12"/></svg>
+      <span style="font-size: 10.5px">Tax</span>
+    </span>
+    <a href="Fire.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 8 15H4Z"/></svg>
+      <span style="font-size: 10.5px">FIRE</span>
+    </a>
+  </div>
+
+</div>
+</section>
+<section class="board">
+<h2>FIRE — phone</h2>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 16px 12px 0; display: flex; flex-direction: column; gap: 13px">
+
+    <div>
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8595AD; margin-bottom: 6px">Financial independence</div>
+      <div class="n" style="font-size: 38px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05">₹3.42<span style="font-size: 24px; font-weight: 600; color: #D7E1F0; margin-left: 2px">Cr</span></div>
+      <div style="font-size: 12.5px; color: #8595AD; margin-top: 6px">Target, at <span class="n" style="color: #C3CEDF">6%</span> inflation · reached <span class="n" style="color: #C3CEDF">2041</span></div>
+    </div>
+
+    <!-- projection -->
+    <div style="border-radius: 18px; padding: 16px 14px 12px; background: linear-gradient(170deg, #16203A 0%, #121825 58%); border: 1px solid #27324A; position: relative; overflow: hidden">
+      <div style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(46,211,168,0), rgba(46,211,168,0.5), rgba(240,180,41,0.3), rgba(46,211,168,0))"></div>
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px">
+        <span style="font-size: 14.5px; font-weight: 600">Projection</span>
+        <span style="font-size: 11px; color: #8595AD">to 2041</span>
+      </div>
+
+      <svg width="100%" height="182" viewBox="0 0 330 182" role="img" aria-label="Projected net worth rising from 62.58 lakh in 2026 to 3.42 crore in 2041, crossing the target in 2041" style="display: block">
+        <defs>
+          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2ED3A8" stop-opacity="0.34"/>
+            <stop offset="100%" stop-color="#2ED3A8" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+
+        <line x1="34" y1="28" x2="318" y2="28" stroke="#F0B429" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <text x="318" y="21" text-anchor="end" fill="#F0B429" font-family="Public Sans, sans-serif" font-size="10" font-weight="600">Target ₹3.42 Cr</text>
+
+        <line x1="34" y1="150" x2="318" y2="150" stroke="#222C41" stroke-width="1"/>
+        <line x1="34" y1="92" x2="318" y2="92" stroke="#1A2234" stroke-width="1"/>
+
+        <path d="M34 148 C 110 143, 168 124, 214 96 C 252 73, 288 44, 318 30 L 318 150 L 34 150 Z" fill="url(#fill)"/>
+        <path d="M34 148 C 110 143, 168 124, 214 96 C 252 73, 288 44, 318 30" fill="none" stroke="#2ED3A8" stroke-width="2.4" stroke-linecap="round"/>
+
+        <circle cx="318" cy="30" r="4.5" fill="#2ED3A8" stroke="#0B1220" stroke-width="2"/>
+        <circle cx="34" cy="148" r="3.5" fill="#8595AD"/>
+
+        <text x="34" y="168" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="10">2026</text>
+        <text x="214" y="168" text-anchor="middle" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="10">2034</text>
+        <text x="318" y="168" text-anchor="end" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="10">2041</text>
+
+        <text x="30" y="33" text-anchor="end" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="9.5">3.5 Cr</text>
+        <text x="30" y="95" text-anchor="end" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="9.5">1.8 Cr</text>
+        <text x="30" y="153" text-anchor="end" fill="#8595AD" font-family="Public Sans, sans-serif" font-size="9.5">0</text>
+      </svg>
+
+      <div style="display: flex; align-items: center; gap: 7px; margin-top: 4px; padding: 8px 10px; border-radius: 10px; background: #0E1522; border: 1px solid #222C41">
+        <span style="color: #8595AD; display: flex; flex-shrink: 0" aria-hidden="true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+        </span>
+        <span style="font-size: 11.5px; color: #8595AD">Assumes contributions continue at today's rate. Not a forecast.</span>
+      </div>
+    </div>
+
+    <!-- goal ring -->
+    <div style="border-radius: 18px; padding: 17px; background: #121825; border: 1px solid #222C41">
+      <div style="display: flex; align-items: center; gap: 16px">
+        <svg width="92" height="92" viewBox="0 0 120 120" role="img" aria-label="18 percent of the target reached" style="flex-shrink: 0">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="#1A2234" stroke-width="13"/>
+          <circle cx="60" cy="60" r="48" fill="none" stroke="#2ED3A8" stroke-width="13" stroke-linecap="round" stroke-dasharray="54 248" transform="rotate(-90 60 60)"/>
+          <text x="60" y="66" text-anchor="middle" fill="#EEF3FB" font-family="Public Sans, sans-serif" font-size="25" font-weight="700">18%</text>
+        </svg>
+
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; justify-content: space-between">
+            <span style="font-size: 12px; color: #8595AD">Reached</span>
+            <span class="n" style="font-size: 14px; font-weight: 600">₹62.58 L</span>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between">
+            <span style="font-size: 12px; color: #8595AD">Target</span>
+            <span class="n" style="font-size: 14px; font-weight: 600; color: #F0B429">₹3.42 Cr</span>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between">
+            <span style="font-size: 12px; color: #8595AD">Shortfall</span>
+            <span class="n" style="font-size: 14px; font-weight: 600; color: #FF6F61">−₹2.79 Cr</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: #222C41; margin: 15px 0 13px"></div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+        <span style="font-size: 12.5px; color: #C3CEDF">Adding <span class="n" style="color: #2ED3A8; font-weight: 600">₹8,000</span> a month brings it to 2039</span>
+        <a href="#plan" style="font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px">
+          Adjust
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- annual expense -->
+    <div style="border-radius: 18px; padding: 17px; background: #121825; border: 1px solid #222C41">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 13px">
+        <span style="font-size: 14.5px; font-weight: 600">What a year costs</span>
+        <span class="n" style="font-size: 13.5px; font-weight: 600">₹13.68 L</span>
+      </div>
+      <div style="display: flex; height: 9px; border-radius: 999px; overflow: hidden; gap: 2px; margin-bottom: 11px">
+        <span style="flex: 46; background: #7B9CFF"></span>
+        <span style="flex: 24; background: #2ED3A8"></span>
+        <span style="flex: 18; background: #F0B429"></span>
+        <span style="flex: 12; background: #B07CF0"></span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 14px">
+        <span style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #C3CEDF"><span style="width: 8px; height: 8px; border-radius: 2px; background: #7B9CFF"></span>Living <span class="n" style="color: #8595AD">46%</span></span>
+        <span style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #C3CEDF"><span style="width: 8px; height: 8px; border-radius: 2px; background: #2ED3A8"></span>Loans <span class="n" style="color: #8595AD">24%</span></span>
+        <span style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #C3CEDF"><span style="width: 8px; height: 8px; border-radius: 2px; background: #F0B429"></span>Premiums <span class="n" style="color: #8595AD">18%</span></span>
+        <span style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #C3CEDF"><span style="width: 8px; height: 8px; border-radius: 2px; background: #B07CF0"></span>One-offs <span class="n" style="color: #8595AD">12%</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="Main.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M6 14h6"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="m11 14 6 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px">Holdings</span>
+    </span>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8595AD">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8"/><path d="M12 4v16"/><path d="M6 20h12"/></svg>
+      <span style="font-size: 10.5px">Tax</span>
+    </span>
+    <a href="Fire.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 8 15H4Z"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">FIRE</span>
+    </a>
+  </div>
+
+</div>
+</section>
+<section class="board">
+<h2>The token change</h2>
+<div style="width: 820px; height: 1180px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; padding: 34px 36px; overflow: hidden; display: flex; flex-direction: column; gap: 24px">
+
+  <div>
+    <h1 style="font-family: Newsreader, Georgia, serif; font-size: 31px; font-weight: 500; margin: 0 0 7px; letter-spacing: -0.01em">What actually changes</h1>
+    <p style="margin: 0; font-size: 14px; color: #8595AD; max-width: 62ch; line-height: 1.55">No screen is redrawn. Every value below lives in <span class="m" style="font-size: 13px; color: #C3CEDF">docs/tokens.md</span>, nothing in the app hardcodes a colour, and a CI check enforces that — so these swaps reach all seven screens at once.</p>
+  </div>
+
+  <!-- palette -->
+  <div>
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8595AD; margin-bottom: 13px">Semantic colour — before, after</div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; overflow: hidden">
+        <div style="display: flex; height: 54px">
+          <span style="flex: 1; background: #9A6F14"></span>
+          <span style="flex: 1; background: #F0B429"></span>
+        </div>
+        <div style="padding: 11px 13px 13px">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">Brass → Gold</div>
+          <div class="m" style="font-size: 10.5px; color: #8595AD">#9A6F14 → #F0B429</div>
+          <div style="font-size: 11.5px; color: #8595AD; margin-top: 6px">Targets, plans, the demo badge</div>
+        </div>
+      </div>
+
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; overflow: hidden">
+        <div style="display: flex; height: 54px">
+          <span style="flex: 1; background: #0D7466"></span>
+          <span style="flex: 1; background: #2ED3A8"></span>
+        </div>
+        <div style="padding: 11px 13px 13px">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">Teal → Emerald</div>
+          <div class="m" style="font-size: 10.5px; color: #8595AD">#0D7466 → #2ED3A8</div>
+          <div style="font-size: 11.5px; color: #8595AD; margin-top: 6px">Gain, on track, growth</div>
+        </div>
+      </div>
+
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; overflow: hidden">
+        <div style="display: flex; height: 54px">
+          <span style="flex: 1; background: #B0463A"></span>
+          <span style="flex: 1; background: #FF6F61"></span>
+        </div>
+        <div style="padding: 11px 13px 13px">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">Coral → Coral</div>
+          <div class="m" style="font-size: 10.5px; color: #8595AD">#B0463A → #FF6F61</div>
+          <div style="font-size: 11.5px; color: #8595AD; margin-top: 6px">Loss, overspend, shortfall</div>
+        </div>
+      </div>
+
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; overflow: hidden">
+        <div style="display: flex; height: 54px">
+          <span style="flex: 1; background: #39537F"></span>
+          <span style="flex: 1; background: #7B9CFF"></span>
+        </div>
+        <div style="padding: 11px 13px 13px">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">Indigo → Periwinkle</div>
+          <div class="m" style="font-size: 10.5px; color: #8595AD">#39537F → #7B9CFF</div>
+          <div style="font-size: 11.5px; color: #8595AD; margin-top: 6px">Ownership, attribution, India</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- chart ramp -->
+  <div>
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8595AD; margin-bottom: 13px">Chart ramp — <span class="m" style="text-transform: none; letter-spacing: 0">--c1…--c7</span>, in order</div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px">
+      <div><div style="height: 48px; border-radius: 10px; background: #7B9CFF"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#7B9CFF</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #2ED3A8"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#2ED3A8</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #F0B429"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#F0B429</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #B07CF0"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#B07CF0</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #FF6F61"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#FF6F61</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #46C5E8"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#46C5E8</div></div>
+      <div><div style="height: 48px; border-radius: 10px; background: #FF9D4D"></div><div class="m" style="font-size: 9.5px; color: #8595AD; margin-top: 6px">#FF9D4D</div></div>
+    </div>
+    <p style="margin: 11px 0 0; font-size: 12px; color: #8595AD; line-height: 1.5">Seven hues of similar chroma, ordered so neighbours differ in lightness as well as hue — an asset class stays readable to someone who cannot separate red from green, which §2's rule already requires of every gain and loss.</p>
+  </div>
+
+  <!-- depth -->
+  <div>
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8595AD; margin-bottom: 13px">Depth — three surfaces, not one</div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+      <div style="border-radius: 14px; padding: 15px; background: #121825; border: 1px solid #222C41">
+        <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px">Ordinary card</div>
+        <div style="font-size: 11.5px; color: #8595AD; line-height: 1.5">Flat surface, hairline border, no shadow. Most of the app.</div>
+      </div>
+      <div style="border-radius: 14px; padding: 15px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 18px 38px -24px rgba(0,0,0,0.9); position: relative; overflow: hidden">
+        <div style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+        <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px">Hero surface</div>
+        <div style="font-size: 11.5px; color: #C3CEDF; line-height: 1.5">Corner-lit gradient, lifted shadow, 1px top highlight. One per screen.</div>
+      </div>
+      <div style="border-radius: 14px; padding: 15px; background: #0E1522; border: 1px solid #222C41">
+        <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px">Inset</div>
+        <div style="font-size: 11.5px; color: #8595AD; line-height: 1.5">Recessed, darker than its parent. Caveats, totals, segmented tracks.</div>
+      </div>
+    </div>
+    <p style="margin: 11px 0 0; font-size: 12px; color: #8595AD; line-height: 1.5">This is the rule §4 already states — "not everything is a card" — given something to spend. The gradient is a corner light, not a wash: it never crosses a figure, and tabular numerals always sit on flat ground.</p>
+  </div>
+
+  <!-- warmth -->
+  <div>
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8595AD; margin-bottom: 13px">Warmth — a tile per asset class</div>
+    <div style="display: flex; gap: 22px; align-items: center; flex-wrap: wrap">
+      <span style="display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; color: #C3CEDF">
+        <span style="width: 36px; height: 36px; border-radius: 11px; background: #182448; border: 1px solid #2B3C6B; display: flex; align-items: center; justify-content: center; color: #7B9CFF"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+        Mutual funds
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; color: #C3CEDF">
+        <span style="width: 36px; height: 36px; border-radius: 11px; background: #3A2C0C; border: 1px solid #5C4612; display: flex; align-items: center; justify-content: center; color: #F0B429"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg></span>
+        Bonds
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; color: #C3CEDF">
+        <span style="width: 36px; height: 36px; border-radius: 11px; background: #2C1A48; border: 1px solid #47306B; display: flex; align-items: center; justify-content: center; color: #B07CF0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17"/><path d="M3.5 15h17"/><path d="M12 3a15 15 0 0 0 0 18"/><path d="M12 3a15 15 0 0 1 0 18"/></svg></span>
+        US equity
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; color: #C3CEDF">
+        <span style="width: 36px; height: 36px; border-radius: 11px; background: #0C2F28; border: 1px solid #16513F; display: flex; align-items: center; justify-content: center; color: #2ED3A8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>
+        Property
+      </span>
+    </div>
+    <p style="margin: 13px 0 0; font-size: 12px; color: #8595AD; line-height: 1.5">A tinted tile and a stroke icon per class, drawn from the same ramp, so a row carries its identity at a glance instead of through an 8px dot. Stroke SVG inline — no icon font, no new dependency.</p>
+  </div>
+
+  <div style="margin-top: auto; padding-top: 18px; border-top: 1px solid #1B2335; display: flex; gap: 26px; flex-wrap: wrap">
+    <span style="font-size: 11.5px; color: #8595AD">Typefaces unchanged — Newsreader, Public Sans, IBM Plex Mono</span>
+    <span style="font-size: 11.5px; color: #8595AD">Layout unchanged</span>
+    <span style="font-size: 11.5px; color: #8595AD">Light theme tuned separately, never inverted</span>
+  </div>
+
+</div>
+</section>
+<section class="board">
+<h2>Icons and components</h2>
+<div style="width: 820px; height: 2120px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; padding: 34px 36px; overflow: hidden; display: flex; flex-direction: column; gap: 26px">
+
+  <div>
+    <h1 style="font-family: Newsreader, Georgia, serif; font-size: 31px; font-weight: 500; margin: 0 0 7px; letter-spacing: -0.01em">Icons and components</h1>
+    <p style="margin: 0; font-size: 14px; color: #8595AD; max-width: 64ch; line-height: 1.55">Drawn from what the seven built screens actually use, not from what an asset list suggests. Every icon is inline stroke SVG at 1.9 stroke on a 24 grid — no icon font, no dependency.</p>
+  </div>
+
+  <!-- asset classes, built -->
+  <div>
+    <div class="cap" style="margin-bottom: 4px">Asset classes — the six <span class="m" style="text-transform: none; letter-spacing: 0">INSTRUMENT_KIND_LABEL</span> defines today</div>
+    <p class="sub" style="margin: 0 0 14px">Every stored kind has one. <strong style="color: #C3CEDF">other</strong> is not a placeholder — it is a real value a person can save, and without it a holding renders an empty tile.</p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap">
+      <div class="icn"><span class="tile" style="background: #182448; border: 1px solid #2B3C6B; color: #7B9CFF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span><span>Mutual funds</span></div>
+      <div class="icn"><span class="tile" style="background: #0C2F28; border: 1px solid #16513F; color: #2ED3A8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V9"/><path d="M12 20V4"/><path d="M18 20v-7"/><path d="M3 20h18"/></svg></span><span>Equity</span></div>
+      <div class="icn"><span class="tile" style="background: #2C1A48; border: 1px solid #47306B; color: #B07CF0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span><span>ETF</span></div>
+      <div class="icn"><span class="tile" style="background: #3A2C0C; border: 1px solid #5C4612; color: #F0B429"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg></span><span>Bonds</span></div>
+      <div class="icn"><span class="tile" style="background: #0F2A3C; border: 1px solid #1C4A64; color: #46C5E8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="12" cy="14.5" r="2"/></svg></span><span>Deposits</span></div>
+      <div class="icn"><span class="tile" style="background: #1A2234; border: 1px solid #2E3A52; color: #8595AD"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><span>Other<br><strong style="color: #C3CEDF">fallback</strong></span></div>
+    </div>
+  </div>
+
+  <!-- asset classes, stage 5 -->
+  <div>
+    <div class="cap" style="margin-bottom: 4px">Asset classes — arriving in stage 5</div>
+    <p class="sub" style="margin: 0 0 14px">Drawn now so the screens that need them do not each invent one.</p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap">
+      <div class="icn"><span class="tile" style="background: #0C2F28; border: 1px solid #16513F; color: #2ED3A8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span><span>Property</span></div>
+      <div class="icn"><span class="tile" style="background: #3A2C0C; border: 1px solid #5C4612; color: #F0B429"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg></span><span>Gold</span></div>
+      <div class="icn"><span class="tile" style="background: #182448; border: 1px solid #2B3C6B; color: #7B9CFF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6Z"/></svg></span><span>Retirement<br>PF · PPF · NPS</span></div>
+      <div class="icn"><span class="tile" style="background: #2C1A48; border: 1px solid #47306B; color: #B07CF0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 18 0Z"/><path d="M12 12v6a2.5 2.5 0 0 0 5 0"/></svg></span><span>Insurance</span></div>
+      <div class="icn"><span class="tile" style="background: #33130F; border: 1px solid #5A2720; color: #FF6F61"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8 12h8"/></svg></span><span>Liabilities</span></div>
+      <div class="icn"><span class="tile" style="background: #2C1A48; border: 1px solid #47306B; color: #B07CF0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 9.5h17"/><path d="M3.5 14.5h17"/><path d="M12 3.5a15 15 0 0 0 0 17"/><path d="M12 3.5a15 15 0 0 1 0 17"/></svg></span><span>Foreign<br>a marker, not a class</span></div>
+    </div>
+  </div>
+
+  <!-- ui glyphs -->
+  <div>
+    <div class="cap" style="margin-bottom: 4px">Interface glyphs</div>
+    <p class="sub" style="margin: 0 0 14px">One arrow, one chevron, one info mark — the set exists so three screens do not grow three of each.</p>
+    <div style="display: flex; gap: 2px; flex-wrap: wrap; color: #C3CEDF">
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>Shown</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.1 1.4"/><path d="M21.3 9.2c.5.9.7 1.5.7 1.5s-3.5 7-10 7c-1.3 0-2.5-.3-3.6-.7"/><path d="m3 3 18 18"/></svg><span>Hidden</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg><span>Caveat</span></div>
+      <div class="icn" style="color: #F0B429"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 4 2.5 20h19Z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg><span>Attention</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span>Go</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>Disclose</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Edit</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span>Add</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>Import</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>Export</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg><span>Refresh</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg><span>Calendar</span></div>
+      <div class="icn"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg><span>Archive</span></div>
+      <div class="icn" style="color: #2ED3A8"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 7"/></svg><span>Done</span></div>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: #1B2335"></div>
+
+  <!-- components found on the built screens -->
+  <div>
+    <div class="cap" style="margin-bottom: 4px">What the built screens use that the mockups did not show</div>
+    <p class="sub" style="margin: 0 0 16px">Counted off the seven screenshots. Each needs a decision in <span class="m" style="font-size: 11.5px; color: #C3CEDF">tokens.md</span> before the palette lands, or it gets one per screen.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+
+      <!-- pills -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px">Pill — 16 strings in use</div>
+        <p class="sub" style="margin: 0 0 11px">Five tones carry all of them. A sixth would be a tone nobody can name.</p>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <span class="pill" style="background: #3A2C0C; color: #F0B429; border: 1px solid #5C4612">Demo</span>
+          <span class="pill" style="background: #182448; color: #7B9CFF">Owner</span>
+          <span class="pill" style="background: #182448; color: #7B9CFF">Partner</span>
+          <span class="pill" style="background: #0C2F28; color: #2ED3A8">Live</span>
+          <span class="pill" style="background: #0C2F28; color: #2ED3A8">Accepted</span>
+          <span class="pill" style="background: #33130F; color: #FF6F61">Behind</span>
+          <span class="pill" style="background: #33130F; color: #FF6F61">Revoked</span>
+          <span class="pill" style="background: #1A2234; color: #8595AD">No plan</span>
+          <span class="pill" style="background: #1A2234; color: #8595AD">Archived</span>
+          <span class="pill" style="background: #1A2234; color: #8595AD">No login</span>
+          <span class="pill" style="background: #1A2234; color: #8595AD">Deposit</span>
+        </div>
+      </div>
+
+      <!-- muted text -->
+      <div style="border-radius: 14px; border: 1px solid #5C4612; background: #1C1608; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #F0B429">Muted text is too blue</div>
+        <p class="sub" style="margin: 0 0 10px; color: #D8C79A">On Settings and Tax nearly every description line sits in a blue-grey close to a link colour, so prose reads as clickable. It gets worse with a brighter accent, not better.</p>
+        <div style="font-size: 12px; line-height: 1.6">
+          <span style="color: #8595AD">Before — </span><span style="color: #8595AD">Converts figures for display. Nothing stored changes.</span><br>
+          <span style="color: #9AA3B2">After — </span><span style="color: #9AA3B2">Converts figures for display. Nothing stored changes.</span>
+        </div>
+        <p class="sub" style="margin: 9px 0 0; color: #D8C79A">Neutral grey for prose; blue reserved for things you can press.</p>
+      </div>
+
+      <!-- table -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 11px">Table — the expense ledger</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid #222C41">
+          <span class="m" style="font-size: 9.5px; letter-spacing: 0.1em; color: #8595AD">DATE</span>
+          <span class="m" style="font-size: 9.5px; letter-spacing: 0.1em; color: #8595AD">PAYEE</span>
+          <span class="m" style="font-size: 9.5px; letter-spacing: 0.1em; color: #8595AD; text-align: right">AMOUNT</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; padding: 9px 0; border-bottom: 1px solid #1B2335">
+          <span class="m n" style="font-size: 12px; color: #C3CEDF">7 Oct 2026</span>
+          <span style="font-size: 12.5px">Groceries</span>
+          <span class="n" style="font-size: 12.5px; font-weight: 600; text-align: right">₹250</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; padding: 9px 0">
+          <span class="m n" style="font-size: 12px; color: #C3CEDF">6 Oct 2026</span>
+          <span style="font-size: 12.5px">Electricity</span>
+          <span class="n" style="font-size: 12.5px; font-weight: 600; text-align: right">₹2,480.50</span>
+        </div>
+        <p class="sub" style="margin: 10px 0 0">Mono survives here — column headers and the date column, where digits must align. Nowhere else.</p>
+      </div>
+
+      <!-- computation rows -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 11px">Computation row — the Tax working paper</div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #1B2335">
+          <span style="font-size: 12.5px">Taxable income</span><span class="n" style="font-size: 13px; font-weight: 600">₹8,40,000</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #1B2335">
+          <span><span style="display: block; font-size: 12.5px">Standard deduction</span><span class="sub" style="font-size: 11px">taken off salary, never more than it</span></span>
+          <span class="n" style="font-size: 13px; font-weight: 600; color: #FF6F61">−₹75,000</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0 0; border-top: 1.5px solid #3A4659; margin-top: 2px">
+          <span style="font-size: 13px; font-weight: 700">Total tax</span><span class="n" style="font-size: 15px; font-weight: 700; color: #F0B429">₹41,600</span>
+        </div>
+      </div>
+
+      <!-- setting row -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 11px">Setting row</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 11px; border-bottom: 1px solid #1B2335">
+          <span><span style="display: block; font-size: 12.5px; font-weight: 500">Theme</span><span class="sub" style="font-size: 11px">Light, dark, or follow the system</span></span>
+          <span style="display: flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px; flex-shrink: 0">
+            <span style="font-size: 11px; font-weight: 600; color: #0B1220; background: #EEF3FB; border-radius: 999px; padding: 3px 9px">Auto</span>
+            <span style="font-size: 11px; color: #8595AD; padding: 3px 9px">Light</span>
+            <span style="font-size: 11px; color: #8595AD; padding: 3px 9px">Dark</span>
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 11px">
+          <span><span style="display: block; font-size: 12.5px; font-weight: 500">Read amounts in</span><span class="sub" style="font-size: 11px">Converts for display; nothing stored changes</span></span>
+          <span style="font-size: 12px; font-weight: 600; background: #0E1522; border: 1px solid #27324A; border-radius: 9px; padding: 6px 11px; flex-shrink: 0">INR ▾</span>
+        </div>
+      </div>
+
+      <!-- notice + disclosure -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 11px">Notice, and the disclosure inside it</div>
+        <div style="border-radius: 11px; background: #1C1608; border: 1px solid #5C4612; padding: 11px 12px">
+          <div style="display: flex; gap: 9px">
+            <span style="color: #F0B429; flex-shrink: 0; display: flex" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span>
+            <span style="font-size: 12px; color: #D8C79A; line-height: 1.5">A working paper, computed on the figures above and no more.</span>
+          </div>
+          <button type="button" style="margin-top: 9px; margin-left: 23px; background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; color: #F0B429; font-family: inherit; font-size: 11.5px; font-weight: 600">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            What this assumes (5)
+          </button>
+        </div>
+        <p class="sub" style="margin: 10px 0 0">A left border is the current shape; a full tinted panel with a hairline reads better at phone width and does not fight the card's own radius.</p>
+      </div>
+
+      <!-- row actions -->
+      <div style="border-radius: 14px; border: 1px solid #5C4612; background: #1C1608; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #F0B429">Holdings has six text links per card</div>
+        <p class="sub" style="margin: 0 0 11px; color: #D8C79A">Record a value · Archive this holding · Show the workings · Add a purchase or sale · Record as the reading · Record a renewal. Eight holdings means roughly forty underlined links on one screen.</p>
+        <div style="display: flex; gap: 7px; flex-wrap: wrap">
+          <span style="font-size: 11.5px; font-weight: 500; color: #C3CEDF; background: #1A2234; border: 1px solid #2E3A52; border-radius: 8px; padding: 5px 10px">Record a value</span>
+          <span style="font-size: 11.5px; font-weight: 500; color: #C3CEDF; background: #1A2234; border: 1px solid #2E3A52; border-radius: 8px; padding: 5px 10px">Add a purchase</span>
+          <span style="font-size: 11.5px; color: #8595AD; padding: 5px 2px">Workings ▾</span>
+        </div>
+        <p class="sub" style="margin: 10px 0 0; color: #D8C79A">Quiet buttons for the two that act, a disclosure for the one that reveals, the rest behind an overflow. Not a token change — a layout decision this direction forces.</p>
+      </div>
+
+      <!-- progress + avatar + dot -->
+      <div style="border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 11px">Small parts</div>
+        <div class="sub" style="margin-bottom: 6px">Progress — over target flips to coral and stops growing</div>
+        <div style="height: 7px; border-radius: 999px; background: #1A2234; overflow: hidden; margin-bottom: 7px"><span style="display: block; width: 42%; height: 100%; background: #2ED3A8"></span></div>
+        <div style="height: 7px; border-radius: 999px; background: #1A2234; overflow: hidden; margin-bottom: 13px"><span style="display: block; width: 100%; height: 100%; background: #FF6F61"></span></div>
+        <div style="display: flex; align-items: center; gap: 16px">
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #C3CEDF">
+            <span style="width: 26px; height: 26px; border-radius: 999px; background: #182448; border: 1px solid #2B3C6B; color: #7B9CFF; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">V</span>
+            member
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #C3CEDF"><span style="width: 8px; height: 8px; border-radius: 999px; background: #2ED3A8"></span>active</span>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #8595AD"><span style="width: 8px; height: 8px; border-radius: 999px; background: #3A4659"></span>archived</span>
+        </div>
+      </div>
+
+      <!-- editable row — the densest pattern in the app -->
+      <div style="grid-column: 1 / -1; border-radius: 14px; border: 1px solid #222C41; background: #121825; padding: 15px">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px">Editable row — a row that is also a form</div>
+        <p class="sub" style="margin: 0 0 13px">The spending plan, the deposit terms, the loan form: a record and the inputs that change it, on one line. Nothing else in the kit covers it, and it is the densest control pattern in the app.</p>
+
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 11px 13px; border-radius: 12px; background: #0E1522; border: 1px solid #222C41">
+          <span style="flex: 1 1 150px; min-width: 0; display: flex; align-items: center; gap: 9px">
+            <span style="font-size: 13px; font-weight: 500">Groceries</span>
+            <span class="pill" style="background: #1A2234; color: #8595AD">Compulsory</span>
+          </span>
+          <label style="display: flex; flex-direction: column; gap: 4px">
+            <span class="sub" style="font-size: 10.5px">Monthly</span>
+            <input type="text" value="18000" readonly style="width: 92px; box-sizing: border-box; font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; color: #EEF3FB; background: #121825; border: 1px solid #2E3A52; border-radius: 9px; padding: 7px 9px">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px">
+            <span class="sub" style="font-size: 10.5px">Yearly</span>
+            <input type="text" value="—" readonly style="width: 92px; box-sizing: border-box; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #8595AD; background: #121825; border: 1px solid #2E3A52; border-radius: 9px; padding: 7px 9px">
+          </label>
+          <button type="button" aria-label="Archive Groceries" style="flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; border: 1px solid #2E3A52; background: #121825; color: #8595AD; display: flex; align-items: center; justify-content: center; cursor: pointer; align-self: flex-end">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 13px">
+          <p class="sub" style="margin: 0"><strong style="color: #C3CEDF">Inset ground.</strong> The row recedes below its card, so a column of them reads as a list rather than as nine cards.</p>
+          <p class="sub" style="margin: 0"><strong style="color: #C3CEDF">Mono in the inputs.</strong> Figures a person types and compares down a column — the one place outside a table the rule keeps it.</p>
+          <p class="sub" style="margin: 0"><strong style="color: #C3CEDF">Icon for the destructive one.</strong> "Archive" as a text link per row is how Holdings reached forty of them. 34px hits the 44px target with its padding.</p>
+        </div>
+
+        <p class="sub" style="margin: 12px 0 0">At phone width the inputs wrap under the name and the archive button stays on the first line — a 92px field beside a 150px name does not fit in 366px, and two fields certainly do not.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</section>
+</div>
+</div>
+</body>
+</html>

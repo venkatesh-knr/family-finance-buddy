@@ -5,7 +5,7 @@
  * the same height shows the class, its share, its value and its return, and on
  * a phone that is the difference between a picture and an answer. So the ring
  * sits next to the rows and the rows are still the way to read it: each arc is
- * the colour of the dot on its row, both from `kindColour`, so a class is one
+ * the colour of the tile on its row, both from `kindColour`, so a class is one
  * colour on the ring, in the rows and everywhere else.
  *
  * One ring per currency, because a share across currencies needs a rate and
