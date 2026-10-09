@@ -39,8 +39,11 @@ docs/reference/
 Claude outputs/
 env.txt
 
-# local dev-server config for the in-app browser preview
-.claude/
+# local dev-server config for the in-app browser preview, and anything else
+# machine-specific under .claude/. The agents are the exception: they are part
+# of how the project is worked on, and a cloud session needs them.
+.claude/*
+!.claude/agents/
 
 # Vite's dependency-optimisation cache. Build output, not source.
 .vite/
