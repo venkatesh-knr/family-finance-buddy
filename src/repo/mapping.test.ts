@@ -281,6 +281,18 @@ describe('toHolding', () => {
     expect(holding.openedOn).toBe('2026-02-14');
   });
 
+  it('carries the day a holding was archived, in IST, so its past is not rewritten', () => {
+    expect(toHolding(row, members, instruments).archivedOn).toBeNull();
+    // 20:00 UTC on the 14th is 01:30 on the 15th in India.
+    expect(
+      toHolding(
+        { ...row, status: 'archived', archived_at: '2026-06-14T20:00:00+00:00' },
+        members,
+        instruments,
+      ).archivedOn,
+    ).toBe('2026-06-15');
+  });
+
   it('refuses an instrument from outside the household', () => {
     // The composite foreign key makes this impossible in the database. The
     // guard is here because the mapper must not invent a holding either way.

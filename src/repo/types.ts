@@ -277,6 +277,8 @@ export interface Holding {
   readonly cost: Money | null;
   readonly openedOn: IsoDate | null;
   readonly isArchived: boolean;
+  /** The IST day it was archived. Its history before this day still counts. */
+  readonly archivedOn: IsoDate | null;
   /**
    * §20, on a position rather than a transaction.
    *

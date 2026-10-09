@@ -63,7 +63,7 @@ function unwrapEmbedded(raw: unknown): unknown {
 }
 
 /** The IST calendar day of a timestamp, or null if there is none or it is not one. */
-function createdOn(value: unknown): IsoDate | null {
+function istDayOf(value: unknown): IsoDate | null {
   if (typeof value !== 'string') return null;
   const instant = new Date(value);
   return Number.isNaN(instant.getTime()) ? null : istCalendarDate(instant);
@@ -82,7 +82,7 @@ export function toHousehold(raw: unknown): Household {
     baseCurrency: requireString(row['base_currency'], 'household.base_currency'),
     displayCurrency: requireString(row['display_currency'], 'household.display_currency'),
     fyStartMonth,
-    createdOn: createdOn(row['created_at']),
+    createdOn: istDayOf(row['created_at']),
     fire: {
       // Strings, because they arrive from numeric columns and a ratio's
       // precision is the reason those columns are numeric.
@@ -245,6 +245,7 @@ export function toHolding(
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'holding.visibility'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'holding.status') === 'archived',
+    archivedOn: istDayOf(row['archived_at']),
     stated: toStatedBalance(row),
   };
 }

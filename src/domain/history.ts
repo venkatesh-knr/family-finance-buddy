@@ -36,6 +36,12 @@ export interface HistoryHolding {
    */
   readonly openedOn: IsoDate | null;
   readonly isArchived: boolean;
+  /**
+   * The IST day it was archived. An archived holding is still part of every date
+   * before this one: archiving a fund in October must not rewrite March. Without a
+   * date, an archived holding cannot be placed in time and is left out throughout.
+   */
+  readonly archivedOn: IsoDate | null;
 }
 
 export interface HistoryReading {
@@ -112,8 +118,12 @@ export function assetHistory(options: {
   readonly asOf: IsoDate;
 }): AssetHistory {
   const { rates, display, asOf } = options;
-  const holdings = options.holdings.filter((h) => !h.isArchived);
-  if (holdings.length === 0) return { ok: false, reason: 'nothing' };
+  // Archived holdings stay in the dates before they were archived. Dropping them
+  // outright made the past change whenever somebody tidied up.
+  const holdings = options.holdings.filter((h) => !h.isArchived || h.archivedOn !== null);
+  if (!holdings.some((h) => !h.isArchived)) return { ok: false, reason: 'nothing' };
+  const heldOn = (h: HistoryHolding, date: IsoDate): boolean =>
+    !h.isArchived || (h.archivedOn !== null && date < h.archivedOn);
 
   const byHolding = new Map<string, HistoryReading[]>();
   for (const held of holdings) byHolding.set(held.id, []);
@@ -124,6 +134,7 @@ export function assetHistory(options: {
     const missing = new Map<string, MissingRate>();
     let sum = 0n;
     for (const held of holdings) {
+      if (!heldOn(held, date)) continue;
       let latest: HistoryReading | null = null;
       for (const r of byHolding.get(held.id) ?? []) {
         if (r.date <= date && (latest === null || r.date > latest.date)) latest = r;
@@ -152,7 +163,7 @@ export function assetHistory(options: {
   let earliest: IsoDate | null = null;
   for (const held of holdings) {
     for (const r of byHolding.get(held.id) ?? []) {
-      if (r.date <= asOf && (earliest === null || r.date < earliest)) earliest = r.date;
+      if (r.date <= asOf && heldOn(held, r.date) && (earliest === null || r.date < earliest)) earliest = r.date;
     }
   }
   // now.ok means every holding was read, so a reading exists.

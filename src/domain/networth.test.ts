@@ -5,6 +5,8 @@ import {
   assetTotals,
   latestValuationPerHolding,
   readingGaps,
+  readingStaleness,
+  STALE_AFTER_DAYS,
   type HoldingInput,
   type ValuationInput,
 } from './networth.ts';
@@ -20,6 +22,8 @@ const holding = (over: Partial<HoldingInput> & { id: string }): HoldingInput => 
   cost: null,
   isArchived: false,
   costIsShort: false,
+  openedOn: null,
+  archivedOn: null,
   ...over,
 });
 
@@ -491,5 +495,161 @@ describe('allocationByKind, a class holding a cost nobody recorded', () => {
     expect(bonds?.gain?.minor).toBe(5_000_000n);
     expect(bonds?.returnOnCost).toBeCloseTo(1 / 3, 10);
     expect(bonds?.costMissing).toBe(0);
+  });
+});
+
+/**
+ * A peak is per instrument ("max over d in year of units(d) x price(d) x fx(d)"), so a
+ * month is covered only if every holding that existed in it was read in it. One fund read
+ * every month used to make every month count as read, and the screen told you the year's
+ * peak was a figure and not a lower bound while another holding went unread for eight.
+ */
+describe('readingGaps, holding by holding', () => {
+  const monthly = (id: string, from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) =>
+      reading(id, `2026-${String(from + i).padStart(2, '0')}-28`, inr(100)),
+    );
+
+  it('is not covered by another holding having been read', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' })],
+      valuations: [...monthly('h1', 1, 9), ...monthly('h2', 1, 1)],
+      year: 2026,
+      today: '2026-10-09',
+    });
+    expect(gaps.missingMonths).toEqual([
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+    ]);
+    expect(gaps.missing[0]).toEqual({ month: 'February', holdingIds: ['h2'] });
+    expect(gaps.missing).toHaveLength(8);
+  });
+
+  it('names every holding that is missing in a month', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' }), holding({ id: 'h3' })],
+      valuations: monthly('h1', 1, 3),
+      year: 2026,
+      today: '2026-04-15',
+    });
+    expect(gaps.missing[0]).toEqual({ month: 'January', holdingIds: ['h2', 'h3'] });
+  });
+
+  it('does not expect a reading from a holding before it was opened', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2', openedOn: '2026-04-10' })],
+      valuations: [...monthly('h1', 1, 6), ...monthly('h2', 4, 6)],
+      year: 2026,
+      today: '2026-07-05',
+    });
+    expect(gaps.missingMonths).toEqual([]);
+  });
+
+  it('expects one in the month it was opened', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h2', openedOn: '2026-04-10' })],
+      valuations: monthly('h2', 5, 6),
+      year: 2026,
+      today: '2026-07-05',
+    });
+    expect(gaps.missingMonths).toEqual(['April']);
+  });
+
+  it('expects one from a holding with no opening date from January, the conservative answer', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h2' })],
+      valuations: monthly('h2', 3, 4),
+      year: 2026,
+      today: '2026-05-05',
+    });
+    expect(gaps.missingMonths).toEqual(['January', 'February']);
+  });
+
+  it('still expects readings for the months before a holding was archived, since its peak was in them', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h2', isArchived: true, archivedOn: '2026-06-15' })],
+      valuations: monthly('h2', 1, 3),
+      year: 2026,
+      today: '2026-08-05',
+    });
+    // January to May are before it went; June is the month it went, and is not asked of it.
+    expect(gaps.missingMonths).toEqual(['April', 'May']);
+  });
+
+  it('asks nothing of an archived holding whose archive date is not known, and never lists it as unread', () => {
+    const gaps = readingGaps({
+      holdings: [holding({ id: 'h2', isArchived: true, archivedOn: null })],
+      valuations: [],
+      year: 2026,
+      today: '2026-08-05',
+    });
+    expect(gaps.missingMonths).toEqual([]);
+    expect(gaps.neverRead).toEqual([]);
+  });
+});
+
+/**
+ * "Net worth blends five different dates", the blueprint's problem 04: the figure says
+ * "as at" the newest reading while every holding is carried at its own latest. The date
+ * has to come from what is in the figure, and a reading far behind it has to be said.
+ */
+describe('readingStaleness', () => {
+  it('takes the newest and the oldest of the latest reading of each holding', () => {
+    const result = readingStaleness({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' }), holding({ id: 'h3' })],
+      valuations: [
+        reading('h1', '2026-01-10', inr(1)),
+        reading('h1', '2026-09-18', inr(2)),
+        reading('h2', '2026-08-31', inr(3)),
+        reading('h3', '2026-03-01', inr(4)),
+      ],
+    });
+    expect(result.newest).toBe('2026-09-18');
+    expect(result.oldest).toBe('2026-03-01');
+  });
+
+  it('does not let an archived holding set the date, or count as stale', () => {
+    const result = readingStaleness({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'gone', isArchived: true, archivedOn: '2026-05-01' })],
+      valuations: [reading('h1', '2026-06-30', inr(1)), reading('gone', '2026-12-31', inr(9))],
+    });
+    expect(result.newest).toBe('2026-06-30');
+    expect(result.stale).toEqual([]);
+  });
+
+  it('calls a reading stale when it is more than the window behind the newest, and not at the window', () => {
+    const base = '2026-09-18';
+    // 45 days before 18 Sep is 4 Aug.
+    const at = readingStaleness({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' })],
+      valuations: [reading('h1', base, inr(1)), reading('h2', '2026-08-04', inr(1))],
+    });
+    expect(STALE_AFTER_DAYS).toBe(45);
+    expect(at.stale).toEqual([]);
+
+    const past = readingStaleness({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' })],
+      valuations: [reading('h1', base, inr(1)), reading('h2', '2026-08-03', inr(1))],
+    });
+    expect(past.stale).toEqual([{ holdingId: 'h2', lastRead: '2026-08-03' }]);
+  });
+
+  it('is empty when nothing has been read, rather than invent a date', () => {
+    const result = readingStaleness({ holdings: [holding({ id: 'h1' })], valuations: [] });
+    expect(result).toEqual({ newest: null, oldest: null, stale: [] });
+  });
+
+  it('ignores a holding that has never been read, which is unvalued and not stale', () => {
+    const result = readingStaleness({
+      holdings: [holding({ id: 'h1' }), holding({ id: 'h2' })],
+      valuations: [reading('h1', '2026-09-18', inr(1))],
+    });
+    expect(result.stale).toEqual([]);
   });
 });
