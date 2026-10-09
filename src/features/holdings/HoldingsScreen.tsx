@@ -56,7 +56,7 @@ export function HoldingsScreen({
   filter?: { kind: string; currency: string } | null;
   onClearFilter?: () => void;
 }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh } =
+  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh, paidOut, paidOutFailed } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
   /** Which of the two ways of adding is open beneath the controls, if either. */
@@ -72,6 +72,9 @@ export function HoldingsScreen({
       { value: bigint; invested: bigint; unread: number; short: number; missing: number }
     >();
     for (const row of rows) {
+      // Paid out: the money is back in an account, so it is not part of what is held. The same
+      // rule as the Overview's net worth, or the two screens would disagree about one household.
+      if (paidOut.has(row.holding.id)) continue;
       const currency = row.holding.instrument.currency;
       const bucket = byCurrency.get(currency) ?? {
         value: 0n,
@@ -110,7 +113,7 @@ export function HoldingsScreen({
       byCurrency.set(currency, bucket);
     }
     return [...byCurrency.entries()].map(([currency, b]) => ({ currency, ...b }));
-  }, [rows]);
+  }, [rows, paidOut]);
 
   // Biggest first by default: on a list of twenty, the largest position is
   // almost always the one the question is about.
@@ -215,10 +218,13 @@ export function HoldingsScreen({
                 is not here: it rides on the affected figure below, and only
                 when there is one.
               */}
-              <Caveat tone="info" label="How these totals are put together">
+              <Caveat tone={paidOutFailed ? 'warn' : 'info'} label="How these totals are put together">
                 Each currency on its own, never added across. A holding nobody has read is not in
                 these figures at all, because counting it as zero would make the total look
-                complete while being short.
+                complete while being short. A deposit or bond that has paid out is left out from
+                the day it did.
+                {paidOutFailed &&
+                  ' Deposits and bonds could not be read just now, so one that has paid out may still be counted here. Reload to try again.'}
               </Caveat>
               {canWrite && <RefreshPrices onRefresh={refresh} />}
             </span>

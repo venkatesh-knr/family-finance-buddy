@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { fixedIncomeView, trimRate, type FixedIncomePosition } from './fixed-income.ts';
+import { fixedIncomeView, monthEndReadings, trimRate, type FixedIncomePosition } from './fixed-income.ts';
 
 const inr = (minor: number) => money(BigInt(minor), 'INR');
 
@@ -295,5 +295,90 @@ describe('fixedIncomeView, a cumulative bond', () => {
     expect(unset).toEqual(payout);
     expect(unset.ok && unset.kind === 'bond' && unset.repay).toBe('payout');
     expect(unset.ok && unset.kind === 'bond' && unset.couponAmount).toEqual(inr(1_075_000));
+  });
+});
+
+describe('monthEndReadings', () => {
+  const at = '2026-04-01';
+
+  it('works out each running deposit and bond on the day, as the card does', () => {
+    const result = monthEndReadings(
+      [
+        deposit({ holdingId: 'd' }),
+        bond({ holdingId: 'p' }),
+        bond({ holdingId: 'c', ratePct: '8', repayMode: 'cumulative', maturity: '2027-10-01' }),
+      ],
+      at,
+    );
+    expect(result.skipped).toEqual([]);
+    expect(result.readings).toEqual([
+      { holdingId: 'd', value: inr(10_373_973) },
+      { holdingId: 'p', value: inr(10_536_027) },
+      { holdingId: 'c', value: inr(10_398_904) },
+    ]);
+  });
+
+  it('writes the same figure the row shows, so the two cannot disagree', () => {
+    const position = deposit();
+    const view = fixedIncomeView(position, at);
+    expect(monthEndReadings([position], at).readings[0]?.value).toEqual(view.ok && view.value);
+  });
+
+  it('leaves out one that has paid out: it is not a holding any more', () => {
+    const result = monthEndReadings([deposit(), bond({ holdingId: 'b', maturity: '2026-03-01' })], at);
+    expect(result.readings.map((r) => r.holdingId)).toEqual(['h1']);
+    expect(result.skipped).toEqual([{ holdingId: 'b', why: 'matured' }]);
+  });
+
+  it('leaves out an assumed renewal, which is an estimate and is never written as a reading', () => {
+    const result = monthEndReadings(
+      [deposit({ start: '2024-10-01', maturity: '2025-10-01', autoRenew: true })],
+      at,
+    );
+    expect(result.readings).toEqual([]);
+    expect(result.skipped).toEqual([{ holdingId: 'h1', why: 'projected' }]);
+  });
+
+  it('takes a renewal the bank has made, which is a figure and not an estimate', () => {
+    const result = monthEndReadings(
+      [
+        deposit({
+          start: '2024-10-01',
+          maturity: '2025-10-01',
+          autoRenew: true,
+          renewals: [
+            {
+              start: '2025-10-01',
+              maturity: '2026-10-01',
+              principal: inr(10_750_000),
+              ratePct: '7',
+              compounding: 'yearly',
+            },
+          ],
+        }),
+      ],
+      at,
+    );
+    expect(result.skipped).toEqual([]);
+    expect(result.readings).toHaveLength(1);
+  });
+
+  it('leaves out one that has not started, and one it cannot value, and says which', () => {
+    const result = monthEndReadings(
+      [
+        deposit({ holdingId: 'early', start: '2026-06-01', maturity: '2027-06-01' }),
+        deposit({ holdingId: 'broken', compounding: null }),
+      ],
+      at,
+    );
+    expect(result.readings).toEqual([]);
+    expect(result.skipped).toEqual([
+      { holdingId: 'early', why: 'not-started' },
+      { holdingId: 'broken', why: 'unvaluable' },
+    ]);
+  });
+
+  it('is empty for nothing, and does not read the clock', () => {
+    expect(monthEndReadings([], at)).toEqual({ readings: [], skipped: [] });
   });
 });

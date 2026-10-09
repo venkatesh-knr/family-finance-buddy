@@ -11,6 +11,8 @@
  */
 
 import { supabase } from './client.ts';
+import type { IsoDate } from '../lib/dates.ts';
+import type { Money } from '../lib/money.ts';
 import { archiveHolding } from './holdings.ts';
 import { toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
 import type {
@@ -257,4 +259,40 @@ function asRepositoryError(error: ProviderError): Error {
     return new Error('Those terms are not valid: check the dates, the rate and the fields for this kind.');
   }
   return new Error(error.message);
+}
+
+/**
+ * Readings worked out from the terms, written once for a day, and never over one that is there.
+ *
+ * For Close month: a deposit or bond has no figure to carry forward, since its value is a
+ * function of its terms, so the figure is worked out for the month end and written as a
+ * `backfill` reading, the schema's word for a month reconstructed afterwards. "Nothing is
+ * overwritten": a reading somebody took on the day is worth more than a worked-out one, so
+ * a day that already has one is left alone. Returns how many it wrote.
+ */
+export async function recordComputedReadings(input: {
+  readonly householdId: string;
+  readonly date: IsoDate;
+  readonly readings: readonly { readonly holdingId: string; readonly value: Money }[];
+}): Promise<number> {
+  if (input.readings.length === 0) return 0;
+
+  const result = await supabase()
+    .from('valuation_snapshot')
+    .upsert(
+      input.readings.map((reading) => ({
+        household_id: input.householdId,
+        holding_id: reading.holdingId,
+        as_of_date: input.date,
+        quantity: '1',
+        value_minor: reading.value.minor.toString(),
+        currency: reading.value.currency,
+        source: 'backfill',
+        note: 'Worked out from the terms at the month end.',
+      })),
+      { onConflict: 'holding_id,as_of_date', ignoreDuplicates: true },
+    )
+    .select('holding_id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  return result.data.length;
 }

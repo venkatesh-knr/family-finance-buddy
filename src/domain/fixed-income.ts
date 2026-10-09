@@ -246,3 +246,38 @@ function bondView(position: FixedIncomePosition, on: IsoDate): FixedIncomeView {
     daysToMaturity,
   };
 }
+
+export type SkippedBecause = 'matured' | 'projected' | 'not-started' | 'unvaluable';
+
+/**
+ * What each deposit and bond was worth on a day, as the readings Close month writes.
+ *
+ * Only a figure that is one: a position that has paid out is not a holding any more, an
+ * assumed renewal is an estimate and is never stored as if it were a reading, and one that
+ * has not started or cannot be valued has no value to give. Each is named, not dropped, so
+ * the screen can say what it left out and why. The value is the card's own (`fixedIncomeView`),
+ * so the reading and the row cannot disagree.
+ */
+export function monthEndReadings(
+  positions: readonly FixedIncomePosition[],
+  on: IsoDate,
+): {
+  readonly readings: readonly { readonly holdingId: string; readonly value: Money }[];
+  readonly skipped: readonly { readonly holdingId: string; readonly why: SkippedBecause }[];
+} {
+  const readings: { holdingId: string; value: Money }[] = [];
+  const skipped: { holdingId: string; why: SkippedBecause }[] = [];
+  for (const position of positions) {
+    const view = fixedIncomeView(position, on);
+    if (!view.ok) {
+      skipped.push({ holdingId: position.holdingId, why: view.reason === 'before-start' ? 'not-started' : 'unvaluable' });
+    } else if (view.matured) {
+      skipped.push({ holdingId: position.holdingId, why: 'matured' });
+    } else if (view.kind === 'deposit' && view.projected) {
+      skipped.push({ holdingId: position.holdingId, why: 'projected' });
+    } else {
+      readings.push({ holdingId: position.holdingId, value: view.value });
+    }
+  }
+  return { readings, skipped };
+}
