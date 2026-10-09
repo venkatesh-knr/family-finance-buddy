@@ -142,6 +142,59 @@ function termsRow(input: NewTermsForHolding) {
   };
 }
 
+/**
+ * Correct a deposit or bond's terms in place.
+ *
+ * In place because the policies allow it and a wrong rate is wrong on every day, so
+ * correcting it corrects every figure; the audit log keeps the version it replaced. The
+ * kind is not editable: a deposit does not become a bond, and the table's checks tie each
+ * kind to its own fields.
+ */
+export async function updateTerms(input: NewTermsForHolding): Promise<void> {
+  checkTerms(input);
+  const row: Record<string, unknown> = termsRow(input);
+  delete row['holding_id'];
+  delete row['household_id'];
+  delete row['kind'];
+
+  const result = await supabase()
+    .from('fixed_income_terms')
+    .update(row)
+    .eq('holding_id', input.holdingId)
+    .select('holding_id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if (result.data.length === 0) {
+    throw new Error('Those terms could not be changed. They may belong to another member.');
+  }
+}
+
+/** Correct a recorded renewal in place, as its advice states it. */
+export async function updateDepositRenewal(
+  id: string,
+  input: Omit<NewDepositRenewal, 'householdId' | 'holdingId'>,
+): Promise<void> {
+  if (input.maturity <= input.start) throw new Error('It has to mature after it starts.');
+  if (input.principal.minor <= 0n) throw new Error('The amount has to be more than nothing.');
+
+  const result = await supabase()
+    .from('deposit_renewal')
+    .update({
+      start_date: input.start,
+      maturity_date: input.maturity,
+      principal_minor: input.principal.minor.toString(),
+      currency: input.principal.currency,
+      rate_pct: input.ratePct,
+      compounding: input.compounding,
+      note: emptyToNull(input.note),
+    })
+    .eq('id', id)
+    .select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if (result.data.length === 0) {
+    throw new Error('That renewal could not be changed. It may belong to another member.');
+  }
+}
+
 /** A renewal the bank has made, as its advice states it. */
 export async function addDepositRenewal(input: NewDepositRenewal): Promise<void> {
   if (input.maturity <= input.start) throw new Error('It has to mature after it starts.');
