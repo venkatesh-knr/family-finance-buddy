@@ -93,6 +93,18 @@ an authoritative document, it says which and what.
 - **The household holds property, fixed deposits, bonds, PPF, EPF, NPS and other,** which sets the rest of the order in the
   plan (item 6).
 
+## The sign-in path (October 2026)
+
+- **A failed second-factor check is said as what it was.** One sentence for every cause ("codes expire every 30 seconds")
+  sent a person round fetching fresh codes while the session had simply gone stale. Failures are classified first (wrong
+  code, late code, stale session, vanished factor, rate limit, network, unknown) and a stale session is checked before a
+  mismatch. No raw server text is shown.
+- **The authenticator QR is converted to markup in the repository layer, not drawn as an image,** because the
+  Content-Security-Policy applies to the built bundle only and a `data:` image would work in development and be blocked on
+  Pages. It is checked first, since it is injected as markup; anything that is not a plain SVG falls back to typing the secret.
+- **The switcher tells households of the same name apart** (role, then date created, then a short id). Which households
+  exist is the maintainer's decision, and a client cannot rename or remove one.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
