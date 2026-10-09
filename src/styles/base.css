@@ -316,11 +316,13 @@
    * be put right later.
    */
   .attention {
-    border-radius: 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
   }
 
   .attention-gap {
     background: var(--surface-2);
+    border-color: var(--line);
     color: var(--ink-2);
   }
 
@@ -330,6 +332,7 @@
 
   .attention-due {
     background: var(--coral-soft);
+    border-color: color-mix(in srgb, var(--coral) 30%, var(--coral-soft));
     color: var(--coral);
   }
 
@@ -351,7 +354,9 @@
   }
 
   .attention-chevron {
+    align-items: center;
     color: var(--muted);
+    display: flex;
     flex: none;
     transition: transform 120ms;
   }
@@ -732,6 +737,22 @@
     padding-inline: 0.2em;
   }
 
+  /*
+   * Below the width at which .hide-narrow drops the words, the switch is an icon alone, and an icon
+   * alone is a circle (docs/design/vibrant-canvas.html), the same size as the account control beside it.
+   */
+  @media (max-width: 519px) {
+    .iconbtn {
+      border-color: var(--line);
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      height: 2.4em;
+      justify-content: center;
+      padding: 0;
+      width: 2.4em;
+    }
+  }
+
   .iconbtn[aria-pressed='true'] {
     background: var(--indigo-soft);
     border-color: var(--indigo);
@@ -804,6 +825,13 @@
     line-height: 1;
   }
 
+  /* In em, like the character it replaced, so it follows the reader's text size. */
+  .bottom-nav-glyph svg {
+    display: block;
+    height: 1.2em;
+    width: 1.2em;
+  }
+
   /* Shown only on a phone; the mirror of hide-narrow. */
   .hide-wide {
     display: flex;
@@ -840,10 +868,12 @@
   /* The account control, and the menu behind it. */
   .avatar {
     align-items: center;
-    background: var(--indigo-soft);
-    border: 1px solid var(--line-strong);
+    /* The warm disc of docs/design/vibrant-canvas.html: brass into the chart ramp's orange, with the
+       primary button's ink. canvasStyle.test.ts holds the initial at 4.5:1 on both ends, both themes. */
+    background: linear-gradient(140deg, var(--brass), var(--c7));
+    border: 0;
     border-radius: var(--radius-pill);
-    color: var(--indigo);
+    color: var(--surface);
     cursor: pointer;
     display: flex;
     font-family: var(--font-ui);

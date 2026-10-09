@@ -1,4 +1,28 @@
 /**
+ * The one chevron: it points right, and a disclosure turns it a quarter to point down (docs/design/
+ * vibrant-canvas.html, "one arrow, one chevron, one info mark"). Stroked like every other glyph, so it
+ * takes its colour and its size from the text beside it. Decorative: the control it sits in is named.
+ */
+export function Chevron() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'block' }}
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+/**
  * Shared primitives, built on docs/tokens.md.
  *
  * Small on purpose. A walking skeleton needs a card, a field, a button and a
@@ -66,7 +90,7 @@ export function Card({
                   color: 'var(--muted)',
                 }}
               >
-                ▸
+                <Chevron />
               </span>
               {title}
             </button>
@@ -584,7 +608,7 @@ export function Attention({
         </span>
         <span className="min-w-0">{headline}</span>
         <span className="attention-chevron" aria-hidden="true">
-          ▸
+          <Chevron />
         </span>
       </summary>
       <div className="attention-body">
