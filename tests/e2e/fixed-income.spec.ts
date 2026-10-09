@@ -99,3 +99,69 @@ test('a deposit held without terms is given them, not entered a second time', as
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
+
+test('the terms of a deposit can be corrected in place, and every figure follows', async ({ page }) => {
+  const name = `e2e-edit-${Date.now()}`;
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a deposit or bond' }).click();
+  const form = page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Principal').fill('100000');
+  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
+  await form.getByLabel('Starts').fill('2024-01-01');
+  await form.getByLabel('Matures').fill('2025-01-01');
+  await form.getByRole('button', { name: 'Add the deposit' }).click();
+
+  const entry = page.getByRole('listitem').filter({ hasText: name });
+  await expect(entry).toContainText('1,07,500');
+
+  // The typo is in the principal: the deposit was 2,00,000.
+  await entry.getByRole('button', { name: `Correct the terms of ${name}` }).click();
+  const edit = page.locator('form').filter({ hasText: `Correct the terms of ${name}` });
+  await expect(edit.getByLabel('Principal')).toHaveValue('100000');
+  await edit.getByLabel('Principal').fill('200000');
+  await edit.getByRole('button', { name: 'Save the corrections' }).click();
+
+  await expect(entry).toContainText('2,15,000');
+  await expect(entry).not.toContainText('1,07,500');
+
+  const holding = page
+    .locator('section', { hasText: name })
+    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .last();
+  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: 'Yes, archive it' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
+});
+
+test('a deposit maturing within a month is called out, with the decision named', async ({ page }) => {
+  const name = `e2e-soon-${Date.now()}`;
+  const day = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  await page.goto('/#holdings');
+  await page.getByRole('button', { name: 'Add a deposit or bond' }).click();
+  const form = page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Principal').fill('100000');
+  await form.getByLabel('Rate %', { exact: true }).fill('7');
+  await form.getByLabel('Starts').fill(day(-300));
+  await form.getByLabel('Matures').fill(day(10));
+  await form.getByRole('button', { name: 'Add the deposit' }).click();
+
+  const entry = page.getByRole('listitem').filter({ hasText: name });
+  await expect(entry).toContainText(/Matures in \d+ days/);
+  await expect(entry).toContainText('Decide where the money goes');
+
+  const holding = page
+    .locator('section', { hasText: name })
+    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .last();
+  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: 'Yes, archive it' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
+});
