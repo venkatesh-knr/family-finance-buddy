@@ -562,11 +562,11 @@ Foreign-asset disclosure asks for the peak value during the calendar year, not t
 **FD maturity & bond accrual**
 
 ```
-M = P × (1 + rate/4)^(4y)
-accrued = P × coupon × days/365
+M = P × (1 + rate/n)^(n × y)      a fixed deposit; n is the compounding periods a year
+accrued = P × coupon × days/365   a bond, between coupon dates
 ```
 
-Quarterly compounding is the Indian bank default. Bond1 at 10.75% yearly and Bond2 at 11.5% monthly accrue differently between payout dates.
+n is 1 for yearly, 2 half-yearly, 4 quarterly and 12 monthly, and it is read off each deposit's receipt, never assumed. This household's deposits compound yearly (n = 1): ₹1,00,000 at 7.5% for two years is 1,00,000 × 1.075² = ₹1,15,562.50. Quarterly (n = 4) gives slightly more for the same rate, which is why the receipt decides. The first formula is for deposits only; a bond has a coupon, not a compounding. Bond1 at 10.75% yearly and Bond2 at 11.5% monthly accrue differently between payout dates.
 
 *Decided since:* compounding is a property of each deposit and never a default (this household's deposits compound yearly), and a deposit that renews automatically is a chain of terms: the interest joins the principal and the whole is redeposited for the same term, at the rate the bank then offers. A renewal that has happened is recorded from the bank's advice; one that has not is projected and shown as a projection, never stored. See `docs/decisions.md`.
 

@@ -214,8 +214,17 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
   recorded, not built: repay mode, rating changes and a reinvestment prompt (5), and the source label (6). Agreed, and the substance of
   the open decision: that a deposit reaches net worth only by pressing a button (2). Not changed: the specification's quarterly
   compounding formula in blueprint §8, which is the maintainer's document.
-- **Not built:** correcting a deposit's terms or a renewal in place (the policies allow it), coupons received, repay mode, rating
-  changes, and PPF, EPF and NPS.
+- **Corrected in place** (a follow-up, from the maintainer's screenshot): the terms of a deposit or bond, and a recorded renewal, by the pencil
+  on the row. In place because a wrong rate is wrong on every day, and the audit log keeps the version it replaced. The holding's own cost
+  and opening date follow the terms only when they still agreed with what is being replaced; a cost set by hand to something else is left.
+- **A maturity within thirty days is called out on the card**, naming the decision (where the money goes, or that the bank's advice is
+  due for a renewal), thirty being the lead time the design shows for "Bond and deposit maturity". It is a prompt, not a notification: the
+  scheduled reminder is the Calendar's.
+- **The blueprint's §8 formula is stated for any compounding** (`M = P × (1 + rate/n)^(n × y)`), with this household's yearly deposit as the
+  worked example, since the quarterly one read as the rule. It is for deposits only; a bond has a coupon.
+- **The forms are on a grid** and not a wrapping row. A row that wraps and aligns to the bottom put the box of any field with a hint
+  higher than its neighbours', which is how the first version came out crooked.
+- **Not built:** coupons received, repay mode, rating changes (both need a migration, proposed separately), and PPF, EPF and NPS.
 
 ## Bank and card import (October 2026), not started
 

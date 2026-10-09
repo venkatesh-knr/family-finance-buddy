@@ -148,7 +148,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   never been seen as those roles because there are no such demo accounts.
 - **Open for the maintainer, from the deposits slice:** whether a deposit's reading should be taken automatically rather than by the
   "Record as today's reading" button (see `docs/decisions.md`).
-- **Not built yet, in this order:** editing a deposit's terms in place; `property` and
+- **Not built yet, in this order:** repay mode and a rating-change log for bonds (a migration, proposed); `property` and
   `property_improvement` with a cost-basis function; PPF, EPF and NPS.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
