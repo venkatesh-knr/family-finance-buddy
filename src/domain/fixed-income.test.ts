@@ -15,6 +15,7 @@ const deposit = (over: Partial<FixedIncomePosition> = {}): FixedIncomePosition =
   couponFrequency: null,
   autoRenew: false,
   renewalRatePct: null,
+  repayMode: null,
   renewals: [],
   ...over,
 });
@@ -30,6 +31,7 @@ const bond = (over: Partial<FixedIncomePosition> = {}): FixedIncomePosition => (
   couponFrequency: 'yearly',
   autoRenew: false,
   renewalRatePct: null,
+  repayMode: null,
   renewals: [],
   ...over,
 });
@@ -236,5 +238,62 @@ describe('trimRate', () => {
 
   it('leaves what is not a plain rate alone', () => {
     expect(trimRate('seven')).toBe('seven');
+  });
+});
+
+describe('fixedIncomeView, a cumulative bond', () => {
+  // 8% credited yearly, paid with the face at maturity: nothing is paid in between.
+  const cumulative = (over: Partial<FixedIncomePosition> = {}) =>
+    bond({ ratePct: '8', repayMode: 'cumulative', maturity: '2027-10-01', ...over });
+
+  it('accrues interest that is not paid out, to the paisa', () => {
+    // 182 days of 8% on 10,000,000 = 398,904.1 -> 398,904, before the first credit.
+    const view = fixedIncomeView(cumulative(), '2026-04-01');
+    expect(view.ok && view.kind === 'bond' && view.accrued).toEqual(inr(398_904));
+    expect(view.ok && view.value).toEqual(inr(10_398_904));
+  });
+
+  it('does not reset on what a payout bond would call a coupon date', () => {
+    // On the first anniversary the year's interest is credited and stays: 10,800,000.
+    const view = fixedIncomeView(cumulative(), '2026-10-01');
+    expect(view.ok && view.value).toEqual(inr(10_800_000));
+    expect(view.ok && view.kind === 'bond' && view.accrued).toEqual(inr(800_000));
+  });
+
+  it('says what it pays at maturity, the face and the compounded interest', () => {
+    const view = fixedIncomeView(cumulative(), '2026-04-01');
+    // 10,000,000 x 1.08 x 1.08.
+    expect(view.ok && view.kind === 'bond' && view.maturityValue).toEqual(inr(11_664_000));
+  });
+
+  it('has no coupon to name, since none is paid', () => {
+    const view = fixedIncomeView(cumulative(), '2026-04-01');
+    expect(view.ok && view.kind === 'bond' && view.nextCoupon).toBeNull();
+    expect(view.ok && view.kind === 'bond' && view.couponAmount).toBeNull();
+    expect(view.ok && view.kind === 'bond' && view.repay).toBe('cumulative');
+  });
+
+  it('pays the whole of it once it has matured, and says so', () => {
+    const view = fixedIncomeView(cumulative(), '2028-01-01');
+    expect(view.ok && view.value).toEqual(inr(11_664_000));
+    expect(view.ok && view.matured).toBe(true);
+    expect(view.ok && view.kind === 'bond' && view.daysToMaturity).toBeNull();
+  });
+
+  it('counts the days to maturity', () => {
+    const view = fixedIncomeView(cumulative(), '2026-04-01');
+    expect(view.ok && view.kind === 'bond' && view.daysToMaturity).toBe(548);
+  });
+
+  it('is not yet anything before it starts', () => {
+    expect(fixedIncomeView(cumulative(), '2025-09-01')).toEqual({ ok: false, reason: 'before-start' });
+  });
+
+  it('leaves a payout bond as it was: an unset mode is payout', () => {
+    const unset = fixedIncomeView(bond(), '2026-04-01');
+    const payout = fixedIncomeView(bond({ repayMode: 'payout' }), '2026-04-01');
+    expect(unset).toEqual(payout);
+    expect(unset.ok && unset.kind === 'bond' && unset.repay).toBe('payout');
+    expect(unset.ok && unset.kind === 'bond' && unset.couponAmount).toEqual(inr(1_075_000));
   });
 });
