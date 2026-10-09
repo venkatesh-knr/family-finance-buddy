@@ -255,18 +255,38 @@ On the migration above, once applied.
 - **A downgrade is a move in grade, read from the grade alone** (`domain/ratings.ts`). The agency prefix, an outlook and a suffix are not
   the grade; a short-term rating (A1+) is on another scale and is not ranked against a long-term one, so a change between two things it
   cannot rank is "unknown" and not "unchanged". A change of agency or outlook at the same grade is not a downgrade.
-- **The latest move in grade is the one that stands.** An upgrade back clears a downgrade; a downgrade is called out for 180 days and the
-  rating history on the bond keeps it for good. 180 is a judgement: long enough to be found, short enough that a bond that stayed down
+- **A change is judged against the last rating that was set,** not only its own row. Clearing a rating and entering a lower one is two
+  saves, "AA to nothing" and "nothing to BB", and neither alone is a downgrade; judged against the last one set, the second is AA to BB.
+  A rating that follows a gap is "rated again", and only a bond's very first is "first recorded". ICRA's own notation, `[ICRA]AA+`, is
+  read: brackets are separators, not the start of a suffix.
+- **The latest change that says something is the one that stands.** An upgrade back clears a downgrade; a change of agency or outlook at
+  the same grade, and a first rating, say nothing and are passed over; a downgrade is called out for 180 days and the rating history on
+  the bond keeps it for good.
+- **A change the app cannot rank is said, not skipped.** A short-term rating falling from A1+ to A4 is severe and is on a scale the app
+  does not read; "unknown" is not "unchanged", so the row and Overview say the rating changed and the app could not tell which way, and
+  point to the agency's letter. A rating that was removed and has not come back is said too: it is not good news. 180 is a judgement: long enough to be found, short enough that a bond that stayed down
   for a year is a fact on its history and not an alarm that never stops.
 - **A downgrade is not left to be found on Holdings.** It is on the bond's row, and on the Overview's Needs attention in the coral tone,
   with the bond named. So is a maturity within thirty days, which is the reinvestment prompt. Both appear only for what the caller can see,
   and in Mine only their own. If deposits, bonds or the rating history could not be read, Overview says so and does not read it as
   "nothing to report".
+- **A deposit that renews itself is told it renews, not that its money comes back.** Overview says so in a separate item, with the same
+  words as the row: the bank's advice is what is awaited. "Decide where it goes" to somebody whose deposit renews on its own is how a
+  duplicate gets entered and counted twice.
 - **Nothing in the app writes the rating log.** A rating is changed by editing it on the terms; the trigger records the change. The form
   says "a change is logged" beside the field when editing.
 - **A defect found on the way:** a select inside a label that also holds a help button was given no accessible name, so a screen reader
   announced an unlabelled dropdown. It was in the Compounds field of the first deposits slice and in the older Tracks field. The selects
   are now named outright.
+
+### The review of this slice
+
+Seven findings, all agreed and fixed: `[ICRA]AA+` was never read, so an ICRA downgrade was never called out (1); a downgrade done as a
+clear and a re-entry slipped through and its history row said "first recorded" (2); a change the code could not rank was shown like no
+change (3); the card's caveat still said a cumulative bond was not valued correctly (4); Overview told a renewing deposit "the money comes
+back" (5); the same downgrade was brass on Holdings and coral on Overview (6); "in 1 days" (7). Blueprint §8 now says the deposit formula
+covers a cumulative bond. The demo household has no rated, cumulative or soon-maturing bond, so `test:screens` shows none of it; the
+e2e spec is what exercises these states, against the demo household, and archives what it makes.
 
 ## Bank and card import (October 2026), not started
 
