@@ -13,7 +13,12 @@
 import { supabase } from './client.ts';
 import { archiveHolding } from './holdings.ts';
 import { toDepositRenewal, toFixedIncomeTerms } from './mapping.ts';
-import type { FixedIncomeListing, NewDepositRenewal, NewFixedIncome } from './types.ts';
+import type {
+  FixedIncomeListing,
+  NewDepositRenewal,
+  NewFixedIncome,
+  NewTermsForHolding,
+} from './types.ts';
 
 const TERMS_COLUMNS =
   'holding_id, household_id, kind, principal_minor::text, currency, rate_pct::text, start_date, maturity_date, compounding, coupon_frequency, rating, auto_renew, renewal_rate_pct::text, institution, account_last4, note';
@@ -51,15 +56,7 @@ export async function listFixedIncome(householdId: string): Promise<FixedIncomeL
  */
 export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
   const client = supabase();
-
-  if (input.maturity <= input.start) throw new Error('It has to mature after it starts.');
-  if (input.principal.minor <= 0n) throw new Error('The amount has to be more than nothing.');
-  if (input.kind === 'deposit' && input.compounding === undefined) {
-    throw new Error('Say how a deposit compounds. It is a property of each deposit, never assumed.');
-  }
-  if (input.kind === 'bond' && input.couponFrequency === undefined) {
-    throw new Error('Say how often a bond pays its coupon.');
-  }
+  checkTerms(input);
 
   const instrument = await client
     .from('instrument')
@@ -92,8 +89,41 @@ export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
   if (holding.error !== null) throw asRepositoryError(holding.error);
 
   const holdingId = String(holding.data.id);
-  const terms = await client.from('fixed_income_terms').insert({
-    holding_id: holdingId,
+  const terms = await client.from('fixed_income_terms').insert(termsRow({ ...input, holdingId }));
+
+  if (terms.error !== null) {
+    await archiveHolding(holdingId).catch(() => undefined);
+    throw asRepositoryError(terms.error);
+  }
+}
+
+/**
+ * Terms for a deposit or bond that is already a holding.
+ *
+ * A household's existing deposits and bonds were entered before there were terms, as a
+ * holding with a reading. Giving one its terms must not create a second holding beside it,
+ * which would be counted twice and leave the old reading in net worth.
+ */
+export async function addTermsToHolding(input: NewTermsForHolding): Promise<void> {
+  checkTerms(input);
+  const result = await supabase().from('fixed_income_terms').insert(termsRow(input));
+  if (result.error !== null) throw asRepositoryError(result.error);
+}
+
+function checkTerms(input: Omit<NewFixedIncome, 'memberId' | 'name'>): void {
+  if (input.maturity <= input.start) throw new Error('It has to mature after it starts.');
+  if (input.principal.minor <= 0n) throw new Error('The amount has to be more than nothing.');
+  if (input.kind === 'deposit' && input.compounding === undefined) {
+    throw new Error('Say how a deposit compounds. It is a property of each deposit, never assumed.');
+  }
+  if (input.kind === 'bond' && input.couponFrequency === undefined) {
+    throw new Error('Say how often a bond pays its coupon.');
+  }
+}
+
+function termsRow(input: NewTermsForHolding) {
+  return {
+    holding_id: input.holdingId,
     household_id: input.householdId,
     kind: input.kind,
     principal_minor: input.principal.minor.toString(),
@@ -109,12 +139,7 @@ export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
       input.kind === 'deposit' && input.autoRenew === true ? emptyToNull(input.renewalRatePct) : null,
     institution: emptyToNull(input.institution),
     account_last4: emptyToNull(input.accountLast4),
-  });
-
-  if (terms.error !== null) {
-    await archiveHolding(holdingId).catch(() => undefined);
-    throw asRepositoryError(terms.error);
-  }
+  };
 }
 
 /** A renewal the bank has made, as its advice states it. */

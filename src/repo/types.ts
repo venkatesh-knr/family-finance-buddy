@@ -384,6 +384,9 @@ export interface NewFixedIncome {
   readonly accountLast4?: string | null;
 }
 
+/** The terms of a deposit or bond that is already a holding. */
+export type NewTermsForHolding = Omit<NewFixedIncome, 'memberId' | 'name'> & { readonly holdingId: Uuid };
+
 export interface NewDepositRenewal {
   readonly householdId: Uuid;
   readonly holdingId: Uuid;
