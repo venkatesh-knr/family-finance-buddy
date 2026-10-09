@@ -70,7 +70,15 @@ const LOT_COLUMNS =
 const DISPOSAL_COLUMNS =
   'id, holding_id, disposed_on, quantity::text, proceeds_minor::text, currency, kind, note';
 
-export async function listHoldings(options: { householdId?: Uuid } = {}): Promise<HoldingListing> {
+/**
+ * `includeArchived` is for the screens that draw the past: an archived holding is
+ * still part of every month before it was archived, and a listing that never
+ * returns it cannot keep it there. The Holdings screen leaves it off, because an
+ * archived holding is not something to list as held.
+ */
+export async function listHoldings(
+  options: { householdId?: Uuid; includeArchived?: boolean } = {},
+): Promise<HoldingListing> {
   const client = supabase();
 
   // See the note in expenses.ts: this narrows the view, and cannot widen access.
@@ -124,12 +132,12 @@ export async function listHoldings(options: { householdId?: Uuid } = {}): Promis
 
   // Scoped to the household in view. See the note in expenses.ts: policies keep
   // other households out, not your own other household.
-  const holdingsResult = await client
+  let holdingsQuery = client
     .from('holding')
     .select(HOLDING_COLUMNS)
-    .eq('household_id', household.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true });
+    .eq('household_id', household.id);
+  if (options.includeArchived !== true) holdingsQuery = holdingsQuery.eq('status', 'active');
+  const holdingsResult = await holdingsQuery.order('created_at', { ascending: true });
 
   if (holdingsResult.error !== null) throw asRepositoryError(holdingsResult.error);
 

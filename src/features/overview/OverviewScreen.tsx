@@ -60,6 +60,15 @@ import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, 
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
+/** "Sep 2026" for a date in September 2026. */
+function monthYear(date: string): string {
+  return new Date(`${date.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-GB', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 /** A gain with its sign: a tint alone means nothing to somebody who cannot see it. */
 function signed(value: Money, privacy: boolean): string {
   const text = formatMoney(value, { privacy });
@@ -172,7 +181,10 @@ export function OverviewScreen({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const next = await listHoldings(householdId === null ? {} : { householdId });
+      const next = await listHoldings({
+        ...(householdId === null ? {} : { householdId }),
+        includeArchived: true,
+      });
       setListing(next);
       setProblem(null);
       setNoHousehold(false);
@@ -319,10 +331,23 @@ export function OverviewScreen({
         .filter((group) => group.rows.length > 0),
     [totals, holdings, valuations],
   );
-  const gaps = useMemo(
-    () => readingGaps({ holdings, valuations, year: Number(today.slice(0, 4)), today }),
-    [holdings, valuations, today],
+  // The peak is a foreign-asset disclosure figure (blueprint §06), so the alarm
+  // that says it is a lower bound is about foreign holdings alone. A domestic
+  // fund's missing month is a step in the line, and is said separately and quietly.
+  const foreignIds = useMemo(
+    () => new Set((listing?.holdings ?? []).filter((h) => h.instrument.isForeignAsset).map((h) => h.id)),
+    [listing],
   );
+  const gaps = useMemo(() => {
+    const year = Number(today.slice(0, 4));
+    const foreign = holdings.filter((h) => foreignIds.has(h.id));
+    const domestic = holdings.filter((h) => !foreignIds.has(h.id));
+    return {
+      peak: readingGaps({ holdings: foreign, valuations, year, today }),
+      line: readingGaps({ holdings: domestic, valuations, year, today }),
+      neverRead: readingGaps({ holdings, valuations, year, today }).neverRead,
+    };
+  }, [holdings, valuations, foreignIds, today]);
 
   // The newest reading of what is held now, which is what "as at" can honestly
   // mean; the oldest is what the figure is partly made of. An archived fund's
@@ -385,6 +410,9 @@ export function OverviewScreen({
     () => (scope === 'household' ? personalTotals : []),
     [scope, personalTotals],
   );
+
+  const privateLeftOut = scope === 'household' && hiddenAssets.length > 0;
+  const privateSums = hiddenAssets.map((entry) => formatMoney(entry.total, { privacy })).join(' + ');
 
   const hiddenUnvalued = useMemo(
     () => hiddenAssets.reduce((sum, entry) => sum + entry.unvalued, 0),
@@ -543,7 +571,7 @@ export function OverviewScreen({
               {asOf === null ? (
                 <span className="note">nothing valued yet</span>
               ) : (
-                <span className="note">as at {asOf}</span>
+                <span className="note">as at {formatIsoDate(asOf)}</span>
               )}
               {display !== base && <span className="note">read in {display}</span>}
               {/*
@@ -554,7 +582,7 @@ export function OverviewScreen({
                 {scope === 'household'
                   ? 'Everything the household owns'
                   : 'Everything you own, and the debts in your name'}
-                , converted at the rate for {asOf ?? today}, less everything owed.
+                , converted at the rate for {formatIsoDate(asOf ?? today)}, less everything owed.
                 {display !== base && ` Read in ${display}; this household's own currency is ${base}.`}
                 {scope === 'household' && hiddenAssets.length > 0 && (
                   <>
@@ -574,7 +602,20 @@ export function OverviewScreen({
             </span>
           }
         >
-          {worth.ok ? (
+          {asOf === null && hiddenAssets.length === 0 ? (
+            /*
+              Every holding unread. Adding them up gives 0, or minus the debts, and
+              a figure somebody would act on; the rest of the screen already
+              refuses in this state, and so does the hero.
+            */
+            <div className="figure" style={{ color: 'var(--ink)' }}>
+              <Absent label="Why there is no net worth yet">
+                Nothing has been valued, so there is nothing to add up, and a total of zero would say
+                the household owns nothing. Record a value on Holdings and it appears here
+                {shownDebts.length > 0 ? ', less what is owed' : ''}.
+              </Absent>
+            </div>
+          ) : worth.ok ? (
             /*
               A div and not a p: a caveat opens a popover, and a div may not sit
               inside a paragraph.
@@ -592,7 +633,7 @@ export function OverviewScreen({
                 Each of these qualifies this number and none is decoration, so
                 they ride on it, and each appears only when it applies.
               */}
-              {personalTotalsFailed && (
+              {personalTotalsFailed && scope === 'household' && (
                 <Caveat tone="warn" label="Why this total may be short">
                   The private holdings of other members could not be read, so this figure may be short
                   by whatever they are worth. It is not that there are none — the request failed.
@@ -706,7 +747,6 @@ export function OverviewScreen({
                   label={`1 ${worth.missing[0]?.base ?? ''} in ${worth.missing[0]?.quote ?? ''}`}
                   numeric
                   inputMode="decimal"
-                  placeholder="88.45"
                   value={newRate}
                   onChange={(event) => {
                     setNewRate(event.target.value);
@@ -721,10 +761,10 @@ export function OverviewScreen({
                   if (pair !== undefined) void saveRate(pair);
                 }}
               >
-                {savingRate ? 'Saving…' : `Record for ${asOf ?? today}`}
+                {savingRate ? 'Saving…' : `Record for ${formatIsoDate(asOf ?? today)}`}
               </Button>
               <Caveat tone="info" label="What date this rate applies from">
-                Recorded against {asOf ?? today} and used only for figures on or after it. An earlier
+                Recorded against {formatIsoDate(asOf ?? today)} and used only for figures on or after it. An earlier
                 total keeps the rate it was converted at, so last year does not move because the rupee
                 did today.
               </Caveat>
@@ -762,10 +802,21 @@ export function OverviewScreen({
         <Card
           title="Assets"
           aside={
-            <Caveat tone="info" label="How these totals are put together">
+            <Caveat
+              tone={privateLeftOut ? 'warn' : 'info'}
+              label={privateLeftOut ? 'What these totals leave out' : 'How these totals are put together'}
+            >
               Totalled per currency, untouched by any rate. These are what each holding is actually
               worth in what it is actually priced in, which is the number that does not move when a
               rate is corrected.
+              {privateLeftOut && (
+                <>
+                  {' '}
+                  <strong>Other members&rsquo; private holdings are not in them.</strong> Net worth above
+                  counts those as one sum each ({privateSums}), without the detail, so the two do not
+                  add up to each other.
+                </>
+              )}
             </Caveat>
           }
         >
@@ -869,9 +920,17 @@ export function OverviewScreen({
           <Card
             title="Allocation"
             aside={
-              <Caveat tone="info" label="What these shares are of">
+              <Caveat tone={privateLeftOut ? 'warn' : 'info'} label="What these shares are of">
                 Shares are of what has been valued, within each currency. A holding nobody has read is
                 not here at all — it would need a value to have a share.
+                {privateLeftOut && (
+                  <>
+                    {' '}
+                    <strong>Other members&rsquo; private holdings are not here either</strong> ({privateSums}
+                    ). A split of them by class would let a member&rsquo;s private figure be worked out,
+                    so they are one sum in net worth and left out of the shares.
+                  </>
+                )}
               </Caveat>
             }
           >
@@ -970,7 +1029,8 @@ export function OverviewScreen({
           title="Needs attention"
           aside={<span className="note">{today.slice(0, 4)}</span>}
         >
-          {gaps.missingMonths.length === 0 &&
+          {gaps.peak.missingMonths.length === 0 &&
+          gaps.line.missingMonths.length === 0 &&
           gaps.neverRead.length === 0 &&
           staleness.stale.length === 0 &&
           shortPositions.length === 0 ? (
@@ -986,21 +1046,37 @@ export function OverviewScreen({
                 a year-end statement — so it keeps the coral fill and the others
                 sit on a quiet surface. Everything else is behind the line.
               */}
-              {gaps.missingMonths.length > 0 && (
+              {gaps.peak.missingMonths.length > 0 && (
                 <Attention
                   tone="due"
                   headline={
                     <>
-                      {gaps.missingMonths.length}{' '}
-                      {gaps.missingMonths.length === 1 ? 'month has' : 'months have'} a holding with
-                      no reading, so this year&rsquo;s peak is a lower bound
+                      {gaps.peak.missingMonths.length}{' '}
+                      {gaps.peak.missingMonths.length === 1 ? 'month has' : 'months have'} a foreign
+                      holding with no reading, so this year&rsquo;s peak is a lower bound
                     </>
                   }
-                  names={gaps.missing.map((gap) => `${gap.month}: ${namesFor(gap.holdingIds, holdingName)}`)}
+                  names={gaps.peak.missing.map((gap) => `${gap.month}: ${namesFor(gap.holdingIds, holdingName)}`)}
                   namesLabel="Which months, and which holdings"
                 >
                   A peak cannot be reconstructed from a year-end statement, which is why the gap
                   matters now and not in April.
+                </Attention>
+              )}
+              {gaps.line.missingMonths.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {gaps.line.missingMonths.length}{' '}
+                      {gaps.line.missingMonths.length === 1 ? 'month has' : 'months have'} a holding
+                      with no reading, so the line over time steps there
+                    </>
+                  }
+                  names={gaps.line.missing.map((gap) => `${gap.month}: ${namesFor(gap.holdingIds, holdingName)}`)}
+                  namesLabel="Which months, and which holdings"
+                >
+                  These are Indian holdings, which have no peak to disclose; a reading for the month
+                  keeps the line honest.
                 </Attention>
               )}
               {gaps.neverRead.length > 0 && (
@@ -1060,7 +1136,7 @@ export function OverviewScreen({
             <div className="mt-3.5 flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" disabled={closing} onClick={() => void close()}>
-                  {closing ? 'Closing…' : `Close ${lastMonthEnd.slice(0, 7)}`}
+                  {closing ? 'Closing…' : `Close ${monthYear(lastMonthEnd)}`}
                 </Button>
                 <Caveat tone="info" label="What closing a month does">
                   Closing carries each holding&rsquo;s latest reading in that month to the month end and

@@ -143,6 +143,28 @@ an authoritative document, it says which and what.
 - **Migrations `20260927120000` (audit follows the holding) and `20260927130000` (fixed-income terms, deposit renewal) have been
   applied** by the maintainer.
 
+## The second design-conformance review of Overview (October 2026)
+
+Answered finding by finding. Ten findings; the reviewer ran once and did not know the first review's results.
+
+- **Agreed and fixed:** 1 (archived holdings never reached Overview, because `listHoldings` returned only active ones, so the
+  archive-aware history and gaps shipped in #58 were fed nothing; it now takes `includeArchived` and Overview asks for them); 2
+  (the Assets and Allocation cards leave out other members' private holdings that the hero includes: now a warning on each, naming the
+  sums, since a split by class would let a private figure be worked out); 5 (nothing valued is no longer shown as a net worth of
+  zero); 7 (the coral peak alarm is for foreign holdings, which are what the peak is for; domestic gaps are said quietly); 8 (the
+  rate field no longer suggests a rupee rate for any pair); 9 (the private-totals failure caveat is on the household figure only); 10
+  (dates written as the rest of the screen writes them).
+- **Agreed, and needs the maintainer** — they are schema decisions, and CLAUDE.md says to discuss invariants before changing them:
+  3 (`fx_rate` grants `update` and `addRate` upserts, against "dated rows, appended, never updated") and 4 (`valuation_snapshot`
+  likewise, against blueprint §03 "nothing is ever overwritten"). Both migrations chose correction in place on purpose, and the audit
+  trigger keeps the old value, but that is the invariant's text being departed from without a Departures row. The choices are to
+  revoke `update` and correct by superseding row, or to amend the invariant. **Not changed.**
+- **Agreed, and a design of its own:** 6 (allocation by wrapper, not asset class; recorded as a Departure until the mapping is
+  designed). The note that the per-currency donut is stale is right in principle, since `fx_rate` exists, but converting shares
+  changes what a share means when a rate is missing, so it waits for the same decision.
+- **Not reproduced end to end.** 1 and 5 are confirmed by reading the code and by the tests of the domain behind them; the demo household
+  has no archived holding and has readings, so neither can be seen on it.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
