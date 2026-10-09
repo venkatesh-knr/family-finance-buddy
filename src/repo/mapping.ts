@@ -21,6 +21,7 @@ import {
   CATEGORY_NATURES,
   COMPOUNDINGS,
   COUPON_FREQUENCIES,
+  REPAY_MODES,
   DISPOSAL_KINDS,
   HOUSEHOLD_KINDS,
   HOUSEHOLD_ROLES,
@@ -33,6 +34,7 @@ import {
   type DepositRenewal,
   type Disposal,
   type FixedIncomeTerms,
+  type RatingChange,
   type Expense,
   type Holding,
   type StatedBalanceRow,
@@ -407,6 +409,10 @@ export function toFixedIncomeTerms(raw: unknown): FixedIncomeTerms {
         ? null
         : requireOneOf(frequency, COUPON_FREQUENCIES, 'fixed_income_terms.coupon_frequency'),
     rating: optionalString(row['rating'], 'fixed_income_terms.rating'),
+    repayMode:
+      row['repay_mode'] === null || row['repay_mode'] === undefined
+        ? null
+        : requireOneOf(row['repay_mode'], REPAY_MODES, 'fixed_income_terms.repay_mode'),
     autoRenew: requireBoolean(row['auto_renew'], 'fixed_income_terms.auto_renew'),
     renewalRatePct: optionalRate(row['renewal_rate_pct'], 'fixed_income_terms.renewal_rate_pct'),
     institution: optionalString(row['institution'], 'fixed_income_terms.institution'),
@@ -428,5 +434,22 @@ export function toDepositRenewal(raw: unknown): DepositRenewal {
     ratePct: requireRate(row['rate_pct'], 'deposit_renewal.rate_pct'),
     compounding: requireOneOf(row['compounding'], COMPOUNDINGS, 'deposit_renewal.compounding'),
     note: optionalString(row['note'], 'deposit_renewal.note'),
+  };
+}
+
+/** A change to a bond's rating, from the log the database keeps. */
+export function toRatingChange(raw: unknown): RatingChange {
+  const row = requireRecord(raw, 'bond_rating_change');
+  const seq = Number(row['seq']);
+  if (!Number.isSafeInteger(seq)) {
+    throw new MalformedRowError('bond_rating_change.seq', `is ${JSON.stringify(row['seq'])}, not a whole number`);
+  }
+  return {
+    id: requireString(row['id'], 'bond_rating_change.id'),
+    seq,
+    holdingId: requireString(row['holding_id'], 'bond_rating_change.holding_id'),
+    from: optionalString(row['from_rating'], 'bond_rating_change.from_rating'),
+    to: optionalString(row['to_rating'], 'bond_rating_change.to_rating'),
+    changedOn: requireIsoDate(row['changed_on'], 'bond_rating_change.changed_on'),
   };
 }

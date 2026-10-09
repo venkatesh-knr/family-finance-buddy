@@ -12,19 +12,39 @@
 
 import { supabase } from './client.ts';
 import { archiveHolding } from './holdings.ts';
-import { toDepositRenewal, toFixedIncomeTerms } from './mapping.ts';
+import { toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
 import type {
   FixedIncomeListing,
   NewDepositRenewal,
   NewFixedIncome,
   NewTermsForHolding,
+  RatingChange,
 } from './types.ts';
 
 const TERMS_COLUMNS =
-  'holding_id, household_id, kind, principal_minor::text, currency, rate_pct::text, start_date, maturity_date, compounding, coupon_frequency, rating, auto_renew, renewal_rate_pct::text, institution, account_last4, note';
+  'holding_id, household_id, kind, principal_minor::text, currency, rate_pct::text, start_date, maturity_date, compounding, coupon_frequency, rating, repay_mode, auto_renew, renewal_rate_pct::text, institution, account_last4, note';
 
 const RENEWAL_COLUMNS =
   'id, holding_id, start_date, maturity_date, principal_minor::text, currency, rate_pct::text, compounding, note';
+
+const RATING_COLUMNS = 'id, seq, holding_id, from_rating, to_rating, changed_on';
+
+/**
+ * Every change to a bond's rating, oldest first.
+ *
+ * Read-only here, because it has to be: the database writes it from a trigger on the terms,
+ * and nobody inserts, updates or deletes a row. A change is made by editing the rating on the
+ * terms, which is how a downgrade cannot be filed as something milder or left out.
+ */
+export async function listRatingChanges(householdId: string): Promise<readonly RatingChange[]> {
+  const result = await supabase()
+    .from('bond_rating_change')
+    .select(RATING_COLUMNS)
+    .eq('household_id', householdId)
+    .order('seq', { ascending: true });
+  if (result.error !== null) throw asRepositoryError(result.error);
+  return result.data.map(toRatingChange);
+}
 
 export async function listFixedIncome(householdId: string): Promise<FixedIncomeListing> {
   const client = supabase();
@@ -134,6 +154,7 @@ function termsRow(input: NewTermsForHolding) {
     compounding: input.kind === 'deposit' ? (input.compounding ?? null) : null,
     coupon_frequency: input.kind === 'bond' ? (input.couponFrequency ?? null) : null,
     rating: input.kind === 'bond' ? emptyToNull(input.rating) : null,
+    repay_mode: input.kind === 'bond' ? (input.repayMode ?? 'payout') : null,
     auto_renew: input.kind === 'deposit' ? (input.autoRenew ?? false) : false,
     renewal_rate_pct:
       input.kind === 'deposit' && input.autoRenew === true ? emptyToNull(input.renewalRatePct) : null,
