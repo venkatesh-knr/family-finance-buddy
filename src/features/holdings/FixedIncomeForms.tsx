@@ -26,9 +26,11 @@ import {
   type CompoundingKind,
   type CouponFrequencyKind,
   type DepositRenewal,
+  REPAY_MODES,
   type FixedIncomeTerms,
   type Holding,
   type HoldingListing,
+  type RepayMode,
 } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
 
@@ -59,6 +61,11 @@ export function plainAmount(value: Money): string {
   const fraction = digits.slice(-exponent).replace(/0+$/, '');
   return `${sign}${whole}${fraction === '' ? '' : `.${fraction}`}`;
 }
+
+export const REPAY_LABEL: Record<RepayMode, string> = {
+  payout: 'Pays its coupons out',
+  cumulative: 'Cumulative: paid at maturity',
+};
 
 export type TermsMode =
   | { readonly kind: 'new' }
@@ -108,6 +115,7 @@ export function TermsForm({
     old?.renewalRatePct === null || old?.renewalRatePct === undefined ? '' : trimRate(old.renewalRatePct),
   );
   const [rating, setRating] = useState(old?.rating ?? '');
+  const [repayMode, setRepayMode] = useState<RepayMode>(old?.repayMode ?? 'payout');
   const [institution, setInstitution] = useState(old?.institution ?? '');
   const [last4, setLast4] = useState(old?.accountLast4 ?? '');
   const [problem, setProblem] = useState<string | null>(null);
@@ -148,7 +156,7 @@ export function TermsForm({
         maturity,
         ...(kind === 'deposit'
           ? { compounding, autoRenew, renewalRatePct: autoRenew ? renewalRate : null }
-          : { couponFrequency: frequency, rating }),
+          : { couponFrequency: frequency, rating, repayMode }),
         institution,
         accountLast4: last4,
       } as const;
@@ -325,6 +333,7 @@ export function TermsForm({
             </span>
             <select
               className="field"
+              aria-label="Compounds"
               value={compounding}
               onChange={(event) => {
                 setCompounding(event.target.value as CompoundingKind);
@@ -368,7 +377,32 @@ export function TermsForm({
       ) : (
         <>
           <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">Coupon paid</span>
+            <span className="label">
+              Repay mode
+              <Caveat tone="info" label="What repay mode means">
+                A bond either pays its interest out on each coupon date, or lets it build up and pays
+                it with the face at maturity (a cumulative bond). The bond’s papers say which. A
+                cumulative bond is valued as interest that keeps compounding at the frequency below,
+                which is how often it is credited, not how often it is paid.
+              </Caveat>
+            </span>
+            <select
+              className="field"
+              aria-label="Repay mode"
+              value={repayMode}
+              onChange={(event) => {
+                setRepayMode(event.target.value as RepayMode);
+              }}
+            >
+              {REPAY_MODES.map((option) => (
+                <option key={option} value={option}>
+                  {REPAY_LABEL[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className="label">{repayMode === 'cumulative' ? 'Interest credited' : 'Coupon paid'}</span>
             <select
               className="field"
               value={frequency}
@@ -388,6 +422,7 @@ export function TermsForm({
               label="Rating"
               placeholder="CRISIL A"
               maxLength={12}
+              {...(mode.kind === 'edit' ? { hint: 'a change is logged' } : {})}
               value={rating}
               onChange={(event) => {
                 setRating(event.target.value);

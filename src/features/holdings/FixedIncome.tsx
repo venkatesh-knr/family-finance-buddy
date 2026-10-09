@@ -24,7 +24,9 @@ import {
 } from '../../domain/fixed-income.ts';
 import { formatIsoDate, istCalendarDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
-import { listFixedIncome } from '../../repo/fixedIncome.ts';
+import { DOWNGRADE_NOTICE_DAYS, ratingMove, recentDowngrade } from '../../domain/ratings.ts';
+import { buildPosition } from './fixedIncomeRows.ts';
+import { listFixedIncome, listRatingChanges } from '../../repo/fixedIncome.ts';
 import { recordValuation } from '../../repo/holdings.ts';
 import type {
   DepositRenewal,
@@ -32,9 +34,10 @@ import type {
   FixedIncomeTerms,
   Holding,
   HoldingListing,
+  RatingChange,
 } from '../../repo/types.ts';
 import { Button, Card, Caveat, EditButton, Pill, Problem, Stat } from '../../ui/primitives.tsx';
-import { COMPOUNDING_LABEL, FREQUENCY_LABEL, RenewalForm, TermsForm } from './FixedIncomeForms.tsx';
+import { COMPOUNDING_LABEL, FREQUENCY_LABEL, REPAY_LABEL, RenewalForm, TermsForm } from './FixedIncomeForms.tsx';
 
 const REFUSAL: Record<FixedIncomeRefusal, string> = {
   'before-start': 'It has not started yet, so there is nothing to value.',
@@ -51,6 +54,9 @@ interface Row {
   readonly terms: FixedIncomeTerms;
   /** The renewals recorded, oldest first. */
   readonly renewals: readonly DepositRenewal[];
+  /** This bond's rating changes, oldest first. */
+  readonly ratingChanges: readonly RatingChange[];
+  readonly downgrade: ReturnType<typeof recentDowngrade>;
   readonly name: string;
   readonly member: string;
   readonly position: FixedIncomePosition;
@@ -75,6 +81,8 @@ export function FixedIncome({
   onChanged: () => void;
 }) {
   const [data, setData] = useState<FixedIncomeListing | null>(null);
+  const [ratings, setRatings] = useState<readonly RatingChange[]>([]);
+  const [ratingsFailed, setRatingsFailed] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [giving, setGiving] = useState<Holding | null>(null);
@@ -88,6 +96,14 @@ export function FixedIncome({
     try {
       setData(await listFixedIncome(householdId));
       setProblem(null);
+      // Apart from the terms, and its failure said rather than read as no changes: a log
+      // that could not be read is not a log with nothing in it, and a downgrade would pass.
+      try {
+        setRatings(await listRatingChanges(householdId));
+        setRatingsFailed(false);
+      } catch {
+        setRatingsFailed(true);
+      }
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not read the deposits and bonds.');
     } finally {
@@ -108,33 +124,23 @@ export function FixedIncome({
       // Archived, or another member's private holding: not here, and not asked about.
       if (holding === undefined) continue;
       const recorded = data.renewals.filter((r) => r.holdingId === terms.holdingId);
-      const renewals = recorded
-        .map((r) => ({
-          start: r.start,
-          maturity: r.maturity,
-          principal: r.principal,
-          ratePct: r.ratePct,
-          compounding: r.compounding,
-        }));
-      const position: FixedIncomePosition = {
-        holdingId: terms.holdingId,
-        kind: terms.kind,
-        principal: terms.principal,
-        ratePct: terms.ratePct,
-        start: terms.start,
-        maturity: terms.maturity,
-        compounding: terms.compounding,
-        couponFrequency: terms.couponFrequency,
-        autoRenew: terms.autoRenew,
-        renewalRatePct: terms.renewalRatePct,
-        renewals,
-      };
+      const position: FixedIncomePosition = buildPosition(terms, recorded);
+      const renewals = position.renewals;
+      const ratingChanges = ratings
+        .filter((c) => c.holdingId === terms.holdingId)
+        .sort((a, b) => a.seq - b.seq);
       const ends = [terms.maturity, ...renewals.map((r) => r.maturity)].sort();
       built.push({
         holdingId: terms.holdingId,
         holding,
         terms,
         renewals: recorded,
+        ratingChanges,
+        downgrade: recentDowngrade(
+          ratingChanges.map((c) => ({ seq: c.seq, from: c.from, to: c.to, changedOn: c.changedOn })),
+          today,
+          DOWNGRADE_NOTICE_DAYS,
+        ),
         name: holding.instrument.name,
         member: holding.member.displayName,
         position,
@@ -154,7 +160,7 @@ export function FixedIncome({
           ? row.position.maturity
           : row.lastEnd;
     return built.sort((a, b) => rank(a) - rank(b) || (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0));
-  }, [data, listing.holdings, today]);
+  }, [data, ratings, listing.holdings, today]);
 
   /**
    * Deposits and bonds the household already holds, entered before there were terms.
@@ -229,6 +235,12 @@ export function FixedIncome({
       }
     >
       {problem !== null && <Problem>{problem}</Problem>}
+      {ratingsFailed && (
+        <Problem>
+          The rating history could not be read, so a downgrade would not show here. It is not that there
+          are none: the request failed. Reload to try again.
+        </Problem>
+      )}
 
       {canWrite && (
         <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
@@ -397,7 +409,9 @@ function PositionRow({
   const terms =
     position.kind === 'deposit'
       ? `${trimRate(position.ratePct)}% · ${COMPOUNDING_LABEL[position.compounding ?? 'yearly'].toLowerCase()}`
-      : `${trimRate(position.ratePct)}% coupon · ${FREQUENCY_LABEL[position.couponFrequency ?? 'yearly'].toLowerCase()}`;
+      : position.repayMode === 'cumulative'
+        ? `${trimRate(position.ratePct)}% · ${REPAY_LABEL.cumulative.toLowerCase()} · credited ${FREQUENCY_LABEL[position.couponFrequency ?? 'yearly'].toLowerCase()}`
+        : `${trimRate(position.ratePct)}% coupon · ${FREQUENCY_LABEL[position.couponFrequency ?? 'yearly'].toLowerCase()}`;
 
   const record = async () => {
     if (!view.ok) return;
@@ -447,6 +461,7 @@ function PositionRow({
         <span className="flex flex-wrap items-center gap-2">
           <Pill tone="neutral">{position.kind === 'deposit' ? 'Deposit' : 'Bond'}</Pill>
           {row.rating !== null && <Pill tone="neutral">{row.rating}</Pill>}
+          {row.downgrade !== null && <Pill tone="warn">▼ Downgraded</Pill>}
           {position.autoRenew && <Pill tone="neutral">Renews itself</Pill>}
           {view.ok && view.matured && <Pill tone="neutral">Matured</Pill>}
           {view.ok && view.kind === 'deposit' && view.projected && <Pill tone="warn">Projected renewal</Pill>}
@@ -471,11 +486,14 @@ function PositionRow({
         */
         <>
           <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
-            <Stat label={view.kind === 'bond' ? 'Repaid at par' : 'Paid out'}>
+            <Stat label={view.kind === 'bond' && view.repay === 'payout' ? 'Repaid at par' : 'Paid out'}>
               {formatMoney(view.value, { privacy })}
             </Stat>
             {view.kind === 'deposit' && (
               <Stat label="Interest earned">{formatMoney(view.interestToDate, { privacy })}</Stat>
+            )}
+            {view.kind === 'bond' && view.repay === 'cumulative' && (
+              <Stat label="Interest earned">{formatMoney(view.accrued, { privacy })}</Stat>
             )}
             <Stat label="Matured on">{formatIsoDate(view.kind === 'deposit' ? row.lastEnd : position.maturity)}</Stat>
           </dl>
@@ -486,7 +504,7 @@ function PositionRow({
         </>
       ) : (
         <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
-          <Stat label={view.kind === 'bond' ? 'Value at par' : 'Value today'}>
+          <Stat label={view.kind === 'bond' && view.repay === 'payout' ? 'Value at par' : 'Value today'}>
             {formatMoney(view.value, { privacy })}
           </Stat>
           {view.kind === 'deposit' ? (
@@ -504,8 +522,13 @@ function PositionRow({
             </>
           ) : (
             <>
-              <Stat label="Accrued">{formatMoney(view.accrued, { privacy })}</Stat>
-              {view.nextCoupon !== null && (
+              <Stat label={view.repay === 'cumulative' ? 'Interest so far' : 'Accrued'}>
+                {formatMoney(view.accrued, { privacy })}
+              </Stat>
+              {view.repay === 'cumulative' && (
+                <Stat label="Pays at maturity">{formatMoney(view.maturityValue, { privacy })}</Stat>
+              )}
+              {view.nextCoupon !== null && view.couponAmount !== null && (
                 <Stat label="Next coupon">
                   {formatIsoDate(view.nextCoupon)}{' '}
                   <span className="note">{formatMoney(view.couponAmount, { privacy })}</span>
@@ -520,6 +543,20 @@ function PositionRow({
             </>
           )}
         </dl>
+      )}
+
+      {row.downgrade !== null && (
+        <p
+          className="text-caption rounded px-3 py-2"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+        >
+          <strong>
+            Downgraded from {row.downgrade.from ?? 'unrated'} to {row.downgrade.to ?? 'unrated'} on{' '}
+            {formatIsoDate(row.downgrade.changedOn)}.
+          </strong>{' '}
+          A lower rating is a higher chance of not being repaid. Check the issuer’s latest
+          disclosure before deciding whether to hold it to maturity.
+        </p>
       )}
 
       {view.ok && !view.matured && view.daysToMaturity !== null && view.daysToMaturity <= MATURITY_NOTICE_DAYS && (
@@ -543,6 +580,23 @@ function PositionRow({
       )}
 
       {problem !== null && <Problem>{problem}</Problem>}
+
+      {row.ratingChanges.length > 0 && (
+        <details className="note">
+          <summary className="cursor-pointer">
+            Rating history ({row.ratingChanges.length})
+          </summary>
+          <ul className="row-separated mt-1.5">
+            {[...row.ratingChanges].reverse().map((change) => (
+              <li key={change.id} className="py-1.5">
+                {formatIsoDate(change.changedOn)} · {change.from ?? 'first recorded'} →{' '}
+                {change.to ?? 'removed'}{' '}
+                <strong>{MOVE_WORDS[ratingMove(change.from, change.to)]}</strong>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {row.renewals.length > 0 && (
         <details className="note">
@@ -643,6 +697,16 @@ function PositionRow({
     </div>
   );
 }
+
+/** Said in words and a mark, so a move is never only a colour. */
+const MOVE_WORDS: Record<ReturnType<typeof ratingMove>, string> = {
+  upgrade: '▲ upgrade',
+  downgrade: '▼ downgrade',
+  'same-grade': '— same grade',
+  first: '',
+  withdrawn: '— withdrawn',
+  unknown: '',
+};
 
 function daysPhrase(days: number): string {
   if (days === 0) return 'today';
