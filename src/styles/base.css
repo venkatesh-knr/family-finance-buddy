@@ -420,6 +420,15 @@
   }
 
   /*
+   * On the hero figure the marks are sized from the 34px figure and came out as
+   * large as a button; with several of them in a row they crowded the number.
+   * Pinned to the size they have on a stat tile.
+   */
+  .figure .caveat-mark {
+    font-size: 0.75rem;
+  }
+
+  /*
    * A figure that is wrong or incomplete: a `!` in the attention colour.
    *
    * Not coral, and not a triangle. Coral is a loss and ▲ is a gain

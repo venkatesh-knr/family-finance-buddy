@@ -50,7 +50,7 @@ import { AllocationDonut } from './AllocationDonut.tsx';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
-import { exactMoney, formatMoney } from '../../lib/money.ts';
+import { exactMoney, formatMoney, percentOfCost, type Money } from '../../lib/money.ts';
 import {
   NoHouseholdError,
   type HoldingListing,
@@ -59,6 +59,12 @@ import {
 import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+
+/** A gain with its sign: a tint alone means nothing to somebody who cannot see it. */
+function signed(value: Money, privacy: boolean): string {
+  const text = formatMoney(value, { privacy });
+  return privacy || value.minor <= 0n ? text : `+${text}`;
+}
 
 /** Up to three holdings by name, then a count of the rest. */
 function namesFor(ids: readonly string[], nameOf: (id: string) => string): string {
@@ -459,9 +465,18 @@ export function OverviewScreen({
     }
   }, [listing, lastMonthEnd, load]);
 
-  if (loading) return <p className="note py-4.5">Loading…</p>;
+  if (loading && listing === null) return <p className="note py-4.5">Loading…</p>;
   if (noHousehold) return <JoinHousehold onJoined={() => void load()} />;
-  if (problem !== null && listing === null) return <Problem>{problem}</Problem>;
+  if (problem !== null && listing === null) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <Problem>{problem}</Problem>
+        <Button type="button" onClick={() => void load()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (listing === null) return null;
 
   return (
@@ -720,7 +735,7 @@ export function OverviewScreen({
             <dl className="mt-3.5 flex flex-wrap gap-x-9 gap-y-2.5">
               {shownDebts.map((debt) => (
                 <Stat key={debt.name} label={debt.name} tone="loss">
-                  {formatMoney(debt.amount, { privacy })}
+                  {privacy ? formatMoney(debt.amount, { privacy }) : `-${formatMoney(debt.amount)}`}
                 </Stat>
               ))}
             </dl>
@@ -824,7 +839,7 @@ export function OverviewScreen({
                           label={total.gain.minor < 0n ? 'Unrealised loss' : 'Unrealised gain'}
                           tone={total.gain.minor < 0n ? 'loss' : 'gain'}
                         >
-                          {formatMoney(total.gain, { privacy })}
+                          {signed(total.gain, privacy)}
                         </Stat>
                         <div className="stat">
                           <dt className="label">Change</dt>
@@ -832,13 +847,9 @@ export function OverviewScreen({
                             <Delta
                               direction={total.gain.minor > 0n ? 'up' : total.gain.minor < 0n ? 'down' : 'flat'}
                             >
-                              {total.investedValued.minor === 0n
+                              {percentOfCost(total.gain.minor, total.investedValued.minor) === null
                                 ? 'on a cost of nothing'
-                                : `${String(
-                                    Math.round(
-                                      (Number(total.gain.minor) / Number(total.investedValued.minor)) * 1000,
-                                    ) / 10,
-                                  )}% on cost`}
+                                : `${percentOfCost(total.gain.minor, total.investedValued.minor) ?? ''} on cost`}
                             </Delta>
                           </dd>
                         </div>
@@ -917,7 +928,7 @@ export function OverviewScreen({
                                   row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
                                 }
                               >
-                                {(row.returnOnCost * 100).toFixed(1)}%
+                                {percentOfCost(row.gain.minor, row.invested.minor)}
                               </Delta>
                             )}
                             {/*
