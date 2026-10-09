@@ -119,6 +119,14 @@ an authoritative document, it says which and what.
 - **Both were found by running the design-conformance subagent twice** (opus, then sonnet) on the same slice. Each found two real
   high-severity problems the other missed, so the review is not run on one model alone without knowing that.
 
+## Whose membership (October 2026)
+
+- **Every screen reads the caller's own membership, not the oldest one in the household.** The policy on `membership` shows
+  everybody's, deliberately, and four lookups trusted a comment saying it did not. They took the owner's role and member id
+  for whoever was signed in, and listed a household once per person. Found through a raw UUID in a screenshot, which the
+  household-label fallback only reaches when the same id appears twice; the first reading (three households, a data problem) was
+  wrong. The fix is filtered lookups (`repo/account.ts`), and the UI-review finding is corrected.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan

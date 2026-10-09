@@ -9,6 +9,7 @@
  */
 
 import { supabase } from './client.ts';
+import { currentAccountId } from './account.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import {
   MalformedRowError,
@@ -127,9 +128,12 @@ export async function listPlan(options: {
 }): Promise<PlanListing> {
   const client = supabase();
 
+  // The caller's own membership. Not every membership in the household: see account.ts.
+  const accountId = await currentAccountId();
   let membershipQuery = client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
+    .eq('user_account_id', accountId)
     .is('revoked_at', null)
     .order('created_at', { ascending: true });
 

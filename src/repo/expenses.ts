@@ -19,6 +19,7 @@ import { istCalendarDate, type IsoDate } from '../lib/dates.ts';
 import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import { money, type Money } from '../lib/money.ts';
 import { supabase } from './client.ts';
+import { currentAccountId } from './account.ts';
 import { toExpense, toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
   NoHouseholdError,
@@ -48,17 +49,20 @@ export async function listExpenses(
   if (userError !== null) throw asRepositoryError(userError);
   if (user.user === null) throw new Error('Not signed in.');
 
-  // Membership resolves identity to a household. RLS restricts this to the
-  // caller's own rows, so no filter by user id is needed or trusted here.
+  // Membership resolves identity to a household. RLS does NOT restrict this to the
+  // caller's own rows: it returns every live membership in the caller's households,
+  // on purpose, so it is filtered to the caller's account here (see account.ts).
   //
   // householdId narrows to one of them. It is a view, not an access decision:
   // asking for a household you do not belong to returns nothing, because the
   // policies decide that and this parameter cannot widen them. Omitted, the
   // oldest membership wins — stable, and the sensible default before anyone
   // has chosen.
+  const accountId = await currentAccountId();
   let membershipQuery = client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
+    .eq('user_account_id', accountId)
     .is('revoked_at', null)
     .order('created_at', { ascending: true });
 

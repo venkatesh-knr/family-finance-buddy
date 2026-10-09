@@ -18,6 +18,7 @@
  */
 
 import { supabase } from './client.ts';
+import { currentAccountId } from './account.ts';
 import { parseQuantity, quantityToNumeric } from '../lib/quantity.ts';
 import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import type { IsoDate } from '../lib/dates.ts';
@@ -73,9 +74,12 @@ export async function listHoldings(options: { householdId?: Uuid } = {}): Promis
   const client = supabase();
 
   // See the note in expenses.ts: this narrows the view, and cannot widen access.
+  // The caller's own membership. Not every membership in the household: see account.ts.
+  const accountId = await currentAccountId();
   let membershipQuery = client
     .from('membership')
     .select('id, role, member_id, user_account_id, household:household_id (*)')
+    .eq('user_account_id', accountId)
     .is('revoked_at', null)
     .order('created_at', { ascending: true });
 

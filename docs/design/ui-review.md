@@ -40,7 +40,7 @@ by changing a token, say so and change the token instead.
 | 12 | A labelled input is named by its placeholder | medium | `ui/primitives.tsx` — `Field`, `PasswordField`; 30 raw wrappers in screens |
 | 13 | The TOTP QR code does not render | high | `repo/auth.ts`, `features/auth/SignInScreen.tsx` |
 | 14 | Every MFA failure is reported as an expired code | high | `repo/auth.ts` — `verifyTotpCode` |
-| 15 | Three households all named "Demo household" | medium | seed / live project data |
+| 15 | Three households all named "Demo household" | medium | `repo/*` membership lookups (not live data, as first thought) |
 | 16 | A trend chart drawn from a single reading | medium | `features/overview/AssetsOverTime.tsx` |
 | 17 | Two headline figures differ by ₹12 lakh, unexplained | medium | `features/overview` |
 
@@ -388,7 +388,20 @@ do its job when every option wears it.
 **What to do.** Decide which survive. Remove the rest, or name them so a person
 can tell them apart. Worth doing before the count reaches five.
 
-**Status: half fixed.** What is code is done: the switcher no longer offers options that read alike. A repeated name
+**Status: the diagnosis above was wrong, and this is fixed in code. There were never three households.** The switcher
+had grown a raw UUID in the 412px screenshot, which the label code only produces when two ids agree on every
+character: the same household, listed more than once. The cause was the lookup, not the data. `membership_select_same_household`
+returns every live membership in every household the caller belongs to, on purpose ("who else is in this household, and in
+what role"), and `listHouseholds`, `listExpenses`, `listHoldings` and `listPlan` all read it unfiltered on the comment that
+"RLS restricts this to the caller's own rows". It does not. So the switcher listed the household once per person in it, and
+`limit(1)` took the **oldest membership in the household, usually the owner's, whoever was looking**: the role that decides
+which screens are offered, the member id records are filed under and whether Quick add is shown. Invisible for an owner; wrong
+for anybody else. The database still refused what it should, so nothing was exposed. Fixed in `repo/account.ts`: the
+lookups are filtered to the caller's own account, found from `user_account`, whose policy returns the caller's row alone.
+Checked in the regenerated screenshots: the switcher now shows one household. **No action on the data is needed**, and the
+two SQL statements below are not needed for this.
+
+*What follows is the earlier status, kept because the label code it describes is still in:* what is code is done: the switcher no longer offers options that read alike. A repeated name
 now gets the least that tells its group apart (the role, then the date created, then a short piece of the id), so
 three `Demo household` become `Demo household · created 7 Sept 2026` and so on; a name that is not repeated is
 untouched (`src/app/householdLabels.ts`, 7 tests). **What is data is the maintainer's:** which of the three survive,
