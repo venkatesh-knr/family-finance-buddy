@@ -321,7 +321,7 @@ room inside the card does not.
 - Every axis label names a value the chart actually reaches.
 - In SVG, leave room in the `viewBox` for outermost labels and give every drawn shape an
   explicit `fill`.
-- Donuts: 82px outer / 52px inner on a 208 grid, ~0.018rad gap between arcs.
+- Donuts: 100px outer / 72px inner on a 208 grid, ~0.018rad gap between arcs. A thin ring beside its rows, which leaves the hole room for its total at 6 to 8rem; the prototype's 82 / 52 was the ring standing alone above them.
 - Lines: 2.2–2.4px stroke, area fill at 14% opacity, endpoint marked with a 4px dot and a
   mono label.
 

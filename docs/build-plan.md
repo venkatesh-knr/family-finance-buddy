@@ -349,6 +349,11 @@ put on a calendar until property, protection and the tax engine exist.
 
 **9. FIRE with the live projection.**
 
+_Partly pulled forward (the FIRE read-out, `docs/design/conformance.md` Departures):_ a corpus
+projection from three assumptions the household sets, a monthly contribution, a yearly return and a
+yearly raise, started from the Overview's net worth. What is still this step's: the projection from
+real contributions rather than a typed one, and goals, coast-FIRE and scenario compare.
+
 Projected against real contributions rather than a flat assumption, and against
 goals, neither of which exists today. It needs the balance sheet from step 6 to
 be complete, or the projection starts from a number that is missing the property
