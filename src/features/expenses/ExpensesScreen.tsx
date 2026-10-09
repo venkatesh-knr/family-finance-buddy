@@ -13,6 +13,7 @@ import { todayInIst } from '../../repo/expenses.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Button, Card, Caveat, EditButton, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
+import { ShowMore, useReveal } from '../../ui/ShowMore.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { BudgetVsActual } from './BudgetVsActual.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -411,7 +412,10 @@ function ExpenseList({
   /** Null for a viewer, who may read every entry and correct none. */
   onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
-  const { expenses } = listing;
+  const all = listing.expenses;
+  // Ten at a time; the rest as the list is scrolled to, or on the button.
+  const reveal = useReveal(all.length);
+  const expenses = all.slice(0, reveal.shown);
 
   // A member is an initial in a ring of their colour; two that collide grow to
   // two letters, and the name comes back only where letters cannot separate them.
@@ -433,7 +437,11 @@ function ExpenseList({
         <span className="flex items-center gap-2.5">
           <LiveIndicator live={live} liveDetail={liveDetail} />
           <span className="note" aria-live="polite">
-            {refreshing ? 'Updating…' : `${String(expenses.length)} most recent`}
+            {refreshing
+              ? 'Updating…'
+              : reveal.hidden > 0
+                ? `${String(expenses.length)} of the ${String(all.length)} most recent`
+                : `${String(all.length)} most recent`}
           </span>
         </span>
       }
@@ -504,6 +512,8 @@ function ExpenseList({
               </tbody>
             </Table>
           </div>
+
+          <ShowMore hidden={reveal.hidden} onMore={reveal.more} noun="expenses" />
         </>
       )}
     </Card>

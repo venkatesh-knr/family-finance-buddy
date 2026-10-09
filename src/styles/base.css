@@ -198,6 +198,20 @@
     padding: 4px 10px;
   }
 
+  /*
+   * The screen tabs. The same control as the small switches, but it is the
+   * navigation: at 12.5px it was the smallest text on a wide screen, in a bar
+   * with the width of the page to spare.
+   */
+  .segmented-primary {
+    padding: 3px;
+  }
+
+  .segmented-primary button {
+    font-size: 0.9375rem;
+    padding: 7px 18px;
+  }
+
   .segmented button[aria-pressed='true'] {
     background: var(--surface);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -366,9 +380,9 @@
    * unit are one thing.
    */
   .amount-unit {
-    color: var(--muted);
+    color: var(--ink-2);
     font-size: max(0.6em, 0.6875rem);
-    font-weight: 500;
+    font-weight: 600;
   }
 
   /*
@@ -529,12 +543,17 @@
     margin-top: 7px;
   }
 
+  /*
+   * Names are sometimes a sentence, and a pill's radius is a half-circle at
+   * each end: wrapped over two or three lines it drew the border through the
+   * words at a phone width. A small radius holds any number of lines.
+   */
   .notice-names > li {
     background: var(--surface);
     border: 1px solid currentcolor;
-    border-radius: var(--radius-pill);
+    border-radius: 6px;
     color: inherit;
-    padding: 2px 9px;
+    padding: 3px 10px;
   }
 
   /*

@@ -21,11 +21,13 @@ import {
 } from '../../repo/profile.ts';
 import { useHouseholdChoice } from '../../app/household.tsx';
 import { Card, Notice, Pill, Problem } from '../../ui/primitives.tsx';
+import { ShowMore, useReveal } from '../../ui/ShowMore.tsx';
 
 export function ProfileScreen({ email, householdId }: { email: string | null; householdId: string | null }) {
   const { current } = useHouseholdChoice();
   const [counts, setCounts] = useState<PrivateEntryCount | null>(null);
   const [activity, setActivity] = useState<readonly ActivityEntry[] | null>(null);
+  const reveal = useReveal(activity?.length ?? 0);
   const [problem, setProblem] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -134,7 +136,7 @@ export function ProfileScreen({ email, householdId }: { email: string | null; ho
           <p className="note">Nothing recorded yet.</p>
         ) : (
           <ul className="row-separated">
-            {activity.map((entry) => (
+            {activity.slice(0, reveal.shown).map((entry) => (
               <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-2.5 py-2">
                 <span style={{ color: 'var(--ink)' }}>
                   {VERB[entry.action]} <span className="note">{ENTITY[entry.entity] ?? entry.entity}</span>
@@ -148,6 +150,7 @@ export function ProfileScreen({ email, householdId }: { email: string | null; ho
             ))}
           </ul>
         )}
+        <ShowMore hidden={reveal.hidden} onMore={reveal.more} noun="entries" />
 
         <div className="mt-3.5">
           <Notice>

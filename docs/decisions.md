@@ -165,6 +165,22 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
 - **Not reproduced end to end.** 1 and 5 are confirmed by reading the code and by the tests of the domain behind them; the demo household
   has no archived holding and has readings, so neither can be seen on it.
 
+## From the maintainer's screenshots (October 2026)
+
+- **One "i" on the net worth card, and one "!" on the figure.** Five warnings and two notes sat on the number as seven marks, two of them
+  identical "i"s with different meanings. The warnings are one list behind one mark; the notes (how old the readings are, nothing
+  owed) join the definition on the heading.
+- **The screen tabs are the navigation and are sized as such** (15px on a wide screen; the Household/Mine switch stays small).
+- **The unit on a figure (L, Cr, K) is in the body ink at 600**, not muted at 500: it is part of the number.
+- **Long lists show ten and give the rest** on the button or as the list is scrolled to (expenses, activity). The button is the
+  control; the scroll is a convenience.
+- **A fund's name is split, not shortened.** The fund is first; the plan and the former name sit beneath in the quiet type. Every
+  word stays on screen, and the stored name, which a statement matches on, is untouched.
+- **A name in a Needs-attention list is a rectangle, not a pill:** a half-circle border drew through the words once they wrapped.
+- **Assets over time was checked:** the last point, ₹50.01 L, is the INR holdings plus the USD holdings at 88.45, and the hero's
+  ₹62.58 L less that is the other members' private holdings, which the line says it leaves out. It has two points, 31 Aug and 18 Sep, on an
+  axis that starts at zero, so a small move does not show; it starts at 31 Aug because no USD rate exists before then.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
