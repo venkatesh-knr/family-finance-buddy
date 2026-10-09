@@ -67,7 +67,10 @@ export const GLYPHS: Record<Glyph, readonly string[]> = {
   // Anything else: three dots, horizontal and centred, and nothing else. No ring and nothing upright,
   // so that at 14px it is not the caveat marker (a circle with an i), which means something is wrong
   // when nothing is. The canvas drew a circle with an exclamation mark; that was the error.
-  ellipsis: ['M6 12h.01', 'M12 12h.01', 'M18 12h.01'],
+  // Each dot is a circle of radius 1 stroked at 1.9, so about 3.9 units across and solid (the hole is
+  // 0.1 wide). A zero-length stroke is only 1.9 across, and at device pixel ratio 1 a dot that small
+  // sits on a pixel boundary and smears to a pale block: 2.6:1 in light, under the 3:1 bar.
+  ellipsis: ['M7 12a1 1 0 1 1-2 0a1 1 0 0 1 2 0z', 'M13 12a1 1 0 1 1-2 0a1 1 0 0 1 2 0z', 'M19 12a1 1 0 1 1-2 0a1 1 0 0 1 2 0z'],
 
   // Stage 5, drawn and not wired (UNWIRED_TILES and FOREIGN_MARKER, below).
   house: ['m3 11 9-7 9 7', 'M5 10v10h14V10', 'M10 20v-6h4v6'],

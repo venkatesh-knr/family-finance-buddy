@@ -110,11 +110,17 @@ describe('other', () => {
 
   it('is never drawn as anything that could be taken for the caveat marker', () => {
     // The caveat is a circle with an i, and means something is wrong. Nothing is wrong with a holding
-    // whose kind this app does not model, so no circle, no arc, and nothing standing upright.
+    // whose kind this app does not model, so no ring around anything and nothing standing upright. A dot
+    // is a circle too, so a circle is allowed when it is small enough to be solid once stroked: with the
+    // stroke on, its hole must be under a unit across, which is no ring at all.
     for (const d of GLYPHS.ellipsis) {
-      expect(d, 'an arc is a circle').not.toMatch(/[aA]/);
       expect(d, 'a vertical stroke is an i or an exclamation mark').not.toMatch(/[vV]/);
-      expect(d, 'a dot sits on the centre line').toMatch(/^M\d+ 12h\.01$/);
+      expect(d, 'one dot, centred on the middle line').toMatch(
+        /^M\d+ 12a(\d+(?:\.\d+)?) \1 0 1 1-\d+ 0a\1 \1 0 0 1 \d+ 0z$/,
+      );
+      const r = Number(/a(\d+(?:\.\d+)?) /.exec(d)?.[1]);
+      expect(2 * (r - GLYPH_STROKE / 2), 'a hole is a ring').toBeLessThan(1);
+      expect(2 * (r + GLYPH_STROKE / 2), 'wide enough to cover whole pixels at 1x').toBeGreaterThanOrEqual(3.5);
     }
   });
 
