@@ -198,7 +198,24 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
 - **Three inserts, not one.** The instrument, the holding and the terms are separate writes because the client has no transaction. If the
   terms are refused after the holding exists, the holding is archived. A function that does all three in one statement is a migration of
   its own, and is the better answer if this ever fails in practice.
-- **Not built:** correcting a deposit's terms or a renewal in place (the policies allow it), coupons received, and PPF, EPF and NPS.
+- **A matured position has paid out and is not a holding any more.** The card shows what it paid and when, leaves it out of the total,
+  offers no reading for it, and says to record where the money went and archive it. Keeping its payout as its value indefinitely, as the
+  first version did, counted money the bank had already returned.
+- **Interest is counted term by term.** The value less the first principal was wrong whenever a renewal started from a different
+  figure: interest paid out and the principal renewed, tax taken at source, a top-up. Each term's interest is its end value less its own
+  principal, summed. Three fixtures, one for each of those.
+- **An existing deposit or bond is given its terms, not entered again.** The household's deposits and bonds were holdings before there
+  were terms, and entering one again makes a second holding, counted twice. "Give its terms" writes the terms against the holding that
+  is there.
+- **A worked-out reading is stored as `manual`** with a note, which is an accepted shortcut: a `computed` source would be clearer and
+  needs a migration. Revisit it with the decision above.
+- **The slice was reviewed once** (design-conformance, eight findings). Agreed and fixed: the matured payout counted as a value (1),
+  interest per term (3), terms for an existing holding (4), the loading state (7), the tone of the "renews itself" pill (8). Agreed and
+  recorded, not built: repay mode, rating changes and a reinvestment prompt (5), and the source label (6). Agreed, and the substance of
+  the open decision: that a deposit reaches net worth only by pressing a button (2). Not changed: the specification's quarterly
+  compounding formula in blueprint §8, which is the maintainer's document.
+- **Not built:** correcting a deposit's terms or a renewal in place (the policies allow it), coupons received, repay mode, rating
+  changes, and PPF, EPF and NPS.
 
 ## Bank and card import (October 2026), not started
 
