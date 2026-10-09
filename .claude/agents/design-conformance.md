@@ -85,6 +85,14 @@ This list exists because without it you will produce the same noise every run.
 - Style preferences the specification does not express. If you want to argue
   the specification is wrong, that is a note at the end, clearly labelled, with
   the reasoning — not a finding against the code.
+- During a migration — a token or primitive change that lands across screens —
+  report an un-migrated screen once, as a single finding naming how many remain.
+  Not one finding per screen.
+- Contrast ratios, the one-lifted-surface rule and the neutrality of `--muted`
+  are covered by `tests/e2e/theme.spec.ts`. Run it and report a failure; do not
+  re-derive those by eye. Border contrast is NOT covered by that spec — axe
+  tests text, not boundaries — so `--line-strong` against its background is
+  still yours to check.
 
 ## Verify before you report
 
