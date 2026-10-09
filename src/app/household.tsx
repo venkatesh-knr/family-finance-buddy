@@ -16,6 +16,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import { listHouseholds, type HouseholdMembership } from '../repo/households.ts';
 import { NoHouseholdError, type HouseholdKind } from '../repo/types.ts';
+import { householdLabels } from './householdLabels.ts';
 
 interface HouseholdChoice {
   readonly memberships: readonly HouseholdMembership[];
@@ -132,6 +133,13 @@ export function DemoBadge({ kind }: { kind: HouseholdKind }) {
  */
 export function HouseholdSwitcher() {
   const { memberships, current, choose } = useHouseholdChoice();
+  const labels = useMemo(
+    () =>
+      householdLabels(
+        memberships.map((m) => ({ household: m.household, role: m.role })),
+      ),
+    [memberships],
+  );
 
   if (current === null) return null;
 
@@ -159,7 +167,7 @@ export function HouseholdSwitcher() {
       >
         {memberships.map((membership) => (
           <option key={membership.household.id} value={membership.household.id}>
-            {membership.household.name}
+            {labels.get(membership.household.id) ?? membership.household.name}
             {membership.household.kind === 'demo' ? ' (demo)' : ''}
           </option>
         ))}

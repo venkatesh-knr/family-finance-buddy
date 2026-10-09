@@ -6,7 +6,7 @@
  * provider's response shape stops and the app's vocabulary starts.
  */
 
-import { isIsoDate, type IsoDate } from '../lib/dates.ts';
+import { isIsoDate, istCalendarDate, type IsoDate } from '../lib/dates.ts';
 import {
   MalformedRowError,
   optionalString,
@@ -62,6 +62,13 @@ function unwrapEmbedded(raw: unknown): unknown {
   return Array.isArray(raw) ? raw[0] : raw;
 }
 
+/** The IST calendar day of a timestamp, or null if there is none or it is not one. */
+function createdOn(value: unknown): IsoDate | null {
+  if (typeof value !== 'string') return null;
+  const instant = new Date(value);
+  return Number.isNaN(instant.getTime()) ? null : istCalendarDate(instant);
+}
+
 export function toHousehold(raw: unknown): Household {
   const row = requireRecord(unwrapEmbedded(raw), 'household');
   const fyStartMonth = row['fy_start_month'];
@@ -75,6 +82,7 @@ export function toHousehold(raw: unknown): Household {
     baseCurrency: requireString(row['base_currency'], 'household.base_currency'),
     displayCurrency: requireString(row['display_currency'], 'household.display_currency'),
     fyStartMonth,
+    createdOn: createdOn(row['created_at']),
     fire: {
       // Strings, because they arrive from numeric columns and a ratio's
       // precision is the reason those columns are numeric.
