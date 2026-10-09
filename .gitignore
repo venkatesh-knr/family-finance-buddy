@@ -55,3 +55,4 @@ SampleDoc/
 .env.e2e
 tests/e2e/.auth/
 /blob-report/
+screenshots/
