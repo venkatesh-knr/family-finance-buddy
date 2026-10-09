@@ -11,6 +11,7 @@ const holding = (id: string, currency = 'INR', openedOn: string | null = null): 
   currency,
   openedOn,
   isArchived: false,
+  archivedOn: null,
 });
 
 const reading = (holdingId: string, date: string, amount = inr(0)): HistoryReading => ({
@@ -147,14 +148,64 @@ describe('assetHistory', () => {
     expect(result.ok && result.points.map((p) => p.date)).toEqual(['2026-02-28', '2026-03-15']);
   });
 
-  it('leaves archived holdings out of every point', () => {
-    const gone = { ...holding('gone'), isArchived: true };
+  it('keeps an archived holding in the months before it was archived, so archiving does not rewrite last year', () => {
+    const gone = { ...holding('gone'), isArchived: true, archivedOn: '2026-02-15' };
+    const readings = [
+      reading('a', '2026-01-10', inr(1000)),
+      reading('a', '2026-02-10', inr(1000)),
+      reading('gone', '2026-01-10', inr(7000)),
+    ];
+    const result = run([holding('a'), gone], readings, '2026-03-20');
+    expect(result.ok && result.points).toEqual([
+      { date: '2026-01-31', total: inr(8000) }, // 31 Jan: both
+      { date: '2026-02-28', total: inr(1000) }, // 28 Feb: archived on the 15th, gone
+      { date: '2026-03-20', total: inr(1000) },
+    ]);
+  });
+
+  it('draws the months before an archive exactly as they were drawn before it', () => {
+    const readings = [
+      reading('a', '2026-01-10', inr(1000)),
+      reading('a', '2026-02-10', inr(1000)),
+      reading('gone', '2026-01-10', inr(7000)),
+      reading('gone', '2026-02-05', inr(7000)),
+    ];
+    const before = run([holding('a'), holding('gone')], readings, '2026-02-28');
+    const after = run(
+      [holding('a'), { ...holding('gone'), isArchived: true, archivedOn: '2026-03-10' }],
+      readings,
+      '2026-03-20',
+    );
+    expect(before.ok && after.ok && before.points[0]).toEqual(after.ok && after.points[0]);
+    expect(before.ok && after.ok && before.points[1]).toEqual(after.ok && after.points[1]);
+  });
+
+  it('leaves an archived holding with no known archive date out of every point', () => {
+    const gone = { ...holding('gone'), isArchived: true, archivedOn: null };
     const result = run(
       [holding('a'), gone],
       [reading('a', '2026-01-10', inr(1000)), reading('gone', '2026-01-10', inr(7000))],
       '2026-02-28',
     );
     expect(result.ok && result.points[0]).toEqual({ date: '2026-01-31', total: inr(1000) });
+  });
+
+  it('does not count a reading dated after the holding was archived', () => {
+    const gone = { ...holding('gone'), isArchived: true, archivedOn: '2026-01-20' };
+    const result = run(
+      [holding('a'), gone],
+      [
+        reading('a', '2026-01-10', inr(1000)),
+        reading('a', '2026-02-10', inr(1000)),
+        reading('gone', '2026-01-10', inr(7000)),
+        reading('gone', '2026-02-05', inr(9999)),
+      ],
+      '2026-02-28',
+    );
+    expect(result.ok && result.points).toEqual([
+      { date: '2026-01-31', total: inr(1000) },
+      { date: '2026-02-28', total: inr(1000) },
+    ]);
   });
 
   it('converts each month at the rate of its own date', () => {

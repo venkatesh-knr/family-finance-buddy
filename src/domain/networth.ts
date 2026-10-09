@@ -1,17 +1,15 @@
 /**
  * What the household owns, and what it has not been told.
  *
- * Everything here is per currency and never across currencies. There is no
- * `fx_rate` table yet, so there is no honest way to add a dollar to a rupee —
- * and "every amount carries a currency; never overwrite the original figure
- * with a converted one" is not a rule that bends for a nicer headline. A single
- * net-worth number would mean inventing a rate at the display edge, which is
- * the one place this app must never do arithmetic on money it was not given.
+ * Everything here is per currency and never across currencies. Adding a dollar to
+ * a rupee takes a dated rate (`domain/fx.ts`, from the `fx_rate` table), and
+ * "every amount carries a currency; never overwrite the original figure with a
+ * converted one" is not a rule that bends for a nicer headline. These totals stay
+ * in each currency's own units; the screen converts, with the rates it was given
+ * and a refusal where it was given none.
  *
- * The second absence is louder. `liability` records an instalment, not an
- * outstanding balance, so debt cannot be subtracted from anything. Until it
- * can, these are asset totals and must be called that. Labelling them "net
- * worth" would be a figure that is wrong by exactly the size of the mortgage.
+ * These are asset totals and are called that. Debt is held in `domain/debt.ts` and
+ * is subtracted by the screen, which says so when it cannot.
  *
  * Pure, and the date is passed in. A gap that depended on the clock would
  * change while somebody was reading it.
@@ -30,6 +28,10 @@ export interface HoldingInput {
   /** What it cost, if that was ever recorded. */
   readonly cost: Money | null;
   readonly isArchived: boolean;
+  /** When it was acquired, if anybody said. Without it, it is owed a reading from January. */
+  readonly openedOn: IsoDate | null;
+  /** The IST day it was archived, if it has been. Its months before this still count. */
+  readonly archivedOn: IsoDate | null;
   /**
    * Whether that cost covers only part of the units being valued.
    *
@@ -231,8 +233,16 @@ export function allocationByKind(options: {
     .sort((a, b) => b.share - a.share);
 }
 
+export interface MonthGap {
+  readonly month: string;
+  /** The holdings that existed in that month and were not read in it. */
+  readonly holdingIds: readonly string[];
+}
+
 export interface ReadingGaps {
-  /** Named months of the year that finished with no reading anywhere. */
+  /** Months of the year that finished with some holding unread, and which. */
+  readonly missing: readonly MonthGap[];
+  /** The same months by name, in order. */
   readonly missingMonths: readonly string[];
   /** Holdings with no reading at all, ever. */
   readonly neverRead: readonly string[];
@@ -254,11 +264,19 @@ const MONTHS = [
 ];
 
 /**
- * Which months of a calendar year were never read.
+ * Which months of a calendar year some holding went unread.
  *
  * The calendar year, not the tax year: foreign-asset disclosure runs January to
  * December while the ledger runs April to March, and confusing the two puts a
  * reading in the wrong disclosure.
+ *
+ * Holding by holding. A peak is a figure per instrument, so a month is covered
+ * only if every holding that existed in it was read in it; one fund read every
+ * month must not cover for another that was read once. A holding is owed a
+ * reading from the month it was opened (from January if nobody said when) until
+ * the month before it was archived, because its peak may have fallen in those
+ * months and the archive does not unwrite them. An archived holding with no
+ * archive date cannot be placed and is owed nothing.
  *
  * A month that has not finished is not missing — it is unfinished. Calling it a
  * gap would show a permanent-looking fault every single month.
@@ -271,26 +289,90 @@ export function readingGaps(options: {
 }): ReadingGaps {
   const { holdings, valuations, year, today } = options;
 
-  const live = holdings.filter((h) => !h.isArchived);
-  const liveIds = new Set(live.map((h) => h.id));
-  const inYear = valuations.filter(
-    (v) => Number(v.date.slice(0, 4)) === year && liveIds.has(v.holdingId),
-  );
-
-  const readMonths = new Set(inYear.map((v) => Number(v.date.slice(5, 7))));
+  const readIn = new Map<string, Set<number>>();
+  for (const v of valuations) {
+    if (Number(v.date.slice(0, 4)) !== year) continue;
+    const months = readIn.get(v.holdingId) ?? new Set<number>();
+    months.add(Number(v.date.slice(5, 7)));
+    readIn.set(v.holdingId, months);
+  }
 
   // The last month that has fully finished, as at `today`.
   const thisYear = Number(today.slice(0, 4));
   const thisMonth = Number(today.slice(5, 7));
   const lastComplete = thisYear > year ? 12 : thisYear < year ? 0 : thisMonth - 1;
 
-  const missingMonths: string[] = [];
+  // The first and last month of the year a holding is owed a reading in.
+  const owedFrom = (h: HoldingInput): number => {
+    if (h.openedOn === null) return 1;
+    const y = Number(h.openedOn.slice(0, 4));
+    return y < year ? 1 : y > year ? 13 : Number(h.openedOn.slice(5, 7));
+  };
+  const owedThrough = (h: HoldingInput): number => {
+    if (!h.isArchived) return 12;
+    if (h.archivedOn === null) return 0;
+    const y = Number(h.archivedOn.slice(0, 4));
+    return y < year ? 0 : y > year ? 12 : Number(h.archivedOn.slice(5, 7)) - 1;
+  };
+
+  const missing: MonthGap[] = [];
   for (let month = 1; month <= lastComplete; month++) {
-    if (!readMonths.has(month)) missingMonths.push(MONTHS[month - 1] as string);
+    const holdingIds = holdings
+      .filter((h) => month >= owedFrom(h) && month <= owedThrough(h))
+      .filter((h) => readIn.get(h.id)?.has(month) !== true)
+      .map((h) => h.id);
+    if (holdingIds.length > 0) missing.push({ month: MONTHS[month - 1] as string, holdingIds });
   }
 
   const everRead = new Set(valuations.map((v) => v.holdingId));
-  const neverRead = live.filter((h) => !everRead.has(h.id)).map((h) => h.id);
+  const neverRead = holdings.filter((h) => !h.isArchived && !everRead.has(h.id)).map((h) => h.id);
 
-  return { missingMonths, neverRead };
+  return { missing, missingMonths: missing.map((m) => m.month), neverRead };
+}
+
+/** A reading further behind the newest than this is said to be old. */
+export const STALE_AFTER_DAYS = 45;
+
+export interface StaleReading {
+  readonly holdingId: string;
+  readonly lastRead: IsoDate;
+}
+
+export interface ReadingStaleness {
+  /** The newest of each live holding's latest reading: the honest "as at". */
+  readonly newest: IsoDate | null;
+  /** The oldest of them: what the figure is partly made of. */
+  readonly oldest: IsoDate | null;
+  /** Live holdings whose latest reading is more than the window behind `newest`. */
+  readonly stale: readonly StaleReading[];
+}
+
+const dayNumber = (d: IsoDate): number =>
+  Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10))) / 86_400_000;
+
+/**
+ * How old is each part of a total that says "as at".
+ *
+ * A net worth blends the date of every holding's latest reading, and a single
+ * "as at" over it is true of only the newest. This takes the date from what is in
+ * the figure (live holdings only, so an archived fund's last reading cannot
+ * freshen it) and names the readings far behind it. A holding never read is
+ * unvalued, which is a different thing and is said elsewhere.
+ */
+export function readingStaleness(options: {
+  readonly holdings: readonly HoldingInput[];
+  readonly valuations: readonly ValuationInput[];
+}): ReadingStaleness {
+  const live = new Set(options.holdings.filter((h) => !h.isArchived).map((h) => h.id));
+  const latest = latestValuationPerHolding(options.valuations.filter((v) => live.has(v.holdingId)));
+  const reads = [...latest.values()];
+  if (reads.length === 0) return { newest: null, oldest: null, stale: [] };
+
+  const dates = reads.map((r) => r.date).sort();
+  const newest = dates[dates.length - 1] as IsoDate;
+  const oldest = dates[0] as IsoDate;
+  const stale = reads
+    .filter((r) => dayNumber(newest) - dayNumber(r.date) > STALE_AFTER_DAYS)
+    .map((r) => ({ holdingId: r.holdingId, lastRead: r.date }));
+  return { newest, oldest, stale };
 }
