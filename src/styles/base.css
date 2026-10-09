@@ -60,6 +60,40 @@
     padding: 18px;
   }
 
+  /*
+   * The one lifted surface on a screen (docs/tokens.md §1, Depth). A corner light and not a
+   * wash: --surface-lift is painted across the header band only, then faded to the card's
+   * own ground before the band ends, so the gradient never reaches a figure and tabular
+   * numerals always sit on flat --surface. The band is the card's padding plus a line and a
+   * half of header, in rem, so it keeps its place when the text is scaled to 200%: a band
+   * in px would end partway down a larger heading, and one that outgrew the header would
+   * run on under the number below it.
+   *
+   * Everything else is the ordinary card: the same border, the same radius. What the lift
+   * adds is the deeper shadow and a 1px light along the top edge.
+   */
+  .card-lift {
+    --lift-band: calc(18px + 1.9rem);
+    background-color: var(--surface);
+    background-image:
+      linear-gradient(to bottom, transparent, var(--surface) var(--lift-band)),
+      var(--surface-lift);
+    background-position: top left, top left;
+    background-repeat: no-repeat;
+    background-size: 100% var(--lift-band), 100% var(--lift-band);
+    box-shadow: var(--shadow-lift);
+    position: relative;
+  }
+
+  .card-lift::before {
+    background: var(--lift-edge);
+    content: '';
+    height: 1px;
+    inset: 0 0 auto 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
   .card-title {
     color: var(--ink);
     font-family: var(--font-ui);
@@ -188,14 +222,14 @@
 
   .segmented button {
     background: transparent;
-    border: 0;
+    border: 1px solid transparent;
     border-radius: 6px;
     color: var(--muted);
     cursor: pointer;
     font-family: var(--font-ui);
     font-size: 0.78125rem;
     font-weight: 500;
-    padding: 4px 10px;
+    padding: 3px 9px;
   }
 
   /*
@@ -209,11 +243,19 @@
 
   .segmented-primary button {
     font-size: 0.9375rem;
-    padding: 7px 18px;
+    padding: 6px 17px;
   }
 
+  /*
+   * A hairline, `--line-strong`, on the pressed segment. Weight 600 and a 1px shadow also say
+   * which is pressed, and at 11px on a recessed track they are thin for low vision; the rule in
+   * docs/tokens.md §2 is that a border which is the only thing marking a shape reaches 3:1, and
+   * this one does on the track in both themes. A real border and not a shadow ring, so it
+   * survives forced-colours mode, which drops shadows.
+   */
   .segmented button[aria-pressed='true'] {
     background: var(--surface);
+    border-color: var(--line-strong);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
     color: var(--ink);
     font-weight: 600;
@@ -1144,9 +1186,14 @@
     padding-top: max(14px, env(safe-area-inset-top));
   }
 
+  /*
+   * The page's side gutter is a token (docs/tokens.md §4): 12px on a phone, 18px from
+   * 480px. Narrower, a card reads as the screen and not as something sitting on it. The
+   * card's own inner padding stays 18px at every width; only the margin around it moves.
+   */
   .inset-safe-x {
-    padding-left: max(18px, env(safe-area-inset-left));
-    padding-right: max(18px, env(safe-area-inset-right));
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+    padding-right: max(var(--gutter), env(safe-area-inset-right));
   }
 
   .inset-safe-bottom {

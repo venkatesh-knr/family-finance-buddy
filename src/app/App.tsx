@@ -107,7 +107,7 @@ export function App() {
 
   if (problem !== null && auth === null) {
     return (
-      <main className="mx-auto max-w-app px-4.5 py-11">
+      <main className="mx-auto max-w-app px-[var(--gutter)] py-11">
         <Card title="Not configured">
           <Problem>{problem}</Problem>
         </Card>
@@ -116,7 +116,7 @@ export function App() {
   }
 
   if (auth === null) {
-    return <p className="note px-4.5 py-11">Starting…</p>;
+    return <p className="note px-[var(--gutter)] py-11">Starting…</p>;
   }
 
   if (auth.stage !== 'signed-in') {

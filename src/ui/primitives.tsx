@@ -15,10 +15,17 @@ export function Card({
   collapsible = false,
   defaultOpen = true,
   summary,
+  lift = false,
   children,
 }: {
   title?: string;
   aside?: ReactNode;
+  /**
+   * The one lifted surface on this screen: the figure the screen is about. A second on the
+   * same screen is two things claiming to be the most important, so a screen passes this
+   * once (docs/tokens.md §1, Depth).
+   */
+  lift?: boolean;
   /**
    * Whether the card can be folded away.
    *
@@ -37,7 +44,7 @@ export function Card({
   const shown = !collapsible || open;
 
   return (
-    <section className="card">
+    <section className={lift ? 'card card-lift' : 'card'}>
       {title !== undefined && (
         <header className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
           {collapsible ? (

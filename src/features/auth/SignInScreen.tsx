@@ -27,7 +27,7 @@ export function SignInScreen({ stage, email }: { stage: AuthStage; email: string
 
 function Frame({ title, blurb, children }: { title: string; blurb: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-[420px] flex-col justify-center gap-4.5 px-4.5 py-11">
+    <main className="mx-auto flex min-h-screen max-w-[420px] flex-col justify-center gap-4.5 px-[var(--gutter)] py-11">
       <div className="flex flex-col gap-1.5">
         <h1 className="text-title">Family Finance Buddy</h1>
         <p className="note">{blurb}</p>

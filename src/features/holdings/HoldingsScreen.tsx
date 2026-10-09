@@ -205,6 +205,7 @@ export function HoldingsScreen({
 
       {totals.length > 0 && (
         <Card
+          lift
           title="Portfolio"
           aside={
             <span className="flex flex-wrap items-center gap-2.5">

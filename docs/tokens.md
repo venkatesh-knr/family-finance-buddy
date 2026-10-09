@@ -8,58 +8,75 @@ these tokens — no component may hardcode a colour.
 
 ## 1. Colour
 
-Three themes states: `light` (bare `:root`), `dark` via `prefers-color-scheme`, and an
+Three theme states: `light` (bare `:root`), `dark` via `prefers-color-scheme`, and an
 explicit `[data-theme]` override so a manual toggle wins in both directions.
+
+**The names do not change; the values do.** `--brass` is now a gold, `--teal` an
+emerald, `--indigo` a periwinkle. Renaming them would mean touching every component
+that spends them, for no gain — the point of a token is that its meaning is stable
+while its colour is not. Only genuinely new ideas get new names, and there are four:
+`--surface-lift`, `--lift-edge`, `--shadow-lift` and `--gutter`.
 
 ```css
 :root{
   /* surfaces */
-  --bg:#EEF1F5;          /* page ground */
+  --bg:#EFF2F7;          /* page ground */
   --surface:#FFFFFF;     /* cards, panels */
-  --surface-2:#F6F8FA;   /* table headers, insets, code */
-  --surface-3:#EBEFF4;   /* segmented-control track, progress track */
+  --surface-2:#F5F7FB;   /* table headers, insets, editable rows */
+  --surface-3:#E8EDF5;   /* segmented-control track, progress track */
 
   /* text */
-  --ink:#151B24;         /* primary */
-  --ink-2:#3D4855;       /* body, secondary */
-  --muted:#68758A;       /* captions, labels, axis text */
+  --ink:#111722;         /* primary */
+  --ink-2:#39424F;       /* body, secondary */
+  --muted:#616A78;       /* captions, labels, axis text — NEUTRAL, see rules */
 
   /* lines */
-  --line:#DCE3EB;        /* hairlines, borders */
-  --line-strong:#C3CDD9; /* chip borders, list markers */
+  --line:#DFE5EE;        /* hairlines, borders */
+  --line-strong:#808996; /* control outlines, chip edges — 3:1, see §2 */
 
   /* brand + semantic */
-  --brass:#9A6F14;       --brass-soft:#F4EAD3;   /* accent, targets, "plan" */
-  --teal:#0D7466;        --teal-soft:#DDF0EB;    /* gain, positive, "ok" */
-  --coral:#B0463A;       --coral-soft:#F9E6E2;   /* loss, overspend, "due" */
-  --indigo:#39537F;      --indigo-soft:#E4EBF6;  /* attribution, ownership */
+  --brass:#916500;       --brass-soft:#FFF2D4;   /* accent, targets, "plan" */
+  --teal:#077964;        --teal-soft:#D8F5ED;    /* gain, positive, "ok" */
+  --coral:#BB3D2D;       --coral-soft:#FFE6E2;   /* loss, overspend, "due" */
+  --indigo:#3D5BD9;      --indigo-soft:#E6EBFF;  /* attribution, ownership */
 
   /* categorical — charts only, in this order */
-  --c1:#39537F;  /* indigo   */
-  --c2:#0D7466;  /* teal     */
-  --c3:#9A6F14;  /* brass    */
-  --c4:#7A5A9B;  /* plum     */
-  --c5:#B0463A;  /* coral    */
-  --c6:#4C7FA6;  /* steel    */
-  --c7:#6E7C8C;  /* slate    */
+  --c1:#3D5BD9;  /* periwinkle */
+  --c2:#077964;  /* emerald    */
+  --c3:#916500;  /* gold       */
+  --c4:#7A3FBF;  /* plum       */
+  --c5:#BB3D2D;  /* coral      */
+  --c6:#0E7490;  /* cyan       */
+  --c7:#B45309;  /* amber      */
 
-  --shadow:0 1px 2px rgba(21,27,36,.06), 0 10px 26px -18px rgba(21,27,36,.35);
-  --radius:10px;
+  /* depth */
+  --surface-lift:radial-gradient(120% 140% at 8% 0%, #FFFFFF 0%, #F7F9FD 48%, #FFFFFF 100%);
+  --lift-edge:linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
+  --shadow:0 1px 2px rgba(17,23,34,.06), 0 10px 26px -18px rgba(17,23,34,.35);
+  --shadow-lift:0 2px 4px rgba(17,23,34,.05), 0 18px 38px -24px rgba(17,23,34,.45);
+
+  --radius:12px;
   --radius-pill:100px;
+  --gutter:12px;         /* page side gutter on a phone */
 }
+
+@media (min-width: 480px){ :root{ --gutter:18px } }
 
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0B0F14;  --surface:#141B24;  --surface-2:#1A222D;  --surface-3:#212B37;
-    --ink:#E7EDF4; --ink-2:#C2CDDA;    --muted:#8D9BAC;
-    --line:#26303C; --line-strong:#3A4653;
-    --brass:#D9AC4C; --brass-soft:#31270F;
-    --teal:#48BBA6;  --teal-soft:#0E2B27;
-    --coral:#E08475; --coral-soft:#331815;
-    --indigo:#8FAEDC; --indigo-soft:#161E2C;
-    --c1:#8FAEDC; --c2:#48BBA6; --c3:#D9AC4C; --c4:#B092CE;
-    --c5:#E08475; --c6:#7FB3D0; --c7:#94A3B3;
+    --bg:#080B12;  --surface:#121825;  --surface-2:#1A2234;  --surface-3:#222C41;
+    --ink:#EEF3FB; --ink-2:#C3CEDF;    --muted:#9AA3B2;
+    --line:#222C41; --line-strong:#6D7683;
+    --brass:#F0B429; --brass-soft:#3A2C0C;
+    --teal:#2ED3A8;  --teal-soft:#0C2F28;
+    --coral:#FF6F61; --coral-soft:#33130F;
+    --indigo:#7B9CFF; --indigo-soft:#182448;
+    --c1:#7B9CFF; --c2:#2ED3A8; --c3:#F0B429; --c4:#B07CF0;
+    --c5:#FF6F61; --c6:#46C5E8; --c7:#FF9D4D;
+    --surface-lift:radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
+    --lift-edge:linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
   }
 }
 
@@ -74,6 +91,32 @@ explicit `[data-theme]` override so a manual toggle wins in both directions.
 - **`body` sets an explicit `background` from a token.** A transparent body borrows the
   host's ground.
 - Dark is *not* an inversion. Both palettes were tuned separately; keep them that way.
+  The dark accents are the saturated ones; their light counterparts are darkened to hold
+  4.5:1 on white and are not the same hex.
+- **A light accent is tuned against the ground it is drawn on, not only against white.**
+  Each passes 4.5:1 on white, and that was never the problem: text is also set on the
+  soft fills (a pill, an attention row), on `--bg`, and on `--surface-3` (an unselected
+  tab), and those are where the first light values fell to 4.2–4.5. So an accent holds
+  4.5:1 on its own `-soft`, and `--muted` on `--bg` and `--surface-3`. The fix for a
+  failing pair is to darken the light accent, not to relax the threshold; the threshold
+  is `tests/e2e/theme.spec.ts`.
+- **`--muted` is a neutral grey, not a blue-grey.** It was `#68758A` and `#8D9BAC`, close
+  enough to the link colour that on Settings and Tax nearly every description line read
+  as pressable. Prose is grey; blue is for things you can press. Raising the accent's
+  saturation makes this worse, not better, so the two moved together.
+
+### Depth — three surfaces, spent by role
+
+| Surface | What it is | Where |
+|---|---|---|
+| `--surface` | flat, hairline border, `--shadow` | most of the app |
+| `--surface-lift` | corner-lit gradient, `--shadow-lift`, 1px `--lift-edge` on top | **one per screen** |
+| `--surface-2` | recessed, darker than its parent, no shadow | insets, editable rows, table headers |
+
+The gradient is a **corner light, not a wash**: it never crosses a figure, and tabular
+numerals always sit on flat ground. One lifted surface per screen — a second one is two
+things claiming to be the most important, which is §4's "not everything is a card" in
+another form.
 
 ---
 
@@ -85,14 +128,51 @@ explicit `[data-theme]` override so a manual toggle wins in both directions.
 | Loss / overspend / due | `--coral` | `−` sign, ▼ |
 | Target / plan / attention | `--brass` | text label |
 | Ownership / attribution | `--indigo` | the member's name |
+| Incomplete, unknown, caveated | `--muted` | the ⓘ mark |
 
 **Nothing means anything by colour alone.** Every gain carries a sign or an arrow as well
 as a hue — roughly one man in twelve has red-green colour deficiency, and a portfolio
 screen that encodes profit and loss only in hue is unreadable to them. This is not
-optional polish; it is a correctness requirement.
+optional polish; it is a correctness requirement, and it matters *more* at this
+saturation, not less: a brighter coral is more tempting to rely on alone.
 
-Contrast meets WCAG AA in both themes: 4.5:1 for body text, 3:1 for large text and for
-the boundary of any meaningful shape.
+**A caveat is never coral and never a triangle.** Coral and teal mean direction of money.
+A figure that is incomplete rather than falling takes the muted ⓘ — the mistake this
+palette inherited was a coral ▲ sitting in the same column as a teal ▲, which made an
+incompletely-valued holding read as a losing one.
+
+Contrast meets WCAG AA in both themes: 4.5:1 for body text, 3:1 for large text.
+
+**Borders split in two, and only one of them has a ratio.** A hairline that merely
+separates — a card edge, a row rule, a table divider — is decorative: the grouping is
+already carried by position and spacing, and holding it to 3:1 would mean drawing the
+app in boxes nobody asked for. `--line` is free to be quiet.
+
+A border that is the *only* thing telling you something is there must reach 3:1 against
+what sits behind it: an input's outline, a chip's edge, a segmented control's active
+pill, and the focus ring above all. `--line-strong` is the token those use, and it is
+the one to check. It was `#C6CFDC`, 1.57:1 on white: fine for a divider and not for an
+input a person has to find. It is now `#808996` in light and `#6D7683` in dark, each at least 3:1 on
+`--surface`, `--surface-2`, `--surface-3` and `--bg`: the grounds a field, a quiet button or a
+segmented pill sits on. Dark needs the lighter value because its track (`--surface-3`) is
+lighter than a card, so a pill edge borders the lighter side, and `#646D7A` was 2.67:1 there.
+
+axe does not test this. It checks text, not boundaries, so this pair has to be measured
+by hand or asserted directly.
+
+**Why the rule says a border and not "a visible boundary".** A border survives
+forced-colours mode and a shadow ring does not: that mode (Windows high contrast) keeps a
+border and recolours it to a system colour, and drops box-shadows altogether. A control whose
+edge is a shadow ring has no edge for the people who turned that mode on, and "make it
+visible" is satisfied on the designer's screen and not on theirs. This is not a stylistic
+preference, and a ring is not a substitute for a border.
+
+**The pressed segment is a border, and every segment carries one.** Each segment has a 1px
+transparent border and one pixel less padding than it would otherwise, so the pressed one only
+changes the border's colour and the control does not change size. Remove the transparent
+borders as tidying and the control resizes when pressed, moving its neighbours: the most
+visible thing a toggle can get wrong. The pressed segment's border is `--line-strong`, which
+is at least 3:1 against the track it sits in, in both themes.
 
 ---
 
@@ -181,7 +261,7 @@ An 8px base, with 2px steps where density demands it.
 | Thing | Value |
 |---|---|
 | Card padding | 18px |
-| Card / panel radius | 10px |
+| Card / panel radius | 12px — `--radius` |
 | Grid gap between cards | 18px |
 | Table cell padding | 9px 10px |
 | Pill padding / radius | 3px 9px / 100px |
@@ -199,11 +279,23 @@ hierarchy and makes nothing important.
 
 ---
 
+
+### The page gutter is a token
+
+`--gutter` is 12px below 480px and 18px above. A card then spans 366 of a 390px phone
+and reads as the screen rather than as something sitting on it, while a tablet or a
+laptop keeps the wider measure. It is a token and not a literal because 12px is
+comfortable at 390–412px and tight at 360, which plenty of Android still is, and
+because `CLAUDE.md`'s 200%-text-size rule bites hardest at the narrow end.
+
+Inner card padding stays 17–18px at every width. The gutter shrinks; the breathing
+room inside the card does not.
+
 ## 5. Component tokens
 
 | Component | Spec |
 |---|---|
-| **Card** | `--surface` on `--line` 1px, radius 10, padding 18. Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. |
+| **Card** | `--surface` on `--line` 1px, `--radius`, padding 18. Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. |
 | **Stat tile** | Label above (12px, sentence case), value below in Public Sans with `tabular-nums`, gap 3px. Positive `--teal`, negative `--coral`. |
 | **Pill** | 9.5px mono uppercase. Variants: `own` (indigo-soft/indigo), `warn` (brass), `due` (coral), `ok` (teal), `neutral` (surface-3/muted). |
 | **Table** | Header: `--surface-2`, 10.5px mono uppercase `--muted`, bottom hairline — the one place the micro-label survives. Rows: hairline separated, last row none. Total row: 1.5px `--line-strong` top border, weight 700. |
@@ -233,6 +325,13 @@ hierarchy and makes nothing important.
   mono label.
 
 ---
+
+- The ramp is **stepped in lightness as well as hue**, so neighbouring classes stay
+  apart for someone who cannot separate red from green. `--c1`…`--c7` are ordered, and
+  an asset class keeps its index across every screen — the donut, the allocation rows
+  and the annual-expense bar must agree, or the same class is three colours.
+- Saturated accents make an unlabelled chart more tempting, not less. Every series still
+  carries its name, and §2's sign-or-arrow rule applies inside charts too.
 
 ## 7. Motion
 
