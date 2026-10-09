@@ -47,8 +47,9 @@ export const DOWNGRADE_NOTICE_DAYS = 180;
 /** The grade's place on the scale, 0 the best; null if it is not a long-term grade. */
 export function ratingRank(rating: string | null | undefined): number | null {
   if (rating === null || rating === undefined) return null;
-  // Cut an outlook or a structure suffix: "AA (Stable)", "AA/Stable", "AAA(SO)".
-  const head = rating.split(/[/([]/)[0] ?? '';
+  // ICRA wraps its name in brackets, [ICRA]AA+, so the brackets are only separators. Then
+  // cut an outlook or a structure suffix: "AA (Stable)", "AA/Stable", "AAA(SO)".
+  const head = rating.replace(/[[\]]/g, ' ').split(/[/(]/)[0] ?? '';
   const tokens = head.trim().toUpperCase().split(/\s+/);
   for (let i = tokens.length - 1; i >= 0; i -= 1) {
     const index = (SCALE as readonly string[]).indexOf(tokens[i] ?? '');
@@ -80,27 +81,66 @@ export interface RatingChangeInput {
 const dayNumber = (date: IsoDate): number =>
   Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) / 86_400_000;
 
+/** A change as it should be judged: against the last rating that was set, not only its own row. */
+export interface JudgedChange {
+  readonly seq: number;
+  /** The rating it moved from: the last one set before it, even if one was cleared in between. */
+  readonly from: string | null;
+  readonly to: string | null;
+  readonly changedOn: IsoDate;
+  readonly move: RatingMove;
+}
+
 /**
- * The downgrade to call out, if the latest move in grade was one and it is recent.
+ * Each change, in the order it was made, judged against the last rating that was set.
  *
- * The latest move that changed the grade is the one that stands: an upgrade back clears a
- * downgrade, while a change of agency, an outlook or a rating that first appeared does not
- * (they move nothing). It is dropped from view after `days`, and not before: a downgrade
- * is a thing to see, and a bond that has stayed down for a year is a fact the card's rating
- * history keeps, not an alarm to keep ringing.
+ * A row says what it went from and to, and that is not enough: clearing a rating and then
+ * entering a lower one is two rows, "AA to nothing" and "nothing to BB", and neither alone
+ * is a downgrade. Judged against the last rating that was set, the second is AA to BB. Which
+ * is also what makes "first" mean the first rating a bond ever had, and not any that follows a
+ * gap.
  */
-export function recentDowngrade(
+export function ratingMoves(changes: readonly RatingChangeInput[]): readonly JudgedChange[] {
+  let lastSet: string | null = null;
+  return [...changes]
+    .sort((a, b) => a.seq - b.seq)
+    .map((change) => {
+      const from = change.from ?? lastSet;
+      const move: RatingMove =
+        change.to === null ? 'withdrawn' : from === null ? 'first' : ratingMove(from, change.to);
+      if (change.to !== null) lastSet = change.to;
+      return { seq: change.seq, from, to: change.to, changedOn: change.changedOn, move };
+    });
+}
+
+export interface RatingWatch {
+  /** `unclear` is a change the app could not rank, which is said and not skipped. */
+  readonly kind: 'downgrade' | 'unclear' | 'withdrawn';
+  readonly from: string | null;
+  readonly to: string | null;
+  readonly changedOn: IsoDate;
+}
+
+/**
+ * What to call out about a bond's rating: a downgrade, a change that could not be judged, or
+ * a rating that was removed and has not come back, if recent.
+ *
+ * The latest change that says something is the one that stands. An upgrade clears what was
+ * before it; a change of agency or outlook at the same grade, and a first rating, say nothing
+ * and are passed over. It is dropped from view after `days`, and not before: the rating
+ * history on the bond keeps it for good, and an alarm that never stops is not one.
+ */
+export function ratingWatch(
   changes: readonly RatingChangeInput[],
   today: IsoDate,
   days: number,
-): { readonly from: string | null; readonly to: string | null; readonly changedOn: IsoDate } | null {
-  const ordered = [...changes].sort((a, b) => b.seq - a.seq);
-  for (const change of ordered) {
-    const move = ratingMove(change.from, change.to);
-    if (move !== 'downgrade' && move !== 'upgrade') continue;
-    if (move === 'upgrade') return null;
-    if (dayNumber(today) - dayNumber(change.changedOn) > days) return null;
-    return { from: change.from, to: change.to, changedOn: change.changedOn };
+): RatingWatch | null {
+  for (const judged of [...ratingMoves(changes)].reverse()) {
+    if (judged.move === 'upgrade') return null;
+    if (judged.move === 'same-grade' || judged.move === 'first') continue;
+    if (dayNumber(today) - dayNumber(judged.changedOn) > days) return null;
+    const kind = judged.move === 'downgrade' ? 'downgrade' : judged.move === 'withdrawn' ? 'withdrawn' : 'unclear';
+    return { kind, from: judged.from, to: judged.to, changedOn: judged.changedOn };
   }
   return null;
 }
