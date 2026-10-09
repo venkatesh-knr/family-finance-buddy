@@ -12,42 +12,50 @@
 
 :root {
   /* surfaces */
-  --bg: #eef1f5;          /* page ground */
-  --surface: #ffffff;     /* cards, panels */
-  --surface-2: #f6f8fa;   /* table headers, insets, code */
-  --surface-3: #ebeff4;   /* segmented-control track, progress track */
+  --bg: #EFF2F7;          /* page ground */
+  --surface: #FFFFFF;     /* cards, panels */
+  --surface-2: #F5F7FB;   /* table headers, insets, code */
+  --surface-3: #E8EDF5;   /* segmented-control track, progress track */
 
   /* text */
-  --ink: #151b24;         /* primary */
-  --ink-2: #3d4855;       /* body, secondary */
-  --muted: #68758a;       /* captions, labels, axis text */
+  --ink: #111722;         /* primary */
+  --ink-2: #39424F;       /* body, secondary */
+  --muted: #616A78;       /* captions, labels, axis text */
 
   /* lines */
-  --line: #dce3eb;        /* hairlines, borders */
-  --line-strong: #c3cdd9; /* chip borders, list markers */
+  --line: #DFE5EE;        /* hairlines, borders */
+  --line-strong: #808996; /* chip borders, list markers */
 
   /* brand + semantic */
-  --brass: #9a6f14;
-  --brass-soft: #f4ead3;  /* accent, targets, "plan" */
-  --teal: #0d7466;
-  --teal-soft: #ddf0eb;   /* gain, positive, "ok" */
-  --coral: #b0463a;
-  --coral-soft: #f9e6e2;  /* loss, overspend, "due" */
-  --indigo: #39537f;
-  --indigo-soft: #e4ebf6; /* attribution, ownership */
+  --brass: #916500;
+  --brass-soft: #FFF2D4;  /* accent, targets, "plan" */
+  --teal: #077964;
+  --teal-soft: #D8F5ED;   /* gain, positive, "ok" */
+  --coral: #BB3D2D;
+  --coral-soft: #FFE6E2;  /* loss, overspend, "due" */
+  --indigo: #3D5BD9;
+  --indigo-soft: #E6EBFF; /* attribution, ownership */
 
   /* categorical — charts only, in this order */
-  --c1: #39537f; /* indigo */
-  --c2: #0d7466; /* teal   */
-  --c3: #9a6f14; /* brass  */
-  --c4: #7a5a9b; /* plum   */
-  --c5: #b0463a; /* coral  */
-  --c6: #4c7fa6; /* steel  */
-  --c7: #6e7c8c; /* slate  */
+  --c1: #3D5BD9; /* indigo */
+  --c2: #077964; /* teal   */
+  --c3: #916500; /* brass  */
+  --c4: #7A3FBF; /* plum   */
+  --c5: #BB3D2D; /* coral  */
+  --c6: #0E7490; /* steel  */
+  --c7: #B45309; /* slate  */
 
-  --shadow: 0 1px 2px rgba(21, 27, 36, 0.06), 0 10px 26px -18px rgba(21, 27, 36, 0.35);
-  --radius: 10px;
+  --shadow: 0 1px 2px rgba(17,23,34,.06), 0 10px 26px -18px rgba(17,23,34,.35);
+  --radius: 12px;
   --radius-pill: 100px;
+
+  /* depth: one lifted surface a screen (docs/tokens.md §1, Depth) */
+  --surface-lift: radial-gradient(120% 140% at 8% 0%, #FFFFFF 0%, #F7F9FD 48%, #FFFFFF 100%);
+  --lift-edge: linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
+  --shadow-lift: 0 2px 4px rgba(17,23,34,.05), 0 18px 38px -24px rgba(17,23,34,.45);
+
+  /* the page's side gutter on a phone; widened below */
+  --gutter: 12px;
 
   --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-ui: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -56,42 +64,51 @@
   color-scheme: light;
 }
 
+@media (min-width: 480px) {
+  :root {
+    --gutter: 12px;
+  }
+}
+
 /*
  * Dark is not an inversion — both palettes were tuned separately in
  * docs/tokens.md. Keep them that way.
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0b0f14;
-    --surface: #141b24;
-    --surface-2: #1a222d;
-    --surface-3: #212b37;
+    --bg: #080B12;
+    --surface: #121825;
+    --surface-2: #1A2234;
+    --surface-3: #222C41;
 
-    --ink: #e7edf4;
-    --ink-2: #c2cdda;
-    --muted: #8d9bac;
+    --ink: #EEF3FB;
+    --ink-2: #C3CEDF;
+    --muted: #9AA3B2;
 
-    --line: #26303c;
-    --line-strong: #3a4653;
+    --line: #222C41;
+    --line-strong: #6D7683;
 
-    --brass: #d9ac4c;
-    --brass-soft: #31270f;
-    --teal: #48bba6;
-    --teal-soft: #0e2b27;
-    --coral: #e08475;
-    --coral-soft: #331815;
-    --indigo: #8faedc;
-    --indigo-soft: #161e2c;
+    --brass: #F0B429;
+    --brass-soft: #3A2C0C;
+    --teal: #2ED3A8;
+    --teal-soft: #0C2F28;
+    --coral: #FF6F61;
+    --coral-soft: #33130F;
+    --indigo: #7B9CFF;
+    --indigo-soft: #182448;
 
-    --c1: #8faedc;
-    --c2: #48bba6;
-    --c3: #d9ac4c;
-    --c4: #b092ce;
-    --c5: #e08475;
-    --c6: #7fb3d0;
-    --c7: #94a3b3;
+    --c1: #7B9CFF;
+    --c2: #2ED3A8;
+    --c3: #F0B429;
+    --c4: #B07CF0;
+    --c5: #FF6F61;
+    --c6: #46C5E8;
+    --c7: #FF9D4D;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 30px -20px rgba(0, 0, 0, 0.95);
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
+    --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
+    --lift-edge: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
+    --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
 
     color-scheme: dark;
   }
@@ -99,36 +116,39 @@
 
 /* The same block again, so an explicit choice beats the system preference. */
 :root[data-theme='dark'] {
-  --bg: #0b0f14;
-  --surface: #141b24;
-  --surface-2: #1a222d;
-  --surface-3: #212b37;
+  --bg: #080B12;
+  --surface: #121825;
+  --surface-2: #1A2234;
+  --surface-3: #222C41;
 
-  --ink: #e7edf4;
-  --ink-2: #c2cdda;
-  --muted: #8d9bac;
+  --ink: #EEF3FB;
+  --ink-2: #C3CEDF;
+  --muted: #9AA3B2;
 
-  --line: #26303c;
-  --line-strong: #3a4653;
+  --line: #222C41;
+  --line-strong: #6D7683;
 
-  --brass: #d9ac4c;
-  --brass-soft: #31270f;
-  --teal: #48bba6;
-  --teal-soft: #0e2b27;
-  --coral: #e08475;
-  --coral-soft: #331815;
-  --indigo: #8faedc;
-  --indigo-soft: #161e2c;
+  --brass: #F0B429;
+  --brass-soft: #3A2C0C;
+  --teal: #2ED3A8;
+  --teal-soft: #0C2F28;
+  --coral: #FF6F61;
+  --coral-soft: #33130F;
+  --indigo: #7B9CFF;
+  --indigo-soft: #182448;
 
-  --c1: #8faedc;
-  --c2: #48bba6;
-  --c3: #d9ac4c;
-  --c4: #b092ce;
-  --c5: #e08475;
-  --c6: #7fb3d0;
-  --c7: #94a3b3;
+  --c1: #7B9CFF;
+  --c2: #2ED3A8;
+  --c3: #F0B429;
+  --c4: #B07CF0;
+  --c5: #FF6F61;
+  --c6: #46C5E8;
+  --c7: #FF9D4D;
 
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 30px -20px rgba(0, 0, 0, 0.95);
+  --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
+  --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
+  --lift-edge: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
+  --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
 
   color-scheme: dark;
 }

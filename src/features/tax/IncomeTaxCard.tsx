@@ -117,6 +117,7 @@ export function IncomeTaxCard({
 
   return (
     <Card
+      lift
       title="Tax on your income"
       aside={
         <span className="segmented" role="group" aria-label="Tax regime">

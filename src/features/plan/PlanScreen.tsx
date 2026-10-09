@@ -267,6 +267,7 @@ function FireCard({
 
   return (
     <Card
+      lift
       title="FIRE target"
       aside={
         <span className="flex flex-wrap items-center gap-2.5">

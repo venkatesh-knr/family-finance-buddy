@@ -691,6 +691,7 @@ export function OverviewScreen({
       */}
       <div className="lg:col-start-1 lg:row-start-1">
         <Card
+          lift
           title="Net worth"
           aside={
             <span className="flex flex-wrap items-center gap-2.5">
