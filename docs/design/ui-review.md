@@ -43,6 +43,10 @@ by changing a token, say so and change the token instead.
 | 15 | Three households all named "Demo household" | medium | `repo/*` membership lookups (not live data, as first thought) |
 | 16 | A trend chart drawn from a single reading | medium | `features/overview/AssetsOverTime.tsx` |
 | 17 | Two headline figures differ by ₹12 lakh, unexplained | medium | `features/overview` |
+| 18 | Profile calls the same pause by a different name | low | `features/profile/ProfileScreen.tsx` |
+| 19 | FIRE has no projection — the mockup proposes one | note | `features/plan`, not a defect |
+| 20 | The activity log mixes friendly names with table names | low | `features/profile`, audit labels |
+| 21 | 200% text size is a requirement and nothing verifies it | medium | cross-cutting, `CLAUDE.md` |
 
 ---
 
@@ -465,6 +469,72 @@ add up.
 — the caveat marker already exists for exactly this and is used well elsewhere
 on the same screen. The chart's endpoint label is the place for it.
 
+## 18. Profile calls the same pause by a different name
+
+**This finding was first written as a defect and was wrong.** It claimed
+Profile never finishes loading, on the evidence of a screenshot showing
+`Reading…` on two cards. Profile loads fine. The capture step waited for
+`Loading…` to disappear, Profile says `Reading…`, so the photograph was taken
+mid-load and I read the capture's impatience as a bug in the screen. Recorded
+rather than deleted, because a review that quietly removes its mistakes is not
+one you can trust the rest of.
+
+**What is actually true.** Six screens render `Loading…` while they query.
+`ProfileScreen` renders `Reading…` for the same state, twice. A person meets
+two words for one pause, and anything that keys on the placeholder — the
+screenshot capture did, and it will not be the last thing to — has to know
+about both.
+
+`ImportStatement` also says `Reading…`, and that one is correct and should
+stay: it is a button's busy label while the device parses a PDF, which is a
+different act from waiting on a query.
+
+**What to do.** Profile says `Loading…` like everything else. One line.
+
+## 19. FIRE has no projection — the mockup proposes one
+
+Not a defect. A correction to the record, so nobody reads the October mockups
+as a restyle of what exists.
+
+**What is built.** FIRE is a target figure, a multiple-of-spending control, an
+inflation input, and a year-by-year table — 2026, 2031, 2036 — plus the
+spending plan and the loans-and-policies forms. No chart.
+
+**What the mockup shows.** A projection curve with a dashed target line, the
+crossing year called out, a goal ring with reached/target/shortfall, and a
+contribution sensitivity line. All four are new behaviour, not new paint.
+
+`docs/design/conformance.md` already records FIRE as partial — "no goals, and
+no projection against real contributions" — and `docs/build-plan.md` puts the
+live projection at step 8 of stage 5, after the balance sheet. That ordering
+stands. The mockup is what step 8 should look like when it arrives, and should
+not be used to argue it arrives sooner.
+
+## 20. The activity log mixes friendly names with table names
+
+**What you see.** On Profile, Recent activity reads:
+
+> Added **a valuation** · Added **an instrument** · Changed **a holding** ·
+> Added **fixed_income_terms** · Added **bond_rating_change**
+
+Five of the ten visible rows name the thing in English; the rest print the
+table name, underscores included.
+
+**Why it matters more here than it looks.** This is section 20's trust
+surface — the screen a member opens to see what the household has recorded
+about them, and the one the private-entry design leans on to be believable.
+Raw schema names on that screen read as *this was not meant for you*, which is
+the opposite of what the screen is for.
+
+It is also the same shape as the `kindLabel` fallback: a map covers some
+values and the rest fall through to the stored string. That fallback is right
+for a label nobody has written yet — better a kind's raw name than a blank —
+but a fallback that fires on half the rows is a map that is missing entries.
+
+**What to do.** Name the entity types the audit trigger actually writes.
+Where one is genuinely new and unnamed, the fallback should at least replace
+underscores with spaces, the way `kindLabel` already does.
+
 ## Order
 
 **13 and 14 jump the queue.** They were found after the rest and they are
@@ -483,3 +553,28 @@ Update `docs/design/conformance.md` in the same commits where a finding closes a
 gap it records — the donut and the since-inception chart both have rows there.
 Finding 11 changes `docs/tokens.md`, which is authoritative under `CLAUDE.md`,
 so that edit lands in its own commit ahead of any code that depends on it.
+
+## 21. 200% text size is a requirement and nothing verifies it
+
+Not a defect anyone has seen. A gap in the checking, found while deciding what a
+palette commit should and should not be asked to prove.
+
+**The requirement.** `CLAUDE.md`: "Respect OS text size to 200%; no fixed-height
+container holds text." `docs/tokens.md` §3 repeats it under Text scaling, and the
+code has been written to it: the lifted card's header band is in rem so it keeps its
+place at 200%, `.pb-nav` was found short at 200% and fixed, and several comments
+record the same.
+
+**What checks it.** Nothing. `check:design` compares tokens, `theme.spec.ts`
+checks contrast and depth at the default size, and the screenshot capture is taken at
+the default size. Every 200% fix so far was found by somebody looking, and the file
+says so more than once ("caught by testing at 200%").
+
+**Why it matters.** Parents will use this app, and a fixed height or a clipped label at
+double size is invisible at the size a designer works at. The same kind of defect has
+recurred, which is what a missing check looks like.
+
+**What to do.** Not in a palette commit. A test that renders each screen at 200% and
+asserts no horizontal scroll on the page body and no text clipped by its container (a
+child's scroll width above its client width where `overflow` is hidden) would hold the
+claim. The capture could take a 200% set too, to read by eye until the assertion exists.
