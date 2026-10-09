@@ -26,6 +26,8 @@ import {
   allocationByKind,
   assetTotals,
   readingGaps,
+  readingStaleness,
+  STALE_AFTER_DAYS,
   type HoldingInput,
   type ValuationInput,
 } from '../../domain/networth.ts';
@@ -47,7 +49,7 @@ import { assetHistory } from '../../domain/history.ts';
 import { AllocationDonut } from './AllocationDonut.tsx';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
-import { istCalendarDate } from '../../lib/dates.ts';
+import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney } from '../../lib/money.ts';
 import {
   NoHouseholdError,
@@ -57,6 +59,12 @@ import {
 import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+
+/** Up to three holdings by name, then a count of the rest. */
+function namesFor(ids: readonly string[], nameOf: (id: string) => string): string {
+  const shown = ids.slice(0, 3).map(nameOf).join(', ');
+  return ids.length > 3 ? `${shown} and ${String(ids.length - 3)} more` : shown;
+}
 
 export function OverviewScreen({
   privacy,
@@ -227,6 +235,9 @@ export function OverviewScreen({
     [listing],
   );
 
+  // Archived holdings stay in this list: a reading gap or a point on the line in a
+  // month before the archive is still true of that month. Each calculation below
+  // leaves them out of what is held now.
   const holdings = useMemo<readonly HoldingInput[]>(
     () =>
       (listing === null ? [] : listing.holdings)
@@ -243,6 +254,8 @@ export function OverviewScreen({
           // showed less invested here than on the screen beside it.
           cost: costForHolding(listing as HoldingListing, h),
           isArchived: h.isArchived,
+          openedOn: h.openedOn,
+          archivedOn: h.archivedOn,
           costIsShort: isQualified(histories.get(h.id) ?? { kind: 'unstated' }),
         })),
     [listing, scope, mine, histories],
@@ -305,11 +318,20 @@ export function OverviewScreen({
     [holdings, valuations, today],
   );
 
-  // The most recent reading anywhere, which is what "valued as of" means.
-  const asOf = useMemo(
-    () => valuations.reduce<string | null>((latest, v) => (latest === null || v.date > latest ? v.date : latest), null),
-    [valuations],
-  );
+  // The newest reading of what is held now, which is what "as at" can honestly
+  // mean; the oldest is what the figure is partly made of. An archived fund's
+  // last reading says nothing about the holdings still here.
+  const staleness = useMemo(() => readingStaleness({ holdings, valuations }), [holdings, valuations]);
+  const asOf = staleness.newest;
+
+  /** "Fund · Member", for naming a holding where only its id is known. */
+  const holdingName = useMemo(() => {
+    const names = new Map((listing?.holdings ?? []).map((h) => [h.id, `${h.instrument.name} · ${h.member.displayName}`]));
+    return (id: string): string => names.get(id) ?? 'A holding';
+  }, [listing]);
+
+  /** Holdings in view that have never been read: left out of every total. */
+  const visibleUnvalued = useMemo(() => totals.reduce((sum, t) => sum + t.unvalued, 0), [totals]);
 
   const lastMonthEnd = useMemo(() => {
     const year = Number(today.slice(0, 4));
@@ -382,20 +404,20 @@ export function OverviewScreen({
    * as missing from the line rather than added to it.
    */
   const history = useMemo(() => {
-    const opened = new Map((listing?.holdings ?? []).map((h) => [h.id, h.openedOn]));
     return assetHistory({
       holdings: holdings.map((h) => ({
         id: h.id,
         currency: h.currency,
-        openedOn: opened.get(h.id) ?? null,
+        openedOn: h.openedOn,
         isArchived: h.isArchived,
+        archivedOn: h.archivedOn,
       })),
       readings: valuations,
       rates,
       display,
       asOf: asOf ?? today,
     });
-  }, [listing, holdings, valuations, rates, display, asOf, today]);
+  }, [holdings, valuations, rates, display, asOf, today]);
 
   const saveRate = useCallback(
     async (pair: { base: string; quote: string }) => {
@@ -570,6 +592,21 @@ export function OverviewScreen({
                     : 'private holdings of other members have'}{' '}
                   never been valued, so this total is short by whatever they are worth. Only they can
                   record a value for them.
+                </Caveat>
+              )}
+              {visibleUnvalued > 0 && (
+                <Caveat tone="warn" label="Why this total is short">
+                  {visibleUnvalued} {visibleUnvalued === 1 ? 'holding has' : 'holdings have'} never been
+                  valued, so this total is short by whatever {visibleUnvalued === 1 ? 'it is' : 'they are'}{' '}
+                  worth. Record a value on Holdings and it is counted.
+                </Caveat>
+              )}
+              {staleness.oldest !== null && staleness.oldest !== staleness.newest && (
+                <Caveat tone="info" label="Why this is not all as at one date">
+                  Each holding is carried at its own latest reading, which runs from{' '}
+                  {formatIsoDate(staleness.oldest)} to {formatIsoDate(staleness.newest ?? staleness.oldest)}.
+                  {staleness.stale.length > 0 &&
+                    ` ${String(staleness.stale.length)} of them ${staleness.stale.length === 1 ? 'is' : 'are'} more than ${String(STALE_AFTER_DAYS)} days behind the newest; they are named under Needs attention.`}
                 </Caveat>
               )}
               {shownUnbalanced > 0 && (
@@ -922,10 +959,13 @@ export function OverviewScreen({
           title="Needs attention"
           aside={<span className="note">{today.slice(0, 4)}</span>}
         >
-          {gaps.missingMonths.length === 0 && gaps.neverRead.length === 0 && shortPositions.length === 0 ? (
+          {gaps.missingMonths.length === 0 &&
+          gaps.neverRead.length === 0 &&
+          staleness.stale.length === 0 &&
+          shortPositions.length === 0 ? (
             <p className="note">
-              Every finished month this year has a reading. That is what makes the year&rsquo;s peak a
-              figure rather than a lower bound.
+              Every holding has a reading in every finished month this year it was held. That is what
+              makes the year&rsquo;s peak a figure rather than a lower bound.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -941,12 +981,12 @@ export function OverviewScreen({
                   headline={
                     <>
                       {gaps.missingMonths.length}{' '}
-                      {gaps.missingMonths.length === 1 ? 'month has' : 'months have'} no reading, so
-                      this year&rsquo;s peak is a lower bound
+                      {gaps.missingMonths.length === 1 ? 'month has' : 'months have'} a holding with
+                      no reading, so this year&rsquo;s peak is a lower bound
                     </>
                   }
-                  names={[...gaps.missingMonths]}
-                  namesLabel="Which months"
+                  names={gaps.missing.map((gap) => `${gap.month}: ${namesFor(gap.holdingIds, holdingName)}`)}
+                  namesLabel="Which months, and which holdings"
                 >
                   A peak cannot be reconstructed from a year-end statement, which is why the gap
                   matters now and not in April.
@@ -961,8 +1001,28 @@ export function OverviewScreen({
                       valued, and {gaps.neverRead.length === 1 ? 'is' : 'are'} left out of every total
                     </>
                   }
+                  names={gaps.neverRead.map(holdingName)}
+                  namesLabel="Which holdings"
                 >
                   They are absent from every total above rather than counted as zero.
+                </Attention>
+              )}
+              {staleness.stale.length > 0 && (
+                <Attention
+                  headline={
+                    <>
+                      {staleness.stale.length}{' '}
+                      {staleness.stale.length === 1 ? 'reading is' : 'readings are'} more than{' '}
+                      {STALE_AFTER_DAYS} days behind the newest
+                    </>
+                  }
+                  names={staleness.stale.map(
+                    (entry) => `${holdingName(entry.holdingId)} — last read ${formatIsoDate(entry.lastRead)}`,
+                  )}
+                  namesLabel="Which holdings"
+                >
+                  They are in every total at the value last read, so the total is only as current as
+                  its oldest part.
                 </Attention>
               )}
               {shortPositions.length > 0 && (
