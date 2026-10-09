@@ -277,8 +277,10 @@ export function FixedIncome({
       {rows.length > 0 && (
         <p className="note mb-3">
           These are worked out here and are <strong>not in net worth</strong> until each is recorded as
-          a reading, with the link on its row, or until the month is closed on the Overview, which
-          does it for every one that is not an assumed renewal.
+          a reading, with the link on its row.{' '}
+          {listing.viewer.role === 'owner' || listing.viewer.role === 'partner'
+            ? 'Closing the month on the Overview also records each one’s value at that month end, apart from an assumed renewal, one that has paid out, or one it cannot value.'
+            : ''}
         </p>
       )}
 

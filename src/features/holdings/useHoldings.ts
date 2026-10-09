@@ -25,6 +25,8 @@ import { addDisposal, addLot } from '../../repo/lots.ts';
 import { positionInputs } from './history.ts';
 import { listTaxRules } from '../../repo/taxRules.ts';
 import { listPrices, refreshPrices } from '../../repo/prices.ts';
+import { listFixedIncome } from '../../repo/fixedIncome.ts';
+import { paidOutHoldings } from './fixedIncomeRows.ts';
 import { priceOn, valueOf, type Price } from '../../domain/pricing.ts';
 import type { TaxRule } from '../../domain/tax-rules.ts';
 import type {
@@ -119,6 +121,14 @@ export function useHoldings(householdId: string | null): {
    * fault. Empty and failed are different things and this is what tells them apart.
    */
   taxRulesFailed: boolean;
+  /**
+   * The deposits and bonds that have paid out, and the day they did. They are left out of the
+   * portfolio's totals from that day, as net worth leaves them out: a paid-out deposit's last
+   * reading would otherwise keep counting until somebody archived it by hand.
+   */
+  paidOut: ReadonlyMap<string, string>;
+  /** Whether deposits and bonds could not be read, so a paid-out one may still be counted. */
+  paidOutFailed: boolean;
   /** Ask the driver to fetch. The client never calls the vendor itself. */
   refresh: () => Promise<{ written: number; note?: string }>;
 } {
@@ -139,6 +149,7 @@ export function useHoldings(householdId: string | null): {
    * of identifiers on screen, instead of one per holding.
    */
   const [prices, setPrices] = useState<readonly Price[]>([]);
+  const [fixedIncome, setFixedIncome] = useState<Awaited<ReturnType<typeof listFixedIncome>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -162,7 +173,11 @@ export function useHoldings(householdId: string | null): {
           .map((holding) => holding.instrument.priceExternalId)
           .filter((id): id is string => id !== null),
       ).catch(() => []);
+      // Deposits and bonds, to know which have paid out. Read apart: a failure here is said
+      // on the totals and does not take the screen down.
+      const fixed = await listFixedIncome(next.household.id).catch(() => null);
       if (mine === generation.current) {
+        setFixedIncome(fixed);
         setListing(next);
         setTaxRules(rules ?? []);
         setTaxRulesFailed(rules === null);
@@ -181,6 +196,11 @@ export function useHoldings(householdId: string | null): {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const paidOut = useMemo(
+    () => (fixedIncome === null ? new Map<string, string>() : paidOutHoldings(fixedIncome.terms, fixedIncome.renewals, today)),
+    [fixedIncome, today],
+  );
 
   const rows = useMemo<readonly HoldingRow[]>(() => {
     if (listing === null) return [];
@@ -301,6 +321,9 @@ export function useHoldings(householdId: string | null): {
     reload: load,
     taxRules,
     taxRulesFailed,
+    paidOut,
+    // Null after a load is a failed read; before one, it is not yet read and nothing is shown.
+    paidOutFailed: !loading && listing !== null && fixedIncome === null,
     refresh: async () => {
       const result = await refreshPrices(
         (listing?.holdings ?? [])

@@ -49,6 +49,7 @@ import {
   buildPosition,
   daysPhrase,
   fixedIncomeAlerts,
+  paidOutHoldings,
   type FixedIncomeAlert,
 } from '../holdings/fixedIncomeRows.ts';
 import { listPlan } from '../../repo/planning.ts';
@@ -75,6 +76,18 @@ function monthYear(date: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+/** What Close month left out, named: "1 renewal not recorded yet, 2 paid out". */
+function notWorkedOut(left: { projected: number; notStarted: number; unvaluable: number; paidOut: number }): string {
+  return [
+    left.projected > 0 && `${String(left.projected)} renewal${left.projected === 1 ? '' : 's'} not recorded yet`,
+    left.paidOut > 0 && `${String(left.paidOut)} paid out`,
+    left.notStarted > 0 && `${String(left.notStarted)} not started`,
+    left.unvaluable > 0 && `${String(left.unvaluable)} could not be valued`,
+  ]
+    .filter((part): part is string => part !== false)
+    .join(', ');
 }
 
 /** A gain with its sign: a tint alone means nothing to somebody who cannot see it. */
@@ -130,10 +143,8 @@ export function OverviewScreen({
     unread: number;
     /** Deposits and bonds worked out from their terms and written. */
     worked: number;
-    /** Assumed renewals, left unread: an estimate is not a reading. */
-    projected: number;
-    /** True when the deposits and bonds could not be read, so none was worked out. */
-    fixedIncomeUnread: boolean;
+    /** What was left out, and why: each is named, not folded into the unread count. */
+    left: { projected: number; notStarted: number; unvaluable: number; paidOut: number };
   } | null>(null);
   const [rates, setRates] = useState<readonly FxRate[]>([]);
   const [debts, setDebts] = useState<
@@ -199,6 +210,9 @@ export function OverviewScreen({
     readonly ratingChanges: Awaited<ReturnType<typeof listRatingChanges>>;
   } | null>(null);
   const [fixedIncomeFailed, setFixedIncomeFailed] = useState(false);
+  // The rating history, read apart from the terms: its failure says nothing about a value, and
+  // must not stop a month being closed.
+  const [ratingsFailed, setRatingsFailed] = useState(false);
   // Not yet read is not the same as could not be read. Close month needs to know which: it
   // works deposits and bonds out from what was read, and "nothing read yet" must not be
   // reported to somebody as a failure, nor acted on as if there were none.
@@ -259,11 +273,12 @@ export function OverviewScreen({
       setPersonalTotals(personalResult.status === 'fulfilled' ? personalResult.value : []);
       setPersonalTotalsFailed(personalResult.status === 'rejected');
 
-      if (fixedResult.status === 'fulfilled' && ratingResult.status === 'fulfilled') {
+      setRatingsFailed(ratingResult.status === 'rejected');
+      if (fixedResult.status === 'fulfilled') {
         setFixedIncome({
           terms: fixedResult.value.terms,
           renewals: fixedResult.value.renewals,
-          ratingChanges: ratingResult.value,
+          ratingChanges: ratingResult.status === 'fulfilled' ? ratingResult.value : [],
         });
         setFixedIncomeFailed(false);
       } else {
@@ -298,6 +313,13 @@ export function OverviewScreen({
     [listing],
   );
 
+  // Deposits and bonds that have paid out are left out from the day they did: not archived and
+  // nothing written, only worked out from the terms, so correcting the terms puts one back.
+  const paidOut = useMemo(
+    () => (fixedIncome === null ? new Map<string, string>() : paidOutHoldings(fixedIncome.terms, fixedIncome.renewals, today)),
+    [fixedIncome, today],
+  );
+
   // Archived holdings stay in this list: a reading gap or a point on the line in a
   // month before the archive is still true of that month. Each calculation below
   // leaves them out of what is held now.
@@ -316,12 +338,12 @@ export function OverviewScreen({
           // which an import leaves empty, so a household with imported funds
           // showed less invested here than on the screen beside it.
           cost: costForHolding(listing as HoldingListing, h),
-          isArchived: h.isArchived,
+          isArchived: h.isArchived || paidOut.has(h.id),
           openedOn: h.openedOn,
-          archivedOn: h.archivedOn,
+          archivedOn: h.archivedOn ?? paidOut.get(h.id) ?? null,
           costIsShort: isQualified(histories.get(h.id) ?? { kind: 'unstated' }),
         })),
-    [listing, scope, mine, histories],
+    [listing, scope, mine, histories, paidOut],
   );
 
   /** The positions in view whose cost covers only part of their units, named. */
@@ -548,7 +570,9 @@ export function OverviewScreen({
   const canClose = listing?.viewer.role === 'owner' || listing?.viewer.role === 'partner';
 
   const close = useCallback(async () => {
-    if (listing === null) return;
+    // Closing without having read them would carry a stale mid-month reading into the month-end
+    // slot of a deposit, for good: the worked-out figure is never written over a reading.
+    if (listing === null || fixedIncome === null) return;
     setClosing(true);
     setProblem(null);
     try {
@@ -557,8 +581,8 @@ export function OverviewScreen({
       // function below runs, which would otherwise carry a stale mid-month reading into the
       // month-end slot and leave the worked-out figure with nowhere to go.
       let worked = 0;
-      let projected = 0;
-      if (fixedIncome !== null) {
+      const left = { projected: 0, notStarted: 0, unvaluable: 0, paidOut: 0 };
+      {
         const seen = new Set(listing.holdings.filter((h) => !h.isArchived).map((h) => h.id));
         const { readings, skipped } = monthEndReadings(
           fixedIncome.terms
@@ -571,10 +595,13 @@ export function OverviewScreen({
           date: lastMonthEnd,
           readings,
         });
-        projected = skipped.filter((s) => s.why === 'projected').length;
+        left.projected = skipped.filter((s) => s.why === 'projected').length;
+        left.notStarted = skipped.filter((s) => s.why === 'not-started').length;
+        left.unvaluable = skipped.filter((s) => s.why === 'unvaluable').length;
+        left.paidOut = skipped.filter((s) => s.why === 'matured').length;
       }
       const carried = await closeMonth({ householdId: listing.household.id, monthEnd: lastMonthEnd });
-      setClosed({ ...carried, worked, projected, fixedIncomeUnread: fixedIncome === null });
+      setClosed({ ...carried, worked, left });
       await load();
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not close the month.');
@@ -1132,6 +1159,7 @@ export function OverviewScreen({
           staleness.stale.length === 0 &&
           alerts.length === 0 &&
           !fixedIncomeFailed &&
+          !ratingsFailed &&
           shortPositions.length === 0 ? (
             <p className="note">
               Every holding has a reading in every finished month this year it was held. That is what
@@ -1270,12 +1298,20 @@ export function OverviewScreen({
                   was removed is not good news either. Check each with the agency&rsquo;s letter.
                 </Attention>
               )}
-              {fixedIncomeFailed && (
+              {(fixedIncomeFailed || ratingsFailed) && (
                 <Attention
-                  headline={<>Deposits, bonds or their rating history could not be read</>}
+                  headline={
+                    <>
+                      {fixedIncomeFailed
+                        ? 'Deposits and bonds could not be read'
+                        : 'The rating history of bonds could not be read'}
+                    </>
+                  }
                 >
-                  A maturity close by or a downgrade would not show here. It is not that there are none:
-                  the request failed. Reload to try again.
+                  {fixedIncomeFailed
+                    ? 'A maturity close by would not show here, and the month cannot be closed. '
+                    : 'A downgrade would not show here. '}
+                  It is not that there are none: the request failed. Reload to try again.
                 </Attention>
               )}
               {staleness.stale.length > 0 && (
@@ -1319,7 +1355,11 @@ export function OverviewScreen({
           {canClose && (
             <div className="mt-3.5 flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" disabled={closing || !fixedIncomeSettled} onClick={() => void close()}>
+                <Button
+                  type="button"
+                  disabled={closing || !fixedIncomeSettled || fixedIncomeFailed}
+                  onClick={() => void close()}
+                >
                   {closing ? 'Closing…' : `Close ${monthYear(lastMonthEnd)}`}
                 </Button>
                 <Caveat tone="info" label="What closing a month does">
@@ -1330,6 +1370,12 @@ export function OverviewScreen({
                   yet recorded is an estimate and is left unread. Anything else it was not told stays
                   unread. Nothing is overwritten, and running it twice does nothing.
                 </Caveat>
+                {fixedIncomeFailed && (
+                  <span className="note">
+                    Deposits and bonds could not be read, so the month cannot be closed: it would carry a
+                    stale reading in place of each one&rsquo;s worked-out value, for good. Reload to try again.
+                  </span>
+                )}
                 {closed !== null && (
                   <span className="note">
                     {closed.carried === 0
@@ -1339,10 +1385,8 @@ export function OverviewScreen({
                       : `Carried ${String(closed.carried)} ${closed.carried === 1 ? 'reading' : 'readings'} to the month end.`}
                     {closed.worked > 0 &&
                       ` Worked out ${String(closed.worked)} ${closed.worked === 1 ? 'deposit or bond' : 'deposits and bonds'} from ${closed.worked === 1 ? 'its' : 'their'} terms.`}
-                    {closed.projected > 0 &&
-                      ` ${String(closed.projected)} renewal${closed.projected === 1 ? '' : 's'} not recorded yet, left unread.`}
-                    {closed.fixedIncomeUnread && ' Deposits and bonds could not be read, so none was worked out.'}
-                    {closed.unread > 0 && ` ${String(closed.unread)} unread.`}
+                    {notWorkedOut(closed.left) !== '' && ` Not worked out: ${notWorkedOut(closed.left)}.`}
+                    {closed.unread > 0 && ` ${String(closed.unread)} unread in all.`}
                   </span>
                 )}
               </div>
