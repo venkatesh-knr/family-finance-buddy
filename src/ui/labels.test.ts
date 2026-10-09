@@ -3,10 +3,11 @@ import { INSTRUMENT_KINDS } from '../repo/types.ts';
 import { INSTRUMENT_KIND_COLOUR, INSTRUMENT_KIND_LABEL, kindColour, kindLabel } from './labels.ts';
 
 describe('kindColour', () => {
-  it('gives every class a categorical token, never a literal', () => {
+  it('gives every class a token, never a literal: a categorical slot, or the neutral grey for other', () => {
     for (const kind of INSTRUMENT_KINDS) {
-      expect(kindColour(kind)).toMatch(/^var\(--c[1-7]\)$/);
+      expect(kindColour(kind)).toMatch(/^var\(--(c[1-7]|muted)\)$/);
     }
+    expect(kindColour('other')).toBe('var(--muted)');
   });
 
   it('gives no two classes the same colour', () => {

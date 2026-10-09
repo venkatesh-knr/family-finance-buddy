@@ -1,4 +1,4 @@
-import { ASSET_CLASSES, assetClass, rampColour } from './assetClass.ts';
+import { ASSET_CLASSES, assetClass, classColour } from './assetClass.ts';
 
 /**
  * What an asset class is called on screen.
@@ -52,17 +52,18 @@ export function taxClassLabel(assetClass: string): string {
  * learnt the palette from one screen is misled by the next. The donut and the
  * allocation rows both read this, so a class is one colour everywhere.
  *
- * Tokens only — the categorical `--c1…--c7` — so both themes work. The order
+ * Tokens only — the categorical `--c1…--c7`, and `--muted` for `other`, which is not a hue — so
+ * both themes work. The order
  * follows the prototype's class map: funds, equity, bonds, then ETFs (which
  * carry the foreign equity slot), deposits, and anything unclassified last.
  * `--c5` is the prototype's crypto slot and is left unused until a class needs
  * it, rather than given to something else and taken back.
  */
 export const INSTRUMENT_KIND_COLOUR: Record<string, string> = Object.fromEntries(
-  ASSET_CLASSES.map((c) => [c.kind, rampColour(c.ramp)]),
+  ASSET_CLASSES.map((c) => [c.kind, classColour(c)]),
 );
 
 /** The colour for one kind; an unknown kind is drawn as `other`, not as nothing. */
 export function kindColour(kind: string): string {
-  return rampColour(assetClass(kind).ramp);
+  return classColour(assetClass(kind));
 }
