@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { DepositRenewal, FixedIncomeTerms, RatingChange } from '../../repo/types.ts';
-import { daysPhrase, fixedIncomeAlerts } from './fixedIncomeRows.ts';
+import { daysPhrase, fixedIncomeAlerts, paidOutHoldings } from './fixedIncomeRows.ts';
 
 const terms = (over: Partial<FixedIncomeTerms> = {}): FixedIncomeTerms => ({
   holdingId: 'h1',
@@ -142,5 +142,61 @@ describe('daysPhrase', () => {
     expect(daysPhrase(1)).toBe('tomorrow');
     expect(daysPhrase(2)).toBe('in 2 days');
     expect(daysPhrase(30)).toBe('in 30 days');
+  });
+});
+
+describe('paidOutHoldings', () => {
+  const renewal = (over: Partial<DepositRenewal> = {}): DepositRenewal => ({
+    id: 'r1',
+    holdingId: 'h1',
+    start: '2025-01-01',
+    maturity: '2026-01-01',
+    principal: money(10_750_000n, 'INR'),
+    ratePct: '7.000',
+    compounding: 'yearly',
+    note: null,
+    ...over,
+  });
+  const today = '2026-10-09';
+
+  it('names a deposit that has paid out, and the day it did', () => {
+    const paid = paidOutHoldings([terms({ start: '2025-01-01', maturity: '2026-01-01' })], [], today);
+    expect([...paid]).toEqual([['h1', '2026-01-01']]);
+  });
+
+  it('takes the end of the last term it was renewed into, not the first', () => {
+    const paid = paidOutHoldings(
+      [terms({ start: '2024-01-01', maturity: '2025-01-01' })],
+      [renewal()],
+      today,
+    );
+    expect(paid.get('h1')).toBe('2026-01-01');
+  });
+
+  it('never calls a deposit that renews itself paid out: the money stays in', () => {
+    const paid = paidOutHoldings(
+      [terms({ start: '2024-01-01', maturity: '2025-01-01', autoRenew: true })],
+      [],
+      today,
+    );
+    expect(paid.size).toBe(0);
+  });
+
+  it('names a bond that has been repaid', () => {
+    const paid = paidOutHoldings([bond({ start: '2024-01-01', maturity: '2026-05-01' })], [], today);
+    expect(paid.get('b1')).toBe('2026-05-01');
+  });
+
+  it('leaves out what is still running, has not started, or cannot be valued', () => {
+    const paid = paidOutHoldings(
+      [terms(), bond({ start: '2027-01-01', maturity: '2029-01-01' }), terms({ holdingId: 'x', compounding: null })],
+      [],
+      today,
+    );
+    expect(paid.size).toBe(0);
+  });
+
+  it('is empty for nothing, and does not read the clock', () => {
+    expect(paidOutHoldings([], [], today).size).toBe(0);
   });
 });

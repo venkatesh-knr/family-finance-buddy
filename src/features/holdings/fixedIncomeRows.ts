@@ -44,6 +44,31 @@ export function buildPosition(
   };
 }
 
+/**
+ * The deposits and bonds that have paid out, with the day they did.
+ *
+ * A position that has paid out is not a holding any more: the bank has the money back in an
+ * account. Its last reading would otherwise sit in net worth, and in the totals, at its
+ * pre-maturity value until somebody archived it by hand, and counting it twice when the money
+ * is in a bank balance too. So it is worked out from the terms, as everything else about a
+ * deposit is, and left out from that day: no write, nothing archived, and correcting the terms
+ * puts it back. A deposit that renews itself is never paid out; its money stays in.
+ */
+export function paidOutHoldings(
+  terms: readonly FixedIncomeTerms[],
+  renewals: readonly DepositRenewal[],
+  today: IsoDate,
+): ReadonlyMap<string, IsoDate> {
+  const paid = new Map<string, IsoDate>();
+  for (const t of terms) {
+    const view = fixedIncomeView(buildPosition(t, renewals), today);
+    if (!view.ok || !view.matured) continue;
+    const ends = [t.maturity, ...renewals.filter((r) => r.holdingId === t.holdingId).map((r) => r.maturity)];
+    paid.set(t.holdingId, ends.sort()[ends.length - 1] ?? t.maturity);
+  }
+  return paid;
+}
+
 /** "today", "tomorrow", "in 5 days": the one way a maturity is said, on every screen. */
 export function daysPhrase(days: number): string {
   if (days === 0) return 'today';
