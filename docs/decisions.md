@@ -224,7 +224,7 @@ Answered finding by finding. Ten findings; the reviewer ran once and did not kno
   worked example, since the quarterly one read as the rule. It is for deposits only; a bond has a coupon.
 - **The forms are on a grid** and not a wrapping row. A row that wraps and aligns to the bottom put the box of any field with a hint
   higher than its neighbours', which is how the first version came out crooked.
-- **Not built:** coupons received, repay mode, rating changes (both need a migration, proposed separately), and PPF, EPF and NPS.
+- **Not built:** coupons received, and PPF, EPF and NPS.
 
 ## A bond's repay mode and its rating log (October 2026), schema proposed
 
@@ -244,6 +244,29 @@ that waits for the migration to be applied.
 - **Tests:** `supabase/tests/bond_repay_mode_and_rating_log.test.sql`, 23 assertions: nobody can write the log, only the trigger does,
   the privacy by role, a password alone reads nothing, and the repay mode's two checks. It runs in CI; it has not been run locally,
   because Docker is blocked on the maintainer's machine.
+
+## Repay mode and ratings, built (October 2026)
+
+On the migration above, once applied.
+
+- **A cumulative bond is a deposit's arithmetic.** Interest is credited at the coupon frequency and paid with the face at maturity, so it is
+  valued as interest that keeps compounding, shows no coupon, and says what it pays at the end. A payout bond is exactly as before; an
+  unset mode is payout. The label says "Interest credited" and not "Coupon paid" when it is cumulative.
+- **A downgrade is a move in grade, read from the grade alone** (`domain/ratings.ts`). The agency prefix, an outlook and a suffix are not
+  the grade; a short-term rating (A1+) is on another scale and is not ranked against a long-term one, so a change between two things it
+  cannot rank is "unknown" and not "unchanged". A change of agency or outlook at the same grade is not a downgrade.
+- **The latest move in grade is the one that stands.** An upgrade back clears a downgrade; a downgrade is called out for 180 days and the
+  rating history on the bond keeps it for good. 180 is a judgement: long enough to be found, short enough that a bond that stayed down
+  for a year is a fact on its history and not an alarm that never stops.
+- **A downgrade is not left to be found on Holdings.** It is on the bond's row, and on the Overview's Needs attention in the coral tone,
+  with the bond named. So is a maturity within thirty days, which is the reinvestment prompt. Both appear only for what the caller can see,
+  and in Mine only their own. If deposits, bonds or the rating history could not be read, Overview says so and does not read it as
+  "nothing to report".
+- **Nothing in the app writes the rating log.** A rating is changed by editing it on the terms; the trigger records the change. The form
+  says "a change is logged" beside the field when editing.
+- **A defect found on the way:** a select inside a label that also holds a help button was given no accessible name, so a screen reader
+  announced an unlabelled dropdown. It was in the Compounds field of the first deposits slice and in the older Tracks field. The selects
+  are now named outright.
 
 ## Bank and card import (October 2026), not started
 
