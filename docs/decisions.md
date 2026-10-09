@@ -127,6 +127,22 @@ an authoritative document, it says which and what.
   household-label fallback only reaches when the same id appears twice; the first reading (three households, a data problem) was
   wrong. The fix is filtered lookups (`repo/account.ts`), and the UI-review finding is corrected.
 
+## What the dates on a figure mean (October 2026, from the second design-conformance review)
+
+- **A month is covered only if every holding that existed in it was read in it.** The reading-gap check took the union of months
+  in which any holding was read, so one fund read monthly hid another read once; the screen then said the year's peak was a
+  figure when it was a lower bound. It is now holding by holding, and names which holdings are missing in which months. A holding
+  is owed a reading from the month it was opened (January if nobody said when) to the month before it was archived.
+- **Archiving a holding does not rewrite the past.** The history line dropped archived holdings from every month, so tidying up in
+  October changed March. An archived holding now counts on the dates before the day it was archived (an IST day, from
+  `archived_at`); with no archive date it cannot be placed and is left out.
+- **"As at" comes from what is in the figure.** It was the newest reading anywhere, including an archived fund's. It is now the
+  newest of the latest reading of each live holding, the figure says it runs from the oldest to the newest, and readings more than
+  45 days behind the newest are named under Needs attention. 45 is a judgement: monthly readings should never trip it, and a
+  missed month should.
+- **Migrations `20260927120000` (audit follows the holding) and `20260927130000` (fixed-income terms, deposit renewal) have been
+  applied** by the maintainer.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan

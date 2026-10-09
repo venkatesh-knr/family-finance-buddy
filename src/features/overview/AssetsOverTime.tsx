@@ -3,8 +3,8 @@
  * first read.
  *
  * Titled "Assets" and not "Net worth", and the marker on the heading says why:
- * a loan records an instalment, and only some have a dated balance, so there is
- * no history of debt to take off. Drawing it would be a line that looks like net
+ * a loan records an instalment and at most one dated balance, not a history of
+ * them, so there is no debt over time to take off. Drawing it would be a line that looks like net
  * worth and is high by whatever was owed.
  *
  * Every colour is a token, and none is the colour of a class: this is a total
@@ -94,8 +94,8 @@ export function AssetsOverTime({
     <Caveat tone="info" label="What this line is">
       Assets only, read in {display}. Each month is the latest reading of every holding on or before
       its last day, converted at the exchange rate of that day, so a past month does not move when
-      the rate does. Debt is not taken off: a loan has no dated balance to draw a history from, so
-      this is not net worth.
+      the rate does. Debt is not taken off: a loan has one dated balance at most, not a history to
+      draw from, so this is not net worth.
     </Caveat>
   );
 

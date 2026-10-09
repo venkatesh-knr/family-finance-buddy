@@ -136,19 +136,21 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (Windows).
-- **Merged and deployed:** the audit-log leak fix (#49) and the fixed-income schema (#50), plus the decisions
-  record. **For the maintainer to do: `supabase db push`**, which applies `20260927120000` (the audit fix) then
-  `20260927130000` (`fixed_income_terms` and `deposit_renewal`). Nothing the app does needs them until the Deposits
-  screen is built.
-- **In flight:** plan item 6, the repository functions and the Deposits and bonds screen, on branch
-  `deposits-screen`. See the pull request for how far it got.
+- **Merged and deployed:** everything up to #57 (membership lookups). The migrations `20260927120000` and
+  `20260927130000` have been applied by the maintainer.
+- **In flight:** branch `reviewer-truth`, the findings of the two design-conformance reports on Overview that were not the
+  honesty fixes: reading gaps per holding, archived holdings kept in the history before they were archived, the as-at date and
+  stale readings, then consistent signs and percentages, the loading state, and the conformance ledger. See the pull request.
 - **Decisions the maintainer gave:** property, FDs, bonds, PPF, EPF, NPS and other are all held. Deposits compound
   **yearly**; an auto-renewing FD pays its interest into the principal and is redeposited **for the same term**.
   Written up in `docs/decisions.md`.
-- **Not built yet, in this order:** the screen; `property` and `property_improvement` with a cost-basis function;
-  PPF, EPF and NPS.
-- **Files in the working tree that are not part of this work:** an untracked `playwright.config.ts` and
-  `tests/e2e/`, and a `.gitignore` change for Playwright output, which a session did not create. They need
-  `@playwright/test` and `dotenv`, which are not in `package.json`. Left alone and uncommitted.
+- **Open for the maintainer:** whether "Mine" should subtract the household's debts in full or a share (see the Departures
+  table); whether to add a spreadsheet library for the ICICI savings XLS statement; the contributor and viewer screens have
+  never been seen as those roles because there are no such demo accounts.
+- **Not built yet, in this order:** the Deposits and bonds screen and its repository functions (plan item 6); `property` and
+  `property_improvement` with a cost-basis function; PPF, EPF and NPS.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
+- **Tools:** `npm run test:e2e` (Playwright, needs `.env.e2e` and a saved session, both ignored) and
+  `npm run test:screens` (28 screenshots into the ignored `screenshots/`). The design-conformance agent is in
+  `.claude/agents/`.
