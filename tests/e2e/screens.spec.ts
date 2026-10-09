@@ -47,19 +47,7 @@ async function capture(page: import('@playwright/test').Page, screen: string, th
   // A beat for fonts, chart geometry and layout to settle once the data is in.
   await page.waitForTimeout(250);
 
-  // Two shots, because neither alone is honest.
-  //
-  // fullPage captures everything below the fold, which is what you want for
-  // reading a screen's content — but it renders `position: fixed` elements at
-  // their viewport position, so the phone's bottom bar lands in the middle of
-  // the image with content continuing past it. That looks exactly like a
-  // layout defect and is not one.
-  //
-  // The viewport shot is the opposite: the chrome sits where a person sees it,
-  // and anything below the fold is gone. Judge layout from `-top`, judge
-  // content from the other, and do not report the bar's position from either.
   await page.screenshot({ path: `${dir}/${screen}.png`, fullPage: true });
-  await page.screenshot({ path: `${dir}/${screen}-top.png`, fullPage: false });
 }
 
 test.describe('@screens dark', () => {
