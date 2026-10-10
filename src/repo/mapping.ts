@@ -97,7 +97,7 @@ export function toHousehold(raw: unknown): Household {
       yearsAhead: Number(row['fire_years_ahead'] ?? 10),
       // Defaults for a database that has not had the migration that added them: the figure should
       // assume the least, not fail the load.
-      returnPct: String(row['fire_return_pct'] ?? '10'),
+      returnPct: String(row['fire_return_pct'] ?? '0'),
       stepUpPct: String(row['fire_step_up_pct'] ?? '0'),
       monthlyContributionMinor: toBigIntExact(
         row['fire_monthly_contribution_minor'] ?? 0,

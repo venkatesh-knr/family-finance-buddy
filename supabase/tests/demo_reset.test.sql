@@ -278,8 +278,8 @@ select is(
 
 select is(
   (select fire_return_pct from public.household where id = 'd1000000-0000-4000-8000-0000000000d1'),
-  10::numeric,
-  'including the projection''s yearly return'
+  0::numeric,
+  'including the projection''s yearly return, which defaults to no growth'
 );
 
 select is(

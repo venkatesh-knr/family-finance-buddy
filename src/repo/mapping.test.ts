@@ -410,12 +410,13 @@ describe('household kind', () => {
       fy_start_month: 4,
     });
     // The projection's inputs too, so a database that has not had their migration yet still loads, with
-    // 10% a year, a flat contribution and nothing put in: a projection that assumes the least.
+    // no growth, a flat contribution and nothing put in: a projection that assumes the least, and so
+    // reaches nothing the household has not put there.
     expect(household.fire).toEqual({
       multiplier: '25',
       inflationPct: '6',
       yearsAhead: 10,
-      returnPct: '10',
+      returnPct: '0',
       stepUpPct: '0',
       monthlyContributionMinor: 0n,
     });
