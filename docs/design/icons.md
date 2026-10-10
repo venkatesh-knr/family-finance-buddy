@@ -1,5 +1,7 @@
 # Icons
 
+<!-- invariant-prefix: IC -->
+
 What an asset-class tile is, which glyph belongs to which kind, and what has to
 be measured before a tile ships.
 
@@ -169,3 +171,33 @@ fill in both themes. A dot of the first `other` glyph passed the table and measu
   breaks silently, because a missing-case fallback and a correct `other` tile look
   identical on screen.
 - No tile uses coral except liabilities.
+
+## 7. Invariants
+
+The rules above that a test can enforce, one line each, so that the test names the
+rule and a rule cannot be dropped without the test failing
+(`docs/design/keeping-docs-honest.md`). The reasoning is in the section cited.
+
+**IC-R1 — A tile's glyph holds 3:1 against its own fill, every kind, both themes.** (§5)
+
+**IC-R2 — A tile's 1px border holds 3:1 against the surface behind it, every kind, both themes.** (§5)
+
+**IC-R3 — Every value `kind` can hold resolves to a tile with a glyph that is drawn.** Asserted by iterating the enum, so a sixth kind without a glyph fails and does not render blank. (§6)
+
+**IC-R4 — `other` is a class of its own, found by name, and resolves to the neutral tile.** It is the one that breaks silently, because a missing-case fallback and a correct tile look identical. (§3, §6)
+
+**IC-R5 — No tile uses coral except liabilities.** (§4, §6)
+
+**IC-R6 — `other`'s glyph is never a ring and has nothing upright in it,** so it cannot be taken for the caveat marker at 14px. (§3)
+
+**IC-R7 — `foreign` is a marker and not a class:** not in the class list, no slot of the ramp, not selectable where a kind is. (§4)
+
+**IC-R8 — The Stage 5 tiles are drawn and wired to nothing:** nothing outside their module and its tests names them. (§4)
+
+**IC-R9 — Each built kind's glyph is drawn to the geometry this file gives.** (§2)
+
+**IC-R10 — A glyph is stroked and never filled:** stroke 1.9, round caps and round joins. (§1)
+
+**IC-R11 — A tile is 40px square on `--radius` and always has a 1px border.** (§1)
+
+**IC-R12 — A tile's glyph, as painted at device pixel ratio 1, holds 3:1 against its fill.** The token table is the colour of a solid stroke and a thin one is rasterised, so this is measured from the pixels. (§5)

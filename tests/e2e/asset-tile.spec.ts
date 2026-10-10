@@ -36,7 +36,7 @@ const page = (theme: 'light' | 'dark'): string =>
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`${theme} theme, device pixel ratio 1`, () => {
     for (const c of ASSET_CLASSES) {
-      test(`${c.kind} holds its glyph at 3:1 against the fill as painted`, async ({ page: p }) => {
+      test(`IC-R12 — ${c.kind} holds its glyph at 3:1 against the fill as painted`, async ({ page: p }) => {
         await p.setContent(page(theme));
         const tile = p.locator(`.asset-tile[data-kind="${c.kind}"]`);
         const box = await tile.boundingBox();

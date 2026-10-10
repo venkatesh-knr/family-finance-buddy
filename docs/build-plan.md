@@ -175,6 +175,19 @@ letter: 2a, 2b, 6a.
 | 10 | Narrow what a contributor and a viewer can read | **Built, and now a standing rule** for every new table (see 2b and 6a). |
 | 11 | Read-auditing | **Unchanged and still last**: every step above adds tables it would otherwise have to be retrofitted onto, and 2b and 6a add two with personal detail. |
 
+**Before 2a: the tooling every slice passes through.** `docs/design/keeping-docs-honest.md`
+is built first so that 2a, 2b and 6a are the first slices to meet it and there is
+never a backlog for it to light up red against. Design documents declare an
+invariant prefix and number their rules; `npm run check:docs` fails the build for a
+rule with no test and no waiver, for a test naming a rule no document declares, and
+for a design document the reviewer's brief has never heard of. The rules of
+`protection-and-flow.md` are numbered `PF-C1` to `PF-C16` and all but `PF-C1` are
+waived, each naming the step above that builds it; **the waiver for a rule is
+removed in the commit that adds its test**, and a waiver left past ninety days
+warns. The slice's own post-development loop (invariants, design sync, authority,
+the full suite unfiltered, then the advisory subagent review) is §5 of that
+document.
+
 **Why B, then C, then A** and not the design's B, A, C. The design records the
 argument for putting C earlier and says that if it wins, C and A swap. It wins,
 and for a reason the design did not have: C is an extension of an existing table
