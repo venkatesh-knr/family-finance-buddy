@@ -114,7 +114,7 @@ export function usePlan(householdId: string | null): PlanState & {
   const [multiplier, setMultiplierState] = useState(25);
   const [inflationPct, setInflationPctState] = useState(6);
   const [yearsAhead, setYearsAheadState] = useState(10);
-  const [returnPct, setReturnPctState] = useState(10);
+  const [returnPct, setReturnPctState] = useState(0);
   const [stepUpPct, setStepUpPctState] = useState(0);
   const [monthlyContributionMinor, setMonthlyContributionMinorState] = useState(0n);
 

@@ -698,8 +698,8 @@ its bound, and the parser is unit-tested (`draftNumber.test.ts`).
 Finding 19 (FIRE has no projection) is now overtaken: the read-out and the projection are built, and what is
 still missing is in `docs/design/conformance.md`.
 
-### Left to the household, not fixed
+### Decided, and left to the household
 
-The projection's default of 10% a year is an assumption and not the least one (0% would be); it is stated on
-the screen beside every date it gives. A net worth below nothing starts the projection at nothing, which the
-specification does not settle.
+The projection's return now defaults to 0% a year (migration `20260930120000`), the projection that assumes
+the least; with nothing put in either, the screen says the target is not reached and what that rests on. A net
+worth below nothing starts the projection at nothing, which the specification does not settle, and stays so.

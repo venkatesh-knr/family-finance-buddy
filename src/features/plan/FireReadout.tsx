@@ -102,6 +102,9 @@ export function FireReadout({
   const reachedYear = projection?.reachedYear ?? null;
   const base = household.baseCurrency;
 
+  /** What the date rests on, in words: a return of nothing and nothing put in is a projection of the corpus standing still. */
+  const assumed = `${String(returnPct)}% a year on the corpus${monthlyContributionMinor === 0n ? ' and nothing put in' : ''}`;
+
   /** Why there is no corpus, in the words the Overview would use for the same state. */
   const noCorpus: string | null =
     corpus !== null
@@ -145,8 +148,8 @@ export function FireReadout({
           {reachedYear === null
             ? projection === null
               ? ''
-              : ` · not reached within ${String(projectionLadder.length - 1)} years at these assumptions`
-            : ` · projected to be reached in ${String(reachedYear)}, assuming ${String(returnPct)}% a year on the corpus and ${String(inflationPct)}% inflation`}
+              : ` · not reached within ${String(projectionLadder.length - 1)} years, assuming ${assumed}. Set a return and what is put in each month below to see where it would be`
+            : ` · projected to be reached in ${String(reachedYear)}, assuming ${assumed} and ${String(inflationPct)}% inflation`}
         </p>
         {displayCurrency !== '' && displayCurrency !== base && (
           <p className="note mt-1">
