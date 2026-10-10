@@ -716,6 +716,188 @@
   }
 
   /*
+   * The editable row (docs/design/vibrant-canvas.html, the kit): a record and the inputs that change it
+   * on one line, on ground that recedes below its card (--inset), so a column of them reads as a list
+   * and not as nine cards. At phone width the fields wrap under the name and the action stays on the
+   * first line, because a 92px field beside a 150px name does not fit in 366px, and two fields
+   * certainly do not. In rem throughout, so none of it holds text in a box that does not grow.
+   */
+  .edit-row {
+    align-items: center;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 0.25rem 0.75rem;
+    grid-template-areas:
+      'name act'
+      'fields fields';
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0.4rem 0.4rem 0.6rem 0.8rem;
+  }
+
+  @media (min-width: 40rem) {
+    .edit-row {
+      grid-template-areas: 'name fields act';
+      grid-template-columns: minmax(9rem, 1fr) auto auto;
+      padding-bottom: 0.4rem;
+    }
+  }
+
+  /* A form that opens inside a card to change a record: the same recessed ground as the row it belongs to. */
+  .inset-form {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.75rem 0.85rem;
+  }
+
+  .edit-row-name {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.6rem;
+    grid-area: name;
+    min-width: 0;
+  }
+
+  .edit-row-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    grid-area: fields;
+    padding-right: 0.4rem;
+  }
+
+  .edit-row-act {
+    grid-area: act;
+  }
+
+  /*
+   * The action on a row that does something that should be undoable but is not casual: an icon, and
+   * not an underlined word, because eight holdings of underlined words is forty links on one screen.
+   * 34px to look at and 44px to hit: the button is the target and its face is the picture, so the
+   * touch area is not smaller than the thumb for the sake of a neat row.
+   */
+  .row-action {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    display: grid;
+    flex: none;
+    height: 2.75rem;
+    place-items: center;
+    width: 2.75rem;
+  }
+
+  .row-action-face {
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    color: inherit;
+    display: grid;
+    height: 2.125rem;
+    place-items: center;
+    width: 2.125rem;
+  }
+
+  .row-action-face svg {
+    height: 0.95rem;
+    width: 0.95rem;
+  }
+
+  .row-action:hover:not(:disabled) {
+    color: var(--ink);
+  }
+
+  .row-action[aria-expanded='true'] .row-action-face {
+    border-color: var(--ink-2);
+    color: var(--ink);
+  }
+
+  .row-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  /*
+   * A button that acts, in the quietest form that is still a button: a hairline and no fill. For the
+   * one or two things a card does, where the rest of what it offers is a disclosure or an icon.
+   */
+  .quiet-button {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.8125rem;
+    gap: 0.4rem;
+    min-height: 2.125rem;
+    padding: 0.25rem 0.85rem;
+  }
+
+  .quiet-button:hover:not(:disabled) {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+
+  .quiet-button[aria-expanded='true'] {
+    border-color: var(--ink-2);
+    color: var(--ink);
+  }
+
+  .quiet-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  /* On a touch screen the thumb is the unit, and a hairline button is as tall as one. */
+  @media (pointer: coarse) {
+    .quiet-button {
+      min-height: 2.75rem;
+    }
+  }
+
+  /* The thing that only reveals: a word and a chevron, which turns a quarter when it is open. */
+  .disclosure {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.8125rem;
+    gap: 0.35rem;
+    min-height: 2.125rem;
+    padding: 0.25rem 0;
+  }
+
+  .disclosure:hover {
+    color: var(--ink);
+  }
+
+  .disclosure-chevron {
+    color: var(--muted);
+    display: inline-flex;
+    transition: transform 120ms;
+  }
+
+  .disclosure[aria-expanded='true'] .disclosure-chevron {
+    transform: rotate(90deg);
+  }
+
+  @media (pointer: coarse) {
+    .disclosure {
+      min-height: 2.75rem;
+    }
+  }
+
+  /*
    * A member's mark: their initial in a ring of their colour. Sized in em so the
    * letter and the ring grow together, and the ring is the only coloured part:
    * the letter stays in ink, so contrast never depends on which colour they took.
