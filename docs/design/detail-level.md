@@ -10,18 +10,47 @@ before they have used the app, doubles the screen inventory and the capture
 suite permanently, and leaves two products for one maintainer to keep in step.
 The one that gets less attention rots, and whichever it is, somebody is using it.
 
-**A per-member display preference instead.**
+**A per-viewer display preference instead.**
 
 ```
-member.detail_level = essential | full      -- default: essential
+user_account.detail_level = essential | full      -- default: essential
 ```
 
-Per member, not per household, because the variable is the person. This is a
+Per person, not per household, because the variable is the person. This is a
 family app: two people look at the same data and want different amounts of it.
 A household-level setting makes them argue over one switch.
 
 Default `essential`. Discovering more depth is a pleasant surprise; discovering
 that things were hidden from you feels like the app was being coy.
+
+### Why the auth identity and not `member`
+
+`member` is doing two jobs in this app, and this setting is the first thing to
+trip over it.
+
+- A **member** is an attribution subject — a person the money relates to. A
+  parent whose LIC policy sits under their name, a child with an SSY account.
+  Most of them never sign in, and nothing requires them to. Every use of
+  `member` in `protection-and-flow.md` is this sense: income earner, life
+  assured, nominee, sum insured per person.
+- A **viewer** is someone who opens the app. `detail_level` is a property of
+  reading, so it belongs to the viewer.
+
+A `detail_level` on a member who never signs in does nothing at all, so it must
+not be storable there — see I6.
+
+It goes on the auth identity rather than on the household membership because
+that choice migrates upward cleanly. Account → membership later is one row per
+membership inheriting the account's value, no decisions to make. Membership →
+account is collapsing several values into one and picking a winner. If someone
+eventually wants full detail in their own household and essential in their
+parents', add a nullable override on the membership and resolve:
+
+```
+membership.detail_level ?? user_account.detail_level ?? 'essential'
+```
+
+One line, whenever it is wanted. Speculative if added now.
 
 ## 2. The asymmetry that decides everything
 
@@ -65,11 +94,23 @@ certain one. This is the invariant most likely to be violated by accident,
 because a caveat looks like clutter to someone simplifying a screen.
 
 **I5 — `detail_level` is not a permission.**
-It is a rendering preference on data the member is already entitled to. The data
+It is a rendering preference on data the viewer is already entitled to. The data
 still reaches the client; essential mode merely does not draw it. If hiding
 figures from a household member is ever wanted, that is row-level security and a
 different conversation — never this setting. Anyone reasoning "set them to
 essential so they do not see X" has introduced a security bug.
+
+**I6 — `detail_level` does not exist on `member`.**
+Not as a nullable column, not as a default nobody reads. Most members never sign
+in; a setting on them is inert, and an inert setting is one somebody will change
+and then wonder why nothing happened. The failure should be unrepresentable
+rather than documented.
+
+A corollary for later: if the app ever gains "view as \<member\>" — looking at
+one person's slice of the household — the detail level follows **the viewer**,
+never the member being viewed. The screen is about that member and the setting
+would be sitting right there on them, which is precisely why this gets wired to
+the wrong subject.
 
 ## 4. Import
 
@@ -135,19 +176,21 @@ time — display-only changes retrofit perfectly.
   `conformance.md` does not grow a second table.
 - **I4**: a screen with a caveated figure renders the caveat marker in essential
   mode. Assert on the marker, not on a count of elements.
-- **I5**: an API response for an essential-mode member contains the same fields
-  as for a full-mode member. This asserts that nobody has quietly started using
+- **I5**: an API response for an essential-mode viewer contains the same fields
+  as for a full-mode viewer. This asserts that nobody has quietly started using
   the preference as a filter — which would be a plausible-looking optimisation
   and a real security regression.
+- **I6**: the `member` table has no `detail_level` column. A schema assertion,
+  not a code one — it is the only kind that survives someone adding it back.
 - **Import**: a fixture with unmapped columns, imported by an essential-mode
-  member, produces the same stored record as the same file imported by a
-  full-mode member. Byte-identical, including the retained remainder.
+  viewer, produces the same stored record as the same file imported by a
+  full-mode viewer. Byte-identical, including the retained remainder.
 - **Export**: no export format contains the raw payload. Assert on the output,
   for every format offered.
 
 ## 7. Not in scope
 
-- Per-screen overrides. One axis. A member who wants depth on Holdings and
+- Per-screen overrides. One axis. A viewer who wants depth on Holdings and
   brevity on Overview is asking for progressive disclosure, which §5 gives them
   without a setting.
 - Feature flags per calculation ("show XIRR", "track tax lots"). These are a
