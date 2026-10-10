@@ -46,9 +46,9 @@ by changing a token, say so and change the token instead.
 | 18 | Profile calls the same pause by a different name | low | `features/profile/ProfileScreen.tsx` |
 | 19 | FIRE has no projection — the mockup proposes one | note | `features/plan`, not a defect |
 | 20 | The activity log mixes friendly names with table names | low | `features/profile`, audit labels |
-| 21 | 200% text size is a requirement and nothing verifies it | medium | cross-cutting, `CLAUDE.md` |
-| 22 | The privacy spec failed once and the cause is not known | **open** | `tests/e2e/privacy-mode.spec.ts` |
-| 23 | The Overview shows its refusal for a moment before its total | medium | `features/overview/useOverviewData.ts` |
+| 21 | 200% text size is a requirement and nothing verifies it | verified, in part | cross-cutting, `CLAUDE.md` |
+| 22 | The privacy spec failed once and the cause is not known | fixed | `tests/e2e/privacy-mode.spec.ts` |
+| 23 | The Overview shows its refusal for a moment before its total | fixed | `features/overview/useOverviewData.ts` |
 
 ---
 
@@ -651,3 +651,55 @@ It is the mistake the Overview already guards against in its other states (not y
 could not be read), made on the one figure the screen exists for. The FIRE read-out waits for `loading` and
 is not affected; the spec now waits for the settled figure. Not fixed here: it wants the hero held back until
 the rates have been read or have failed.
+
+---
+
+## Resolutions, 10 October 2026
+
+### 22. The privacy spec — fixed, and it found a real leak
+
+The race is closed: the spec now waits for the quick-add form to be empty before it turns privacy on
+(`await expect(getByLabel(/^Amount \(/)).toHaveValue('')`), and the file passes ten times in a row across
+both viewports. The first, unlogged occurrence is presumed to be the same race and is not proven to be.
+
+Writing the test for "an input's value is its digits in the page" found that the spec's own premise had a
+gap the race only pointed at: **the household's stored budget figures sat in editable inputs on the FIRE
+screen, so with privacy mode on `18000` was still in the markup.** Masked figures hid theirs; the inputs
+never did. `BudgetField` now renders the masked text instead of an input while privacy is on (switch it off
+to edit), as the FIRE contribution field already did, and `privacy-mode.spec.ts` has a test that reads every
+stored three-digit-or-more value out of the FIRE inputs and fails if it is still in the document. It failed
+first, on `18000`. An expense being edited (`EditExpense`) is left as it is: it opens on purpose, to change a
+figure, and is not a figure on a screen somebody else might glance at.
+
+### 23. The Overview's refusal flash — fixed
+
+`useOverviewData` now sets the holdings, the rates, the loans and the rest together after the parallel reads
+settle, so nothing is drawn from the holdings alone and a reload swaps old figures for new without passing
+through that state. `overview-load.spec.ts` holds the rates request open and asserts that no figure is on the
+page while it is, then that the total appears as a single figure once it is released. It failed first, with a
+figure drawn at the one-and-a-half-second mark.
+
+### 21. 200% text size — verified, for what a page can tell
+
+`tests/e2e/text-size.spec.ts` doubles the root font size on every screen at both viewports and asserts the page
+does not scroll sideways and that no element which hides its overflow is shorter than its text. All fifteen
+pass, and a self-test that plants a fixed-height box of text and an over-wide element confirms the same
+measurement finds both. What it does **not** see: text that overlaps other text, a label truncated by width on
+purpose or by mistake, and anything below the first screenful of a long page. It is the first check there has
+been, not the last word.
+
+### Also closed, in passing
+
+The FIRE target card's inflation, custom multiple and "Retiring in" inputs wrote on every keystroke and could not
+hold a decimal ("7." became 7). They and the read-out's return and raise fields are now `DraftNumber`: a draft
+until the field is left or Enter is pressed, Escape puts back what is stored, a figure out of range is held to
+its bound, and the parser is unit-tested (`draftNumber.test.ts`).
+
+Finding 19 (FIRE has no projection) is now overtaken: the read-out and the projection are built, and what is
+still missing is in `docs/design/conformance.md`.
+
+### Left to the household, not fixed
+
+The projection's default of 10% a year is an assumption and not the least one (0% would be); it is stated on
+the screen beside every date it gives. A net worth below nothing starts the projection at nothing, which the
+specification does not settle.
