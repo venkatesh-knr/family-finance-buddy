@@ -24,6 +24,7 @@ import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
 import { Button, Card, Caveat, Field, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { DraftNumber } from './DraftNumber.tsx';
 import { FireReadout } from './FireReadout.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
@@ -281,16 +282,13 @@ function FireCard({
           </Caveat>
         <label className="flex items-center gap-2">
           <span className="label">Retiring in</span>
-          <input
+          {/* Bounded at sixty: beyond that the compounding dominates and the figure stops being a plan
+              and becomes a curiosity. */}
+          <DraftNumber
             className="field field-num w-[62px]"
-            inputMode="numeric"
-            value={String(yearsAhead)}
-            onChange={(event) => {
-              const next = Number(event.target.value.replace(/\D/g, ''));
-              // Bounded at sixty: beyond that the compounding dominates and the
-              // figure stops being a plan and becomes a curiosity.
-              if (Number.isFinite(next)) setYearsAhead(Math.min(60, next));
-            }}
+            value={yearsAhead}
+            range={{ min: 0, max: 60, integer: true }}
+            onSave={setYearsAhead}
           />
           <span className="note">years</span>
         </label>
@@ -346,15 +344,12 @@ function FireCard({
                 </button>
               ))}
             </span>
-            <input
+            <DraftNumber
               className="field field-num w-[76px]"
-              inputMode="decimal"
-              aria-label="Custom multiple"
-              value={String(multiplier)}
-              onChange={(event) => {
-                const next = Number(event.target.value.replace(/[^\d.]/g, ''));
-                if (Number.isFinite(next) && next > 0) setMultiplier(next);
-              }}
+              ariaLabel="Custom multiple"
+              value={multiplier}
+              range={{ min: 1, max: 200, integer: false }}
+              onSave={setMultiplier}
             />
             <span className="note">× — or any figure you prefer</span>
           </span>
@@ -363,14 +358,11 @@ function FireCard({
         <label className="flex flex-col gap-1.5">
           <span className="label">Inflation</span>
           <span className="flex items-center gap-2">
-            <input
+            <DraftNumber
               className="field field-num w-[62px]"
-              inputMode="decimal"
-              value={String(inflationPct)}
-              onChange={(event) => {
-                const next = Number(event.target.value.replace(/[^\d.]/g, ''));
-                if (Number.isFinite(next)) setInflationPct(next);
-              }}
+              value={inflationPct}
+              range={{ min: 0, max: 100, integer: false }}
+              onSave={setInflationPct}
             />
             <span className="note">% a year</span>
           </span>
@@ -659,7 +651,10 @@ function BudgetField({
     }
   }, [draft, shown, onSave, currency]);
 
-  if (!editable) {
+  // A figure typed into a box is its digits in the markup, so privacy mode, which removes an amount and does
+  // not hide it, shows the masked text instead of the input while it is on. The same for a role that cannot
+  // edit. Switch privacy off to change the figure.
+  if (!editable || privacy) {
     return (
       <span className="w-[112px] shrink-0">
         <span className="label">{label}</span>

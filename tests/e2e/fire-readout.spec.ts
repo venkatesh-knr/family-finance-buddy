@@ -69,3 +69,32 @@ test('with amounts hidden, no figure from the read-out is left in the document',
   // Shapes, years and percentages stay: the screen is discreet and not blank.
   await expect(page.getByRole('img', { name: /per cent of today's target/ })).toBeVisible();
 });
+
+test('a percentage is typed as a draft: a decimal survives and nothing is saved until the field is left', async ({
+  page,
+}) => {
+  await onFire(page);
+
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH' && request.url().includes('/rest/v1/household')) writes.push(request.url());
+  });
+
+  const field = page.getByLabel('Return', { exact: false }).first();
+  const stored = await field.inputValue();
+
+  await field.click();
+  await field.fill('');
+  await field.pressSequentially('7.5');
+  // Bound straight to the stored number, "7." would have become 7 and the point would be gone.
+  await expect(field).toHaveValue('7.5');
+
+  // Held long enough that a write on a keystroke would have been sent by now.
+  await page.waitForTimeout(600);
+  expect(writes, 'the household was written to while the field was still being typed in').toHaveLength(0);
+
+  // Escape is the way out that changes nothing, so this test never changes the household.
+  await field.press('Escape');
+  await expect(field).toHaveValue(stored);
+  expect(writes).toHaveLength(0);
+});

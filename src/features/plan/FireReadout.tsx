@@ -12,6 +12,7 @@ import { projectionChart, type ChartFrame } from '../overview/chartGeometry.ts';
 import { useMeasure } from '../overview/AssetsOverTime.tsx';
 import { useOverviewData } from '../overview/useOverviewData.ts';
 import { Absent, Amount, Button, Card, Caveat, Chevron, Problem } from '../../ui/primitives.tsx';
+import { DraftNumber } from './DraftNumber.tsx';
 import type { usePlan } from './usePlan.ts';
 
 /**
@@ -530,14 +531,7 @@ function Assumptions({
   );
 }
 
-/**
- * A percentage a year, typed and then kept.
- *
- * A draft until the field is left (or Enter), and a decimal can be typed: bound to the stored number
- * directly, "7." becomes 7 and the point is gone before the 5 can follow it, and every keystroke would be an
- * audited write to the household that a partner could load halfway through "12". Whatever is not a figure
- * in range goes back to what the household has.
- */
+/** A percentage a year, typed and then kept: a draft until the field is left (`draftNumber.ts` says why). */
 function PctField({
   label,
   value,
@@ -551,34 +545,16 @@ function PctField({
   editable: boolean;
   onSave: (next: number) => void;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-
-  const commit = (): void => {
-    if (draft === null) return;
-    const text = draft.trim();
-    setDraft(null);
-    if (text === '' || text === '.') return;
-    const next = Number(text);
-    if (Number.isFinite(next) && next >= 0 && next <= max && next !== value) onSave(next);
-  };
-
   return (
     <label className="flex flex-col gap-1.5">
       <span className="label">{label}</span>
       <span className="flex items-center gap-2">
-        <input
+        <DraftNumber
           className="field field-num w-[62px]"
-          inputMode="decimal"
+          value={value}
+          range={{ min: 0, max, integer: false }}
           disabled={!editable}
-          value={draft ?? String(value)}
-          onChange={(event) => {
-            if (/^\d*\.?\d*$/.test(event.target.value)) setDraft(event.target.value);
-          }}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') commit();
-            if (event.key === 'Escape') setDraft(null);
-          }}
+          onSave={onSave}
         />
         <span className="note">% a year</span>
       </span>

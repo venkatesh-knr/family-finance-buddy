@@ -37,6 +37,12 @@ test('an amount is absent from the page, not merely hidden', async ({ page }) =>
   await expect(row).toBeVisible();
   await expect(row).toContainText(rendered);
 
+  // And the form has finished. The new row is on screen as soon as the ledger reloads, and the quick-add
+  // form is cleared after that (it waits on the save), so for a moment the typed amount is still the
+  // value of its input. Switching privacy on in that moment finds the digits in the markup and calls it a
+  // leak; it is the test getting ahead of the form, which finding 22 in the UI review records.
+  await expect(page.getByLabel(/^Amount \(/)).toHaveValue('');
+
   const privacyToggle = page.getByRole('button', { name: /Amounts shown/ });
   await privacyToggle.click();
 
@@ -68,5 +74,30 @@ test('privacy mode survives moving between screens', async ({ page }) => {
       page.getByRole('button', { name: /Amounts hidden/ }),
       `privacy mode was lost on ${screen}`,
     ).toBeVisible();
+  }
+});
+
+test('a stored figure in an editable field is not left in the document', async ({ page }) => {
+  // The plan on the FIRE screen is a column of inputs holding the household's own figures. An input's value
+  // is its digits in the markup, so unlike a masked figure it survives "privacy mode removes the amount".
+  await page.goto('/#fire');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByText('Spending plan', { exact: true })).toBeVisible({ timeout: 20_000 });
+
+  // Whatever is stored, read from the page: three digits or more, so a multiple or an inflation rate is not
+  // a figure to look for. Shown first, or the test proves nothing.
+  const stored = await page.locator('input[inputmode="decimal"]').evaluateAll((inputs) =>
+    inputs.map((el) => (el as HTMLInputElement).value).filter((v) => v.replace(/D/g, '').length >= 3),
+  );
+  expect(stored.length, 'a stored figure in an editable field to look for').toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: /Amounts shown/ }).click();
+  await expect(page.getByRole('button', { name: /Amounts hidden/ })).toBeVisible();
+
+  const markup = await page.evaluate(() => document.documentElement.outerHTML);
+  for (const value of stored) {
+    expect(markup, `${value} is still in the page, as an input's value, under privacy mode`).not.toContain(
+      `value="${value}"`,
+    );
   }
 });
