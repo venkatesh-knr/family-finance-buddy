@@ -19,7 +19,7 @@ describe('the asset classes', () => {
     expect(ASSET_CLASSES.map((c) => c.kind).sort()).toEqual([...INSTRUMENT_KINDS].sort());
   });
 
-  it('give every value a kind can hold a tile: a glyph that is actually drawn', () => {
+  it('IC-R3 — give every value a kind can hold a tile: a glyph that is actually drawn', () => {
     // Iterates the enum, not a list of the five that exist: a kind added without a glyph fails here
     // and does not render blank.
     for (const kind of INSTRUMENT_KINDS) {
@@ -46,7 +46,7 @@ describe('the asset classes', () => {
     expect(assetClass('other').glyph).toBe('ellipsis');
   });
 
-  it('draw each glyph to the geometry icons.md gives, with its rectangles as rounded-corner paths', () => {
+  it('IC-R9 — draw each glyph to the geometry icons.md gives, with its rectangles as rounded-corner paths', () => {
     expect(GLYPHS.trend).toEqual(['M3 17l5-6 4 4 6-8', 'M14 7h5v5']);
     expect(GLYPHS.bars).toEqual(['M6 20V9', 'M12 20V4', 'M18 20v-7', 'M3 20h18']);
     // etf: rect 3,8 18x12 r2; handle; M3 13h18
@@ -84,7 +84,7 @@ describe('the asset classes', () => {
 describe('other', () => {
   const other = ASSET_CLASSES.find((c) => c.kind === 'other');
 
-  it('is a class of its own in the list, found by name: a missing-case fallback looks identical on screen', () => {
+  it('IC-R4 — is a class of its own in the list, found by name: a missing-case fallback looks identical on screen', () => {
     // If `other` were deleted from the list and the fallback quietly drew something that looked like
     // it, nothing visible would change. So it is asserted by name, and the fallback must be this entry.
     expect(other).toBeDefined();
@@ -101,14 +101,14 @@ describe('other', () => {
     }
   });
 
-  it('is neutral grey and not a hue: it is not a sixth asset class and must not compete for attention', () => {
+  it('IC-R4 — is neutral grey and not a hue: it is not a sixth asset class and must not compete for attention', () => {
     expect(other?.ramp).toBeNull();
     expect(kindColour('other')).toBe('var(--muted)');
     expect(classColour(assetClass('other'))).toBe('var(--muted)');
     for (const slot of [1, 2, 3, 4, 5, 6, 7]) expect(kindColour('other')).not.toBe(rampColour(slot));
   });
 
-  it('is never drawn as anything that could be taken for the caveat marker', () => {
+  it('IC-R6 — is never drawn as anything that could be taken for the caveat marker', () => {
     // The caveat is a circle with an i, and means something is wrong. Nothing is wrong with a holding
     // whose kind this app does not model, so no ring around anything and nothing standing upright. A dot
     // is a circle too, so a circle is allowed when it is small enough to be solid once stroked: with the
@@ -156,7 +156,7 @@ describe('the chart ramp as a property of the class', () => {
 });
 
 describe('coral is reserved to liabilities', () => {
-  it('is on no class, no marker and no other tile: the moment a second class wears it, coral stops meaning "subtracts"', () => {
+  it('IC-R5 — is on no class, no marker and no other tile: the moment a second class wears it, coral stops meaning "subtracts"', () => {
     const coral = 'var(--c5)';
     expect(ASSET_CLASSES.filter((c) => classColour(c) === coral)).toEqual([]);
     expect(ASSET_CLASSES.filter((c) => (c.ramp as number | null) === 5)).toEqual([]);
@@ -206,7 +206,7 @@ describe('the Stage 5 tiles: drawn, and not wired', () => {
 });
 
 describe('foreign is a marker, not a class', () => {
-  it('is excluded from the class list entirely, and is not among the tiles either', () => {
+  it('IC-R7 — is excluded from the class list entirely, and is not among the tiles either', () => {
     expect(ASSET_CLASSES.map((c) => c.kind)).not.toContain('foreign');
     expect(Object.keys(UNWIRED_TILES)).not.toContain('foreign');
     expect(INSTRUMENT_KINDS as readonly string[]).not.toContain('foreign');
@@ -214,7 +214,7 @@ describe('foreign is a marker, not a class', () => {
     expect(INSTRUMENT_KIND_LABEL['foreign']).toBeUndefined();
   });
 
-  it('takes no slot of the ramp and is not selectable where a kind is', () => {
+  it('IC-R7 — takes no slot of the ramp and is not selectable where a kind is', () => {
     expect(ASSET_CLASSES.map((c) => c.ramp)).not.toContain(FOREIGN_MARKER);
     expect(INSTRUMENT_KIND_COLOUR['foreign']).toBeUndefined();
     expect(FOREIGN_MARKER.glyph).toBe('globe');
@@ -222,7 +222,7 @@ describe('foreign is a marker, not a class', () => {
 });
 
 describe('what is unwired stays unwired', () => {
-  it('is referenced by nothing in the app: only this module and its tests may name it', () => {
+  it('IC-R8 — is referenced by nothing in the app: only this module and its tests may name it', () => {
     const offenders = new Set<string>();
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {

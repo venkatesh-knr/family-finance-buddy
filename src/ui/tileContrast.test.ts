@@ -34,12 +34,12 @@ describe.each(['light', 'dark'] as const)('a tile in the %s theme', (theme) => {
     expect(EDGE).toBeGreaterThan(FILL);
   });
 
-  it.each(tiles)('holds its glyph at 3:1 against its own fill: %s', (_kind, colour) => {
+  it.each(tiles)('IC-R1 — holds its glyph at 3:1 against its own fill: %s', (_kind, colour) => {
     const glyph = resolve(theme, colour);
     expect(ratio(glyph, mix(glyph, surface, FILL))).toBeGreaterThanOrEqual(3);
   });
 
-  it.each(tiles)('holds its 1px border at 3:1 against what is behind it: %s', (_kind, colour) => {
+  it.each(tiles)('IC-R2 — holds its 1px border at 3:1 against what is behind it: %s', (_kind, colour) => {
     const glyph = resolve(theme, colour);
     expect(ratio(mix(glyph, surface, EDGE), surface)).toBeGreaterThanOrEqual(3);
   });
