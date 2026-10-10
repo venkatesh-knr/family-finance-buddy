@@ -403,6 +403,15 @@ rows** (an input's value is its digits in the markup; finding 22 is the lesson);
 the new rows are editable rows (`.edit-row`, `RowAction`, `--inset`); and the
 reset function, the seed and the audit trigger cover anything added.
 
+*The capture rule applies to this slice's forms* (`docs/design/detail-level.md`
+§5, which calls these the forms to get right first). The policy form shows what
+is required and puts the rest behind a "more details" fold, and **every column
+the fold holds exists from the first migration**, because a form that never
+offered a field produces data that cannot be repaired later. Cover, renewal date,
+the linked holding and any identifier are the likely occupants of the fold; the
+form's design decides which. Nothing a form writes may consult `detail_level`
+(I2), and the setting itself is not built by this slice.
+
 **3. The tax engine, and the Tax screen on top of it.**
 
 The largest single piece. `tax_rule` holds dated rows and
@@ -587,6 +596,13 @@ its `enable row level security`, its explicit grants, and a denying test per ver
 across households and per role; **`reset_demo_household` clears it and the seed
 fills it** (see below); and the export list, the deletion cascade and the template
 version are updated.
+
+*The capture rule applies here too* (`docs/design/detail-level.md` §5): the
+income and transfer forms show what is required and fold the rest, with every
+column present from the first migration. The importer is the other capture path
+and is held to the same rule in step 7: it writes everything it can extract
+whatever anyone's display setting is, and its preview is a different object from
+what it writes.
 
 *A guard worth building once, here or earlier.* `reset_demo_household` raises at
 run time if a household table is not cleared, which CI does not exercise. The
