@@ -36,7 +36,12 @@ test('the FIRE screen opens on the target, a projection, progress and the cost o
 test('the projection and the Overview start from the same net worth', async ({ page }) => {
   await page.goto('/#overview');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-  const hero = (await page.locator('.figure').first().innerText()).replace(/\s+/g, '');
+  // Until the exchange rates have been read the Overview shows its refusal (the per-currency figures with a
+  // mark on them) and then the total, so wait for the total: a single figure, not a sum of two.
+  const heroText = async (): Promise<string> =>
+    (await page.locator('.figure').first().innerText()).replace(/\s+/g, '');
+  await expect.poll(heroText, { timeout: 20_000 }).toMatch(/^[₹$][\d.,]+[A-Za-z]*$/);
+  const hero = await heroText();
 
   await onFire(page);
   const reached = page.locator('.fire-progress-rows dd').first();

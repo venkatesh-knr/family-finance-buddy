@@ -48,6 +48,7 @@ by changing a token, say so and change the token instead.
 | 20 | The activity log mixes friendly names with table names | low | `features/profile`, audit labels |
 | 21 | 200% text size is a requirement and nothing verifies it | medium | cross-cutting, `CLAUDE.md` |
 | 22 | The privacy spec failed once and the cause is not known | **open** | `tests/e2e/privacy-mode.spec.ts` |
+| 23 | The Overview shows its refusal for a moment before its total | medium | `features/overview/useOverviewData.ts` |
 
 ---
 
@@ -631,3 +632,22 @@ older fields (a budget, the quick-add) do not.
 
 Still **open**: the cause is now known for this recurrence, the fix is not made, and one recurrence
 with a cause is not the same as the first one being explained.
+
+## 23. The Overview shows its refusal for a moment before its total
+
+**Open. Found 10 October 2026, from a flaky spec of the FIRE read-out.**
+
+On the Overview, the net worth hero can read `₹17.06L + $41.8K` with a warning mark on it (the per-currency
+figures, standing in for a total that cannot be added) for a moment before it settles on `₹66.6L`. The spec
+"the projection and the Overview start from the same net worth" read the hero in that moment, failed once,
+and passed on the next run and on three repeats after the spec was made to wait.
+
+The cause, from the code and not yet shown on screen: `load()` calls `setListing` as soon as the holdings
+are read, and only afterwards fetches the rates, the loans and the rest. Until the rates arrive the total is
+computed with none, so it is refused for want of a rate, which says a rate is missing when it has only not
+been read yet. `loading` stays true until the end, but the screen renders from `listing`, not from it.
+
+It is the mistake the Overview already guards against in its other states (not yet read is not the same as
+could not be read), made on the one figure the screen exists for. The FIRE read-out waits for `loading` and
+is not affected; the spec now waits for the settled figure. Not fixed here: it wants the hero held back until
+the rates have been read or have failed.
