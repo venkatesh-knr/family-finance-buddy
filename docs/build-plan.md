@@ -663,6 +663,13 @@ house or a deposit as a purchase to link, not an expense. It also gives the
 months-of-cover line (2a) honest input: until the log is complete, an average of
 what was typed understates spending and overstates the cover, and the three-month
 guard only catches too little history, not an incomplete log.
+
+*The importer is a capture path, so `docs/design/detail-level.md` §4 applies.* It
+writes every field it can extract whatever anyone's display setting is, its
+preview is a different object from what it writes, and it keeps provenance. Its
+proposal to retain the unmapped source row is **not adopted by this plan until
+the maintainer decides it**: the row can carry folio numbers, account numbers and
+PANs, and `CLAUDE.md` keeps account identifiers to the last four digits.
 **8. Calendar.**
 
 Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here
