@@ -87,7 +87,7 @@ test('a stored figure in an editable field is not left in the document', async (
   // Whatever is stored, read from the page: three digits or more, so a multiple or an inflation rate is not
   // a figure to look for. Shown first, or the test proves nothing.
   const stored = await page.locator('input[inputmode="decimal"]').evaluateAll((inputs) =>
-    inputs.map((el) => (el as HTMLInputElement).value).filter((v) => v.replace(/D/g, '').length >= 3),
+    inputs.map((el) => (el as HTMLInputElement).value).filter((v) => v.replace(/\D/g, '').length >= 3),
   );
   expect(stored.length, 'a stored figure in an editable field to look for').toBeGreaterThan(0);
 
@@ -100,4 +100,27 @@ test('a stored figure in an editable field is not left in the document', async (
       `value="${value}"`,
     );
   }
+});
+
+test('no figure from the Holdings screen is left in the document under privacy mode', async ({ page }) => {
+  // The screen with the most figures on it, and until now not one this spec looked at: a position's value,
+  // its cost, a quoted price times its units, a peak. Every currency figure that is on it, read from the
+  // page as shown, and then none of them may be in the markup once privacy is on.
+  await page.goto('/#holdings');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByText('Holdings (8)', { exact: true })).toBeVisible({ timeout: 20_000 });
+
+  const shown = await page.evaluate(() => document.body.innerText);
+  // With the currency sign, and at least four digits, so a coordinate, a year or a percentage is not one.
+  const figures = [...new Set(shown.match(/[₹$]\d[\d,]*\.\d{2}|[₹$]\d{1,3}(?:,\d{2,3})+/g) ?? [])].filter(
+    (f) => f.replace(/\D/g, '').length >= 4,
+  );
+  expect(figures.length, 'currency figures on the Holdings screen to look for').toBeGreaterThan(5);
+
+  await page.getByRole('button', { name: /Amounts shown/ }).click();
+  await expect(page.getByRole('button', { name: /Amounts hidden/ })).toBeVisible();
+
+  const markup = await page.evaluate(() => document.documentElement.outerHTML);
+  const left = figures.filter((f) => markup.includes(f));
+  expect(left, 'figures still in the page, under privacy mode').toEqual([]);
 });

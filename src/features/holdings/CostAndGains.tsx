@@ -33,7 +33,7 @@ import {
 } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Caveat, EditButton, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
+import { Button, Caveat, Disclosure, EditButton, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
 import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
 import type { HoldingRow } from './useHoldings.ts';
@@ -167,24 +167,22 @@ export function CostAndGains({
         so "Show the workings (0 purchases, 0 sales)" and "Add a purchase or
         sale" ran together into one sentence.
       */}
-      <div className="mt-3 flex flex-wrap items-center gap-3.5">
-        <button
-          type="button"
-          className="note underline"
-          aria-expanded={open}
-          onClick={() => {
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Disclosure
+          open={open}
+          onToggle={() => {
             setOpen((was) => !was);
           }}
         >
           {open
             ? 'Hide the workings'
             : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
-        </button>
+        </Disclosure>
 
         {canWrite && (
           <button
             type="button"
-            className="note underline"
+            className="quiet-button"
             aria-expanded={entering}
             onClick={() => {
               setEntering((was) => !was);
@@ -211,7 +209,7 @@ export function CostAndGains({
       )}
 
       {canWrite && entering && (
-        <div className="mt-3.5 flex flex-col gap-3">
+        <div className="inset-form mt-3.5 flex flex-col gap-3">
           <RecordEvent
             what="purchase"
             amountLabel={`Cost (${currency})`}
@@ -533,7 +531,7 @@ function EditRow({
   }, [amount, currency, date, onSave, quantity]);
 
   return (
-    <div ref={focusRef} className="flex flex-wrap items-end gap-2.5">
+    <div ref={focusRef} className="inset-form flex flex-wrap items-end gap-2.5">
       <div className="w-full sm:w-[110px] sm:shrink-0">
         <Field
           label="Units"

@@ -41,9 +41,9 @@ test('a deposit is valued from its terms, and a matured one says so', async ({ p
   // Tidy up. The holding is archived, which takes it off every screen.
   const holding = page
     .locator('section', { hasText: name })
-    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .filter({ has: page.getByRole('button', { name: /^Archive / }) })
     .last();
-  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: /^Archive / }).click();
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
@@ -93,9 +93,9 @@ test('a deposit held without terms is given them, not entered a second time', as
 
   const holding = page
     .locator('section', { hasText: name })
-    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .filter({ has: page.getByRole('button', { name: /^Archive / }) })
     .last();
-  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: /^Archive / }).click();
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
@@ -128,9 +128,9 @@ test('the terms of a deposit can be corrected in place, and every figure follows
 
   const holding = page
     .locator('section', { hasText: name })
-    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .filter({ has: page.getByRole('button', { name: /^Archive / }) })
     .last();
-  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: /^Archive / }).click();
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
@@ -159,9 +159,9 @@ test('a deposit maturing within a month is called out, with the decision named',
 
   const holding = page
     .locator('section', { hasText: name })
-    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .filter({ has: page.getByRole('button', { name: /^Archive / }) })
     .last();
-  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: /^Archive / }).click();
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 });
@@ -170,9 +170,9 @@ async function archive(page: import('@playwright/test').Page, name: string) {
   await page.goto('/#holdings');
   const holding = page
     .locator('section', { hasText: name })
-    .filter({ has: page.getByRole('button', { name: 'Archive this holding' }) })
+    .filter({ has: page.getByRole('button', { name: /^Archive / }) })
     .last();
-  await holding.getByRole('button', { name: 'Archive this holding' }).click();
+  await holding.getByRole('button', { name: /^Archive / }).click();
   await holding.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toHaveCount(0);
 }
@@ -282,7 +282,7 @@ test('closing the month writes a deposit its month-end reading from the terms', 
   // It is a reading now, dated the month end and marked as reconstructed.
   await page.goto('/#holdings');
   const holding = page.locator('section', { hasText: name }).filter({
-    has: page.getByRole('button', { name: 'Archive this holding' }),
+    has: page.getByRole('button', { name: /^Archive / }),
   });
   await expect(holding.last()).toContainText('1,02,054.79');
 

@@ -277,7 +277,7 @@ export function FixedIncome({
       {rows.length > 0 && (
         <p className="note mb-3">
           These are worked out here and are <strong>not in net worth</strong> until each is recorded as
-          a reading, with the link on its row.{' '}
+          a reading, with the button on its row.{' '}
           {listing.viewer.role === 'owner' || listing.viewer.role === 'partner'
             ? 'Closing the month on the Overview also records each one’s value at that month end, apart from an assumed renewal, one that has paid out, or one it cannot value.'
             : ''}
@@ -369,7 +369,7 @@ export function FixedIncome({
                 </span>
                 <button
                   type="button"
-                  className="note underline"
+                  className="quiet-button"
                   onClick={() => {
                     setAdding(false);
                     setGiving(holding);
@@ -663,16 +663,19 @@ function PositionRow({
       )}
 
       {canWrite && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           {view.ok && !view.matured && !(view.kind === 'deposit' && view.projected) && (
-            <button
-              type="button"
-              className="note underline"
-              disabled={busy || recorded}
-              onClick={() => void record()}
-            >
-              {recorded ? 'Recorded as today’s reading' : 'Record as today’s reading'}
-            </button>
+            recorded ? (
+              // The confirmation is a statement and not a greyed-out control: at the opacity of a disabled
+              // button it measured under 3:1, on the one line that says the save worked.
+              <span className="note" role="status">
+                Recorded as today’s reading
+              </span>
+            ) : (
+              <button type="button" className="quiet-button" disabled={busy} onClick={() => void record()}>
+                Record as today’s reading
+              </button>
+            )
           )}
           {view.ok && view.kind === 'deposit' && view.projected && (
             <span className="note">A projection is not offered as a reading.</span>
@@ -680,7 +683,7 @@ function PositionRow({
           {position.kind === 'deposit' && (
             <button
               type="button"
-              className="note underline"
+              className="quiet-button"
               aria-expanded={renewing}
               onClick={() => {
                 setRenewing((was) => !was);

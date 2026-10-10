@@ -151,8 +151,7 @@ export function EditHolding({
   return (
     <div
       ref={focusRef}
-      className="mt-3 rounded p-3"
-      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+      className="inset-form mt-3"
     >
       <div className="flex flex-wrap items-end gap-2.5">
         <div className="w-full sm:w-auto sm:min-w-[170px] sm:flex-1">
