@@ -23,7 +23,19 @@ import {
 import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Absent, Button, Card, Caveat, EditButton, Field, Amount, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
+import {
+  Absent,
+  Amount,
+  Button,
+  Card,
+  Caveat,
+  Field,
+  Pill,
+  Problem,
+  RowAction,
+  Stat,
+  Unit,
+} from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { CostAndGains } from './CostAndGains.tsx';
@@ -579,7 +591,14 @@ function HoldingCard({
       </dl>
 
       {row.quoted !== null && (
-        <QuotedValue row={row} canWrite={canWrite} today={today} onRecord={onRecord} listing={listing} />
+        <QuotedValue
+          row={row}
+          canWrite={canWrite}
+          today={today}
+          privacy={privacy}
+          onRecord={onRecord}
+          listing={listing}
+        />
       )}
 
       {/*
@@ -593,10 +612,10 @@ function HoldingCard({
         nothing.
       */}
       {canWrite && (
-        <div className="mt-3 flex flex-wrap items-center gap-3.5">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="note underline"
+            className="quiet-button"
             aria-expanded={recording}
             onClick={() => {
               setRecording((was) => !was);
@@ -604,7 +623,10 @@ function HoldingCard({
           >
             {recording ? 'Cancel this reading' : 'Record a value'}
           </button>
-          <EditButton
+          {/* The same 44px target as archive beside it: the step that cannot be undone from here is not the
+              one that gets the bigger control. */}
+          <RowAction
+            icon="edit"
             label={editing ? 'Cancel editing this holding' : 'Edit this holding'}
             expanded={editing}
             onClick={() => {
@@ -757,12 +779,12 @@ function RecordReading({
 
   return (
     <form
-      className="mt-3.5 flex flex-wrap items-end gap-3"
+      className="inset-form mt-3.5 flex flex-wrap items-end gap-3"
       onSubmit={(event) => {
         void submit(event);
       }}
     >
-      <div className="w-full sm:w-[140px] sm:shrink-0">
+      <div className="w-full sm:w-[8.75rem] sm:shrink-0">
         <Field
           label={`Value (${currency})`}
           numeric
@@ -775,7 +797,7 @@ function RecordReading({
           }}
         />
       </div>
-      <div className="w-full sm:w-[150px] sm:shrink-0">
+      <div className="w-full sm:w-[9.375rem] sm:shrink-0">
         <Field
           label="As at"
           type="date"
@@ -978,7 +1000,7 @@ function AddHolding({
           />
         </div>
 
-        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
+        <label className="flex w-full sm:w-[9.375rem] sm:shrink-0 flex-col gap-1.5">
           <span className="label">Member</span>
           <select
             className="field"
@@ -1094,15 +1116,13 @@ function ArchiveHolding({
   if (!confirming) {
     return (
       <>
-        <button
-          type="button"
-          className="note underline"
+        <RowAction
+          icon="archive"
+          label={`Archive ${row.holding.instrument.name}, ${row.holding.member.displayName}`}
           onClick={() => {
             setConfirming(true);
           }}
-        >
-          Archive this holding
-        </button>
+        />
         {problem !== null && (
           <div className="mt-2 w-full">
             <Problem>{problem}</Problem>
@@ -1142,7 +1162,7 @@ function ArchiveHolding({
         </Button>
         <button
           type="button"
-          className="note underline"
+          className="quiet-button"
           onClick={() => {
             setConfirming(false);
           }}
@@ -1177,12 +1197,14 @@ function QuotedValue({
   row,
   canWrite,
   today,
+  privacy,
   onRecord,
   listing,
 }: {
   row: HoldingRow;
   canWrite: boolean;
   today: string;
+  privacy: boolean;
   onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
   listing: HoldingListing;
 }) {
@@ -1199,7 +1221,7 @@ function QuotedValue({
     <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
       <span className="label">Quoted</span>
       <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
-        {formatMoney(quoted.value, { privacy: false })}
+        {formatMoney(quoted.value, { privacy })}
       </span>
       <span className="note">
         {quoted.price.value} on {formatIsoDate(quoted.price.asOf)}
@@ -1211,7 +1233,7 @@ function QuotedValue({
         canWrite && (
           <button
             type="button"
-            className="note underline"
+            className="quiet-button"
             disabled={busy}
             onClick={() => {
               setBusy(true);

@@ -23,7 +23,18 @@ import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/t
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
-import { Button, Card, Caveat, Field, Amount, Notice, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import {
+  Amount,
+  Button,
+  Card,
+  Caveat,
+  Field,
+  Notice,
+  Pill,
+  Problem,
+  RowAction,
+  Stat,
+} from '../../ui/primitives.tsx';
 import { DraftNumber } from './DraftNumber.tsx';
 import { FireReadout } from './FireReadout.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
@@ -560,49 +571,45 @@ function CategoryRow({
   onArchive: (categoryId: string, archived: boolean) => Promise<void>;
 }) {
   return (
-    <div
-      className="flex flex-wrap items-center gap-2.5 rounded px-2.5 py-2"
-      style={{
-        background: 'var(--surface-2)',
-        border: '1px solid var(--line)',
-        opacity: row.isArchived ? 0.55 : 1,
-      }}
-    >
-      <span className="min-w-[150px] flex-1" style={{ color: 'var(--ink)' }}>
-        {row.name}
+    <div className="edit-row">
+      <span className="edit-row-name">
+        <span style={{ color: 'var(--ink)' }}>{row.name}</span>
+        <Pill tone={row.nature === 'fixed' ? 'own' : 'neutral'}>
+          {row.nature === 'fixed' ? 'compulsory' : 'as needed'}
+        </Pill>
+        {/* Said in a word. Dimming the whole row said it in opacity alone, and took the labels under 3:1. */}
+        {row.isArchived && <Pill tone="warn">archived</Pill>}
       </span>
 
-      <Pill tone={row.nature === 'fixed' ? 'own' : 'neutral'}>
-        {row.nature === 'fixed' ? 'compulsory' : 'as needed'}
-      </Pill>
-
-      <BudgetField
-        label="Monthly"
-        current={row.monthly?.planned ?? null}
-        currency={currency}
-        privacy={privacy}
-        editable={editable && !row.isArchived}
-        onSave={(minor) => onSave(row.categoryId, 'monthly', minor)}
-      />
-      <BudgetField
-        label="Yearly"
-        current={row.yearly?.planned ?? null}
-        currency={currency}
-        privacy={privacy}
-        editable={editable && !row.isArchived}
-        onSave={(minor) => onSave(row.categoryId, 'yearly', minor)}
-      />
+      <span className="edit-row-fields">
+        <BudgetField
+          label="Monthly"
+          current={row.monthly?.planned ?? null}
+          currency={currency}
+          privacy={privacy}
+          editable={editable && !row.isArchived}
+          onSave={(minor) => onSave(row.categoryId, 'monthly', minor)}
+        />
+        <BudgetField
+          label="Yearly"
+          current={row.yearly?.planned ?? null}
+          currency={currency}
+          privacy={privacy}
+          editable={editable && !row.isArchived}
+          onSave={(minor) => onSave(row.categoryId, 'yearly', minor)}
+        />
+      </span>
 
       {editable && (
-        <button
-          type="button"
-          className="note underline"
-          onClick={() => {
-            void onArchive(row.categoryId, !row.isArchived);
-          }}
-        >
-          {row.isArchived ? 'Restore' : 'Archive'}
-        </button>
+        <span className="edit-row-act">
+          <RowAction
+            icon={row.isArchived ? 'restore' : 'archive'}
+            label={row.isArchived ? `Restore ${row.name}` : `Archive ${row.name}`}
+            onClick={() => {
+              void onArchive(row.categoryId, !row.isArchived);
+            }}
+          />
+        </span>
       )}
     </div>
   );
@@ -656,9 +663,9 @@ function BudgetField({
   // edit. Switch privacy off to change the figure.
   if (!editable || privacy) {
     return (
-      <span className="w-[112px] shrink-0">
+      <span className="w-[7rem] shrink-0">
         <span className="label">{label}</span>
-        <span className="tabular-nums block" style={{ color: 'var(--ink-2)' }}>
+        <span className="num block" style={{ color: 'var(--ink-2)' }}>
           {current === null ? <span className="note">—</span> : formatMoney(current, { privacy })}
         </span>
       </span>
@@ -666,7 +673,7 @@ function BudgetField({
   }
 
   return (
-    <label className="flex w-[112px] shrink-0 flex-col gap-1">
+    <label className="flex w-[7rem] shrink-0 flex-col gap-1">
       <span className="label">{label}</span>
       <input
         className="field field-num"
@@ -963,10 +970,7 @@ function CommitmentRow({
   privacy: boolean;
 }) {
   return (
-    <li
-      className="flex flex-wrap items-center justify-between gap-2.5 py-2.5"
-      style={inactive ? { opacity: 0.55 } : undefined}
-    >
+    <li className="flex flex-wrap items-center justify-between gap-2.5 py-2.5">
       <span className="flex flex-wrap items-center gap-2">
         <span style={{ color: 'var(--ink)' }}>{name}</span>
         <Pill tone="neutral">{kind}</Pill>

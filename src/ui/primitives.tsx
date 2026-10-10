@@ -318,6 +318,92 @@ export function EditButton({
 }
 
 /**
+ * The action on an editable row that should be reversible but not casual: archive, or bring back. An
+ * icon, and not an underlined word, so that a screen of rows is not a screen of links; its name is the
+ * label, which says what it acts on ("Archive Groceries"), and the same text is the tooltip.
+ *
+ * A 44px button around a 34px face: the picture is small, the thing to hit is not (`.row-action`).
+ */
+export function RowAction({
+  label,
+  icon,
+  onClick,
+  disabled = false,
+  expanded,
+}: {
+  label: string;
+  icon: 'archive' | 'restore' | 'edit';
+  onClick: () => void;
+  disabled?: boolean;
+  /** Set when the action opens something beside it, as editing a holding does. */
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="row-action"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      aria-expanded={expanded}
+      onClick={onClick}
+    >
+      <span className="row-action-face" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.9}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {icon === 'archive' ? (
+            <>
+              <rect x="3" y="4" width="18" height="5" rx="1.5" />
+              <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
+              <path d="M10 13h4" />
+            </>
+          ) : icon === 'restore' ? (
+            <>
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+            </>
+          ) : (
+            <>
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              <path d="m15 5 4 4" />
+            </>
+          )}
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The control that only reveals: what it opens, in words, and a chevron that turns a quarter when it is
+ * open. A disclosure and not a link, because it does not go anywhere and changes nothing.
+ */
+export function Disclosure({
+  open,
+  onToggle,
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className="disclosure" aria-expanded={open} onClick={onToggle}>
+      {children}
+      <span className="disclosure-chevron" aria-hidden="true">
+        <Chevron />
+      </span>
+    </button>
+  );
+}
+
+/**
  * Five, as docs/tokens.md:179 defines them. `warn` was missing until Settings
  * needed it — brass, for something worth noticing that is not yet wrong.
  * Coral is spent on wrong.

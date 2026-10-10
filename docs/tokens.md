@@ -14,16 +14,17 @@ explicit `[data-theme]` override so a manual toggle wins in both directions.
 **The names do not change; the values do.** `--brass` is now a gold, `--teal` an
 emerald, `--indigo` a periwinkle. Renaming them would mean touching every component
 that spends them, for no gain — the point of a token is that its meaning is stable
-while its colour is not. Only genuinely new ideas get new names, and there are four:
-`--surface-lift`, `--lift-edge`, `--shadow-lift` and `--gutter`.
+while its colour is not. Only genuinely new ideas get new names, and there are five:
+`--surface-lift`, `--lift-edge`, `--shadow-lift`, `--gutter` and `--inset`.
 
 ```css
 :root{
   /* surfaces */
   --bg:#EFF2F7;          /* page ground */
   --surface:#FFFFFF;     /* cards, panels */
-  --surface-2:#F5F7FB;   /* table headers, insets, editable rows */
+  --surface-2:#F5F7FB;   /* table headers, insets, code */
   --surface-3:#E8EDF5;   /* segmented-control track, progress track */
+  --inset:#EDF1F7;       /* the ground of an editable row: darker than its card, in both themes */
 
   /* text */
   --ink:#111722;         /* primary */
@@ -65,6 +66,7 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#080B12;  --surface:#121825;  --surface-2:#1A2234;  --surface-3:#222C41;
+    --inset:#0E1522;
     --ink:#EEF3FB; --ink-2:#C3CEDF;    --muted:#9AA3B2;
     --line:#222C41; --line-strong:#6D7683;
     --brass:#F0B429; --brass-soft:#3A2C0C;
@@ -111,7 +113,8 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 |---|---|---|
 | `--surface` | flat, hairline border, `--shadow` | most of the app |
 | `--surface-lift` | corner-lit gradient, `--shadow-lift`, 1px `--lift-edge` on top | **one per screen** |
-| `--surface-2` | recessed, darker than its parent, no shadow | insets, editable rows, table headers |
+| `--surface-2` | a step off its parent, no shadow | table headers, code, a quiet surface |
+| `--inset` | recessed: darker than its card in both themes, no shadow | an editable row, which is a record and the inputs that change it on one line |
 
 The gradient is a **corner light, not a wash**: it never crosses a figure, and tabular
 numerals always sit on flat ground. One lifted surface per screen — a second one is two
@@ -153,7 +156,8 @@ what sits behind it: an input's outline, a chip's edge, a segmented control's ac
 pill, and the focus ring above all. `--line-strong` is the token those use, and it is
 the one to check. It was `#C6CFDC`, 1.57:1 on white: fine for a divider and not for an
 input a person has to find. It is now `#808996` in light and `#6D7683` in dark, each at least 3:1 on
-`--surface`, `--surface-2`, `--surface-3` and `--bg`: the grounds a field, a quiet button or a
+`--surface`, `--surface-2`, `--surface-3`, `--bg` and `--inset` (3.12:1 in light, the smallest margin of
+the five, and 3.98:1 in dark): the grounds a field, a quiet button or a
 segmented pill sits on. Dark needs the lighter value because its track (`--surface-3`) is
 lighter than a card, so a pill edge borders the lighter side, and `#646D7A` was 2.67:1 there.
 
@@ -300,6 +304,8 @@ room inside the card does not.
 | **Stat tile** | Label above (12px, sentence case), value below in Public Sans with `tabular-nums`, gap 3px. Positive `--teal`, negative `--coral`. |
 | **Pill** | 9.5px mono uppercase. Variants: `own` (indigo-soft/indigo), `warn` (brass), `due` (coral), `ok` (teal), `neutral` (surface-3/muted). |
 | **Table** | Header: `--surface-2`, 10.5px mono uppercase `--muted`, bottom hairline — the one place the micro-label survives. Rows: hairline separated, last row none. Total row: 1.5px `--line-strong` top border, weight 700. |
+| **Editable row** | A record and the inputs that change it on one line, on `--inset` with a 1px `--line` border and `--radius`. Inputs in the mono face, since figures a person types and compares down a column are the one place outside a table the rule keeps it. Its action is a **row action**: an icon, 34px face and a 44px button around it, the face bordered in `--line-strong`, named for what it acts on ("Archive Groceries"). Where there is not room for name, fields and action on one line (under 40rem) the fields wrap under the name and the action stays on the first line. A form that opens inside a card to change a record takes the same ground (`.inset-form`). |
+| **Quiet button / disclosure** | The two controls that replace a run of underlined links on a card. A **quiet button** is for something that acts: a hairline in `--line-strong`, no fill, 34px (44px on a coarse pointer). A **disclosure** is for something that only reveals: its words and a chevron that turns a quarter when open, `aria-expanded` driving it. An underlined word is for one-of-a-kind, a link that goes somewhere, not an action repeated on every row. |
 | **Segmented control** | `--surface-3` track, active pill `--surface` + weight 600 + 1px shadow. `aria-pressed` drives state. |
 | **Bar / progress** | 6–9px height, radius 3, `--surface-3` track. Over-target bars flip to `--coral`. |
 | **Quick-add** | Amount input in mono, 110px wide. Primary button `--brass` with light text. |

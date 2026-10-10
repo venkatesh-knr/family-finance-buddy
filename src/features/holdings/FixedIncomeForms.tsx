@@ -73,7 +73,7 @@ export type TermsMode =
   | { readonly kind: 'edit'; readonly holding: Holding; readonly terms: FixedIncomeTerms };
 
 const FORM_CLASS = 'grid items-start gap-3 rounded p-3.5 sm:grid-cols-2 lg:grid-cols-4';
-const FORM_STYLE = { background: 'var(--surface-2)', border: '1px solid var(--line)' } as const;
+const FORM_STYLE = { background: 'var(--inset)', border: '1px solid var(--line)' } as const;
 
 export function TermsForm({
   listing,
