@@ -124,10 +124,6 @@ export function useOverviewData({
         ...(householdId === null ? {} : { householdId }),
         includeArchived: true,
       });
-      setListing(next);
-      setProblem(null);
-      setNoHousehold(false);
-
       // Rates and debts separately, and neither may take the screen down. The
       // asset figures stand on their own; these only add the conversion and
       // the subtraction on top of them.
@@ -180,6 +176,13 @@ export function useOverviewData({
         setFixedIncome(null);
         setFixedIncomeFailed(true);
       }
+      // The holdings go on screen last, with everything they are worked out against. They used to go first,
+      // and until the rates arrived the net worth was refused for want of a rate that had only not been
+      // read yet. All of this runs after the last await, so it is one render: nothing is drawn from the
+      // holdings alone, and a reload swaps old figures for new ones without passing through that state.
+      setListing(next);
+      setProblem(null);
+      setNoHousehold(false);
       setFixedIncomeSettled(true);
     } catch (error) {
       if (error instanceof NoHouseholdError) setNoHousehold(true);
