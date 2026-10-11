@@ -201,7 +201,10 @@ function SignedIn({
   // so the bar still says where you are.
   const behindMore = useMemo(() => [...moreFor(role), 'profile' as const, 'settings' as const], [role]);
   const isPressed = (id: Screen): boolean =>
-    screen === id || (id === 'more' && behindMore.includes(screen));
+    screen === id ||
+    (id === 'more' && behindMore.includes(screen)) ||
+    // A holding's own screen is Holdings, one level down.
+    (id === 'holdings' && screen === 'holding');
 
   /**
    * The class Holdings is filtered to, read from the URL (`#/holdings?kind=deposit`, HD-I4).
@@ -211,11 +214,11 @@ function SignedIn({
    * at Holdings by asking for Holdings (the bare `#/holdings`) means all of them, so a filter cannot
    * outlive the click that set it and leave a list quietly missing rows.
    */
-  const kindFilter = params.get('kind');
-  const holdingsFilter =
-    kindFilter === null || kindFilter === ''
-      ? null
-      : { kind: kindFilter, ...(params.get('currency') ? { currency: params.get('currency') as string } : {}) };
+  const holdingsFilter = {
+    ...(params.get('kind') ? { kind: params.get('kind') as string } : {}),
+    ...(params.get('earmark') ? { earmark: params.get('earmark') as string } : {}),
+    ...(params.get('currency') ? { currency: params.get('currency') as string } : {}),
+  };
 
   return (
     <div className="min-h-screen">
@@ -366,14 +369,12 @@ function SignedIn({
             displayCurrency={displayCurrency}
           />
         )}
-        {screen === 'holdings' && (
+        {(screen === 'holdings' || screen === 'holding') && (
           <HoldingsScreen
             privacy={privacy}
             householdId={householdId}
             filter={holdingsFilter}
-            onClearFilter={() => {
-              setScreen('holdings');
-            }}
+            holdingId={screen === 'holding' ? (params.get('id') ?? '') : null}
           />
         )}
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}

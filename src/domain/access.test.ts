@@ -50,6 +50,15 @@ describe('allowedScreen', () => {
     expect(allowedScreen('contributor', 'more')).toBe('summary');
   });
 
+  it('gives a holding\'s own screen to whoever has Holdings, and to nobody else', () => {
+    for (const role of ['owner', 'partner', 'contributor'] as const) {
+      expect(allowedScreen(role, 'holding')).toBe('holding');
+    }
+    // A viewer has no Holdings, so a typed `#/holding?id=...` is a request and not a grant.
+    expect(allowedScreen('viewer', 'holding')).toBe('summary');
+    expect(allowedScreen(null, 'holding')).toBe('summary');
+  });
+
   it('leaves the two screens that belong to everyone alone', () => {
     const everyone: AppScreen[] = ['profile', 'settings'];
     for (const role of ['owner', 'partner', 'contributor', 'viewer', null] as const) {

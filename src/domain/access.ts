@@ -28,6 +28,7 @@ export type AppScreen =
   | 'fire'
   | 'insurance'
   | 'more'
+  | 'holding'
   | 'profile'
   | 'settings';
 
@@ -74,6 +75,8 @@ const FOR_EVERYONE: readonly AppScreen[] = ['profile', 'settings'];
 export function allowedScreen(role: HouseholdRole | null, wanted: AppScreen): AppScreen {
   if (FOR_EVERYONE.includes(wanted)) return wanted;
   const own = screensFor(role);
+  // A holding's own screen is Holdings, one level down: whoever has the list has the holding.
+  if (wanted === 'holding') return own.includes('holdings') ? 'holding' : (own[0] ?? 'summary');
   if (own.includes(wanted) || moreFor(role).includes(wanted)) return wanted;
   return own[0] ?? 'summary';
 }

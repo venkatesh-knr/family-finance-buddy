@@ -19,6 +19,7 @@ const SCREEN_NAMES: readonly AppScreen[] = [
   'fire',
   'insurance',
   'more',
+  'holding',
   'profile',
   'settings',
 ];
