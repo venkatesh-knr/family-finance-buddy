@@ -72,8 +72,13 @@ export function MoneyField({
     return (
       <span className="w-[8rem] shrink-0">
         <span className="label">{label}</span>
-        <span className="num block" style={{ color: 'var(--ink-2)' }}>
-          {current === null ? <span className="note">not recorded</span> : formatMoney(current, { privacy })}
+        {/* A word is not a figure: it is set in the face a word takes, and only the figure in the figures' one. */}
+        <span className="block" style={{ color: 'var(--ink-2)' }}>
+          {current === null ? (
+            <span className="note">not recorded</span>
+          ) : (
+            <span className="num">{formatMoney(current, { privacy })}</span>
+          )}
         </span>
       </span>
     );

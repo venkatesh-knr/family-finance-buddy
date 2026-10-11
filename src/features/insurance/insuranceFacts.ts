@@ -10,6 +10,7 @@
  * nowhere near net worth, allocation or FIRE (PF-C3).
  */
 
+import type { AnnualExpense } from '../../domain/annual-expense.ts';
 import { convert, type Rate } from '../../domain/fx.ts';
 import {
   coverGap,
@@ -42,10 +43,25 @@ export interface InsuranceFacts {
   /** Open loans with no outstanding balance recorded, so the liabilities are short by them. */
   readonly loansWithoutBalance: number;
   readonly gap: CoverGap | null;
+  /**
+   * What the household spends in a year with the loan instalments taken out, in base: the figure the gap
+   * multiplies by the years. A loan's outstanding balance is already a term of the sum, so its instalments
+   * are not also a year's expenses; counted in both, the loan is counted twice.
+   */
+  readonly annualForCover: Money | null;
+  /** The instalments left out of it, so the screen can say what the figure does not include. */
+  readonly instalmentsLeftOut: Money | null;
+  /**
+   * What is wrong with the gap and not with a figure in it: cover or balances nobody has recorded, which
+   * are not zero. Said wherever the gap is, so one screen cannot drop what another says.
+   */
+  readonly notes: readonly string[];
   /** Why there is no gap, in words for the screen, when there is not. */
   readonly gapRefusedBecause: string | null;
   /** Health cover is a list and has no suggested figure. */
   readonly health: readonly InsurancePolicy[];
+  /** Health cover in force, by whose it is: a list and a sum insured per member, and no suggested figure. */
+  readonly healthByMember: readonly { readonly memberId: string | null; readonly policies: readonly InsurancePolicy[] }[];
   readonly byPolicy: ReadonlyMap<string, PolicyFacts>;
   readonly renewals: readonly RenewalDue[];
 }
@@ -55,8 +71,8 @@ export function insuranceFacts(options: {
   readonly liabilities: readonly Liability[];
   /** The latest reading of each holding that carries a surrender value. */
   readonly surrenderValues: ReadonlyMap<string, Money>;
-  /** What the household spends in a year, or null where that has not been set up. */
-  readonly annualExpenses: Money | null;
+  /** The annual expense with what it is made of, or null where it has not been set up. */
+  readonly annual: AnnualExpense | null;
   readonly years: number;
   /** What could be had in an emergency, in `base`, or null where it could not be added into one figure. */
   readonly liquid: Money | null;
@@ -74,6 +90,8 @@ export function insuranceFacts(options: {
       cadence: policy.cadence,
       startedOn: policy.startedOn,
       today,
+      lapsedOn: policy.lapsedOn,
+      premiumsEndOn: policy.premiumsEndOn,
     });
     const surrenderValue =
       policy.linkedHoldingId === null ? null : (options.surrenderValues.get(policy.linkedHoldingId) ?? null);
@@ -121,9 +139,27 @@ export function insuranceFacts(options: {
     else owedMinor += converted.minor;
   }
 
+  const notes: string[] = [];
+  if (loansWithoutBalance > 0) {
+    notes.push(
+      `${String(loansWithoutBalance)} ${loansWithoutBalance === 1 ? 'loan has' : 'loans have'} no balance recorded, so what is owed is short by ${loansWithoutBalance === 1 ? 'it' : 'them'}. Record the balance on FIRE.`,
+    );
+  }
+  if (termCoverUnknown > 0) {
+    notes.push(
+      `${String(termCoverUnknown)} term ${termCoverUnknown === 1 ? 'policy has' : 'policies have'} no cover recorded, which is not a cover of nothing: the cover in force is short by ${termCoverUnknown === 1 ? 'it' : 'them'}.`,
+    );
+  }
+
+  // A year's expenses without the loans' instalments: their balance is a term of the sum already.
+  const annual = options.annual;
+  const annualForCover =
+    annual === null ? null : money(annual.total.minor - annual.bySource.liability.minor, annual.total.currency);
+  const instalmentsLeftOut = annual === null ? null : annual.bySource.liability;
+
   let gap: CoverGap | null = null;
   let gapRefusedBecause: string | null = null;
-  if (options.annualExpenses === null) {
+  if (annualForCover === null || annualForCover.minor <= 0n) {
     gapRefusedBecause =
       'there are no annual expenses to cover: set the spending plan up on FIRE, and the years of expenses a dependant would need can be worked out.';
   } else if (options.liquid === null) {
@@ -131,13 +167,13 @@ export function insuranceFacts(options: {
   } else if (!owedConverted || termCover === null) {
     gapRefusedBecause = `a rate from ${missingRate ?? 'one currency to another'} is missing, so the amounts cannot be added into one figure.`;
   } else {
-    const annual = toBase(options.annualExpenses, today);
+    const yearly = toBase(annualForCover, today);
     gap =
-      annual === null
+      yearly === null
         ? null
         : coverGap({
             liabilities: money(owedMinor, base),
-            annualExpenses: annual,
+            annualExpenses: yearly,
             years: options.years,
             liquidCorpus: options.liquid,
             termCover,
@@ -153,8 +189,12 @@ export function insuranceFacts(options: {
     termCoverUnknown,
     loansWithoutBalance,
     gap,
+    annualForCover,
+    instalmentsLeftOut,
+    notes,
     gapRefusedBecause,
     health: active.filter((policy) => policy.kind === 'health'),
+    healthByMember: groupByMember(active.filter((policy) => policy.kind === 'health')),
     byPolicy,
     renewals: renewalsDue(
       policies.map((policy) => ({
@@ -166,4 +206,17 @@ export function insuranceFacts(options: {
       today,
     ),
   };
+}
+
+/** A floater has no member and is the household's. Members in the order their first policy appears, the household's first. */
+function groupByMember(policies: readonly InsurancePolicy[]): InsuranceFacts['healthByMember'] {
+  const groups = new Map<string | null, InsurancePolicy[]>();
+  for (const policy of policies) {
+    const list = groups.get(policy.memberId) ?? [];
+    list.push(policy);
+    groups.set(policy.memberId, list);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === null ? -1 : b === null ? 1 : 0))
+    .map(([memberId, list]) => ({ memberId, policies: list }));
 }

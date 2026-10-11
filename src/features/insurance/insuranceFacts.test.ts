@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
+import type { AnnualExpense } from '../../domain/annual-expense.ts';
 import type { InsurancePolicy, Liability } from '../../repo/types.ts';
 import { insuranceFacts } from './insuranceFacts.ts';
 
@@ -17,9 +18,20 @@ const policy = (over: Partial<InsurancePolicy> & { id: string }): InsurancePolic
   policyLast4: null,
   cover: inr(10000000),
   startedOn: null,
+  premiumsEndOn: null,
+  lapsedOn: null,
   renewalOn: null,
+  note: null,
   linkedHoldingId: null,
   ...over,
+});
+
+/** A year's expenses, with what part of it is loan instalments and what part policy premiums. */
+const annualOf = (rupees: number, instalments = 0, premiums = 0): AnnualExpense => ({
+  total: inr(rupees),
+  compulsory: inr(rupees),
+  bySource: { category: inr(rupees - instalments - premiums), liability: inr(instalments), policy: inr(premiums) },
+  unplanned: [],
 });
 
 const loan = (over: Partial<Liability> & { id: string }): Liability => ({
@@ -38,7 +50,7 @@ const base = {
   base: 'INR',
   rates: [],
   today: '2026-10-11',
-  annualExpenses: inr(600000),
+  annual: annualOf(600000),
   years: 10,
   liquid: inr(1500000),
   surrenderValues: new Map<string, ReturnType<typeof inr>>(),
@@ -82,7 +94,7 @@ describe('insuranceFacts — the cover gap, from what is recorded and nothing el
   });
 
   it('refuses the gap without annual expenses, naming why, and does not guess a figure', () => {
-    const facts = insuranceFacts({ ...base, annualExpenses: null, liabilities: [], policies: [policy({ id: 't' })] });
+    const facts = insuranceFacts({ ...base, annual: null, liabilities: [], policies: [policy({ id: 't' })] });
     expect(facts.gap).toBeNull();
     expect(facts.gapRefusedBecause).toMatch(/annual expenses/i);
   });
@@ -122,6 +134,59 @@ describe('insuranceFacts — the cover gap, from what is recorded and nothing el
   });
 });
 
+describe('insuranceFacts — a loan is counted once (PF-C12)', () => {
+  it('leaves the instalments out of the expense term, since the balance is already a term of the sum', () => {
+    // ₹50,000 a month planned for the household, a ₹40,000 EMI inside the annual figure, ₹40L still owed.
+    const facts = insuranceFacts({
+      ...base,
+      annual: annualOf(1098000, 480000, 18000),
+      liabilities: [loan({ id: 'l', outstanding: inr(4000000) })],
+      policies: [policy({ id: 't', cover: inr(10000000) })],
+      liquid: inr(0),
+    });
+    // Without the 4,80,000 of instalments: 6,18,000 a year over ten years, plus 40,00,000 owed.
+    expect(facts.annualForCover?.minor).toBe(61800000n);
+    expect(facts.instalmentsLeftOut?.minor).toBe(48000000n);
+    expect(facts.gap?.suggested.minor).toBe((4000000n + 6180000n) * 100n);
+  });
+});
+
+describe('insuranceFacts — what is wrong with the gap travels with it', () => {
+  it('says so when a term policy has no cover recorded, and when a loan has no balance', () => {
+    const facts = insuranceFacts({
+      ...base,
+      liabilities: [loan({ id: 'l', outstanding: null })],
+      policies: [policy({ id: 't', cover: null })],
+    });
+    expect(facts.notes).toHaveLength(2);
+    expect(facts.notes.join(' ')).toMatch(/no cover recorded/);
+    expect(facts.notes.join(' ')).toMatch(/no balance recorded/);
+  });
+
+  it('has no notes when everything is recorded', () => {
+    expect(insuranceFacts({ ...base, liabilities: [loan({ id: 'l' })], policies: [policy({ id: 't' })] }).notes).toEqual([]);
+  });
+});
+
+describe('insuranceFacts — health cover is a list by whose it is', () => {
+  it('groups in-force health policies by member, the household first, and leaves out lapsed ones', () => {
+    const facts = insuranceFacts({
+      ...base,
+      liabilities: [],
+      policies: [
+        policy({ id: 'own', kind: 'health', cover: inr(500000), memberId: 'm1' }),
+        policy({ id: 'floater', kind: 'health', cover: inr(1000000) }),
+        policy({ id: 'old', kind: 'health', isLapsed: true }),
+        policy({ id: 'term' }),
+      ],
+    });
+    expect(facts.healthByMember.map((g) => [g.memberId, g.policies.map((p) => p.id)])).toEqual([
+      [null, ['floater']],
+      ['m1', ['own']],
+    ]);
+  });
+});
+
 describe('insuranceFacts — a hybrid policy shows what was paid in against what it would pay out (PF-C4)', () => {
   it('sets the premiums paid so far against the linked holding\'s latest reading', () => {
     const facts = insuranceFacts({
@@ -143,6 +208,26 @@ describe('insuranceFacts — a hybrid policy shows what was paid in against what
     expect(ulip?.paidIn?.minor).toBe(20000000n);
     expect(ulip?.surrenderValue?.minor).toBe(14500000n);
     expect(ulip?.behind?.minor).toBe(5500000n);
+  });
+
+  it('stops counting premiums at the day the policy lapsed', () => {
+    const facts = insuranceFacts({
+      ...base,
+      liabilities: [],
+      policies: [
+        policy({
+          id: 'ulip',
+          kind: 'ulip',
+          premium: inr(50000),
+          startedOn: '2022-03-01',
+          isLapsed: true,
+          lapsedOn: '2024-06-10',
+          linkedHoldingId: 'h1',
+        }),
+      ],
+      surrenderValues: new Map([['h1', inr(145000)]]),
+    });
+    expect(facts.byPolicy.get('ulip')?.paidIn?.minor).toBe(3n * 5000000n);
   });
 
   it('has no figures for protection with no value, rather than a zero', () => {

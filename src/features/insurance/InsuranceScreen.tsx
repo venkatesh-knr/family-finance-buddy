@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { latestValuationPerHolding } from '../../domain/networth.ts';
-import { formatIsoDate, isIsoDate, type IsoDate } from '../../lib/dates.ts';
+import { formatIsoDate, type IsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import {
   addPolicy,
@@ -23,6 +23,7 @@ import { usePlan } from '../plan/usePlan.ts';
 import { useOverviewData } from '../overview/useOverviewData.ts';
 import { insuranceFacts, type InsuranceFacts, type PolicyFacts } from './insuranceFacts.ts';
 import { isHybrid, policyKindLabel } from './labels.ts';
+import { DateField } from './DateField.tsx';
 import { MoneyField } from './MoneyField.tsx';
 
 /**
@@ -52,12 +53,11 @@ export function InsuranceScreen({ privacy, householdId }: { privacy: boolean; ho
 
   const facts = useMemo<InsuranceFacts | null>(() => {
     if (listing === null) return null;
-    const annual = plan.annual?.total ?? null;
     return insuranceFacts({
       policies: listing.policies,
       liabilities: listing.liabilities,
       surrenderValues,
-      annualExpenses: annual !== null && annual.minor > 0n ? annual : null,
+      annual: plan.annual,
       years: listing.household.coverDependencyYears,
       liquid: data.fire.liquid.ok ? data.fire.liquid.amount : null,
       base: listing.household.baseCurrency,
@@ -71,7 +71,11 @@ export function InsuranceScreen({ privacy, householdId }: { privacy: boolean; ho
     await data.load();
   }, [plan, data]);
 
-  if (plan.loading || data.loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
+  // Only before there is anything to show. A save reloads in the background and swaps the figures in place:
+  // unmounting every row and the open editor on each edit threw away the focus a person had just moved.
+  if ((plan.loading && plan.listing === null) || (data.loading && data.listing === null)) {
+    return <p className="note px-4.5 py-4.5">Loading…</p>;
+  }
   if (plan.noHousehold || data.noHousehold) return null;
   if (plan.problem !== null || data.problem !== null || listing === null || facts === null) {
     return <Problem>{plan.problem ?? data.problem ?? 'Could not read the policies.'}</Problem>;
@@ -142,7 +146,65 @@ export function InsuranceScreen({ privacy, householdId }: { privacy: boolean; ho
           />
         )}
       </Card>
+
+      <HealthCover facts={facts} members={listing.members} privacy={privacy} />
     </div>
+  );
+}
+
+/**
+ * Health cover is a list and has no suggested figure (protection-and-flow.md section 5): what is in force,
+ * by whose it is, with its renewal and the sum insured. A floater is the household's. Any "recommended
+ * health cover" would be invented, so there is none.
+ */
+function HealthCover({
+  facts,
+  members,
+  privacy,
+}: {
+  facts: InsuranceFacts;
+  members: readonly { id: string; displayName: string }[];
+  privacy: boolean;
+}) {
+  if (facts.healthByMember.length === 0) return null;
+  return (
+    <Card title="Health cover in force" aside={<span className="note">no suggested figure</span>}>
+      <div className="flex flex-col gap-3.5" data-testid="health-cover">
+        {facts.healthByMember.map((group) => (
+          <section key={group.memberId ?? 'household'}>
+            <p className="label">
+              {group.memberId === null
+                ? 'The household (a floater)'
+                : (members.find((m) => m.id === group.memberId)?.displayName ?? 'A member')}
+            </p>
+            <ul className="row-separated mt-1">
+              {group.policies.map((policy) => (
+                <li key={policy.id} className="flex flex-wrap items-baseline justify-between gap-2.5 py-2">
+                  <span>
+                    {policy.name}
+                    {policy.insurer !== null && <span className="note"> · {policy.insurer}</span>}
+                  </span>
+                  <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                    <span>
+                      {policy.cover === null ? (
+                        <span className="note">cover not recorded</span>
+                      ) : (
+                        <span className="num">
+                          <Amount value={policy.cover} privacy={privacy} compact />
+                        </span>
+                      )}
+                    </span>
+                    <span className="note">
+                      {policy.renewalOn === null ? 'renewal not recorded' : `renews ${formatIsoDate(policy.renewalOn)}`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -162,17 +224,7 @@ function CoverGap({
   onYears: (years: number) => Promise<void>;
 }) {
   const gap = facts.gap;
-  const notes: string[] = [];
-  if (facts.loansWithoutBalance > 0) {
-    notes.push(
-      `${String(facts.loansWithoutBalance)} ${facts.loansWithoutBalance === 1 ? 'loan has' : 'loans have'} no balance recorded, so what is owed is short by ${facts.loansWithoutBalance === 1 ? 'it' : 'them'}. Record the balance on FIRE.`,
-    );
-  }
-  if (facts.termCoverUnknown > 0) {
-    notes.push(
-      `${String(facts.termCoverUnknown)} term ${facts.termCoverUnknown === 1 ? 'policy has' : 'policies have'} no cover recorded, which is not a cover of nothing: the cover in force is short by ${facts.termCoverUnknown === 1 ? 'it' : 'them'}.`,
-    );
-  }
+  const notes = facts.notes;
 
   return (
     <Card
@@ -194,9 +246,14 @@ function CoverGap({
         <div data-testid="cover-gap">
           <dl className="flex flex-col gap-2.5">
             <Row label="What is still owed on loans" value={gap.liabilities} privacy={privacy} />
-            <div className="flex flex-wrap items-baseline justify-between gap-2.5">
-              <dt className="note">
-                What the household spends in a year, over{' '}
+            <div className="flex items-baseline justify-between gap-2.5">
+              <dt className="note min-w-0">
+                What the household spends in a year{facts.annualForCover !== null && (
+                  <>
+                    {' '}
+                    (<Amount value={facts.annualForCover} privacy={privacy} compact />, without loan instalments)
+                  </>
+                )}, over{' '}
                 {editable && !privacy ? (
                   <DraftNumber
                     className="field field-num inline-field"
@@ -212,7 +269,7 @@ function CoverGap({
                 )}{' '}
                 years
               </dt>
-              <dd className="num">
+              <dd className="num shrink-0">
                 <Amount value={gap.expensesOverYears} privacy={privacy} compact />
               </dd>
             </div>
@@ -251,8 +308,14 @@ function CoverGap({
       ))}
 
       <p className="note mt-2.5">
-        In {base}. The years of expenses are the household&rsquo;s own setting (ten until changed).
-        Other members&rsquo; private holdings are not in the money that could be had. Health cover has no
+        In {base}. The years of expenses are the household&rsquo;s own setting (ten until changed). A loan&rsquo;s
+        instalments are left out of the year&rsquo;s expenses because what is still owed on it is already in the sum
+        {facts.instalmentsLeftOut !== null && facts.instalmentsLeftOut.minor > 0n && (
+          <>
+            {' '}
+            (<Amount value={facts.instalmentsLeftOut} privacy={privacy} compact /> a year)
+          </>
+        )}. Other members&rsquo; private holdings are not in the money that could be had. Health cover has no
         suggested figure: what is in force is below, with its renewal.
       </p>
     </Card>
@@ -273,11 +336,11 @@ function Row({
   strong?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2.5">
-      <dt className={strong ? '' : 'note'} style={strong ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>
+    <div className="flex items-baseline justify-between gap-2.5">
+      <dt className={strong ? 'min-w-0' : 'note min-w-0'} style={strong ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>
         {label}
       </dt>
-      <dd className="num" style={strong ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>
+      <dd className="num shrink-0" style={strong ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>
         {negative && !privacy ? '−' : ''}
         <Amount value={value} privacy={privacy} compact />
       </dd>
@@ -350,25 +413,13 @@ function PolicyRow({
             onSave={(next) => (next === null ? Promise.resolve() : save({ premium: next }))}
             onProblem={onProblem}
           />
-          <label className="flex w-[9.5rem] shrink-0 flex-col gap-1">
-            <span className="label">Renews</span>
-            {editable && !policy.isLapsed ? (
-              <input
-                type="date"
-                className="field"
-                value={policy.renewalOn ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === '') void save({ renewalOn: null }).catch(report(onProblem));
-                  else if (isIsoDate(value)) void save({ renewalOn: value }).catch(report(onProblem));
-                }}
-              />
-            ) : (
-              <span className="num block" style={{ color: 'var(--ink-2)' }}>
-                {policy.renewalOn === null ? <span className="note">not recorded</span> : formatIsoDate(policy.renewalOn)}
-              </span>
-            )}
-          </label>
+          <DateField
+            label="Renews"
+            value={policy.renewalOn}
+            editable={editable && !policy.isLapsed}
+            onSave={(next) => save({ renewalOn: next })}
+            onProblem={onProblem}
+          />
         </span>
 
         {editable && (
@@ -427,23 +478,24 @@ function HybridLine({ facts, privacy }: { facts: PolicyFacts; privacy: boolean }
       <p className="note mt-1.5 px-1">
         {facts.surrenderValue === null
           ? 'The holding that carries its surrender value has not been valued yet.'
-          : 'Add when the policy started and its premium to see what has been paid in.'}
+          : 'Add when the policy started and its premium to see what has fallen due.'}
       </p>
     );
   }
   const behind = facts.behind.minor;
   return (
     <p className="note mt-1.5 px-1" data-testid="surrender-gap">
-      Paid in so far <Amount value={facts.paidIn} privacy={privacy} compact />; it would pay out{' '}
+      Premiums due so far <Amount value={facts.paidIn} privacy={privacy} compact /> (counted from when it began, and
+      stopping at a lapse or the end of the premium term, so it is what fell due and not a record of what was paid); it would pay out{' '}
       <Amount value={facts.surrenderValue} privacy={privacy} compact /> today
       {behind > 0n ? (
         <>
-          : the household is <Amount value={facts.behind} privacy={privacy} compact /> behind what it has paid in.
+          : the household is <Amount value={facts.behind} privacy={privacy} compact /> behind the premiums that have fallen due.
         </>
       ) : (
         <>
-          : <Amount value={money(-behind, facts.behind.currency)} privacy={privacy} compact /> ahead of what it has paid
-          in.
+          : <Amount value={money(-behind, facts.behind.currency)} privacy={privacy} compact /> ahead of the premiums that
+          have fallen due.
         </>
       )}
     </p>
@@ -476,6 +528,8 @@ function PolicyDetails({
   const [insurer, setInsurer] = useState(policy.insurer ?? '');
   const [last4, setLast4] = useState(policy.policyLast4 ?? '');
   const [startedOn, setStartedOn] = useState<string>(policy.startedOn ?? '');
+  const [premiumsEndOn, setPremiumsEndOn] = useState<string>(policy.premiumsEndOn ?? '');
+  const [note, setNote] = useState(policy.note ?? '');
   const [linked, setLinked] = useState(policy.linkedHoldingId ?? '');
   const [memberId, setMemberId] = useState(policy.memberId ?? '');
   const [busy, setBusy] = useState(false);
@@ -492,6 +546,8 @@ function PolicyDetails({
         insurer: insurer.trim() === '' ? null : insurer,
         policyLast4: last4.trim() === '' ? null : last4,
         startedOn: startedOn === '' ? null : (startedOn as IsoDate),
+        premiumsEndOn: premiumsEndOn === '' ? null : (premiumsEndOn as IsoDate),
+        note: note.trim() === '' ? null : note,
         // A surrender value belongs to a hybrid policy: changing the kind away from one lets go of the
         // holding here, where the reason can be said, and not by a constraint with a code.
         linkedHoldingId: isHybrid(kind) && linked !== '' ? linked : null,
@@ -507,8 +563,19 @@ function PolicyDetails({
   return (
     <div className="inset-form mt-2.5">
       <PolicyFields
-        values={{ name, kind, cadence, insurer, last4, startedOn, linked, memberId }}
-        set={{ setName, setKind, setCadence, setInsurer, setLast4, setStartedOn, setLinked, setMemberId }}
+        values={{ name, kind, cadence, insurer, last4, startedOn, premiumsEndOn, note, linked, memberId }}
+        set={{
+          setName,
+          setKind,
+          setCadence,
+          setInsurer,
+          setLast4,
+          setStartedOn,
+          setPremiumsEndOn,
+          setNote,
+          setLinked,
+          setMemberId,
+        }}
         holdings={holdings}
         members={members}
       />
@@ -536,6 +603,8 @@ interface FieldValues {
   insurer: string;
   last4: string;
   startedOn: string;
+  premiumsEndOn: string;
+  note: string;
   linked: string;
   memberId: string;
 }
@@ -555,6 +624,8 @@ function PolicyFields({
     setInsurer: (v: string) => void;
     setLast4: (v: string) => void;
     setStartedOn: (v: string) => void;
+    setPremiumsEndOn: (v: string) => void;
+    setNote: (v: string) => void;
     setLinked: (v: string) => void;
     setMemberId: (v: string) => void;
   };
@@ -641,6 +712,17 @@ function PolicyFields({
           }}
         />
       </div>
+      <div className="w-full sm:w-[170px] sm:shrink-0">
+        <Field
+          label="Last premium due"
+          type="date"
+          hint="Blank if premiums have no end"
+          value={values.premiumsEndOn}
+          onChange={(event) => {
+            set.setPremiumsEndOn(event.target.value);
+          }}
+        />
+      </div>
       <label className="flex w-full flex-col gap-1.5 sm:w-[170px] sm:shrink-0">
         <span className="label">Whose</span>
         <select
@@ -660,6 +742,16 @@ function PolicyFields({
             ))}
         </select>
       </label>
+      <div className="w-full sm:w-[260px] sm:shrink-0">
+        <Field
+          label="Note"
+          maxLength={500}
+          value={values.note}
+          onChange={(event) => {
+            set.setNote(event.target.value);
+          }}
+        />
+      </div>
       {isHybrid(values.kind) && (
         <label className="flex w-full flex-col gap-1.5 sm:w-[260px] sm:shrink-0">
           <span className="label">Holding that carries its surrender value</span>
@@ -704,6 +796,8 @@ function NewPolicy({
   const [insurer, setInsurer] = useState('');
   const [last4, setLast4] = useState('');
   const [startedOn, setStartedOn] = useState('');
+  const [premiumsEndOn, setPremiumsEndOn] = useState('');
+  const [note, setNote] = useState('');
   const [renewalOn, setRenewalOn] = useState('');
   const [linked, setLinked] = useState('');
   const [memberId, setMemberId] = useState('');
@@ -731,6 +825,8 @@ function NewPolicy({
         policyLast4: last4.trim() === '' ? null : last4,
         cover: coverMoney,
         startedOn: startedOn === '' ? null : (startedOn as IsoDate),
+        premiumsEndOn: premiumsEndOn === '' ? null : (premiumsEndOn as IsoDate),
+        note: note.trim() === '' ? null : note,
         renewalOn: renewalOn === '' ? null : (renewalOn as IsoDate),
         linkedHoldingId: isHybrid(kind) && linked !== '' ? linked : null,
         memberId: memberId === '' ? null : memberId,
@@ -749,6 +845,8 @@ function NewPolicy({
       setInsurer('');
       setLast4('');
       setStartedOn('');
+      setPremiumsEndOn('');
+      setNote('');
       setRenewalOn('');
       setLinked('');
       setMemberId('');
@@ -864,7 +962,7 @@ function NewPolicy({
         </div>
         <div className="mt-2.5">
           <PolicyFields
-            values={{ name, kind, cadence, insurer, last4, startedOn, linked, memberId }}
+            values={{ name, kind, cadence, insurer, last4, startedOn, premiumsEndOn, note, linked, memberId }}
             set={{
               setName,
               setKind,
@@ -872,6 +970,8 @@ function NewPolicy({
               setInsurer,
               setLast4,
               setStartedOn,
+              setPremiumsEndOn,
+              setNote,
               setLinked,
               setMemberId,
             }}

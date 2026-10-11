@@ -478,10 +478,12 @@ export function useOverviewData({
     // What could be had in an emergency, for the cover gap: the same holdings, classified once, so the
     // Insurance screen does not define it a second time. Other members' private holdings arrive as one
     // sum and cannot be classified, so they are not in it.
+    // In the household's own currency and not the display one: it goes into the cover gap beside the loans
+    // and the annual expense, which are in base, and a gap is refused where its inputs are in two currencies.
     const liquid: NetWorth = netWorth({
       assets: corpusTotals.map((t) => t.liquid),
       debts: [],
-      base: display,
+      base,
       rates,
       on,
     });
@@ -493,7 +495,7 @@ export function useOverviewData({
       earmarked,
       privateMembers: new Set(hiddenAssets.map((entry) => entry.memberId)).size,
     };
-  }, [corpusHoldings, valuations, hiddenAssets, shownDebts, display, rates, asOf, today]);
+  }, [corpusHoldings, valuations, hiddenAssets, shownDebts, display, base, rates, asOf, today]);
 
   // What is wrong with the figure, in one list behind one mark. Five marks in a row
   // on the number were five buttons to open, and the two of them that were not
