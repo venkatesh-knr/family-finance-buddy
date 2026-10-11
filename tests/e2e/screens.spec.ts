@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { goTo } from './holdings.ts';
 
 /**
  * Screenshots of every screen, at both widths, in both themes.
@@ -23,14 +24,14 @@ import { mkdirSync } from 'node:fs';
  * excludes it. Run it when you want to look: `npm run test:screens`.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
 
 async function capture(page: import('@playwright/test').Page, screen: string, theme: string) {
   const project = test.info().project.name.replace('screens-', '');
   const dir = `screenshots/${theme}/${project}`;
   mkdirSync(dir, { recursive: true });
 
-  await page.goto(`/#${screen}`);
+  await goTo(page, screen);
 
   // The shell, not the network: a screenshot taken before the chrome renders is
   // a picture of nothing, and networkidle is a worse signal than the thing you

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { goTo } from './holdings.ts';
 
 /**
  * The app at 200% text size, checked.
@@ -19,10 +20,10 @@ import { test, expect, type Page } from '@playwright/test';
  * Read-only: it opens each screen and reads the layout.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
 
 async function ready(page: Page, screen: string) {
-  await page.goto(`/#${screen}`);
+  await goTo(page, screen);
   await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.locator('h2, h3').first()).toBeVisible({ timeout: 20_000 });

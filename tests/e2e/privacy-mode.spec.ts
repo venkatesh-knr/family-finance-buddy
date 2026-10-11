@@ -103,27 +103,46 @@ test('a stored figure in an editable field is not left in the document', async (
   }
 });
 
-test('no figure from the Holdings screen is left in the document under privacy mode', async ({ page }) => {
-  // The screen with the most figures on it, and until now not one this spec looked at: a position's value,
-  // its cost, a quoted price times its units, a peak. Every currency figure that is on it, read from the
-  // page as shown, and then none of them may be in the markup once privacy is on.
-  await page.goto('/#holdings');
+test('no figure from the Holdings list or a holding\u2019s screen is left in the document under privacy mode', async ({
+  page,
+}) => {
+  // The screens with the most figures on them: a row's value and gain, and on the holding itself its value, cost,
+  // a quoted price times its units and a peak. Every currency figure on each, read from the page as shown, and
+  // then none of them may be in the markup once privacy is on. Privacy mode is the shell's, so it survives the
+  // move from the list to a holding and back.
+  await page.goto('/#/holdings');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-  await expect(page.getByText('Holdings (8)', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
 
-  const shown = await page.evaluate(() => document.body.innerText);
-  // With the currency sign, and at least four digits, so a coordinate, a year or a percentage is not one.
-  const figures = [...new Set(shown.match(/[₹$]\d[\d,]*\.\d{2}|[₹$]\d{1,3}(?:,\d{2,3})+/g) ?? [])].filter(
-    (f) => f.replace(/\D/g, '').length >= 4,
-  );
-  expect(figures.length, 'currency figures on the Holdings screen to look for').toBeGreaterThan(5);
+  const figuresOf = async (): Promise<string[]> => {
+    const shown = await page.evaluate(() => document.body.innerText);
+    // With the currency sign, and at least three digits, so a coordinate, a year or a percentage is not one. A row
+    // is compact (\u20B94.23 L) and a holding\u2019s screen is exact (\u20B94,22,766.18); both are looked for.
+    return [...new Set(shown.match(/[\u20B9$]\d[\d,]*\.\d{2}|[\u20B9$]\d{1,3}(?:,\d{2,3})+|[\u20B9$]\d+(?:\.\d+)?\s?(?:L|Cr|K)/g) ?? [])]
+      .map((f) => f.replace(/\s+/g, ''))
+      .filter((f) => f.replace(/\D/g, '').length >= 3);
+  };
+
+  const onList = await figuresOf();
+  expect(onList.length, 'currency figures on the Holdings list to look for').toBeGreaterThan(5);
+
+  await page.locator('.holding-row').filter({ hasText: 'units' }).first().locator('a.holding-link').click();
+  await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
+  const onHolding = await figuresOf();
+  expect(onHolding.length, 'currency figures on a holding\u2019s screen to look for').toBeGreaterThan(2);
 
   await page.getByRole('button', { name: /Amounts shown/ }).click();
   await expect(page.getByRole('button', { name: /Amounts hidden/ })).toBeVisible();
 
-  const markup = await page.evaluate(() => document.documentElement.outerHTML);
-  const left = figures.filter((f) => markup.includes(f));
-  expect(left, 'figures still in the page, under privacy mode').toEqual([]);
+  let markup = await page.evaluate(() => document.documentElement.outerHTML);
+  let left = onHolding.filter((f) => markup.includes(f));
+  expect(left, 'figures still on the holding\u2019s screen, under privacy mode').toEqual([]);
+
+  await page.getByRole('link', { name: /Holdings$/ }).first().click();
+  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  markup = await page.evaluate(() => document.documentElement.outerHTML);
+  left = onList.filter((f) => markup.includes(f));
+  expect(left, 'figures still on the Holdings list, under privacy mode').toEqual([]);
 });
 
 test('the emergency fund and what the FIRE corpus leaves out are not in the document under privacy mode', async ({
