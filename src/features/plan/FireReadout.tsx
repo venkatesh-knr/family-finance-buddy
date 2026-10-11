@@ -152,7 +152,7 @@ export function FireReadout({
   /** What is wrong with the corpus, said where it is used: the same list as on the Overview's hero. */
   const warnings =
     data.heroWarnings.length === 0 ? null : (
-      <Caveat tone="warn" label="Why this figure may be wrong">
+      <Caveat tone={data.heroActionable ? 'warn' : 'info'} label="Why this figure may be wrong">
         {data.heroWarnings.length === 1 ? (
           data.heroWarnings[0]
         ) : (

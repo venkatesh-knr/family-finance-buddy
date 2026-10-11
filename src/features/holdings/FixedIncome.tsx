@@ -312,7 +312,7 @@ export function FixedIncome({
               <Stat label={totals.length > 1 ? `Worked out, ${currency}` : 'Worked out'}>
                 {formatMoney(money(bucket.value, currency), { privacy })}
                 {(bucket.projected > 0 || bucket.refused > 0) && (
-                  <Caveat tone="warn" label="What this total contains">
+                  <Caveat tone={bucket.projected > 0 ? 'warn' : 'info'} label="What this total contains">
                     {bucket.projected > 0 && (
                       <>
                         {bucket.projected}{' '}
@@ -327,6 +327,8 @@ export function FixedIncome({
                         in it; each says why below.
                       </>
                     )}
+
+                    {bucket.projected > 0 && 'Record each renewal on its row when the bank’s advice arrives and the value is the bank’s.'}
                   </Caveat>
                 )}
               </Stat>

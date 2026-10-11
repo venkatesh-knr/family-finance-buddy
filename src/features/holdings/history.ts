@@ -126,5 +126,12 @@ export function shortPositions(count: number): string {
  * The same reason for a position and for a total that contains one, so it is a
  * single text with the part that differs handed in.
  */
+/** What a person can do about a cost that covers only part of the units. */
+export const IMPORT_THE_FULL_STATEMENT =
+  'Import the full statement, from before the first purchase, and the cost is complete and the return comes back.';
+
+/** What a person can do about a cost nobody recorded. */
+export const RECORD_THE_COST = 'Record what it cost on the holding and its return appears.';
+
 export const RETURN_REFUSED_BECAUSE =
   'A gain measured against a cost that covers only part of the units would be a number that never happened.';

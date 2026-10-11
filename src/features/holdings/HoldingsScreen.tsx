@@ -40,7 +40,7 @@ import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
 import { EARMARK_LABELS, SCHEMES, SCHEME_LABELS, isScheme, type Scheme } from '../../domain/earmark.ts';
 import { CostAndGains } from './CostAndGains.tsx';
-import { COST_MISSING_REFUSED_BECAUSE, costMissing, RETURN_REFUSED_BECAUSE, shortPositions } from './history.ts';
+import { COST_MISSING_REFUSED_BECAUSE, IMPORT_THE_FULL_STATEMENT, RECORD_THE_COST, costMissing, RETURN_REFUSED_BECAUSE, shortPositions } from './history.ts';
 import { EditHolding } from './EditHolding.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
@@ -66,7 +66,7 @@ export function HoldingsScreen({
    * following it into a list that also contained dollar bonds would be
    * answering a question nobody asked.
    */
-  filter?: { kind: string; currency: string } | null;
+  filter?: { kind: string; currency?: string } | null;
   onClearFilter?: () => void;
 }) {
   const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh, paidOut, paidOutFailed } =
@@ -148,7 +148,7 @@ export function HoldingsScreen({
         : rows.filter(
             (row) =>
               row.holding.instrument.kind === filter.kind &&
-              row.holding.instrument.currency === filter.currency,
+              (filter.currency === undefined || row.holding.instrument.currency === filter.currency),
           );
     const copy = activeScheme === '' ? byKind : byKind.filter((row) => row.holding.instrument.scheme === activeScheme);
     copy.sort((a, b) => {
@@ -273,6 +273,8 @@ export function HoldingsScreen({
                         {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never
                         been valued, so this total is short by whatever they are worth. They are
                         absent rather than counted as zero, which would make it look complete.
+
+                        Record a value on the holding and it is counted.
                       </Caveat>
                     )}
                   </div>
@@ -296,6 +298,8 @@ export function HoldingsScreen({
                           )}
                           It is the sum of the costs that were recorded, and nothing has been made
                           up to fill the rest.
+
+                          {total.short > 0 && IMPORT_THE_FULL_STATEMENT}{total.short > 0 && total.missing > 0 && ' '}{total.missing > 0 && RECORD_THE_COST}
                         </Caveat>
                       )}
                     </Stat>
@@ -363,7 +367,7 @@ export function HoldingsScreen({
       <Card
         title={
           filter !== null
-            ? `${kindLabel(filter.kind)} in ${filter.currency} (${String(ordered.length)})`
+            ? `${kindLabel(filter.kind)}${filter.currency === undefined ? '' : ` in ${filter.currency}`} (${String(ordered.length)})`
             : activeScheme !== ''
               ? `${SCHEME_LABELS[activeScheme]} (${String(ordered.length)} of ${String(rows.length)})`
               : rows.length === 0
@@ -417,7 +421,8 @@ export function HoldingsScreen({
             {filter !== null && (
               <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
                 <Pill tone="neutral">
-                  {kindLabel(filter.kind)} · {filter.currency}
+                  {kindLabel(filter.kind)}
+                  {filter.currency === undefined ? '' : ` · ${filter.currency}`}
                 </Pill>
                 <span className="note">
                   {ordered.length === rows.length
@@ -640,6 +645,8 @@ function HoldingCard({
                 {peak.missingMonths.length > 0 && (
                   <Caveat tone="warn" label={`Why this ${String(peak.year)} peak is a lower bound`}>
                     <MissingMonths months={peak.missingMonths} />
+
+                    Record a reading for each of those months on the holdings that were held.
                   </Caveat>
                 )}
               </>
