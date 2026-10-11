@@ -416,6 +416,8 @@ this slice, so there is no nominee column or table and the waiver is plain "not 
 arithmetic; a policy number is **last four characters only** (`policy_last4`). The
 migration is `20261012120000`, with `supabase/tests/insurance_policy.test.sql`.
 
+**Built** (`20261012120000`, `src/domain/protection.ts`, `src/features/insurance`): the policy columns and the household setting; the Insurance screen with policies as editable rows, an add form with every column behind a "More details" fold, and the cover gap with every input shown; the liquid corpus as the second output of `fireCorpus`; the More slot in the bar; the Protection line and the renewal entry on the Overview. Taken while building: **"liquid" is the holdings left after a child's savings, a house deposit and the locked schemes** (PPF, SSY, NSC, KVP, SCSS, POMIS, PO time deposit), so an FD or RD counts and the emergency fund counts; other members' private holdings cannot be classified and are not in it, said on the screen. FIRE's own read-only list of loans and policies is unchanged and still the only place a loan's balance is set.
+
 *Done when:* the design's pgTAP tests pass for every verb across households (the
 existing `rls_role_reads.test.sql` already covers select); a policy with no
 linked holding contributes exactly 0 to net worth (assert the total); privacy mode
