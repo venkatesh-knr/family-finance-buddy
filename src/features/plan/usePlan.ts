@@ -8,13 +8,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  annualPlannedExpense,
-  type AnnualExpense,
-  type PlannedOutgoing,
-} from '../../domain/annual-expense.ts';
+import { type AnnualExpense } from '../../domain/annual-expense.ts';
 import { fireBaseYear, fireLadder, type LadderStep } from '../../domain/fire.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
+import { annualFromListing } from './annualFromListing.ts';
 import {
   addCategories,
   addCategory,
@@ -166,60 +163,10 @@ export function usePlan(householdId: string | null): PlanState & {
     }));
   }, [listing]);
 
-  const annual = useMemo<AnnualExpense | null>(() => {
-    if (listing === null) return null;
-
-    const outgoings: PlannedOutgoing[] = [];
-
-    for (const row of rows) {
-      // An archived category is out of the picker and out of the estimate. Its
-      // history stays; its plan does not, because nobody intends to spend it.
-      if (row.isArchived) continue;
-
-      const compulsory = row.nature === 'fixed';
-
-      // A category with neither figure is unplanned, and says so once rather
-      // than twice — otherwise every empty row would appear in that list at
-      // both cadences and drown the ones that matter.
-      if (row.monthly === null && row.yearly === null) {
-        outgoings.push({ label: row.name, amount: null, cadence: 'monthly', source: 'category', compulsory });
-        continue;
-      }
-      if (row.monthly !== null) {
-        outgoings.push({ label: row.name, amount: row.monthly.planned, cadence: 'monthly', source: 'category', compulsory });
-      }
-      if (row.yearly !== null) {
-        outgoings.push({ label: row.name, amount: row.yearly.planned, cadence: 'yearly', source: 'category', compulsory });
-      }
-    }
-
-    for (const liability of listing.liabilities) {
-      if (liability.isClosed) continue;
-      outgoings.push({
-        label: liability.name,
-        amount: liability.instalment,
-        cadence: liability.cadence,
-        source: 'liability',
-      });
-    }
-
-    for (const policy of listing.policies) {
-      if (policy.isLapsed) continue;
-      outgoings.push({
-        label: policy.name,
-        amount: policy.premium,
-        cadence: policy.cadence,
-        source: 'policy',
-      });
-    }
-
-    try {
-      return annualPlannedExpense(outgoings);
-    } catch {
-      // Mixed currencies. The screen shows the problem rather than a number.
-      return null;
-    }
-  }, [listing, rows]);
+  const annual = useMemo<AnnualExpense | null>(
+    () => (listing === null ? null : annualFromListing(listing)),
+    [listing],
+  );
 
   const ladder = useMemo<readonly LadderStep[]>(() => {
     if (annual === null) return [];

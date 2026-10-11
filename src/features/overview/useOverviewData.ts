@@ -47,6 +47,7 @@ import {
   NoHouseholdError,
   type HoldingListing,
   type PersonalHoldingTotal,
+  type PlanListing,
 } from '../../repo/types.ts';
 
 export function useOverviewData({
@@ -103,6 +104,8 @@ export function useOverviewData({
    * on the figure, as the private holdings already are.
    */
   const [plansFailed, setPlansFailed] = useState(false);
+  /** The plan the household's loans and policies come from, kept whole for the protection line. */
+  const [planListing, setPlanListing] = useState<PlanListing | null>(null);
   const [ratesFailed, setRatesFailed] = useState(false);
   // What deposits and bonds have to say: a maturity close by, a downgrade. Read apart from
   // the rest and its failure said, since a position that could not be read cannot warn.
@@ -144,6 +147,7 @@ export function useOverviewData({
       setRates(rateResult.status === 'fulfilled' ? rateResult.value : []);
       setRatesFailed(rateResult.status === 'rejected');
       setPlansFailed(planResult.status === 'rejected');
+      setPlanListing(planResult.status === 'fulfilled' ? planResult.value : null);
       setUnbalancedLoans(
         planResult.status === 'fulfilled'
           ? planResult.value.liabilities
@@ -471,8 +475,19 @@ export function useOverviewData({
         on,
       }),
     }));
+    // What could be had in an emergency, for the cover gap: the same holdings, classified once, so the
+    // Insurance screen does not define it a second time. Other members' private holdings arrive as one
+    // sum and cannot be classified, so they are not in it.
+    const liquid: NetWorth = netWorth({
+      assets: corpusTotals.map((t) => t.liquid),
+      debts: [],
+      base: display,
+      rates,
+      on,
+    });
     return {
       corpus,
+      liquid,
       excluded,
       /** Which holdings are earmarked, valued or not: a total of nothing is not the same as nothing earmarked. */
       earmarked,
@@ -553,5 +568,6 @@ export function useOverviewData({
     heroWarnings,
     worth,
     fire,
+    planListing,
   };
 }
