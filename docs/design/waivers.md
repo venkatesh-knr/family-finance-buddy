@@ -30,3 +30,12 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - PF-C11 — not built: the step-at-credit rule for PPF, SSY, NSC and KVP belongs to the balance sheet (build-plan step 6) — 2026-10-10
 - PF-C15 — half built: the cover half is asserted in tests/e2e/insurance.spec.ts, which does not carry the ID because the rule also names income, and the income ledger arrives with slice 6a (build-plan step 6a) — 2026-10-11
 - PF-C16 — not built: the Overview's stock and flow regions arrive with slice 6a — 2026-10-10
+
+## holdings.md
+
+- HD-I1 — not built: the grouped Holdings list is the Holdings redesign, which this file specifies and which lands on its own branch after the Overview reversals; the row shows the latest recorded value and the test lands with it — 2026-10-11
+- HD-I2 — not built: group subtotals arrive with the grouped list, and the test asserts them against the summary total per currency — 2026-10-11
+- HD-I3 — not built: a refused gain on a row arrives with the compact row — 2026-10-11
+- HD-I4 — not built: the filter in the URL arrives with the chips, and the Overview allocation row is the first link to it — 2026-10-11
+- HD-I5 — not built: one Add on the list arrives with the redesign; the per-card actions are the current screen — 2026-10-11
+- HD-I6 — not built: the detail view that takes its kind's shape arrives with the redesign — 2026-10-11
