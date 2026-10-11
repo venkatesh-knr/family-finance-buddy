@@ -17,7 +17,6 @@ import {
   addCategory,
   setFireSettings,
   addLiability,
-  addPolicy,
   archiveCategory,
   listPlan,
   renameCategory,
@@ -88,7 +87,6 @@ export function usePlan(householdId: string | null): PlanState & {
   setArchived: (categoryId: string, archived: boolean) => Promise<void>;
   rename: (categoryId: string, name: string) => Promise<void>;
   createLiability: (input: Parameters<typeof addLiability>[0]) => Promise<void>;
-  createPolicy: (input: Parameters<typeof addPolicy>[0]) => Promise<void>;
 } {
   const [listing, setListing] = useState<PlanListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -338,9 +336,6 @@ export function usePlan(householdId: string | null): PlanState & {
     },
     createLiability: async (input) => {
       await after(addLiability(input));
-    },
-    createPolicy: async (input) => {
-      await after(addPolicy(input));
     },
   };
 }

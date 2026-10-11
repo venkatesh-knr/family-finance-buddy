@@ -211,7 +211,6 @@ export function OverviewScreen({
     if (scope !== 'household' || planListing === null) return null;
     const active = planListing.policies.filter((policy) => !policy.isLapsed);
     if (active.length === 0) return null;
-    const annual = annualFromListing(planListing)?.total ?? null;
     const surrenderValues = new Map<string, Money>();
     const latest = new Map<string, { date: string; amount: Money }>();
     for (const v of valuations) {
@@ -225,7 +224,7 @@ export function OverviewScreen({
         policies: planListing.policies,
         liabilities: planListing.liabilities,
         surrenderValues,
-        annualExpenses: annual !== null && annual.minor > 0n ? annual : null,
+        annual: annualFromListing(planListing),
         years: planListing.household.coverDependencyYears,
         liquid: fire.liquid.ok ? fire.liquid.amount : null,
         base: planListing.household.baseCurrency,
@@ -922,18 +921,31 @@ export function OverviewScreen({
           <div data-testid="protection-line">
             <dl>
               <Stat label="Protection">
-                {protection.facts.termCover !== null && protection.facts.termCount > 0 ? (
+                {protection.facts.termCover !== null &&
+                protection.facts.termCount > 0 &&
+                protection.facts.termCoverUnknown === 0 ? (
                   <>
                     <Amount value={protection.facts.termCover} privacy={privacy} compact /> <Unit>term cover in force</Unit>
                   </>
+                ) : protection.facts.termCount > 0 && protection.facts.termCoverUnknown > 0 ? (
+                  // A cover nobody recorded is not a cover of nothing, so no figure is printed for it.
+                  <Unit>
+                    {String(protection.facts.termCoverUnknown)} term{' '}
+                    {protection.facts.termCoverUnknown === 1 ? 'policy has' : 'policies have'} no cover recorded
+                  </Unit>
                 ) : (
-                  <Unit>{String(protection.active)} {protection.active === 1 ? 'policy' : 'policies'}, no term cover recorded</Unit>
+                  <Unit>
+                    {String(protection.active)} {protection.active === 1 ? 'policy' : 'policies'}, no term cover
+                    recorded
+                  </Unit>
                 )}
               </Stat>
             </dl>
             <p className="note mt-1.5">
               {protection.facts.gap === null ? (
                 <>The cover gap cannot be worked out yet: {protection.facts.gapRefusedBecause}</>
+              ) : protection.facts.termCoverUnknown > 0 ? (
+                <>The cover gap is not stated: the cover in force is not all recorded, so a shortfall would be a guess.</>
               ) : protection.facts.gap.short.minor > 0n ? (
                 <>
                   Short by <Amount value={protection.facts.gap.short} privacy={privacy} compact /> on the household&rsquo;s own
@@ -941,6 +953,14 @@ export function OverviewScreen({
                 </>
               ) : (
                 <>No gap on the household&rsquo;s own figures.</>
+              )}
+              {protection.facts.loansWithoutBalance > 0 && protection.facts.termCoverUnknown === 0 && (
+                <>
+                  {' '}
+                  {String(protection.facts.loansWithoutBalance)}{' '}
+                  {protection.facts.loansWithoutBalance === 1 ? 'loan has' : 'loans have'} no balance recorded, so this
+                  may be higher.
+                </>
               )}{' '}
               <button type="button" className="note underline" onClick={onOpenInsurance}>
                 Open Insurance
@@ -1067,13 +1087,7 @@ export function OverviewScreen({
               {protection !== null && protection.facts.renewals.length > 0 && (
                 <Attention
                   tone={protection.facts.renewals.some((r) => r.overdue) ? 'due' : 'gap'}
-                  headline={
-                    <>
-                      {protection.facts.renewals.length}{' '}
-                      {protection.facts.renewals.length === 1 ? 'policy renews' : 'policies renew'} within thirty
-                      days{protection.facts.renewals.some((r) => r.overdue) ? ', or are past their date' : ''}
-                    </>
-                  }
+                  headline={<>{renewalHeadline(protection.facts.renewals)}</>}
                   names={protection.facts.renewals.map(
                     (r) =>
                       `${r.name} — ${formatIsoDate(r.renewalOn)}, ${r.overdue ? 'past its date' : daysPhrase(r.daysLeft)}`,
@@ -1221,4 +1235,18 @@ export function OverviewScreen({
       </div>
     </div>
   );
+}
+
+/** "2 policies are past their renewal date and 1 renews within thirty days": each count with its own verb. */
+function renewalHeadline(renewals: readonly { overdue: boolean }[]): string {
+  const overdue = renewals.filter((r) => r.overdue).length;
+  const coming = renewals.length - overdue;
+  const parts: string[] = [];
+  if (overdue > 0) {
+    parts.push(`${String(overdue)} ${overdue === 1 ? 'policy is' : 'policies are'} past ${overdue === 1 ? 'its' : 'their'} renewal date`);
+  }
+  if (coming > 0) {
+    parts.push(`${String(coming)} ${coming === 1 ? 'policy renews' : 'policies renew'} within thirty days`);
+  }
+  return parts.join(' and ');
 }
