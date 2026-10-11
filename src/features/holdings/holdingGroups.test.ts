@@ -51,6 +51,17 @@ describe("HD-I2 — group subtotals add up to the summary total, per currency, a
     expect(result.totals.map((t) => t.currency).sort()).toEqual(['INR', 'USD']);
   });
 
+  it('gives a filtered group its share of the whole portfolio, not of itself', () => {
+    const filtered = groupHoldings({ holdings: sample, base: 'INR', filter: { kind: 'deposit' } });
+    const share = filtered.groups[0]?.shares.find((s) => s.currency === 'INR')?.share ?? 0;
+    expect(share).toBeCloseTo(0.18, 1);
+    expect(share).toBeLessThan(0.5);
+    // What it is a share of is the unfiltered portfolio, and the summary can say so.
+    expect(filtered.portfolio.find((t) => t.currency === 'INR')?.value.minor).toBe(
+      result.totals.find((t) => t.currency === 'INR')?.value.minor,
+    );
+  });
+
   it('gives each group its share of its own currency\'s total', () => {
     const funds = result.groups.find((g) => g.kind === 'mutual_fund');
     const share = funds?.shares.find((s) => s.currency === 'INR')?.share ?? 0;

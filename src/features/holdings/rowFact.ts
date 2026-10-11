@@ -40,3 +40,22 @@ export function rowFact(options: {
 
   return [symbol, `${unitsText} units`].filter((p): p is string => p !== null && p !== '').join(' · ');
 }
+
+/**
+ * The term a deposit is in the middle of, from its start to its end, and what it was lent for: the first term until
+ * the bank has renewed it, and then the latest renewal that has begun. A bond has one life and its face value.
+ *
+ * Read for the holding's own screen, which draws how far through the term it is: a bar over the first term for a
+ * deposit that has been renewed twice would show a term fully passed beside a maturity that is a year off.
+ */
+export function currentTerm(
+  position: FixedIncomePosition,
+  today: string,
+): { readonly start: string; readonly end: string; readonly principal: FixedIncomePosition['principal'] } {
+  if (position.kind === 'bond') return { start: position.start, end: position.maturity, principal: position.principal };
+  const begun = [...position.renewals].filter((r) => r.start <= today).sort((a, b) => (a.start < b.start ? -1 : 1));
+  const latest = begun[begun.length - 1];
+  return latest === undefined
+    ? { start: position.start, end: position.maturity, principal: position.principal }
+    : { start: latest.start, end: latest.maturity, principal: latest.principal };
+}

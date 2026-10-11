@@ -16,7 +16,7 @@ import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { Button, Card, Problem } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { splitFundName } from './fundName.ts';
-import { groupHoldings, type Filter, type ListHolding } from './holdingGroups.ts';
+import { groupHoldings, matchesFilter, type Filter, type ListHolding } from './holdingGroups.ts';
 import { AddHolding, RefreshPrices } from './holdingParts.tsx';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
@@ -55,6 +55,9 @@ export function HoldingsScreen({
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
 
   const base = listing?.household.baseCurrency ?? 'INR';
+  const filterKind = filter.kind;
+  const filterEarmark = filter.earmark;
+  const filterCurrency = filter.currency;
 
   /** Per currency, on the Overview's terms: never summed across currencies; a holding nobody has read is absent. */
   const totals = useMemo(() => {
@@ -63,6 +66,28 @@ export function HoldingsScreen({
       // Paid out: the money is back in an account, so it is not part of what is held. The same rule as the
       // Overview's net worth, or the two screens would disagree about one household.
       if (paidOut.has(row.holding.id) || row.unitsHeld === 0n) continue;
+      // The same holdings the figure above it is made from. A filtered summary that took its return and its caveat from
+      // the whole portfolio put three funds' partial statements under a deposit's heading.
+      if (
+        !matchesFilter(
+          {
+            id: row.holding.id,
+            kind: row.holding.instrument.kind,
+            currency: row.holding.instrument.currency,
+            earmark: row.holding.earmark,
+            latest: null,
+            unitsHeld: row.unitsHeld,
+            paidOutOn: null,
+          },
+          {
+            ...(filterKind === undefined ? {} : { kind: filterKind }),
+            ...(filterEarmark === undefined ? {} : { earmark: filterEarmark }),
+            ...(filterCurrency === undefined ? {} : { currency: filterCurrency }),
+          },
+        )
+      ) {
+        continue;
+      }
       const currency = row.holding.instrument.currency;
       const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0, short: 0, missing: 0 };
       if (row.latest === null) {
@@ -78,7 +103,7 @@ export function HoldingsScreen({
       byCurrency.set(currency, bucket);
     }
     return [...byCurrency.entries()].map(([currency, b]) => ({ currency, ...b }));
-  }, [rows, paidOut]);
+  }, [rows, paidOut, filterKind, filterEarmark, filterCurrency]);
 
   const listHoldings = useMemo<readonly ListHolding[]>(
     () =>
@@ -325,7 +350,13 @@ function AddPanel({
           {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' ? {} : { initialKind: initialKind as InstrumentKind })}
         />
       ) : (
-        <TermsForm listing={listing} mode={{ kind: 'new' }} onCancel={onDone} onDone={onDone} />
+        <TermsForm
+          listing={listing}
+          mode={{ kind: 'new' }}
+          {...(initialKind === 'bond' ? { initialKind: 'bond' as const } : {})}
+          onCancel={onDone}
+          onDone={onDone}
+        />
       )}
     </div>
   );

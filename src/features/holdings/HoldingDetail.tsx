@@ -7,11 +7,12 @@ import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
 import { kindLabel } from '../../ui/labels.ts';
-import { Caveat, Card, Pill, RowAction, Unit } from '../../ui/primitives.tsx';
+import { Amount, Caveat, Card, Pill, RowAction, Unit } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
 import { EditHolding } from './EditHolding.tsx';
 import { FixedIncome } from './FixedIncome.tsx';
 import { splitFundName } from './fundName.ts';
+import { currentTerm } from './rowFact.ts';
 import { ArchiveHolding, CurrencyOptions, MissingMonths, QuotedValue, RecordReading } from './holdingParts.tsx';
 import type { FixedIncomeFacts } from './useFixedIncomeFacts.ts';
 import type { useHoldings } from './useHoldings.ts';
@@ -70,6 +71,8 @@ export function HoldingDetail({
   const isFixed = kind === 'deposit' || kind === 'bond';
   const name = splitFundName(holding.instrument.name);
   const facts = fixed.get(holdingId);
+  // Paid out, or sold out: left out of the totals from the day it was, as net worth leaves it out.
+  const ended = hook.paidOut.has(holdingId) || row.unitsHeld === 0n;
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -128,7 +131,7 @@ export function HoldingDetail({
       )}
 
       {/* The value card: the latest recorded reading, the figure net worth counts (HD-I1). */}
-      <Card lift title="In net worth" aside={<span className="note">latest reading</span>}>
+      <Card lift title={ended ? 'Last reading' : 'In net worth'} aside={<span className="note">latest reading</span>}>
         <div
           className="figure"
           data-testid="detail-value"
@@ -137,10 +140,18 @@ export function HoldingDetail({
           {latest === null ? (
             <Unit>none yet</Unit>
           ) : (
-            formatMoney(money(latest.amountMinor, currency), { privacy, compact: true })
+            <Amount value={money(latest.amountMinor, currency)} privacy={privacy} compact />
           )}
         </div>
         {latest !== null && <p className="note mt-1">reading · {formatIsoDate(latest.date)}</p>}
+        {/* A holding that has paid out or been sold out is not in net worth: the screen must not say it is. */}
+        {ended && (
+          <p className="note mt-1">
+            {hook.paidOut.has(holdingId)
+              ? 'It has paid out, so it is no longer counted in net worth or in the totals.'
+              : 'No units are left, so it is no longer counted in net worth or in the totals.'}
+          </p>
+        )}
 
         {row.quoted !== null && (
           <QuotedValue
@@ -184,7 +195,13 @@ export function HoldingDetail({
 
       {isFixed ? (
         <Card title="Term" aside={facts === undefined ? undefined : <span className="note">worked out from the terms</span>}>
-          {facts !== undefined && <TermProgress start={facts.position.start} end={facts.position.maturity} today={today} />}
+          {facts !== undefined && (
+            <TermProgress
+              start={currentTerm(facts.position, today).start}
+              end={facts.view.ok && facts.view.kind === 'deposit' && facts.view.nextMaturity !== null ? facts.view.nextMaturity : currentTerm(facts.position, today).end}
+              today={today}
+            />
+          )}
           <FixedIncome
             listing={listing}
             privacy={privacy}

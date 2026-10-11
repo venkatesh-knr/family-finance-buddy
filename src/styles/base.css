@@ -1730,7 +1730,7 @@
 
   .chip {
     background: var(--surface-2);
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: var(--radius-pill);
     color: var(--ink-2);
     font-size: 0.8125rem;

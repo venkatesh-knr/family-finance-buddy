@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FixedIncomePosition, FixedIncomeView } from '../../domain/fixed-income.ts';
 import { money } from '../../lib/money.ts';
-import { rowFact } from './rowFact.ts';
+import { currentTerm, rowFact } from './rowFact.ts';
 
 const inr = (rupees: number) => money(BigInt(Math.round(rupees * 100)), 'INR');
 
@@ -125,5 +125,39 @@ describe('rowFact — the one class-specific fact a row carries', () => {
 
   it('says nothing but the units for a deposit or bond with no terms recorded', () => {
     expect(rowFact({ kind: 'deposit', symbol: null, unitsText: '1', position: null, view: null, institution: null })).toBe('terms not recorded');
+  });
+});
+
+describe('currentTerm — what a deposit is partway through, and what it was lent', () => {
+  const renewal = (start: string, maturity: string, principal: number) => ({
+    start,
+    maturity,
+    principal: inr(principal),
+    ratePct: '7.000',
+    compounding: 'quarterly' as const,
+  });
+
+  it('is the first term for a deposit that has not been renewed', () => {
+    const term = currentTerm(deposit(), '2026-10-12');
+    expect(term).toEqual({ start: '2026-02-01', end: '2027-07-31', principal: inr(100000) });
+  });
+
+  it('is the latest renewal that has begun, with its own principal, for a renewed deposit', () => {
+    const position = deposit({
+      start: '2024-01-01',
+      maturity: '2025-01-01',
+      renewals: [renewal('2025-01-01', '2026-01-01', 107500), renewal('2026-01-01', '2027-01-01', 115000)],
+    });
+    expect(currentTerm(position, '2026-10-12')).toEqual({ start: '2026-01-01', end: '2027-01-01', principal: inr(115000) });
+  });
+
+  it('does not look at a renewal that has not begun yet', () => {
+    const position = deposit({ start: '2024-01-01', maturity: '2025-01-01', renewals: [renewal('2027-01-01', '2028-01-01', 1)] });
+    expect(currentTerm(position, '2024-06-01').start).toBe('2024-01-01');
+  });
+
+  it('is the whole life of a bond, at its face value', () => {
+    const bond = deposit({ kind: 'bond', principal: inr(100000), start: '2024-01-01', maturity: '2028-11-30' });
+    expect(currentTerm(bond, '2026-10-12')).toEqual({ start: '2024-01-01', end: '2028-11-30', principal: inr(100000) });
   });
 });

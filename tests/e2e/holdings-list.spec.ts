@@ -86,3 +86,26 @@ test('a row is compact: about a glance, and a screen of eight holdings is not se
   // Eight holdings took about 6.7 phone screens of inline detail; the list is a handful.
   expect(total / viewport).toBeLessThan(5);
 });
+
+test('a filtered summary describes the filter: its share of the portfolio, and none of another class\'s caveat', async ({
+  page,
+}) => {
+  await onHoldings(page, '#/holdings?kind=deposit');
+  const summary = page.locator('.card').first();
+  await expect(page.getByTestId('filter-share')).toContainText(/\d+\.\d% of the INR portfolio/);
+  // The partial-statement positions are mutual funds: they are not the deposits' to carry.
+  await expect(summary).not.toContainText('return not shown');
+  const share = Number(/(\d+\.\d)%/.exec(await page.getByTestId('filter-share').innerText())?.[1] ?? '100');
+  expect(share, 'deposits are a part of the portfolio and not all of it').toBeLessThan(100);
+});
+
+test('HD-I6 — a deposit shows what was lent, and a bond filter opens Add as a bond', async ({ page }) => {
+  await onHoldings(page, '#/holdings?kind=deposit');
+  await page.locator('.holding-row').first().locator('a.holding-link').click();
+  await expect(page.getByTestId('term-progress')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('main').getByText('Principal', { exact: true })).toBeVisible();
+
+  await onHoldings(page, '#/holdings?kind=bond');
+  await page.getByRole('button', { name: 'Add a bond' }).click();
+  await expect(page.getByLabel('Face value')).toBeVisible();
+});

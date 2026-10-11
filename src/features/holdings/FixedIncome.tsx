@@ -38,6 +38,7 @@ import type {
 } from '../../repo/types.ts';
 import { Button, Card, Caveat, EditButton, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { COMPOUNDING_LABEL, FREQUENCY_LABEL, REPAY_LABEL, RenewalForm, TermsForm } from './FixedIncomeForms.tsx';
+import { currentTerm } from './rowFact.ts';
 
 const REFUSAL: Record<FixedIncomeRefusal, string> = {
   'before-start': 'It has not started yet, so there is nothing to value.',
@@ -565,6 +566,9 @@ function PositionRow({
         */
         <>
           <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
+            <Stat label={position.kind === 'bond' ? 'Face value' : 'Principal'}>
+              {formatMoney(currentTerm(position, today).principal, { privacy })}
+            </Stat>
             <Stat label={view.kind === 'bond' && view.repay === 'payout' ? 'Repaid at par' : 'Paid out'}>
               {formatMoney(view.value, { privacy })}
             </Stat>
@@ -583,6 +587,10 @@ function PositionRow({
         </>
       ) : (
         <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
+          {/* What was lent, which the terms begin with (HD-I6): the latest renewal's, for a deposit that has been renewed. */}
+          <Stat label={position.kind === 'bond' ? 'Face value' : 'Principal'}>
+            {formatMoney(currentTerm(position, today).principal, { privacy })}
+          </Stat>
           <Stat label={view.kind === 'bond' && view.repay === 'payout' ? 'Value at par' : 'Value today'}>
             {formatMoney(view.value, { privacy })}
           </Stat>

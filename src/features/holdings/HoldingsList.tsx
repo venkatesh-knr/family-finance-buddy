@@ -140,6 +140,11 @@ export function Summary({
           </Caveat>
         )}
       </div>
+      {filtered && lead !== undefined && (
+        <p className="note mt-1" data-testid="filter-share">
+          {ShareOfPortfolio(lead, grouped)}
+        </p>
+      )}
       {own !== undefined && abroad.length > 0 && (
         <p className="note mt-1">
           and{' '}
@@ -201,19 +206,25 @@ export function FixedExtras({
   privacy: boolean;
 }) {
   const live = rows.flatMap((r) => (r.view.ok && !r.view.matured ? [{ name: r.name, view: r.view }] : []));
-  const interest = live.reduce(
-    (acc, r) => (r.view.kind === 'deposit' ? { minor: acc.minor + r.view.interestToDate.minor, currency: r.view.interestToDate.currency } : acc),
-    { minor: 0n, currency: '' },
-  );
+  // Per currency, never added across: paise and cents are not one quantity, and a foreign deposit is not summed into
+  // the rupee figure (HD-I2).
+  const interestBy = new Map<string, bigint>();
+  for (const r of live) {
+    if (r.view.kind !== 'deposit') continue;
+    const c = r.view.interestToDate.currency;
+    interestBy.set(c, (interestBy.get(c) ?? 0n) + r.view.interestToDate.minor);
+  }
   const next = live
     .flatMap((r) => (r.view.kind === 'deposit' && r.view.nextMaturity !== null ? [{ name: r.name, on: r.view.nextMaturity, days: r.view.daysToMaturity }] : []))
     .sort((a, b) => (a.on < b.on ? -1 : 1))[0];
-  if (interest.currency === '' && next === undefined) return null;
+  if (interestBy.size === 0 && next === undefined) return null;
   return (
     <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5" data-testid="fixed-extras">
-      {interest.currency !== '' && (
-        <Stat label="Interest so far">{formatMoney(money(interest.minor, interest.currency), { privacy })}</Stat>
-      )}
+      {[...interestBy.entries()].map(([currency, minor]) => (
+        <Stat key={currency} label={interestBy.size > 1 ? `Interest so far, ${currency}` : 'Interest so far'}>
+          {formatMoney(money(minor, currency), { privacy })}
+        </Stat>
+      ))}
       {next !== undefined && (
         <Stat label="Next to mature">
           {formatIsoDate(next.on)}{' '}
@@ -225,6 +236,16 @@ export function FixedExtras({
       )}
     </dl>
   );
+}
+
+function ShareOfPortfolio(
+  lead: GroupedHoldings['totals'][number],
+  grouped: GroupedHoldings,
+): React.ReactNode {
+  const whole = grouped.portfolio.find((p) => p.currency === lead.currency);
+  if (whole === undefined || whole.value.minor === 0n) return null;
+  const share = (Number(lead.value.minor) / Number(whole.value.minor)) * 100;
+  return `${share.toFixed(1)}% of the ${lead.currency} portfolio`;
 }
 
 function GroupShares(grouped: GroupedHoldings, base: string): string {
@@ -315,7 +336,7 @@ function ListRow({ row, privacy }: { row: RowModel; privacy: boolean }) {
       </span>
       <span className="holding-figures">
         <span className="holding-value num">
-          {row.value === null ? <Unit>not valued</Unit> : formatMoney(row.value, { privacy, compact: true })}
+          {row.value === null ? <Unit>not valued</Unit> : <Amount value={row.value} privacy={privacy} compact />}
         </span>
         <GainLine gain={row.gain} privacy={privacy} />
       </span>

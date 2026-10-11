@@ -45,6 +45,8 @@ export interface GroupedHoldings {
   readonly groups: readonly Group[];
   /** No units left, or matured and paid out. Never in a subtotal. */
   readonly ended: readonly ListHolding[];
+  /** The whole live portfolio per currency, filter or no, which a filtered group's share is a share of. */
+  readonly portfolio: readonly { readonly currency: string; readonly value: Money }[];
   /** The summary: what the groups shown add up to, per currency. */
   readonly totals: readonly { readonly currency: string; readonly value: Money; readonly unvalued: number }[];
   readonly chips: {
@@ -58,7 +60,8 @@ export function isEnded(holding: ListHolding): boolean {
   return holding.paidOutOn !== null || holding.unitsHeld === 0n;
 }
 
-function matches(holding: ListHolding, filter: Filter): boolean {
+/** Whether a holding is one the filter asks for. */
+export function matchesFilter(holding: ListHolding, filter: Filter): boolean {
   if (filter.kind !== undefined && filter.kind !== '' && holding.kind !== filter.kind) return false;
   if (filter.earmark !== undefined && filter.earmark !== '' && holding.earmark !== filter.earmark) return false;
   if (filter.currency !== undefined && filter.currency !== '' && holding.currency !== filter.currency) return false;
@@ -83,7 +86,7 @@ export function groupHoldings(options: {
   const { holdings, base, filter } = options;
 
   const live = holdings.filter((h) => !isEnded(h));
-  const shown = holdings.filter((h) => matches(h, filter));
+  const shown = holdings.filter((h) => matchesFilter(h, filter));
   const shownLive = shown.filter((h) => !isEnded(h));
 
   // Groups, by class, over what is shown.
@@ -99,6 +102,13 @@ export function groupHoldings(options: {
     totalByCurrency.set(h.currency, entry);
   }
 
+  // What a share is a share of: everything live in that currency, not only what the filter lets through. A filtered
+  // group read 100% of itself, which told nobody anything.
+  const portfolioByCurrency = new Map<string, bigint>();
+  for (const h of live) {
+    if (h.latest !== null) portfolioByCurrency.set(h.currency, (portfolioByCurrency.get(h.currency) ?? 0n) + h.latest.minor);
+  }
+
   const groups: Group[] = [...byKind.entries()].map(([kind, rows]) => {
     const subtotals = subtotalsOf(rows);
     return {
@@ -106,7 +116,7 @@ export function groupHoldings(options: {
       holdings: rows,
       subtotals,
       shares: subtotals.map((s) => {
-        const total = totalByCurrency.get(s.currency)?.value ?? 0n;
+        const total = portfolioByCurrency.get(s.currency) ?? 0n;
         return { currency: s.currency, share: total === 0n ? 0 : Number(s.minor) / Number(total) };
       }),
       unvalued: rows.filter((h) => h.latest === null).length,
@@ -135,6 +145,7 @@ export function groupHoldings(options: {
 
   return {
     groups,
+    portfolio: [...portfolioByCurrency.entries()].map(([currency, value]) => ({ currency, value: money(value, currency) })),
     ended: shown.filter(isEnded),
     totals: [...totalByCurrency.entries()].map(([currency, t]) => ({
       currency,
