@@ -22,47 +22,33 @@
  * all.
  *
  * "A router arrives when a URL has to be shareable" — that day is not here.
- * This is not a router: it maps one hash to one of eight names and refuses
- * anything else.
+ * This is not a router: it maps one hash to one of ten names and refuses
+ * anything else. The hash can carry filters after a question mark
+ * (`#/holdings?kind=deposit`, see `route.ts`), which is how a filtered list is
+ * a link and the back button undoes it.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AppScreen } from '../domain/access.ts';
+import { hashFor, parseHash, type Route } from './route.ts';
 
 export type Screen = AppScreen;
 
-const SCREEN_NAMES: readonly Screen[] = [
-  'overview',
-  'summary',
-  'expenses',
-  'holdings',
-  'tax',
-  'fire',
-  'insurance',
-  'more',
-  'profile',
-  'settings',
-];
-
-/** The screen the current URL names, or the default. Never trusts the hash. */
-function readHash(): Screen {
-  const raw = window.location.hash.replace(/^#\/?/, '');
-  return (SCREEN_NAMES as readonly string[]).includes(raw) ? (raw as Screen) : 'expenses';
-}
+const here = (): Route => parseHash(typeof window === 'undefined' ? '' : window.location.hash);
 
 export function useScreen(): {
   screen: Screen;
-  setScreen: (next: Screen) => void;
+  /** The filters in the URL: empty on every screen but a filtered Holdings. */
+  params: URLSearchParams;
+  setScreen: (next: Screen, filters?: Readonly<Record<string, string | undefined>>) => void;
 } {
-  const [screen, setScreenState] = useState<Screen>(() =>
-    typeof window === 'undefined' ? 'expenses' : readHash(),
-  );
+  const [route, setRoute] = useState<Route>(here);
 
-  // Back and forward. The browser has already changed the URL by the time this
-  // fires, so the hash is the truth and the state follows it.
+  // Back and forward, and a link that only changes the hash. The browser has already changed the URL by the
+  // time this fires, so the hash is the truth and the state follows it.
   useEffect(() => {
     const onPop = () => {
-      setScreenState(readHash());
+      setRoute(here());
     };
     window.addEventListener('hashchange', onPop);
     return () => {
@@ -70,16 +56,17 @@ export function useScreen(): {
     };
   }, []);
 
-  const setScreen = useCallback((next: Screen) => {
+  const setScreen = useCallback((next: Screen, filters: Readonly<Record<string, string | undefined>> = {}) => {
+    const hash = hashFor(next, filters);
     // Choosing the screen you are already on should not stack a history entry
     // that Back then has to be pressed twice to escape.
-    if (readHash() === next) {
-      setScreenState(next);
+    if (window.location.hash === hash) {
+      setRoute(here());
       return;
     }
-    window.location.hash = `#/${next}`;
-    setScreenState(next);
+    window.location.hash = hash;
+    setRoute(parseHash(hash));
   }, []);
 
-  return { screen, setScreen };
+  return { screen: route.screen, params: route.params, setScreen };
 }

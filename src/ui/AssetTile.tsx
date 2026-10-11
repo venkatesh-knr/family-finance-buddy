@@ -16,11 +16,11 @@
 import type { CSSProperties } from 'react';
 import { GLYPHS, GLYPH_STROKE, assetClass, classColour } from './assetClass.ts';
 
-export function AssetTile({ kind }: { kind: string }) {
+export function AssetTile({ kind, compact = false }: { kind: string; compact?: boolean }) {
   const spec = assetClass(kind);
   return (
     <span
-      className="asset-tile"
+      className={compact ? 'asset-tile asset-tile-compact' : 'asset-tile'}
       aria-hidden="true"
       style={{ '--tile': classColour(spec) } as CSSProperties}
     >

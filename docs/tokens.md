@@ -211,7 +211,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 
 | Role | Size | Weight | Face | Notes |
 |---|---|---|---|---|
-| Hero figure (net worth) | `clamp(23px, 5vw, 34px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.02em`. Lowered from `clamp(32px, 6vw, 48px)`: at 32px a lakh figure with a symbol filled a 375px screen edge to edge, and a number that large reads as a headline rather than a fact. |
+| Hero figure (net worth) | `clamp(32px, 11.3vw, 48px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.025em`. 44px at a 390px phone, which is what `vibrant-canvas.html` draws and what the owner chose, with the magnitude suffix at 0.6 of it. It was lowered to `clamp(23px, 5vw, 34px)` because a lakh figure with a symbol filled a 375px screen edge to edge; the floor and the vw term are why it does not now, and `text-size.spec.ts` holds the Overview to no sideways scroll at 200%. |
 | Page title | 22px | 500 | display | `-.01em` |
 | Section title (doc) | 25–30px | 500 | display | `text-wrap:balance` |
 | Card title | 14.5px | 600 | ui | |

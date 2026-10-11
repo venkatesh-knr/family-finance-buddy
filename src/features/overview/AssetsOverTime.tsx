@@ -18,6 +18,11 @@ import { formatMoney, money } from '../../lib/money.ts';
 import { Card, Caveat } from '../../ui/primitives.tsx';
 import { lineChart, monthLabel, type ChartFrame } from './chartGeometry.ts';
 
+/** "1 holding" / "3 holdings". The names are on the reading-gaps card below; a sentence of fund names is not a sentence. */
+function holdings(count: number): string {
+  return count === 1 ? '1 holding' : `${String(count)} holdings`;
+}
+
 /**
  * The width the container has, and the root font size the frame is measured in.
  *
@@ -43,11 +48,6 @@ export function useMeasure(present: boolean): { ref: React.RefObject<HTMLDivElem
     };
   }, [present]);
   return { ref, width: size.width, rem: size.rem };
-}
-
-/** "1 holding" / "3 holdings". The names are on the reading-gaps card below; a sentence of fund names is not a sentence. */
-function holdings(count: number): string {
-  return count === 1 ? '1 holding' : `${String(count)} holdings`;
 }
 
 export function AssetsOverTime({
@@ -84,8 +84,9 @@ export function AssetsOverTime({
     };
   }, [history, width, rem]);
 
-  // Nothing to draw a history of: no card, not an empty one.
-  if (!history.ok && history.reason === 'nothing') return null;
+  // No line to draw, for any reason: no card, not an empty one. Why there is none is a muted line under the net
+  // worth (`historyAbsence`), where the figure is, and not a second card saying so.
+  if (!history.ok) return null;
 
   const amount = (minor: number): string =>
     formatMoney(money(BigInt(Math.round(minor)), display), { privacy, compact: true });
@@ -98,22 +99,6 @@ export function AssetsOverTime({
       draw from, so this is not net worth.
     </Caveat>
   );
-
-  if (!history.ok) {
-    let words: string;
-    if (history.reason === 'short') {
-      words = 'There is a line to draw once holdings have been read in two different months.';
-    } else if (history.reason === 'unread') {
-      words = `${holdings(history.holdingIds.length)} ${history.holdingIds.length === 1 ? 'has' : 'have'} not been read yet, so there is no total to draw a history of.`;
-    } else {
-      words = `No ${history.missing.map((m) => `${m.base} to ${m.quote}`).join(', ')} rate is recorded, so this cannot be drawn in ${display}.`;
-    }
-    return (
-      <Card title="Assets over time" aside={heading}>
-        <p className="note">{words}</p>
-      </Card>
-    );
-  }
 
   const first = history.points[0];
   const last = history.points[history.points.length - 1];

@@ -31,6 +31,8 @@ import {
   shortPositions as shortPositionsPhrase,
   costMissing as costMissingPhrase,
   COST_MISSING_REFUSED_BECAUSE,
+  IMPORT_THE_FULL_STATEMENT,
+  RECORD_THE_COST,
 } from '../holdings/history.ts';
 import { addRate } from '../../repo/rates.ts';
 import { recordComputedReadings } from '../../repo/fixedIncome.ts';
@@ -46,11 +48,13 @@ import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { insuranceFacts } from '../insurance/insuranceFacts.ts';
 import { annualFromListing } from '../plan/annualFromListing.ts';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
+import { historyAbsence } from './historyAbsence.ts';
 import { Field } from '../../ui/primitives.tsx';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney, money, percentOfCost, type Money } from '../../lib/money.ts';
 import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { AssetTile } from '../../ui/AssetTile.tsx';
+import { hashFor } from '../../app/route.ts';
 import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 
@@ -91,7 +95,6 @@ export function OverviewScreen({
   privacy,
   householdId,
   displayCurrency,
-  onOpenHoldings,
   onOpenInsurance,
 }: {
   privacy: boolean;
@@ -114,7 +117,6 @@ export function OverviewScreen({
    * looks like a row and does nothing is worse than one that plainly is not a
    * link.
    */
-  onOpenHoldings: (filter: { kind: string; currency: string }) => void;
   /** The Protection line is a link: it opens the screen that has the arithmetic. */
   onOpenInsurance: () => void;
 }) {
@@ -183,6 +185,7 @@ export function OverviewScreen({
     shownUnbalanced,
     hiddenAssets,
     heroWarnings,
+    heroActionable,
     worth,
     fire,
     planListing,
@@ -343,69 +346,11 @@ export function OverviewScreen({
   }
   if (listing === null) return null;
 
-  return (
-    /*
-      One column on a phone, in the order the cards are written. From 1024px two
-      columns, placed explicitly so the order a phone reads does not change:
-      net worth, the assets and the allocation on the left; the line and what
-      needs attention on the right. Each block keeps its own height, and a
-      wrapper with nothing in it takes no room.
-    */
-    <div className="flex flex-col gap-4.5 lg:grid lg:grid-cols-2 lg:items-start">
-      {problem !== null && (
-        <div className="lg:col-span-2">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-
-      {/*
-        Net worth first, and the only hero figure on the screen.
-
-        docs/tokens.md §3 names net worth as the hero, and a hero only works if
-        one figure per screen uses that step: with three of them the person
-        opening the app had to read all three to find out how they were doing.
-
-        Assets used to sit above it. That was a fair answer to a real problem —
-        the first thing on the screen was a red paragraph explaining why there
-        was no total, printed above the figures that did exist — but the refusal
-        is a mark on the figure now, not a paragraph in place of one, so the
-        reason is gone. When there is still no total the hero slot carries the
-        per-currency figures with the refusal marked on them, exactly as before,
-        and the Assets card below carries the same figures as stat tiles.
-
-        The Household / Mine switch is here because it governs the whole screen, not
-        a card. There is no privacy switch: the top bar has the one, and two
-        controls for one state is the problem the currency control was folded to
-        avoid.
-      */}
-      <div className="lg:col-start-1 lg:row-start-1">
-        <Card
-          lift
-          title="Net worth"
-          aside={
-            <span className="flex flex-wrap items-center gap-2.5">
-              {/*
-                Two questions people ask separately — "are we on track" and
-                "what is mine" — so two answers rather than arithmetic done in
-                a head. A group of pressed buttons, not tabs: nothing here is a
-                panel, and an incomplete tab pattern announces a promise it does
-                not keep.
-              */}
-              <span className="segmented" role="group" aria-label="Whose figures">
-                {(['household', 'mine'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={scope === option}
-                    onClick={() => {
-                      setScope(option);
-                    }}
-                  >
-                    {option === 'household' ? 'Household' : 'Mine'}
-                  </button>
-                ))}
-              </span>
-              {asOf === null ? (
+  // Under the figure and not beside the label (docs/design/vibrant-canvas.html, Overview): the date the figure is
+  // as at, the currency it is read in, and what net worth is, said once, on the figure it qualifies.
+  const asAtLine = (
+    <p className="hero-asat note">
+      {asOf === null ? (
                 <span className="note">nothing valued yet</span>
               ) : (
                 <span className="note">as at {formatIsoDate(asOf)}</span>
@@ -451,6 +396,75 @@ export function OverviewScreen({
                   </p>
                 )}
               </Caveat>
+    </p>
+  );
+
+  // Why there is no "Assets over time" card: one muted line under the net worth, since an empty card said it in
+  // the second place on the screen. An absence of data, so it stays visible as that (DL-I4).
+  const absence = historyAbsence(history, display);
+
+  return (
+    /*
+      One column on a phone, in the order the cards are written. From 1024px two
+      columns, placed explicitly so the order a phone reads does not change:
+      net worth, the assets and the allocation on the left; the line and what
+      needs attention on the right. Each block keeps its own height, and a
+      wrapper with nothing in it takes no room.
+    */
+    <div className="flex flex-col gap-4.5 lg:grid lg:grid-cols-2 lg:items-start">
+      {problem !== null && (
+        <div className="lg:col-span-2">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+
+      {/*
+        Net worth first, and the only hero figure on the screen.
+
+        docs/tokens.md §3 names net worth as the hero, and a hero only works if
+        one figure per screen uses that step: with three of them the person
+        opening the app had to read all three to find out how they were doing.
+
+        Assets used to sit above it. That was a fair answer to a real problem —
+        the first thing on the screen was a red paragraph explaining why there
+        was no total, printed above the figures that did exist — but the refusal
+        is a mark on the figure now, not a paragraph in place of one, so the
+        reason is gone. When there is still no total the hero slot carries the
+        per-currency figures with the refusal marked on them, exactly as before,
+        and the Assets card below carries the same figures as stat tiles.
+
+        The Household / Mine switch is here because it governs the whole screen, not
+        a card. There is no privacy switch: the top bar has the one, and two
+        controls for one state is the problem the currency control was folded to
+        avoid.
+      */}
+      <div className="lg:col-start-1 lg:row-start-1">
+        <Card
+          lift
+          title="Net worth"
+          aside={
+            <span className="flex items-center">
+              {/*
+                Two questions people ask separately — "are we on track" and
+                "what is mine" — so two answers rather than arithmetic done in
+                a head. A group of pressed buttons, not tabs: nothing here is a
+                panel, and an incomplete tab pattern announces a promise it does
+                not keep.
+              */}
+              <span className="segmented" role="group" aria-label="Whose figures">
+                {(['household', 'mine'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={scope === option}
+                    onClick={() => {
+                      setScope(option);
+                    }}
+                  >
+                    {option === 'household' ? 'Household' : 'Mine'}
+                  </button>
+                ))}
+              </span>
             </span>
           }
         >
@@ -474,7 +488,7 @@ export function OverviewScreen({
               inside a paragraph.
             */}
             <div
-              className="figure"
+              className="figure figure-hero"
               style={{ color: worth.amount.minor < 0n ? 'var(--coral)' : 'var(--ink)' }}
               // The unabbreviated figure, for anybody who wants the digits.
               // Null under privacy: a tooltip that gives away what the bullets
@@ -487,7 +501,7 @@ export function OverviewScreen({
                 they ride on it, and each appears only when it applies.
               */}
               {heroWarnings.length > 0 && (
-                <Caveat tone="warn" label="Why this figure may be wrong">
+                <Caveat tone={heroActionable ? 'warn' : 'info'} label="Why this figure may be wrong">
                   {heroWarnings.length === 1 ? (
                     heroWarnings[0]
                   ) : (
@@ -502,6 +516,7 @@ export function OverviewScreen({
                 </Caveat>
               )}
             </div>
+            {asAtLine}
             {/*
               What the assets did since the last month-end, from the points the line over
               time is drawn from. Assets and not net worth, and it says so: a debt has no
@@ -530,7 +545,7 @@ export function OverviewScreen({
                 amount nobody can see is worse than no total — but it is a mark
                 on the number rather than a paragraph standing in place of one.
               */}
-              <div className="figure" style={{ color: 'var(--ink)' }}>
+              <div className="figure figure-hero" style={{ color: 'var(--ink)' }}>
                 {totals.length === 0
                   ? 'nothing valued yet'
                   : totals.map((total, index) => (
@@ -615,6 +630,11 @@ export function OverviewScreen({
               ))}
             </dl>
           )}
+          {absence !== null && (
+            <p className="note mt-2.5" data-testid="history-absence">
+              {absence}
+            </p>
+          )}
         </Card>
 
       </div>
@@ -659,7 +679,7 @@ export function OverviewScreen({
                   {total.currency === base ? 'India' : 'Abroad'} · {total.currency}
                   {index === 0 && (
                     <Caveat
-                      tone={privateLeftOut ? 'warn' : 'info'}
+                      tone="info"
                       label={privateLeftOut ? 'What these totals leave out' : 'How these totals are put together'}
                     >
                       Totalled per currency, untouched by any rate. These are what each holding is
@@ -682,7 +702,8 @@ export function OverviewScreen({
                     <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
                       {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never been
                       valued, so this total is short by whatever they are worth. The gain is measured
-                      only against what was valued, not against everything bought.
+                      only against what was valued, not against everything bought. Record a value on
+                      Holdings and it is counted.
                     </Caveat>
                   )}
                 </div>
@@ -704,6 +725,8 @@ export function OverviewScreen({
                       )}
                       It is the sum of the costs that were recorded, and nothing has been made up to fill
                       the rest.
+
+                      {total.costShort > 0 && IMPORT_THE_FULL_STATEMENT}{total.costShort > 0 && total.costMissing > 0 && ' '}{total.costMissing > 0 && RECORD_THE_COST}
                     </Caveat>
                   )}
                 </div>
@@ -803,7 +826,7 @@ export function OverviewScreen({
           <Card
             title="Allocation"
             aside={
-              <Caveat tone={privateLeftOut ? 'warn' : 'info'} label="What these shares are of">
+              <Caveat tone="info" label="What these shares are of">
                 Shares are of what has been valued, within each currency. A holding nobody has read is
                 not here at all — it would need a value to have a share.
                 {privateLeftOut && (
@@ -842,25 +865,22 @@ export function OverviewScreen({
                     <ul className="alloc-rows">
                       {group.rows.map((row) => (
                         <li key={row.kind} className="alloc-row">
-                          <AssetTile kind={row.kind} />
+                          <AssetTile kind={row.kind} compact />
                           <span className="min-w-0">
                             {/*
-                              A name worth clicking. A class here is a total; the
-                              holdings behind it are on the other screen, and
-                              somebody clicking "Bonds" is asking to see them.
+                              The whole row is the link (HD-I4): a class here is a total, the holdings
+                              behind it are on the other screen, and somebody pressing "Bonds" is asking
+                              to see them. An ordinary link to the filtered URL, so the back button undoes
+                              it. The anchor is the name, stretched over the row, and the name is plain:
+                              an underlined word on every row is a column of links.
                             */}
-                            <button
-                              type="button"
-                              className="alloc-name block underline"
-                              onClick={() => {
-                                onOpenHoldings({ kind: row.kind, currency: group.currency });
-                              }}
+                            <a
+                              className="alloc-name alloc-link block"
+                              href={hashFor('holdings', { kind: row.kind, currency: group.currency })}
                             >
                               {kindLabel(row.kind)}
-                            </button>
-                            <span className="alloc-share block">
-                              {(row.share * 100).toFixed(1)}% of what is valued
-                            </span>
+                            </a>
+                            <span className="alloc-share block">{(row.share * 100).toFixed(1)}% of valued</span>
                           </span>
                           <span className="alloc-figures">
                             <span className="alloc-value" title={exactMoney(row.value, privacy) ?? undefined}>
@@ -899,6 +919,8 @@ export function OverviewScreen({
                                     {COST_MISSING_REFUSED_BECAUSE}
                                   </>
                                 )}
+
+                                {row.costShort > 0 && IMPORT_THE_FULL_STATEMENT}{row.costShort > 0 && row.costMissing > 0 && ' '}{row.costMissing > 0 && RECORD_THE_COST}
                               </Caveat>
                             )}
                           </span>
