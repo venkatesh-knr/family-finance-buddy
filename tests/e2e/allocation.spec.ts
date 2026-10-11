@@ -21,7 +21,7 @@ test('each allocation row has exactly one link, to its class, and the name is no
   for (let i = 0; i < count; i += 1) {
     const links = rows.nth(i).locator('a');
     await expect(links, `row ${String(i + 1)} has one link`).toHaveCount(1);
-    await expect(links.first()).toHaveAttribute('href', /^#\/holdings\?kind=[a-z_]+&currency=[A-Z]{3}$/);
+    await expect(links.first()).toHaveAttribute('href', /^#\/holdings\?kind=[a-z_]+$/);
   }
   const decoration = await rows.first().locator('a.alloc-link').evaluate((el) => getComputedStyle(el).textDecorationLine);
   expect(decoration).toBe('none');

@@ -70,6 +70,12 @@ export type AssetHistory =
     }
   | { readonly ok: false; readonly reason: 'nothing' }
   | { readonly ok: false; readonly reason: 'short' }
+  /**
+   * There is a total as at today and no earlier month to join it to, because something stopped the walk back: a
+   * holding unread, or a rate missing, at the month end named. Not the same as short: the readings may span many
+   * months, and the cause is what a person can do something about.
+   */
+  | { readonly ok: false; readonly reason: 'stopped'; readonly limit: HistoryLimit }
   | { readonly ok: false; readonly reason: 'unread'; readonly holdingIds: readonly string[] }
   | { readonly ok: false; readonly reason: 'rate'; readonly missing: readonly MissingRate[] };
 
@@ -196,7 +202,9 @@ export function assetHistory(options: {
     points.unshift({ date, total: total.total });
   }
 
-  if (points.length < 2) return { ok: false, reason: 'short' };
+  if (points.length < 2) {
+    return limitedBy === null ? { ok: false, reason: 'short' } : { ok: false, reason: 'stopped', limit: limitedBy };
+  }
   return { ok: true, points, limitedBy };
 }
 

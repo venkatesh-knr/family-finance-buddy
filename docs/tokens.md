@@ -152,6 +152,15 @@ A figure that is incomplete rather than falling takes the muted ⓘ — the mist
 palette inherited was a coral ▲ sitting in the same column as a teal ▲, which made an
 incompletely-valued holding read as a losing one.
 
+**A caveat mark is amber only while the person can do something about it.** The default is
+the muted ⓘ above. A mark turns to the brass `!` when what it qualifies can be put right by an
+action the person can take (import the full statement, record a value, record a renewal,
+reload), and its text then says what the action is. The marks that only say what a figure
+leaves out (another member's private holdings, what a share is of) stay muted whatever the
+household holds. This is the owner's rule, made when the amber marks on Overview, Holdings and
+FIRE were classified one by one; `src/ui/amberMarks.test.ts` lists every amber mark with the
+action it names and fails a new one that names none.
+
 Contrast meets WCAG AA in both themes: 4.5:1 for body text, 3:1 for large text.
 
 **Borders split in two, and only one of them has a ratio.** A hairline that merely

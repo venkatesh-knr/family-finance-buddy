@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Amber is for attention, and attention means the person can do something (docs/tokens.md §2: an incomplete or
- * caveated figure takes the muted ⓘ; the amber `!` is reserved for a figure they can act on).
+ * Amber is for attention, and attention means the person can do something (docs/tokens.md §2, "A caveat mark is amber only while the person
+ * can do something about it": an incomplete or caveated figure takes the muted ⓘ, and the amber `!` is for one they can
+ * act on).
  *
  * This is the census of every amber mark on Overview, Holdings and FIRE, and it is the classification the
  * owner asked for written down where it can fail. A mark is amber only if its text tells the person what to

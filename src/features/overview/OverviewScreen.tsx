@@ -876,7 +876,7 @@ export function OverviewScreen({
                             */}
                             <a
                               className="alloc-name alloc-link block"
-                              href={hashFor('holdings', { kind: row.kind, currency: group.currency })}
+                              href={hashFor('holdings', { kind: row.kind })}
                             >
                               {kindLabel(row.kind)}
                             </a>
@@ -884,7 +884,7 @@ export function OverviewScreen({
                           </span>
                           <span className="alloc-figures">
                             <span className="alloc-value" title={exactMoney(row.value, privacy) ?? undefined}>
-                              {formatMoney(row.value, { privacy, compact: true })}
+                              <Amount value={row.value} privacy={privacy} compact />
                             </span>
                             {/*
                               A return only where a cost was recorded. Null is not 0% —

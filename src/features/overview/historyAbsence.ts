@@ -1,4 +1,5 @@
 import type { AssetHistory } from '../../domain/history.ts';
+import { formatIsoDate } from '../../lib/dates.ts';
 
 /** "1 holding" / "3 holdings". */
 function holdings(count: number): string {
@@ -21,6 +22,10 @@ export function historyAbsence(history: AssetHistory, display: string): string |
       return null;
     case 'short':
       return 'Assets over time appears once holdings have been read in two different months.';
+    case 'stopped':
+      return history.limit.reason === 'unread'
+        ? `Assets over time needs a month to join today to: ${holdings(history.limit.holdingIds.length)} had no reading on ${formatIsoDate(history.limit.at)}.`
+        : `Assets over time needs a month to join today to: no ${history.limit.missing.map((m) => `${m.base} to ${m.quote}`).join(', ')} rate is recorded on or before ${formatIsoDate(history.limit.at)}.`;
     case 'unread':
       return `Assets over time needs every holding read once: ${holdings(history.holdingIds.length)} ${history.holdingIds.length === 1 ? 'has' : 'have'} not been read yet.`;
     case 'rate':
