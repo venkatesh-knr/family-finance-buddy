@@ -61,26 +61,20 @@
   }
 
   /*
-   * The one lifted surface on a screen (docs/tokens.md §1, Depth). A corner light and not a
-   * wash: --surface-lift is painted across the header band only, then faded to the card's
-   * own ground before the band ends, so the gradient never reaches a figure and tabular
-   * numerals always sit on flat --surface. The band is the card's padding plus a line and a
-   * half of header, in rem, so it keeps its place when the text is scaled to 200%: a band
-   * in px would end partway down a larger heading, and one that outgrew the header would
-   * run on under the number below it.
+   * The one lifted surface on a screen (docs/tokens.md §1, Depth). --surface-lift is painted
+   * across the whole card, as docs/design/vibrant-canvas.html draws it, and the figure sits on
+   * the glow. That is allowed because it is measured: ink, body text and the muted label each
+   * hold 4.5:1 against every stop of the gradient in both themes, and
+   * src/ui/liftContrast.test.ts reads the shipped token values to say so. A stop that got
+   * lighter, or an ink that got dimmer, fails the build.
    *
    * Everything else is the ordinary card: the same border, the same radius. What the lift
    * adds is the deeper shadow and a 1px light along the top edge.
    */
   .card-lift {
-    --lift-band: calc(18px + 1.9rem);
     background-color: var(--surface);
-    background-image:
-      linear-gradient(to bottom, transparent, var(--surface) var(--lift-band)),
-      var(--surface-lift);
-    background-position: top left, top left;
+    background-image: var(--surface-lift);
     background-repeat: no-repeat;
-    background-size: 100% var(--lift-band), 100% var(--lift-band);
     box-shadow: var(--shadow-lift);
     position: relative;
   }

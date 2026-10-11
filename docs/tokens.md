@@ -116,10 +116,18 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 | `--surface-2` | a step off its parent, no shadow | table headers, code, a quiet surface |
 | `--inset` | recessed: darker than its card in both themes, no shadow | an editable row, which is a record and the inputs that change it on one line |
 
-The gradient is a **corner light, not a wash**: it never crosses a figure, and tabular
-numerals always sit on flat ground. One lifted surface per screen — a second one is two
-things claiming to be the most important, which is §4's "not everything is a card" in
-another form.
+The gradient is painted across the whole card, and a figure may sit on it. The rule is
+measured and not drawn: **a figure on the lifted surface holds 4.5:1 against the gradient
+in both themes** — against the stop it is hardest to read on, which is the brightest in
+dark, where the figures are light, and the dimmest in light, where they are dark. The test
+(`src/ui/liftContrast.test.ts`) reads the shipped values of `--surface-lift`, `--ink`,
+`--ink-2` and `--muted` and measures every stop, so a lighter glow or a dimmer ink fails the
+build rather than a review. (Today the worst pair is `--muted` at 5.19:1 on the light
+theme's `#F7F9FD` and 5.02:1 on the dark theme's `#26324C`.) An earlier version of this
+section said the gradient "never crosses a figure"; the canvas it described did, and the rule
+was the part that was wrong. One lifted surface per screen — a second one is two things
+claiming to be the most important, which is §4's "not everything is a card" in another
+form.
 
 ---
 
