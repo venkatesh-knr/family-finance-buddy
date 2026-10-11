@@ -1,5 +1,7 @@
 # Protection, schemes, earmarks and flow
 
+<!-- invariant-prefix: PF -->
+
 Adds insurance, the Indian small-savings schemes, an emergency-fund marker, and
 income to the app. Written before any of it is built, so the arguments are
 visible and can be disagreed with.
@@ -308,3 +310,43 @@ E2E:
 - Whether a matured deposit auto-creates an income row for its interest, or
   waits to be entered. Auto is convenient and is also how a ledger quietly
   fills with rows nobody checked.
+
+## 10. Invariants
+
+The rules above that a test could enforce, extracted and numbered so that each one
+has a test that names it, or a dated waiver that says why not yet
+(`docs/design/keeping-docs-honest.md`). Nothing here is new: each line is a rule
+the section it cites already states, in the same terms. They are numbered in
+document order; `C` is for constraint.
+
+**PF-C1 — A policy has no value column.** Not a nullable one, not one defaulting to zero. Cash value, where it exists, lives on a linked holding. (§1)
+
+**PF-C2 — A policy with no linked holding contributes exactly 0 to net worth.** Asserted on the total, not on the absence of a column. (§1, §8)
+
+**PF-C3 — Cover is never an input to any net-worth, allocation or FIRE calculation.** (§1)
+
+**PF-C4 — A ULIP or endowment is two records:** a policy, and a linked holding carrying the surrender value. Its premium is an expense once and its surrender value an asset, so nothing is counted twice. (§1)
+
+**PF-C5 — `scheme` is meaningful only when `kind` is `deposit`,** and a holding of any other kind is refused one. (§2, §8)
+
+**PF-C6 — Every `scheme` value and every `earmark` value resolves to a label,** asserted by iterating the enum. (§2, §3, §8)
+
+**PF-C7 — Holdings earmarked `emergency`, `child` or `house` are excluded from the FIRE corpus;** `retirement` and `none` are included. (§3, §8)
+
+**PF-C8 — The FIRE screen states the exclusion and its total,** so the number is explainable and not mysterious. (§3)
+
+**PF-C9 — `months_of_cover` is null,** not 0 and not infinity, with fewer than three complete months of expense data and with a zero denominator; the window is the trailing twelve months or all there is. (§3, §8)
+
+**PF-C10 — A transfer between the household's own accounts is neither income nor expense:** it appears in neither total. (§4, §8)
+
+**PF-C11 — Interest that accrues but is not credited (PPF, SSY, NSC, KVP) steps the holding's value at credit,** and is not marked up notionally. (§4)
+
+**PF-C12 — Suggested cover is a stated calculation whose every input is a household setting with a visible default.** The app never recommends, and health cover gets no suggested figure. (§5)
+
+**PF-C13 — A member of one household cannot select, insert, update or delete a policy in another.** Every verb, not only select. (§8)
+
+**PF-C14 — A policy's identifying detail is not readable across households,** with its own assertion and not by relying on the table-level one. (§8)
+
+**PF-C15 — Privacy mode removes income and cover amounts from the document,** by absence from the DOM, on the same terms as every other figure. (§6, §8)
+
+**PF-C16 — The Overview renders stock and flow as distinct regions, each with its own accessible name,** and still has exactly one lifted surface per screen. (§6, §8)

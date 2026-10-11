@@ -61,6 +61,14 @@ jobs:
       - name: Design and code still describe each other
         run: npm run check:design
 
+      # The documents and the tests, kept in step (docs/design/keeping-docs-honest.md): every invariant a
+      # design document declares is named in a test title or waived with a reason, no test names an
+      # invariant that no document declares, and the design-conformance brief knows every document in
+      # docs/design. The reviewer subagent itself is deliberately not here: it is nondeterministic, and
+      # the first time it failed a build wrongly somebody would switch it off.
+      - name: Every invariant is tested or waived, and the reviewer knows every design document
+        run: npm run check:docs
+
       # Cheap, and before anything needs a container: a fixture id with a
       # letter outside a–f is rejected only once a database is up, and that
       # mistake has cost this repository four CI rounds.
