@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
+import { MalformedRowError } from '../lib/guards.ts';
 import type { Member } from './types.ts';
 
 const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
@@ -280,6 +281,7 @@ describe('toHolding', () => {
     opened_on: '2026-02-14',
     status: 'active',
     visibility: 'household',
+    earmark: 'none',
   };
 
   it('joins member and instrument from what the household already loaded', () => {
@@ -537,5 +539,60 @@ describe('toRatingChange', () => {
 
   it('refuses a date that is not one', () => {
     expect(() => toRatingChange({ ...row, changed_on: 'yesterday' })).toThrow();
+  });
+});
+
+describe('earmark and scheme', () => {
+  const ravi: Member = { id: 'm-1', displayName: 'Ravi', colour: 'c1', isArchived: false };
+  const base = {
+    id: 'i-1',
+    name: 'Emergency FD',
+    kind: 'deposit',
+    currency: 'INR',
+    exposure_currency: 'INR',
+    is_foreign_asset: false,
+    status: 'active',
+  };
+  const holdingRow = {
+    id: 'h-1',
+    household_id: 'hh-1',
+    member_id: 'm-1',
+    instrument_id: 'i-1',
+    quantity: '1.00000000',
+    cost_minor: '30000000',
+    status: 'active',
+    visibility: 'household',
+    earmark: 'emergency',
+  };
+
+  it('reads a scheme on a deposit and null where there is none', () => {
+    expect(toInstrument({ ...base, scheme: 'ssy' }).scheme).toBe('ssy');
+    expect(toInstrument({ ...base, scheme: null }).scheme).toBeNull();
+    expect(toInstrument(base).scheme).toBeNull();
+  });
+
+  it('refuses a scheme it does not know', () => {
+    expect(() => toInstrument({ ...base, scheme: 'epf' })).toThrow(MalformedRowError);
+  });
+
+  it('reads an earmark onto the holding', () => {
+    const instruments = new Map([['i-1', toInstrument(base)]]);
+    const holding = toHolding(holdingRow, new Map([[ravi.id, ravi]]), instruments);
+    expect(holding.earmark).toBe('emergency');
+  });
+
+  it('refuses a holding with no earmark, rather than reading it as none', () => {
+    // The corpus leaves out what is earmarked. A row that arrived without the column would be counted
+    // as retirement money, which is the overstatement this exists to stop.
+    const instruments = new Map([['i-1', toInstrument(base)]]);
+    const { earmark: _omitted, ...without } = holdingRow;
+    expect(() => toHolding(without, new Map([[ravi.id, ravi]]), instruments)).toThrow(MalformedRowError);
+  });
+
+  it('refuses an earmark it does not know', () => {
+    const instruments = new Map([['i-1', toInstrument(base)]]);
+    expect(() =>
+      toHolding({ ...holdingRow, earmark: 'holiday' }, new Map([[ravi.id, ravi]]), instruments),
+    ).toThrow(MalformedRowError);
   });
 });

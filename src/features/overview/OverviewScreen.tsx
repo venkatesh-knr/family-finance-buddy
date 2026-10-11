@@ -42,11 +42,12 @@ import {
 import { assetHistory, movementSince } from '../../domain/history.ts';
 import { AllocationDonut } from './AllocationDonut.tsx';
 import { useOverviewData } from './useOverviewData.ts';
+import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney, money, percentOfCost, type Money } from '../../lib/money.ts';
-import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat } from '../../ui/primitives.tsx';
+import { Absent, Button, Card, Caveat, Delta, Amount, Attention, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { AssetTile } from '../../ui/AssetTile.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
@@ -178,7 +179,23 @@ export function OverviewScreen({
     hiddenAssets,
     heroWarnings,
     worth,
+    fire,
   } = useOverviewData({ householdId, displayCurrency, scope });
+
+  // What is set aside as the emergency fund, and how many months of the household's usual spending it
+  // covers. Only on the household's own view: the spending it is divided by is the household's, and
+  // one member's earmarked share divided by everybody's spending is not a number about anything.
+  const emergency = useMemo<Money | null>(() => {
+    const entry = fire.excluded.find((e) => e.earmark === 'emergency');
+    return entry !== undefined && entry.amount.ok ? entry.amount.amount : null;
+  }, [fire.excluded]);
+  const cover = useMonthsOfCover({
+    householdId: scope === 'household' ? householdId : null,
+    today,
+    display,
+    rates,
+    emergency,
+  });
 
   const privateLeftOut = scope === 'household' && hiddenAssets.length > 0;
   const privateSums = hiddenAssets.map((entry) => formatMoney(entry.total, { privacy })).join(' + ');
@@ -695,7 +712,56 @@ export function OverviewScreen({
 
       </div>
 
-      <div className="empty:hidden lg:col-start-1 lg:row-start-3">
+      <div className="flex flex-col gap-4.5 empty:hidden lg:col-start-1 lg:row-start-3">
+        {/*
+          One line and not a card (protection-and-flow.md §6): the months of cover, at the stat step,
+          or the reason there are none. It is there whenever a holding is earmarked emergency, even if
+          no amount can be shown, because a line that vanished would read as no emergency fund.
+        */}
+        {scope === 'household' && fire.earmarked.count.emergency > 0 && (
+          <div data-testid="months-of-cover">
+            <dl>
+              <Stat label="Emergency fund">
+                {fire.earmarked.unvaluedBy.emergency === fire.earmarked.count.emergency ? (
+                  <Absent label="Why there is no months of cover">
+                    The emergency fund has not been valued yet, so there is nothing to divide.
+                  </Absent>
+                ) : cover.status === 'ready' && cover.months !== null ? (
+                  <>
+                    {String(Math.round(cover.months * 10) / 10)} <Unit>months of spending</Unit>
+                  </>
+                ) : (
+                  <Absent label="Why there is no months of cover">
+                    {cover.status === 'loading'
+                      ? 'Reading…'
+                      : cover.status === 'failed'
+                        ? 'The spending could not be read, so the cover cannot be worked out.'
+                        : (cover.why ?? '')}
+                  </Absent>
+                )}
+              </Stat>
+            </dl>
+            <p className="note mt-1.5">
+              {emergency !== null && (
+                <>
+                  <Amount value={emergency} privacy={privacy} compact /> set aside
+                  {cover.status === 'ready' && cover.history > 0
+                    ? `, against the household's spending over ${String(cover.history)} whole ${cover.history === 1 ? 'month' : 'months'} with spending recorded.`
+                    : '.'}
+                </>
+              )}
+              {fire.earmarked.unvaluedBy.emergency > 0 &&
+                fire.earmarked.unvaluedBy.emergency < fire.earmarked.count.emergency && (
+                  <>
+                    {' '}
+                    {String(fire.earmarked.unvaluedBy.emergency)} emergency{' '}
+                    {fire.earmarked.unvaluedBy.emergency === 1 ? 'holding has' : 'holdings have'} never been
+                    valued, so the cover is short by {fire.earmarked.unvaluedBy.emergency === 1 ? 'it' : 'them'}.
+                  </>
+                )}
+            </p>
+          </div>
+        )}
         {allocation.length > 0 && (
           <Card
             title="Allocation"

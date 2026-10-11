@@ -24,6 +24,17 @@ import { useCallback, useState } from 'react';
 import { isKnownCurrency, minorUnitExponent, parseAmountToMinor, money } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import { updateHolding, type HoldingPatch } from '../../repo/holdings.ts';
+import {
+  EARMARKS,
+  EARMARK_LABELS,
+  SCHEMES,
+  SCHEME_LABELS,
+  isEarmark,
+  isScheme,
+  schemeAllowedFor,
+  type Earmark,
+  type Scheme,
+} from '../../domain/earmark.ts';
 import { INSTRUMENT_KINDS, type Holding, type InstrumentKind } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
@@ -69,6 +80,8 @@ export function EditHolding({
   );
   const [openedOn, setOpenedOn] = useState(holding.openedOn ?? '');
   const [personal, setPersonal] = useState(holding.visibility === 'personal');
+  const [earmark, setEarmark] = useState<Earmark>(holding.earmark);
+  const [scheme, setScheme] = useState<Scheme | ''>(holding.instrument.scheme ?? '');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -118,6 +131,7 @@ export function EditHolding({
       // else's holding private — "privacy is a decision about your own record;
       // it is not something that can be done to you" — so it is not offered.
       ...(isMine ? { visibility: (personal ? 'personal' : 'household') as 'personal' | 'household' } : {}),
+      earmark,
       instrument: {
         name,
         symbol: symbol.trim() === '' ? null : symbol,
@@ -126,6 +140,9 @@ export function EditHolding({
         // disabled-looking field cannot become a write.
         ...(hasHistory ? {} : { currency, exposureCurrency: exposure }),
         isForeignAsset: isForeign,
+        // A scheme says what a deposit is, so it goes with the deposit: changing the kind to anything else
+        // clears it here, where the reason can be said, rather than failing a constraint with a code.
+        scheme: schemeAllowedFor(kind) && scheme !== '' ? scheme : null,
         taxAssetClass: assetClass,
         priceSource: priceSource,
         priceExternalId: priceId,
@@ -143,7 +160,7 @@ export function EditHolding({
     }
   }, [
     cost, currency, exposure, hasHistory, holding.id, holding.instrument.id, isForeign, isMine,
-    assetClass, kind, name, onDone, openedOn, personal, priceId, priceSource, quantity, symbol,
+    assetClass, earmark, kind, name, onDone, openedOn, personal, priceId, priceSource, quantity, scheme, symbol,
   ]);
 
   const focusRef = useFocusFirstField<HTMLDivElement>();
@@ -319,6 +336,53 @@ export function EditHolding({
         <button type="button" className="note underline" onClick={onCancel}>
           Cancel
         </button>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
+        <label className="flex w-full sm:w-[190px] sm:shrink-0 flex-col gap-1.5">
+          <span className="label">
+            Set aside for
+            {/* A label on the holding, not a figure, so there is nothing here for privacy mode to hide. */}
+            <Caveat tone="info" label="What an earmark does">
+              Says what this money is for. An emergency fund, a child&rsquo;s savings or a house deposit
+              is left out of the FIRE corpus, because it is not money the household means to retire on.
+              Retirement and no earmark are counted. A holding has at most one.
+            </Caveat>
+          </span>
+          <select
+            className="field"
+            value={earmark}
+            onChange={(event) => {
+              if (isEarmark(event.target.value)) setEarmark(event.target.value);
+            }}
+          >
+            {EARMARKS.map((option) => (
+              <option key={option} value={option}>
+                {EARMARK_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {schemeAllowedFor(kind) && (
+          <label className="flex w-full sm:w-[230px] sm:shrink-0 flex-col gap-1.5">
+            <span className="label">Scheme</span>
+            <select
+              className="field"
+              value={scheme}
+              onChange={(event) => {
+                setScheme(isScheme(event.target.value) ? event.target.value : '');
+              }}
+            >
+              <option value="">Not set</option>
+              {SCHEMES.map((option) => (
+                <option key={option} value={option}>
+                  {SCHEME_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">

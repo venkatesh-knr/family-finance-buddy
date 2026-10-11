@@ -11,6 +11,8 @@ import {
 import { projectionChart, type ChartFrame } from '../overview/chartGeometry.ts';
 import { useMeasure } from '../overview/AssetsOverTime.tsx';
 import { useOverviewData } from '../overview/useOverviewData.ts';
+import { useDevicePreference } from '../../app/preferences.ts';
+import { EARMARK_LABELS } from '../../domain/earmark.ts';
 import { Absent, Amount, Button, Card, Caveat, Chevron, Problem } from '../../ui/primitives.tsx';
 import { DraftNumber } from './DraftNumber.tsx';
 import type { usePlan } from './usePlan.ts';
@@ -21,8 +23,9 @@ import type { usePlan } from './usePlan.ts';
  *
  * Four things, in the order somebody asks them: what is the number, when does the corpus meet it, how
  * far along is it, and what is a year of living costing. The projection is `fireProjection`
- * (blueprint §06) over the household's own assumptions, and starts from the same net worth as the
- * Overview, from the same hook, so the two screens cannot give two answers.
+ * (blueprint §06) over the household's own assumptions, and starts from the corpus: the Overview's net
+ * worth, from the same hook, less what is earmarked as an emergency fund, a child's savings or a house
+ * deposit. The two screens cannot disagree about anything but those earmarks.
  *
  * It says what it is not. A projection is not a forecast, and this one starts from what has been
  * recorded: property and the rest of the balance sheet arrive in later stages, and until they do the
@@ -59,11 +62,44 @@ export function FireReadout({
   const nothingValued = data.asOf === null && data.hiddenAssets.length === 0;
 
   const corpus = useMemo<Money | null>(() => {
-    if (nothingValued || !data.worth.ok) return null;
+    // The corpus and not the net worth: what is set aside as an emergency fund, for a child or for a
+    // house is not money the household is counting on to live from (protection-and-flow.md §3).
+    const worth = data.fire.corpus;
+    if (nothingValued || !worth.ok) return null;
     // Debts can take it below nothing; a corpus cannot be less than none.
-    const minor = data.worth.amount.minor > 0n ? data.worth.amount.minor : 0n;
-    return money(minor, data.worth.amount.currency);
-  }, [data.worth, nothingValued]);
+    const minor = worth.amount.minor > 0n ? worth.amount.minor : 0n;
+    return money(minor, worth.amount.currency);
+  }, [data.fire.corpus, nothingValued]);
+
+  // The standing line's figures: what is left out, by earmark, in the same currency as the corpus.
+  const leftOut = useMemo(() => {
+    const parts = data.fire.excluded.flatMap((entry) =>
+      entry.amount.ok && entry.amount.amount.minor > 0n
+        ? [{ earmark: entry.earmark, amount: entry.amount.amount }]
+        : [],
+    );
+    const currency = parts[0]?.amount.currency;
+    const total =
+      currency === undefined ? null : money(parts.reduce((sum, p) => sum + p.amount.minor, 0n), currency);
+    const held = data.fire.earmarked;
+    const anyEarmarked = held.count.emergency + held.count.child + held.count.house > 0;
+    // A total of nothing is not nothing earmarked. A holding nobody has valued, or an amount in a
+    // currency with no rate, leaves the sum short, and the line says so rather than read as complete.
+    const unconverted = data.fire.excluded.some((entry) => !entry.amount.ok);
+    const shortBy: string | null =
+      held.unvalued > 0 || unconverted
+        ? `${
+            held.unvalued > 0
+              ? `${String(held.unvalued)} earmarked ${held.unvalued === 1 ? 'holding has' : 'holdings have'} never been valued`
+              : ''
+          }${held.unvalued > 0 && unconverted ? ' and ' : ''}${unconverted ? 'some earmarked amounts could not be converted without a rate' : ''}, so what is left out is short by ${held.unvalued > 0 && !unconverted ? 'it' : 'them'}.`
+        : null;
+    return { parts, total, anyEarmarked, shortBy };
+  }, [data.fire.excluded, data.fire.earmarked]);
+
+  // The first time the number falls because of this, say why. It is the most consequential figure on
+  // the screen and it changed under somebody without their doing anything.
+  const [noticeSeen, setNoticeSeen] = useDevicePreference('fire-corpus-notice-seen', false);
 
   const projection = useMemo(() => {
     if (corpus === null || first === undefined) return null;
@@ -206,10 +242,61 @@ export function FireReadout({
             </dl>
           </div>
         )}
-        <p className="note mt-3">
-          Against today&rsquo;s target, from net worth as it stands. Property and anything else not yet
-          recorded is not in it, so the figure is short by what those are worth.
+        <p className="note mt-3" data-testid="fire-left-out">
+          {!leftOut.anyEarmarked ? (
+            <>
+              Against today&rsquo;s target, from net worth as it stands. Nothing is earmarked, so nothing
+              is left out. Mark a holding as an emergency fund, a child&rsquo;s savings or a house deposit
+              on Holdings and it leaves this figure.
+            </>
+          ) : leftOut.total === null ? (
+            <>
+              Against today&rsquo;s target. Holdings earmarked as an emergency fund, a child&rsquo;s
+              savings or a house deposit are left out, but there is no amount to show for them:{' '}
+              {leftOut.shortBy ?? 'they have no value recorded.'}
+            </>
+          ) : (
+            <>
+              Against today&rsquo;s target. Left out because it is set aside for something other than
+              retirement:{' '}
+              {leftOut.parts.map((part, index) => (
+                <span key={part.earmark}>
+                  {index > 0 && ', '}
+                  {EARMARK_LABELS[part.earmark].toLowerCase()} <Amount value={part.amount} privacy={privacy} compact />
+                </span>
+              ))}
+              {leftOut.parts.length > 1 && (
+                <>
+                  {' '}
+                  (<Amount value={leftOut.total} privacy={privacy} compact /> in all)
+                </>
+              )}
+              .{leftOut.shortBy !== null && <> {leftOut.shortBy.charAt(0).toUpperCase() + leftOut.shortBy.slice(1)}</>}
+            </>
+          )}{' '}
+          Property and anything else not yet recorded is not in it, so the figure is short by what those
+          are worth.
+          {data.fire.privateMembers > 0 && (
+            <>
+              {' '}
+              {data.fire.privateMembers === 1 ? 'One member keeps' : `${String(data.fire.privateMembers)} members keep`}{' '}
+              private holdings that count here in full, because their earmarks are not visible to this
+              household: the corpus may be high by whatever of it is set aside.
+            </>
+          )}
         </p>
+        {leftOut.anyEarmarked && !noticeSeen && (
+          <div className="note mt-3 flex flex-wrap items-center gap-3" role="status">
+            <span>
+              Money earmarked as an emergency fund, a child&rsquo;s savings or a house deposit is not
+              counted as retirement money, so this is lower than net worth. This screen used to count it;
+              if the figure has fallen since you last looked, that is why.
+            </span>
+            <Button type="button" onClick={() => setNoticeSeen(true)}>
+              Got it
+            </Button>
+          </div>
+        )}
       </Card>
 
       <CostBar annual={annual} privacy={privacy} />

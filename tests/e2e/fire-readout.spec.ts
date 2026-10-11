@@ -33,7 +33,18 @@ test('the FIRE screen opens on the target, a projection, progress and the cost o
   await expect(page.getByText(/Property and anything else not yet recorded is not in it/)).toBeVisible();
 });
 
-test('the projection and the Overview start from the same net worth', async ({ page }) => {
+/** A compact rupee or dollar figure as a number: "₹1.25 Cr", "₹82.5 L", "$4.2K", "₹90,000". Approximate by design. */
+function compactToNumber(text: string): number {
+  const cleaned = text.replace(/\s+/g, '');
+  const match = /^-?[₹$]([\d,]+(?:\.\d+)?)(Cr|L|K|M|B)?$/.exec(cleaned);
+  if (match === null) throw new Error(`not a compact figure: ${text}`);
+  const unit = { Cr: 1e7, L: 1e5, K: 1e3, M: 1e6, B: 1e9 }[match[2] ?? ''] ?? 1;
+  return Number((match[1] ?? '0').replace(/,/g, '')) * unit * (cleaned.startsWith('-') ? -1 : 1);
+}
+
+test('the corpus starts from the Overview net worth and never exceeds it, and says what it leaves out', async ({
+  page,
+}) => {
   await page.goto('/#overview');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   // Until the exchange rates have been read the Overview shows its refusal (the per-currency figures with a
@@ -41,13 +52,24 @@ test('the projection and the Overview start from the same net worth', async ({ p
   const heroText = async (): Promise<string> =>
     (await page.locator('.figure').first().innerText()).replace(/\s+/g, '');
   await expect.poll(heroText, { timeout: 20_000 }).toMatch(/^[₹$][\d.,]+[A-Za-z]*$/);
-  const hero = await heroText();
+  const hero = compactToNumber(await heroText());
 
   await onFire(page);
   const reached = page.locator('.fire-progress-rows dd').first();
   await expect(reached).toBeVisible();
-  // Compact in both places, so the same text: two screens, one figure.
-  expect((await reached.innerText()).replace(/\s+/g, '')).toBe(hero);
+  // The first figure in the cell: a warning mark can sit beside it and is not part of the number.
+  const reachedText = (await reached.innerText()).replace(/\s+/g, '');
+  const corpus = compactToNumber(/[₹$][\d.,]+(?:Cr|L|K|M|B)?/.exec(reachedText)?.[0] ?? reachedText);
+
+  // Earmarked money is taken out of the corpus and not out of net worth (PF-C7), so the corpus is never
+  // the larger of the two. Equal when nothing is earmarked, which is what a household that has not yet
+  // tagged anything sees, so this holds before and after the demo is reset with its three earmarks.
+  expect(corpus, 'the corpus is no more than net worth').toBeLessThanOrEqual(hero * 1.0001);
+
+  // PF-C8: the screen says what it left out, or says that nothing is earmarked, either way in words.
+  const leftOut = page.getByTestId('fire-left-out');
+  await expect(leftOut).toBeVisible();
+  await expect(leftOut).toContainText(/Left out because it is set aside|Nothing is earmarked/);
 });
 
 test('with amounts hidden, no figure from the read-out is left in the document', async ({ page }) => {
@@ -55,13 +77,14 @@ test('with amounts hidden, no figure from the read-out is left in the document',
   const visible = (await page.locator('.fire-progress-rows dd').first().innerText()).replace(/\s+/g, '');
   expect(visible, 'the figure is shown first, or the test proves nothing').toMatch(/\d/);
 
+  const leftOutText = (await page.getByTestId('fire-left-out').innerText()).replace(/\s+/g, '');
   await page.getByRole('button', { name: /Amounts shown/ }).click();
 
   // The digits of the corpus, the target and the cost of a year, gone from the markup: the rows, the
   // chart's name, its tick labels and the explanation behind the info mark.
   const markup = await page.evaluate(() => document.querySelector('main, #root')?.outerHTML ?? '');
   // With its currency sign, so a coordinate in a path that happens to share the digits is not a match.
-  const figures = visible.match(/[₹$][\d.,]+/g) ?? [];
+  const figures = [...visible.matchAll(/[₹$][\d.,]+/g), ...leftOutText.matchAll(/[₹$][\d.,]+/g)].map((m) => m[0]);
   expect(figures.length, 'a figure with a currency sign to look for').toBeGreaterThan(0);
   for (const figure of figures) {
     expect(markup, `${figure} is still in the page under privacy mode`).not.toContain(figure);

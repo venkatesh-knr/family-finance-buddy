@@ -307,6 +307,8 @@ these.
 
 **2a. Earmarks and schemes — design slice B.**
 
+**Built** (migration `20261011120000`, `src/domain/earmark.ts`): `holding.earmark` and `instrument.scheme`, with the check that a scheme sits only on a deposit; `fireCorpus` and `monthsOfCover` as pure functions with their tests first; the FIRE read-out's corpus, standing line and one-time note; the earmark and scheme controls in a holding's editor and a scheme filter on Holdings; the emergency-fund line on the Overview; the demo seed with three tagged deposits. Decisions taken while building: another member's private holdings count in the corpus in full, said on the screen, because `personal_holding_totals` returns one sum per member and widening it would be a new disclosure; the months-of-cover average is the household's whole spending, added from three reads (shared entries, other members' private sums, the caller's own private entries) because blueprint §20 has household totals include private amounts; it averages whole months that have spending recorded in them, leaving out the month spending began in and months with nothing recorded, which can only make the cover shorter. Not built here, deliberately: the cover gap's "liquid corpus", which needs to know which schemes are locked and arrives with 2b in the same function.
+
 *Where it sits, and why it moves in.* See the table above: it corrects a figure
 that is live. The original reason step 9 was last still holds for the *projection*
 (it needs the balance sheet complete). It does not hold for the *corpus
