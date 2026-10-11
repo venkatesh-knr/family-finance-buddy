@@ -38,6 +38,8 @@ const SCREEN_NAMES: readonly Screen[] = [
   'holdings',
   'tax',
   'fire',
+  'insurance',
+  'more',
   'profile',
   'settings',
 ];

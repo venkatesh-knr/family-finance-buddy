@@ -19,7 +19,7 @@ export interface NavGlyphPart {
   readonly filled?: true;
 }
 
-type NavScreen = Extract<Screen, 'overview' | 'summary' | 'expenses' | 'holdings' | 'tax' | 'fire'>;
+type NavScreen = Extract<Screen, 'overview' | 'summary' | 'expenses' | 'holdings' | 'tax' | 'fire' | 'more'>;
 
 const OVERVIEW: readonly NavGlyphPart[] = [
   { d: 'M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0z' },
@@ -42,4 +42,10 @@ export const NAV_GLYPHS: Record<NavScreen, readonly NavGlyphPart[]> = {
   holdings: [{ d: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z' }, { d: 'M11 5v14' }],
   tax: [{ d: 'M8 4h8' }, { d: 'M12 4v16' }, { d: 'M6 20h12' }],
   fire: [{ d: 'm12 4 8 15H4Z' }],
+  // Three dots: what else there is, and not a destination of its own.
+  more: [
+    { d: 'M6.6 12a1.1 1.1 0 1 1-2.2 0a1.1 1.1 0 0 1 2.2 0z', filled: true },
+    { d: 'M13.1 12a1.1 1.1 0 1 1-2.2 0a1.1 1.1 0 0 1 2.2 0z', filled: true },
+    { d: 'M19.6 12a1.1 1.1 0 1 1-2.2 0a1.1 1.1 0 0 1 2.2 0z', filled: true },
+  ],
 };

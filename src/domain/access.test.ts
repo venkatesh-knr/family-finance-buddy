@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { allowedScreen, screensFor, type AppScreen } from './access.ts';
+import { allowedScreen, moreFor, screensFor, type AppScreen } from './access.ts';
 
 describe('screensFor', () => {
-  it('gives an owner and a partner every household screen and no summary', () => {
+  it('gives an owner and a partner five places in the bar, the last being More, and no summary', () => {
     for (const role of ['owner', 'partner'] as const) {
-      expect(screensFor(role)).toEqual(['overview', 'expenses', 'holdings', 'tax', 'fire']);
+      expect(screensFor(role)).toEqual(['overview', 'expenses', 'holdings', 'fire', 'more']);
+    }
+  });
+
+  it('keeps Tax and Insurance behind More for the roles that can read the household, and offers nobody else a More', () => {
+    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'insurance']);
+    for (const role of ['contributor', 'viewer', null] as const) {
+      expect(moreFor(role)).toEqual([]);
+      expect(screensFor(role)).not.toContain('more');
     }
   });
 
@@ -24,8 +32,10 @@ describe('screensFor', () => {
 });
 
 describe('allowedScreen', () => {
-  it('keeps the screen a role may see', () => {
+  it('keeps the screen a role may see, including the ones behind More', () => {
     expect(allowedScreen('owner', 'tax')).toBe('tax');
+    expect(allowedScreen('partner', 'insurance')).toBe('insurance');
+    expect(allowedScreen('owner', 'more')).toBe('more');
     expect(allowedScreen('contributor', 'expenses')).toBe('expenses');
   });
 
@@ -33,6 +43,11 @@ describe('allowedScreen', () => {
     expect(allowedScreen('contributor', 'overview')).toBe('summary');
     expect(allowedScreen('viewer', 'holdings')).toBe('summary');
     expect(allowedScreen('owner', 'summary')).toBe('overview');
+    // A policy is read by owner and partner and by a contributor only for their own; the screen is not offered
+    // to a contributor, and a hash somebody typed is a request and not a grant.
+    expect(allowedScreen('contributor', 'insurance')).toBe('summary');
+    expect(allowedScreen('viewer', 'insurance')).toBe('summary');
+    expect(allowedScreen('contributor', 'more')).toBe('summary');
   });
 
   it('leaves the two screens that belong to everyone alone', () => {

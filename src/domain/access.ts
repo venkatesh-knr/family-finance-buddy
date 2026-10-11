@@ -26,6 +26,8 @@ export type AppScreen =
   | 'holdings'
   | 'tax'
   | 'fire'
+  | 'insurance'
+  | 'more'
   | 'profile'
   | 'settings';
 
@@ -34,12 +36,30 @@ export function screensFor(role: HouseholdRole | null): readonly AppScreen[] {
   switch (role) {
     case 'owner':
     case 'partner':
-      return ['overview', 'expenses', 'holdings', 'tax', 'fire'];
+      return ['overview', 'expenses', 'holdings', 'fire', 'more'];
     case 'contributor':
       return ['summary', 'expenses', 'holdings', 'tax'];
     case 'viewer':
     case null:
       return ['summary'];
+  }
+}
+
+/**
+ * The screens behind More, for the roles that have one. The bar has five slots and they are full, so what
+ * is opened less than daily goes behind the fifth: Tax is a quarterly screen holding a daily slot, and
+ * Insurance is one nobody opens twice a week. A contributor's bar has room for Tax and no More, and a
+ * viewer has the summary alone.
+ */
+export function moreFor(role: HouseholdRole | null): readonly AppScreen[] {
+  switch (role) {
+    case 'owner':
+    case 'partner':
+      return ['tax', 'insurance'];
+    case 'contributor':
+    case 'viewer':
+    case null:
+      return [];
   }
 }
 
@@ -54,5 +74,6 @@ const FOR_EVERYONE: readonly AppScreen[] = ['profile', 'settings'];
 export function allowedScreen(role: HouseholdRole | null, wanted: AppScreen): AppScreen {
   if (FOR_EVERYONE.includes(wanted)) return wanted;
   const own = screensFor(role);
-  return own.includes(wanted) ? wanted : (own[0] ?? 'summary');
+  if (own.includes(wanted) || moreFor(role).includes(wanted)) return wanted;
+  return own[0] ?? 'summary';
 }
