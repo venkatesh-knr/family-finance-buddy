@@ -69,6 +69,10 @@ the maintainer's standing working agreements, and where the last session stopped
   is trivial; retrofitting audit across a schema that already has thirty of them is a day
   nobody enjoys. The log records reads as well as writes on tables carrying personal detail,
   because section 20 shows it to members — including reads by the owner.
+- **`detail_level` is a rendering preference, never an access control.** The data reaches the
+  client either way — essential mode simply does not draw it. If figures ever need to be hidden
+  from a household member, that is row-level security and a separate mechanism. See
+  `docs/design/detail-level.md`.
 
 **Calculation**
 - The tax engine and every financial calculation are **pure functions**. No I/O, no queries,

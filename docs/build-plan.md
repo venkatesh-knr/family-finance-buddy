@@ -22,7 +22,7 @@ it stops describing the code.
 | 2 — Schema, policies, tests | done | the migrations in `supabase/migrations/` and the pgTAP files in `supabase/tests/` that gate the deploy, audit triggers on every table holding household data. An audit row that names a `holding_id` is readable only by whoever can read that holding (`20260927120000`), so a position's purchases, sales and terms are as private in the log as in the table |
 | 3 — The demo household | done | Switcher, demo badge, and reset-and-reseed: `public.reset_demo_household` (`20260916120000`) is the schema's one hard delete — owner only, second factor, households marked demo only — behind a confirmation in Settings → Data. The seed lives in `app.seed_demo_household`; `supabase/seed/demo_edge_cases.sql` calls it. Still to add to the seed, as its own change: a loss-making sale, a carried-forward loss and lots either side of twenty-four months, all recordable now that `lot`, `disposal` and `tax_rule` exist. The foreign dividend waits on a `dividend` table. The live project also holds a second demo household from the local-only fixture, its login banned; removing it is an open decision. |
 | 4 — Screens you use daily | **in progress** | Expenses with its editor, the spending plan, holdings, and Overview with net worth and allocation by kind. The month-end close job is built (`supabase/migrations/20260908120000_month_end_close.sql`), the four missing primitives exist, and `fx_rate` plus `liability.outstanding_minor` (`20260908130000`) are what let the headline be net worth rather than assets. Prices now come through a driver: `price` (`20260914120000`) holds dated public reference prices, the `fetch-prices` edge function fetches AMFI and is the only thing that talks to a vendor, and a holding linked to an ISIN shows the quoted value for somebody to record. Deliberately not on a cron — see the note in that function. The since-inception chart draws assets (`src/domain/history.ts`). The allocation has its donut beside the rows. Outstanding: a contributed line on that chart, member attribution, and drivers beyond AMFI (FX, gold). |
-| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. **The tax engine is built for the domestic case**: capital gains netted across asset classes, the ₹1.25 lakh equity allowance, and income tax on the slabs, rebate, surcharge and cess for both regimes (`src/domain/income-tax.ts`, `capital-gains.ts`), with a Tax screen, a folded card showing the rates a year applied, and a year picker that offers only years with a sale in them. Rules are dated `tax_rule` rows (`20260920120000`) and a test proves the bands in force on any date tile, so a Budget cannot leave old bands in force. Refused by name rather than guessed: a surcharge or rebate relief where there are capital gains, debt funds bought after 1 April 2023, property's 12.5% or 20% election, foreign holdings that need the prescribed exchange rate, and any year before 2025-26, which is not seeded. Ahead: the foreign tax credit and Form 67, advance-tax instalments, and a scheduled Budget-day reminder (below). **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started |
+| 5 — The rest of the surface | **partial** | `tax_rule` is built and seeded with the regime from 23 July 2024 (`20260912120000`); `src/domain/tax-rules.ts` classifies a parcel long or short term against the rule that covered its sale, and refuses where no rule covers the date. **The tax engine is built for the domestic case**: capital gains netted across asset classes, the ₹1.25 lakh equity allowance, and income tax on the slabs, rebate, surcharge and cess for both regimes (`src/domain/income-tax.ts`, `capital-gains.ts`), with a Tax screen, a folded card showing the rates a year applied, and a year picker that offers only years with a sale in them. Rules are dated `tax_rule` rows (`20260920120000`) and a test proves the bands in force on any date tile, so a Budget cannot leave old bands in force. Refused by name rather than guessed: a surcharge or rebate relief where there are capital gains, debt funds bought after 1 April 2023, property's 12.5% or 20% election, foreign holdings that need the prescribed exchange rate, and any year before 2025-26, which is not seeded. Ahead: the foreign tax credit and Form 67, advance-tax instalments, and a scheduled Budget-day reminder (below). **eCAS import is built and has now met two real files**: `import_batch` with per-line hashes (`20260917120000`), the pure parser (`src/domain/ecas.ts`), the on-device PDF adapter (`src/lib/ecas-pdf.ts`, pdf.js, dynamically imported) and the preview-and-commit screen (`src/features/holdings/ImportStatement.tsx`). Its fixtures are synthetic, written from the published layouts, so the first real statement is the real test — and the first one, a CDSL depository CAS, found four things at once: numeric dates, a folio line carrying "Mode of Holding", a scheme printed above the folio rather than below it, and a column order that puts units fourth. Both layouts are read now, registrar and depository, and two real files parse with nothing unread: a November 2022 depository CAS and a CAMS eCAS whose seven folios, schemes and ISINs all came out right. An imported fund records `price_source` `amfi` and its ISIN, so the driver can quote it the moment it exists. Stamp duty is folded into the cost of the purchase it was charged on, since a lot's cost is all in. Not yet: **what to do when a statement covers only part of the history** — see step 2 of the stage below, and it is the gap that matters most — editing a figure in the preview (leave the row out and correct it on the holding), any undo after commit, dividends and charges that belong to no purchase (no table holds them), the demat half of a depository CAS, bank and card imports. Property, global, calendar, reports and read-auditing not started. **The FIRE read-out is live ahead of step 9**, on the Overview's net worth, which counts everything held. Protection, schemes, earmarks and income are designed in `docs/design/protection-and-flow.md` and ordered into the stage below as 2a, 2b and 6a |
 | 6 — Onto the devices | not started | — |
 | 7 — Real data | not started | — |
 
@@ -147,6 +147,66 @@ Three things are already built and sit outside the order: `tax_rule` and its
 classification module, eCAS import, and the `lot`/`disposal` ledger they fill.
 What remains of each is noted where it belongs below.
 
+**Protection, schemes, earmarks and flow — where they fit.**
+`docs/design/protection-and-flow.md` adds three slices: **B** (earmarks and
+schemes), **C** (protection) and **A** (flow: income, accounts, transfers). They
+are not a Stage 6. Each is a prerequisite or an input of a step already in this
+list, and this list's order was deliberate, so they go in beside the steps they
+serve. **The numbers of the existing steps do not change.** They are quoted in
+other documents and in people's heads, and a renumbering is exactly what made the
+nine-step list of `c6d493b` and today's eleven-step list disagree (`95607c7`
+inserted step 2). The new items take the number of the step they follow and a
+letter: 2a, 2b, 6a.
+
+| # | Step | Where it is, and why |
+|---|---|---|
+| 1 | Currency control | **Unchanged and built.** Everything else is downstream of it: Global cannot start without it, the tax engine needs it for every US trade, export has to write a currency column that means something. |
+| 2 | Partial history | **Unchanged and built.** Every figure the steps below compute is built on it. |
+| **2a** | **Earmarks and schemes (slice B)** | **New, first of the new, and early for a reason that did not exist when this list was written.** The FIRE read-out shipped ahead of step 9 (PR #69) and starts from the Overview's net worth, which counts the emergency fund, SSY and any house deposit. B corrects a live figure. It needs a column and a pure function, no new table and no new policy, so nothing in steps 3 to 8 is a prerequisite. |
+| **2b** | **Protection (slice C)** | **Moved in from step 6**, where "protection" was already named. It extends `insurance_policy`, which exists (`20260906130200`) and says in its own comment that cover and renewal arrive with this slice. That makes it much cheaper than the design assumed, it gives Calendar (8) its renewal dates, and the nav slot it needs lands with it. Needs 2a: the cover gap subtracts a liquid corpus that 2a defines. |
+| 3 | Tax engine and Tax screen | **Unchanged**, plus a new remaining item, **3b section deductions**, which needs `scheme` (2a) and policy premiums (2b), so it comes after both. B does sit ahead of step 3, but for the earmark correction and not for the Tax screen's sake: the engine applies only the standard deduction today, so there is no section grouping for `scheme` to feed, and that alone would not have moved it. |
+| 4 | Global | **Unchanged.** `peak.ts` is already capturing the one thing that cannot be reconstructed. |
+| 5 | Reports, export first | **Unchanged in position**, and the reason stands: the gate is a round trip and cannot be tested from the far end. It gets one new rule: the export is generated from a list of entities, and every new entity (2a, 2b, 6a) registers itself in that list as part of being done. |
+| 6 | Property and the rest of the balance sheet | **Unchanged**, minus "protection", which is 2b. Gains one rule for PPF, SSY, NSC and KVP (credited interest steps the value at credit) and one question owed to the FIRE corpus (is an owned home in it?). |
+| **6a** | **Flow (slice A)** | **New, immediately before step 7.** The design's transfer rule needs an `account` to move money between, and bank import needs the same `account` for its per-bank profiles, so the rule and the registry must exist first. A is also the largest slice and the one most entangled with Reports, import and the Tax card, so it goes last of the three. |
+| 7 | Bank and card import | **Unchanged in position, wider in scope**: transfer detection is part of it, not a follow-up (see the note under 7). |
+| 8 | Calendar | **Unchanged.** It was already placed after property, protection and the tax engine because it is a view over what they create, and now it has its inputs: deposit maturities (existing), policy renewals (2b), advance tax (3). |
+| 9 | FIRE with the live projection | **Unchanged and still last of the computed steps.** What changes is what it starts from (2a) and the fact that part of it is already live. |
+| 10 | Narrow what a contributor and a viewer can read | **Built, and now a standing rule** for every new table (see 2b and 6a). |
+| 11 | Read-auditing | **Unchanged and still last**: every step above adds tables it would otherwise have to be retrofitted onto, and 2b and 6a add two with personal detail. |
+
+**Why B, then C, then A** and not the design's B, A, C. The design records the
+argument for putting C earlier and says that if it wins, C and A swap. It wins,
+and for a reason the design did not have: C is an extension of an existing table
+with an existing, tested policy shape, so the "largest new security surface" it
+was held back for is mostly not there. A is where the new tables, the new
+privacy rules and the dependency on import are. B stays first either way, because
+it is the only one that fixes something that is wrong today.
+
+**The one change a person will see: the FIRE figure gets smaller.** It is a
+correction and not a regression, and it is written down here so that it is not
+discovered in a screenshot.
+
+- *When.* Not at deploy. `earmark` defaults to none, so every existing household
+  reads exactly what it read before until somebody tags a holding. The figure
+  moves the first time an earmark is saved, which is a visible action with the
+  reason beside it.
+- *What the screen says.* Always, while any holding is excluded: "Reached ₹X: net
+  worth ₹Y, less ₹Z set aside (emergency fund, a child's, a house)", with the
+  parts named. The first time the figure falls on a device, once: what changed and
+  why ("Money you have set aside for something other than retirement is no longer
+  counted toward it"). That notice is a device preference and needs no schema.
+- *What else has to change with it.* The Overview's net worth does **not** change
+  (it counts everything it owns), so FIRE's "Reached" and the Overview's hero stop
+  being the same number, on purpose. `FireReadout`'s comment, the Departure that
+  says it "starts from the Overview's net worth", and the spec "the projection and
+  the Overview start from the same net worth" all say the opposite today and are
+  rewritten in the same change.
+- *A nudge, to be decided.* Because nothing changes until somebody tags, the
+  correction can sit unreached indefinitely. A Needs attention line while holdings
+  exist and none is tagged ("FIRE counts everything you hold; tag your emergency
+  fund") would make it reachable. It is a new notice, so it is the maintainer's call.
+
 ---
 
 **1. The currency control.** Everything else in this stage is downstream of it.
@@ -162,6 +222,8 @@ Settings, alone, and it lands first.
 It is first because Global cannot start without it, the tax engine needs it for
 every US trade, and export has to write a currency column that means something.
 Building it after any of those three means rebuilding part of them.
+
+**Built.** The control is in Settings, alone, in the device group (`DISPLAY_CURRENCY`; the Departures table says why it is one control and not two), and `fx_rate` and the conversion module it reads were already there.
 
 **2. What the app does when a statement covers only part of the history.**
 
@@ -228,6 +290,128 @@ enough.
 Here rather than later because every figure the steps below compute is built on
 these.
 
+**Built.** `holding.stated_quantity`, `stated_as_at` and `stated_source_batch_id` (`20260919120000`), valuation from the stated balance plus later lots, cost from the lots alone, the return refused where the two disagree, and the Overview notice counting positions in that state.
+
+**2a. Earmarks and schemes — design slice B.**
+
+*Where it sits, and why it moves in.* See the table above: it corrects a figure
+that is live. The original reason step 9 was last still holds for the *projection*
+(it needs the balance sheet complete). It does not hold for the *corpus
+exclusion*, which needs a column and a function and nothing from step 6.
+
+*One migration, both columns*, because they are one cheap change and splitting
+them would put two template-version bumps in front of Reports (5):
+
+- `holding.earmark` — `emergency | retirement | child | house | none`, not null,
+  default `none`, at most one. It is on the **holding** because it says what *this
+  household's* money is for.
+- `instrument.scheme` — `fd | rd | ppf | ssy | nsc | kvp | scss | pomis | po_td |
+  other`, nullable, with a check that it is null unless `kind = 'deposit'`. It is
+  on the **instrument** because it says what a thing *is*, beside `kind`. (The
+  design says `holdings.kind`; the schema's `kind` is on `instrument`.)
+- No new table and no new policy: the existing holding policies cover both, and
+  the audit trigger already records the change. The migration still redefines
+  `reset_demo_household` if the seed tags anything, and the seed does (an
+  emergency fund, SSY as `child`, a house deposit), so there is something to see.
+
+*Pure functions, fixtures first* (`CLAUDE.md`: anything numeric):
+
+- `fireCorpus(holdings)` returns the included total and the excluded parts by
+  earmark. **One classification, defined once**: FIRE's corpus and the cover gap's
+  "liquid corpus" (2b) are different filters over the same holdings (an SSY is
+  excluded from both; a locked PPF is in FIRE's corpus and not liquid), and three
+  screens defining them three ways is how they disagree. Both are named outputs of
+  this one function.
+- `monthsOfCover(emergencyTotal, monthlyExpenses)` returns `null` (not 0, not
+  infinity) with fewer than three complete months and with a zero denominator;
+  trailing twelve months or all there is.
+- Every `scheme` and `earmark` value resolves to a label, by iterating the enum.
+
+*Consumers in this slice:* the FIRE read-out's corpus and its standing line (see
+"the one change a person will see"); a scheme filter on Holdings; the earmark
+control in the holding's edit form (a figure-free control, so nothing for privacy
+mode to hide); and the emergency-fund line, which goes where it fits on today's
+Overview (between the asset cards and the allocation) and moves to the design's
+position when 6a builds the band around it.
+
+*Not in this slice, and why.* What `scheme` is *for* has no consumer yet: a
+maturity date for Calendar (8), a lock-in for the FIRE projection (9), a tax
+section for the Tax screen (3b), and the accrual rule for PPF and SSY (6). The
+column is the label they will read, and it is cheap to have it early. **A
+maturity date does not come from the column**: it comes from `fixed_income_terms`
+where a holding has them, and an RD, PPF or SSY has no single principal and fixed
+rate to put in them, so those maturities are step 6's.
+
+*Done when:* the design's unit tests pass (corpus exclusion by earmark, null
+months of cover, `scheme` rejected off `deposit`, enum labels); the FIRE spec no
+longer asserts that Reached equals the Overview hero; `privacy-mode.spec.ts`
+covers the months-of-cover line and the excluded total; the reset test and
+`check-demo-seed` pass with the new columns; and the Departure and the docs
+named above are rewritten in the same change.
+
+**2b. Protection — design slice C.**
+
+*Where it sits, and why.* "Protection" was named in step 6's list. It comes out
+of there because it is an extension of a table that exists, not a new one: it
+adds columns to `insurance_policy` (cover or sum assured, renewal date, a link to
+a holding for the hybrid cases, kinds for `ulip` and `money_back`) on top of the
+policy shape step 10 already gave it (owner and partner read all; a contributor
+reads the ones filed under them; a viewer none; every verb gated). Its premium is
+already in the annual expense, which is why FIRE counts a policy and has never
+needed its cover.
+
+*What carries over unchanged from the design:* no value column on a policy,
+ever; a ULIP is two records (the policy and a linked holding carrying the
+surrender value) and its premium is an expense while the surrender value is an
+asset; the cumulative-premiums-versus-surrender-value gap is shown; the cover gap
+is a stated calculation with every input a visible household setting and no
+recommendation; health cover gets no suggested figure.
+
+*What this plan adds, because the repository says so:*
+
+- **The settings are household columns**, like `fire_multiplier` and the
+  projection's three (`20260909120000`, `20260929120000`): additive, defaulted,
+  audited, with the default on the face of the screen. A household setting is not
+  a constant in code.
+- **The cover gap's "liquid corpus" is the one 2a defines**, not a second
+  definition.
+- **A policy number is last four digits only.** The design stores "policy numbers
+  and nominee names" as the most sensitive columns in the app. `CLAUDE.md` and
+  blueprint §15 say account identifiers keep the last four digits, and a policy
+  number is one. `fixed_income_terms.account_last4` is the precedent. Nominee
+  names are personal data the rule does not cover and need a decision.
+- **Row-level security cannot hide a column from a role.** If nominee stays, it
+  lives in its own table with owner and partner policies, and the "its own
+  assertion" test the design asks for becomes a plain policy test.
+- **Insurance needs a home in the navigation, so the nav change lands here.** The
+  bottom bar has five slots and they are full. `Overview · Expenses · Holdings ·
+  FIRE · More`, with Tax, Insurance, Profile and Settings in More, is part of this
+  slice. The *Money* rename waits for 6a, because it is wrong only once income is
+  recorded there.
+- **A Departure is reversed.** "Loans and policies | on FIRE, not a screen of
+  their own" stays true for loans and stops being true for policies. The row is
+  rewritten when the screen exists, and `docs/design/prototype.html` and the
+  ledger get the Insurance screen, per `CLAUDE.md`.
+- The renewal reminder uses the machinery that already calls out a maturity within
+  thirty days on Needs attention.
+
+*Done when:* the design's pgTAP tests pass for every verb across households (the
+existing `rls_role_reads.test.sql` already covers select); a policy with no
+linked holding contributes exactly 0 to net worth (assert the total); privacy mode
+removes cover and premium from the document, **including inside the editable
+rows** (an input's value is its digits in the markup; finding 22 is the lesson);
+the new rows are editable rows (`.edit-row`, `RowAction`, `--inset`); and the
+reset function, the seed and the audit trigger cover anything added.
+
+*The capture rule applies to this slice's forms* (`docs/design/detail-level.md`
+§5, which calls these the forms to get right first). The policy form shows what
+is required and puts the rest behind a "more details" fold, and **every column
+the fold holds exists from the first migration**, because a form that never
+offered a field produces data that cannot be repaired later. Cover, renewal date,
+the linked holding and any identifier are the likely occupants of the fold; the
+form's design decides which. Nothing a form writes may consult `detail_level`
+(I2), and the setting itself is not built by this slice.
+
 **3. The tax engine, and the Tax screen on top of it.**
 
 The largest single piece. `tax_rule` holds dated rows and
@@ -244,6 +428,18 @@ and fixtures with known answers written before the implementation.
 departure saying long and short term go unlabelled "until `tax_rule` exists".
 It exists, and has since `20260912120000`. Close that row as part of this work
 rather than leaving a known-stale claim in the file CI reads.
+
+*3b. Section deductions, new.* The engine applies the standard deduction and no
+other (`src/domain/income-tax.ts`), so the old regime's figure reads high for
+anyone who claims 80C or 80D, and the Tax screen has nothing yet that groups by
+section. This is the work that gives `scheme` a tax consumer: PPF, SSY and NSC
+under 80C, life premiums under 80C and health premiums under 80D, which is why it
+comes after 2a and 2b and not before. `deduction_cap` already says "a section
+number later" (`20260920120000`). The caveat on the old-regime figure stays until
+this is built. It is also where the Tax card's typed-and-forgotten salary meets
+the income ledger (6a): the card's own comment says that where salary lives "is a
+design of its own that needs a table and its policies reviewed", and 6a is that
+design.
 
 **4. Global.**
 
@@ -270,6 +466,26 @@ The demo household needs the prototype's `sample-bar` by the time anything can
 be exported from it — a banner marking illustrative figures. It is a small
 component and it is what stops a demo export being mistaken for a real one.
 
+*What 2a, 2b and 6a do to this step.* Blueprint §14 makes the full export "one
+sheet per entity" and "deliberately identical in shape to the upload template",
+with a template version for when the schema gains a column. Income, policy cover
+and the two new holding columns are new entities or columns, so:
+
+- **The export is generated from a list of entities, and registering in that list
+  is part of "done" for any slice that adds one.** Otherwise each slice amends
+  export, template, round-trip test and deletion cascade by hand. The same list
+  drives the account-deletion export phase 1 requires, which has to carry
+  everything personal, new tables included.
+- **Export still leads, for the reason above, and income does not change that.**
+  Income is another sheet, and a round trip has to land a transfer as a transfer:
+  the link between its two sides is part of the row, or a re-upload turns it into
+  income and expense.
+- 2a and 2b land before this step, so the *first* template already has `scheme`,
+  `earmark`, cover and renewal. 6a lands after it and costs one template version,
+  which §14 designs for.
+- A backup workbook is a readable file outside the app's protections. Cover, and
+  anything the design calls nominee or policy detail, is a decision about whether
+  it is in the file at all, not only about who may read the table.
 **6. Property, and the rest of the balance sheet.**
 
 Property with its cost basis, bonds and deposits, retirement, protection and
@@ -295,6 +511,105 @@ can be added, corrected in place and renewed, a bond pays out or is cumulative a
 registration and capital improvements, not repairs); then PPF (computed from the notified rate on the
 lowest balance of the month), EPF (typed from the passbook) and NPS (units x NAV).
 
+*What the design changes here.* Protection is no longer in this step (2b).
+Three things are owed before it is built:
+
+- **Interest that is accrued but not credited steps the value at credit** (the
+  design's rule, and it is the passbook's). PPF, SSY, NSC and KVP are marked up
+  once, when the bank does. PPF's monthly calculation on the lowest balance is
+  still needed to *predict* that credit, but it is not a monthly mark-up of the
+  holding. This differs from what is built: a bank deposit or a bond is worked
+  out from its terms and Close month writes that worked-out value, so it moves
+  every month (`docs/decisions.md`). The rule is therefore **per scheme, said so,
+  and Close month carries the last credited value for the stepped ones**. Applying
+  it to every deposit would reverse a decision the maintainer made on purpose.
+  It is recorded in `docs/decisions.md`, which is where the design's "sibling of
+  `tokens.md` for data rules" already lives.
+- **The scheme list is not the retirement list.** The design's `scheme` has `ppf`
+  and no `epf` or `nps`; this step lists all three; `icons.md` §4 draws
+  "retirement (PF · PPF · NPS)" as a future *kind* with its own tile. One answer,
+  before build: either EPF and NPS are `deposit` schemes, or retirement is a kind
+  and PPF is a retirement holding, or `other`. The allocation donut and the tile
+  follow from it.
+- **Is an owned home in the FIRE corpus?** The earmark `house` means a deposit
+  being saved, not a house lived in. Property arrives here, and the corpus
+  function (2a) needs to say what it does with it. The conservative answer is
+  that a home you live in is excluded.
+**6a. Flow — design slice A.**
+
+*Where it sits, and why.* Immediately before bank and card import. The design's
+transfer rule ("moving money between the household's own accounts is neither
+income nor expense") needs something to move money *between*, and the blueprint's
+`account` (§04: institution, type, currency, last four) is not built. Import needs
+the same `account` for its per-bank profiles. So the registry and the rule exist
+first, and import builds detection on top. This is also the largest slice, and
+the one entangled with Reports, import and the Tax card, so it goes last of the
+three.
+
+*Decisions owed before it is built* (each is a conflict with something already in
+the repository):
+
+- **Which income.** The blueprint's `income_entry` is per member, per tax year, by
+  head (salary, house property, other, foreign) with TDS: the Tax screen's input.
+  The design's `income` is a dated ledger by category. They should not be two
+  stores that disagree. The ledger is the source and the tax-year heads are
+  derived from it; it needs a TDS field, or the Tax card cannot use it.
+- **`capital_gain` is not an income category.** `CLAUDE.md`: capital gains are
+  derived from lots and a gain is never stored. A recorded gain is the same
+  mistake. It is shown, derived, beside the ledger, and not in it. Dividends wait
+  on the `dividend` table that does not exist yet; interest on a deposit is
+  derivable from its terms, which is the design's own open question about auto
+  rows and has the same answer.
+- **Income is private by default.** Blueprint §20: "your income entries which
+  stay yours". It carries `visibility` as expenses and holdings do, with a
+  security-definer total (as `personal_holding_totals`) so *Saved this month*
+  can include another member's private income as a sum without detail. A
+  contributor reads their own and a viewer none (step 10's shape); `access.ts`
+  and a household summary function follow.
+- **A transfer goes to a holding as well as to an account.** An SIP, an RD
+  instalment and a lump sum into a fund all leave a bank account and are neither
+  income nor expense. The rule, the representation and the importer's job cover
+  "an account or a holding", or the investment purchases are the first things
+  import books as spending.
+- **The Money rename.** The route and the screen id are `expenses` in `useScreen`,
+  `access.ts`, the ledger and a large part of the e2e suite. Rename the label and
+  keep the id, or rename both with a redirect. The nav change itself is 2b's.
+
+*Also here:* the stock and flow regions of the Overview, with the one lifted
+surface per screen unchanged (`theme.spec.ts` must not be relaxed); the two
+savings figures, labelled; the Tax card reading salary from the ledger instead of
+a box that forgets it.
+
+*Debts and the balance sheet are two pieces of work, not one.* Debts already
+exist: liabilities with `outstanding_minor` (`20260908130000`), shown as stats
+under the net worth figure and subtracted from it, with loans on FIRE. Step 6 is
+the *assets* side ("what is missing is the assets side, not another home for the
+debts"). The design's Overview order does not list debts, though its stock
+definition does, so 6a keeps today's presentation of them. What 6a and 6 share is
+the Overview's stock region. 6a fixes its structure (names, order, accessible
+regions) with today's content, and 6 then puts property into it. Doing both in the
+other order reworks the region twice.
+
+*Done when:* the design's tests pass (a transfer is in neither total; privacy mode
+removes income by absence from the DOM); every new table has its audit trigger,
+its `enable row level security`, its explicit grants, and a denying test per verb
+across households and per role; **`reset_demo_household` clears it and the seed
+fills it** (see below); and the export list, the deletion cascade and the template
+version are updated.
+
+*The capture rule applies here too* (`docs/design/detail-level.md` §5): the
+income and transfer forms show what is required and fold the rest, with every
+column present from the first migration. The importer is the other capture path
+and is held to the same rule in step 7: it writes everything it can extract
+whatever anyone's display setting is, and its preview is a different object from
+what it writes.
+
+*A guard worth building once, here or earlier.* `reset_demo_household` raises at
+run time if a household table is not cleared, which CI does not exercise. The
+fixed-income tables went uncleared for two migrations and it was found by reading,
+not by a test. Each new table in 2a, 2b and 6a is another chance. A pgTAP test
+that reads every public table with a `household_id` and fails if the function body
+does not name it costs a few lines and ends the problem.
 **7. Bank and card statement import.**
 
 *Sources, as the household has them:* an HDFC savings account (PDF, Excel, delimited and text), an ICICI savings
@@ -341,12 +656,30 @@ recorded when they happened, so filing the repayment too would double every one
 of them — which is why there is no "credit card repayment" category and why the
 importer must skip the payment line on a bank statement that settles a card.
 
+*Transfer detection is part of this step, and it needs 6a first.* Import sees a
+debit and a credit and does not know they are the same rupees. It matches them to
+an `account` from 6a, applies the transfer rule, and treats a debit to a fund
+house or a deposit as a purchase to link, not an expense. It also gives the
+months-of-cover line (2a) honest input: until the log is complete, an average of
+what was typed understates spending and overstates the cover, and the three-month
+guard only catches too little history, not an incomplete log.
+
+*The importer is a capture path, so `docs/design/detail-level.md` §4 applies.* It
+writes every field it can extract whatever anyone's display setting is, its
+preview is a different object from what it writes, and it keeps provenance. Its
+proposal to retain the unmapped source row is **not adopted by this plan until
+the maintainer decides it**: the row can carry folio numbers, account numbers and
+PANs, and `CLAUDE.md` keeps account identifiers to the last four digits.
 **8. Calendar.**
 
 Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here
 because it is a view over things the earlier steps create — there is little to
 put on a calendar until property, protection and the tax engine exist.
 
+Its inputs are now named: deposit and bond maturities (built), policy renewals
+(2b), advance-tax instalments (3), EMIs and SIPs (6a). **A scheme maturity is
+not an input until step 6 has one**: the `scheme` column alone carries no date. It
+lands after 2b and 6, and not before either, or it is built twice.
 **9. FIRE with the live projection.**
 
 _Partly pulled forward (the FIRE read-out, `docs/design/conformance.md` Departures):_ a corpus
@@ -359,6 +692,15 @@ goals, neither of which exists today. It needs the balance sheet from step 6 to
 be complete, or the projection starts from a number that is missing the property
 and the deposits.
 
+*Part of this is already live, and the dependency this paragraph describes is
+already crossed.* The FIRE read-out (PR #69) projects from the Overview's net
+worth with three typed assumptions, and so from a corpus that counts money set
+aside for something else. 2a is the correction. What remains for this step is
+the real-contributions projection, goals, coast-FIRE and scenarios, and the
+questions 2a deliberately leaves open: a **lock-in** (an SSY or a PPF is not
+available before it matures, so it belongs in the projection at its maturity,
+which turns the corpus from a number into a dated schedule) and the property
+question under step 6. Neither is solved by an exclusion.
 **10. Narrow what a contributor and a viewer can read.**
 
 **Built.** Section 11 of the blueprint says a contributor sees their own records plus household
@@ -391,6 +733,10 @@ security-definer functions. Deferred from stage 2 deliberately — it is a chang
 to how reading works, not another trigger, and it should be designed alongside
 the §20 totals surface it shares. Last in the stage because every step above
 adds tables it would otherwise have to be retrofitted onto.
+
+2b and 6a add two tables that carry personal detail (policy identifiers if a
+nominee stays, and income), so the list this step covers is longer than when it
+was written, which is the reason it is last.
 
 ---
 
