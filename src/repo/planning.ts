@@ -46,7 +46,8 @@ const CATEGORY_COLUMNS = 'id, name, nature, parent_id, is_essential, sort_order,
 const BUDGET_COLUMNS = 'id, category_id, fy, cadence, period, planned_minor::text, currency, member_id';
 const LIABILITY_COLUMNS =
   'id, name, kind, instalment_minor::text, currency, cadence, member_id, status, outstanding_minor::text, outstanding_as_of';
-const POLICY_COLUMNS = 'id, name, kind, premium_minor::text, currency, cadence, member_id, status';
+const POLICY_COLUMNS =
+  'id, name, kind, premium_minor::text, currency, cadence, member_id, status, insurer, policy_last4, cover_minor::text, started_on, renewal_on, linked_holding_id';
 
 /**
  * What is still owed, or null.
@@ -228,6 +229,18 @@ export async function listPlan(options: {
       cadence: c.cadence,
       memberId: c.memberId,
       isLapsed: c.closed,
+      insurer: optionalString(row['insurer'], 'insurance_policy.insurer'),
+      policyLast4: optionalString(row['policy_last4'], 'insurance_policy.policy_last4'),
+      cover:
+        row['cover_minor'] === null || row['cover_minor'] === undefined
+          ? null
+          : money(
+              toBigIntExact(row['cover_minor'], 'insurance_policy.cover_minor'),
+              requireString(row['currency'], 'insurance_policy.currency'),
+            ),
+      startedOn: optionalString(row['started_on'], 'insurance_policy.started_on') as IsoDate | null,
+      renewalOn: optionalString(row['renewal_on'], 'insurance_policy.renewal_on') as IsoDate | null,
+      linkedHoldingId: optionalString(row['linked_holding_id'], 'insurance_policy.linked_holding_id'),
     };
   });
 
@@ -443,13 +456,51 @@ export async function addLiability(input: {
   if (result.error !== null) throw asRepositoryError(result.error);
 }
 
-export async function addPolicy(input: {
-  householdId: Uuid;
-  name: string;
-  kind: PolicyKind;
-  premium: Money;
-  cadence: CommitmentCadence;
-}): Promise<void> {
+/** What a policy form can say beyond its name, kind and premium: every column the table has. */
+export interface PolicyDetail {
+  readonly insurer?: string | null;
+  /** The last four characters of the policy number. Refused at five, here with a sentence. */
+  readonly policyLast4?: string | null;
+  readonly cover?: Money | null;
+  readonly startedOn?: IsoDate | null;
+  readonly renewalOn?: IsoDate | null;
+  readonly linkedHoldingId?: Uuid | null;
+  readonly memberId?: Uuid | null;
+}
+
+function policyFields(detail: PolicyDetail): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+  if (detail.insurer !== undefined) {
+    fields['insurer'] = detail.insurer === null || detail.insurer.trim() === '' ? null : detail.insurer.trim();
+  }
+  if (detail.policyLast4 !== undefined) {
+    const last4 = detail.policyLast4 === null ? '' : detail.policyLast4.trim();
+    if (last4 !== '' && !/^[0-9A-Za-z]{4}$/.test(last4)) {
+      throw new Error(
+        'Only the last four characters of a policy number are kept, so this is four letters or digits and no more.',
+      );
+    }
+    fields['policy_last4'] = last4 === '' ? null : last4;
+  }
+  if (detail.cover !== undefined) {
+    fields['cover_minor'] = detail.cover === null ? null : detail.cover.minor.toString();
+  }
+  if (detail.startedOn !== undefined) fields['started_on'] = detail.startedOn;
+  if (detail.renewalOn !== undefined) fields['renewal_on'] = detail.renewalOn;
+  if (detail.linkedHoldingId !== undefined) fields['linked_holding_id'] = detail.linkedHoldingId;
+  if (detail.memberId !== undefined) fields['member_id'] = detail.memberId;
+  return fields;
+}
+
+export async function addPolicy(
+  input: {
+    householdId: Uuid;
+    name: string;
+    kind: PolicyKind;
+    premium: Money;
+    cadence: CommitmentCadence;
+  } & PolicyDetail,
+): Promise<void> {
   const client = supabase();
   const result = await client.from('insurance_policy').insert({
     household_id: input.householdId,
@@ -458,8 +509,67 @@ export async function addPolicy(input: {
     premium_minor: input.premium.minor.toString(),
     currency: input.premium.currency,
     cadence: input.cadence,
+    ...policyFields(input),
   });
   if (result.error !== null) throw asRepositoryError(result.error);
+}
+
+/**
+ * Correct a policy. Rows returned are checked and not only the error: a policy-refused update comes back
+ * with neither, and would read as a save the database did not make.
+ *
+ * A policy is lapsed, not deleted: its history is the household's arithmetic, and the table has no
+ * delete grant at all.
+ */
+export async function updatePolicy(
+  id: Uuid,
+  patch: PolicyDetail & {
+    readonly name?: string;
+    readonly kind?: PolicyKind;
+    readonly premium?: Money;
+    readonly cadence?: CommitmentCadence;
+    readonly lapsed?: boolean;
+  },
+): Promise<void> {
+  const client = supabase();
+  const fields = policyFields(patch);
+  if (patch.name !== undefined) {
+    if (patch.name.trim() === '') throw new Error('A policy needs a name.');
+    fields['name'] = patch.name.trim();
+  }
+  if (patch.kind !== undefined) fields['kind'] = patch.kind;
+  if (patch.premium !== undefined) {
+    fields['premium_minor'] = patch.premium.minor.toString();
+    fields['currency'] = patch.premium.currency;
+  }
+  if (patch.cadence !== undefined) fields['cadence'] = patch.cadence;
+  if (patch.lapsed !== undefined) {
+    fields['status'] = patch.lapsed ? 'lapsed' : 'active';
+    fields['lapsed_at'] = patch.lapsed ? new Date().toISOString() : null;
+  }
+  if (Object.keys(fields).length === 0) return;
+
+  const result = await client.from('insurance_policy').update(fields).eq('id', id).select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if ((result.data ?? []).length === 0) {
+    throw new Error('That policy could not be changed. Only an owner or partner can change one.');
+  }
+}
+
+/** The one household setting the cover gap has. Whole years, 0 to 50, which the database also checks. */
+export async function setCoverDependencyYears(householdId: Uuid, years: number): Promise<void> {
+  if (!Number.isInteger(years) || years < 0 || years > 50) {
+    throw new Error('Years of dependency is a whole number from 0 to 50.');
+  }
+  const result = await supabase()
+    .from('household')
+    .update({ cover_dependency_years: years })
+    .eq('id', householdId)
+    .select('id');
+  if (result.error !== null) throw asRepositoryError(result.error);
+  if ((result.data ?? []).length === 0) {
+    throw new Error('Only an owner or partner can change the years of dependency.');
+  }
 }
 
 /** Roles that may set a plan. Recording a spend and planning one differ. */

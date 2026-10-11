@@ -122,6 +122,7 @@ describe('toHousehold', () => {
         fire_return_pct: '8.50',
         fire_step_up_pct: '5.00',
         fire_monthly_contribution_minor: 1500000,
+        cover_dependency_years: 15,
       }),
     ).toEqual({
       id: 'h-1',
@@ -139,7 +140,13 @@ describe('toHousehold', () => {
       displayCurrency: 'INR',
       fyStartMonth: 4,
       createdOn: null,
+      coverDependencyYears: 15,
     });
+  });
+
+  it('reads ten years of dependency where the column is not there yet, rather than failing the load', () => {
+    const row = { id: 'h-1', name: 'x', kind: 'demo', base_currency: 'INR', display_currency: 'INR', fy_start_month: 4 };
+    expect(toHousehold(row).coverDependencyYears).toBe(10);
   });
 
   it('carries the day it was created, in IST, to tell two of one name apart', () => {

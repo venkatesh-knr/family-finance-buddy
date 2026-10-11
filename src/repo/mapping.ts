@@ -105,6 +105,7 @@ export function toHousehold(raw: unknown): Household {
         'household.fire_monthly_contribution_minor',
       ),
     },
+    coverDependencyYears: Number(row['cover_dependency_years'] ?? 10),
   };
 }
 
