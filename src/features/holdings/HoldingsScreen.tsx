@@ -38,6 +38,7 @@ import {
 } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { isQualified } from '../../domain/position.ts';
+import { EARMARK_LABELS, SCHEMES, SCHEME_LABELS, isScheme, type Scheme } from '../../domain/earmark.ts';
 import { CostAndGains } from './CostAndGains.tsx';
 import { COST_MISSING_REFUSED_BECAUSE, costMissing, RETURN_REFUSED_BECAUSE, shortPositions } from './history.ts';
 import { EditHolding } from './EditHolding.tsx';
@@ -71,6 +72,8 @@ export function HoldingsScreen({
   const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh, paidOut, paidOutFailed } =
     useHoldings(householdId);
   const [sortBy, setSortBy] = useState<SortBy>('value');
+  /** Narrow the list to one scheme, or all of them. Empty is all. */
+  const [scheme, setScheme] = useState<Scheme | ''>('');
   /** Which of the two ways of adding is open beneath the controls, if either. */
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
 
@@ -130,7 +133,7 @@ export function HoldingsScreen({
   // Biggest first by default: on a list of twenty, the largest position is
   // almost always the one the question is about.
   const ordered = useMemo(() => {
-    const copy =
+    const byKind =
       filter === null
         ? [...rows]
         : rows.filter(
@@ -138,6 +141,7 @@ export function HoldingsScreen({
               row.holding.instrument.kind === filter.kind &&
               row.holding.instrument.currency === filter.currency,
           );
+    const copy = scheme === '' ? byKind : byKind.filter((row) => row.holding.instrument.scheme === scheme);
     copy.sort((a, b) => {
       if (sortBy === 'name') {
         return a.holding.instrument.name.localeCompare(b.holding.instrument.name);
@@ -153,7 +157,13 @@ export function HoldingsScreen({
       return bv > av ? 1 : bv < av ? -1 : 0;
     });
     return copy;
-  }, [rows, sortBy, filter]);
+  }, [rows, sortBy, filter, scheme]);
+
+  /** Only the schemes somebody holds: a filter with nine empty choices is a list of things that are not there. */
+  const schemesHeld = useMemo(
+    () => SCHEMES.filter((option) => rows.some((row) => row.holding.instrument.scheme === option)),
+    [rows],
+  );
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 
@@ -435,6 +445,25 @@ export function HoldingsScreen({
                   </button>
                 ))}
               </span>
+              {schemesHeld.length > 0 && (
+                <label className="ml-2 flex items-center gap-2">
+                  <span className="label">Scheme</span>
+                  <select
+                    className="field w-[190px]"
+                    value={scheme}
+                    onChange={(event) => {
+                      setScheme(isScheme(event.target.value) ? event.target.value : '');
+                    }}
+                  >
+                    <option value="">All</option>
+                    {schemesHeld.map((option) => (
+                      <option key={option} value={option}>
+                        {SCHEME_LABELS[option]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div className="flex flex-col gap-4.5">
@@ -518,6 +547,10 @@ function HoldingCard({
             <span className="note">{holding.instrument.symbol}</span>
           )}
           {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
+          {holding.instrument.scheme !== null && (
+            <Pill tone="neutral">{SCHEME_LABELS[holding.instrument.scheme]}</Pill>
+          )}
+          {holding.earmark !== 'none' && <Pill tone="neutral">{EARMARK_LABELS[holding.earmark]}</Pill>}
           {/*
             "A privacy control nobody can observe working is indistinguishable
             from one that does nothing" (§20). A holding reaching this screen
