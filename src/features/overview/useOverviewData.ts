@@ -20,6 +20,12 @@ import {
   type ValuationInput,
 } from '../../domain/networth.ts';
 import { isQualified, type History } from '../../domain/position.ts';
+import {
+  EXCLUDED_FROM_FIRE,
+  fireCorpus,
+  type CorpusHolding,
+  type ExcludedEarmark,
+} from '../../domain/earmark.ts';
 import { listHoldings, listPersonalHoldingTotals } from '../../repo/holdings.ts';
 import {
   costForHolding,
@@ -34,7 +40,7 @@ import {
   type FixedIncomeAlert,
 } from '../holdings/fixedIncomeRows.ts';
 import { listPlan } from '../../repo/planning.ts';
-import { netWorth } from '../../domain/fx.ts';
+import { netWorth, type NetWorth } from '../../domain/fx.ts';
 import { istCalendarDate } from '../../lib/dates.ts';
 import {
   NoHouseholdError,
@@ -417,6 +423,58 @@ export function useOverviewData({
     });
   }, [totals, hiddenAssets, shownDebts, display, rates, asOf, today]);
 
+  /**
+   * The FIRE corpus, which is not the net worth (docs/design/protection-and-flow.md §3).
+   *
+   * The same holdings, readings, rates and debts as `worth`, with the holdings earmarked emergency, child
+   * or house taken out, because spending the emergency fund is its purpose, the child's savings are
+   * locked and hers, and a house deposit is already committed. `worth` is unchanged: that is what the
+   * household owns, and the Overview's hero says so.
+   *
+   * Other members' private holdings arrive only as one sum per member, so their earmarks cannot be
+   * applied and they count in full. `privateMembers` says how many members that is, so the screen can
+   * say the corpus may be overstated by them rather than leave it as a surprise.
+   */
+  const corpusHoldings = useMemo<readonly CorpusHolding[]>(
+    () =>
+      (listing === null ? [] : listing.holdings)
+        .filter((h) => scope === 'household' || h.member.id === mine)
+        .map((h) => ({
+          id: h.id,
+          currency: h.instrument.currency,
+          earmark: h.earmark,
+          isArchived: h.isArchived || paidOut.has(h.id),
+        })),
+    [listing, scope, mine, paidOut],
+  );
+
+  const fire = useMemo(() => {
+    const corpusTotals = fireCorpus({ holdings: corpusHoldings, valuations });
+    const on = asOf ?? today;
+    const corpus: NetWorth = netWorth({
+      assets: [...corpusTotals.map((t) => t.included), ...hiddenAssets.map((entry) => entry.total)],
+      debts: shownDebts.map((d) => d.amount),
+      base: display,
+      rates,
+      on,
+    });
+    const excluded = EXCLUDED_FROM_FIRE.map((earmark: ExcludedEarmark) => ({
+      earmark,
+      amount: netWorth({
+        assets: corpusTotals.map((t) => t.excluded[earmark]),
+        debts: [],
+        base: display,
+        rates,
+        on,
+      }),
+    }));
+    return {
+      corpus,
+      excluded,
+      privateMembers: new Set(hiddenAssets.map((entry) => entry.memberId)).size,
+    };
+  }, [corpusHoldings, valuations, hiddenAssets, shownDebts, display, rates, asOf, today]);
+
   // What is wrong with the figure, in one list behind one mark. Five marks in a row
   // on the number were five buttons to open, and the two of them that were not
   // warnings carried the same "i" as the heading's.
@@ -489,5 +547,6 @@ export function useOverviewData({
     hiddenAssets,
     heroWarnings,
     worth,
+    fire,
   };
 }
