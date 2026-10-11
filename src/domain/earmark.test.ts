@@ -8,8 +8,10 @@ import {
   SCHEME_LABELS,
   fireCorpus,
   coverMonths,
+  earmarkedHoldings,
   isScheme,
   monthsOfCover,
+  priorMonths,
   schemeAllowedFor,
   type CorpusHolding,
 } from './earmark.ts';
@@ -216,28 +218,71 @@ describe('PF-C6 — every scheme and every earmark resolves to a label', () => {
   });
 });
 
-describe('PF-C9 — the window is the complete months since spending began, at most twelve', () => {
-  it('leaves out the month in progress', () => {
-    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: '2026-07' })).toEqual([
+describe('PF-C9 — the window is whole months with spending in them, at most twelve', () => {
+  // today = 2026-10-11. The thirteen before it run 2025-09 (the probe) to 2026-09.
+  const today = '2026-10-11';
+
+  it('leaves out the month in progress and the month spending began in', () => {
+    expect(coverMonths({ today, spendMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] })).toEqual([
       '2026-07',
       '2026-08',
       '2026-09',
     ]);
   });
 
-  it('is empty when nothing has been spent, and when the first spend is this month', () => {
-    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: null })).toEqual([]);
-    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: '2026-10' })).toEqual([]);
+  it('is empty when nothing has been spent, and when the first spend is last month', () => {
+    expect(coverMonths({ today, spendMonths: [] })).toEqual([]);
+    expect(coverMonths({ today, spendMonths: ['2026-09'] })).toEqual([]);
+    // A first month that has only just ended is one day of data, not a month of it.
+    expect(coverMonths({ today: '2026-10-01', spendMonths: ['2026-09'] })).toEqual([]);
   });
 
-  it('stops at twelve and crosses a year end', () => {
-    const window = coverMonths({ today: '2026-02-03', firstSpendMonth: '2020-01' });
+  it('does not count a month with nothing recorded as a month of spending nothing', () => {
+    // June, July and August are empty: three months of spending, not seven.
+    expect(coverMonths({ today, spendMonths: ['2026-03', '2026-04', '2026-05', '2026-09'] })).toEqual([
+      '2026-04',
+      '2026-05',
+      '2026-09',
+    ]);
+  });
+
+  it('keeps the oldest month in the window when recording began before it', () => {
+    const window = coverMonths({ today, spendMonths: ['2025-09', '2025-10', '2025-11', '2026-09'] });
+    expect(window).toEqual(['2025-10', '2025-11', '2026-09']);
+    // The probe is not part of the window, but it settles that 2025-10 is a whole month.
+    expect(window).not.toContain('2025-09');
+  });
+
+  it('is at most twelve months, and crosses a year end', () => {
+    const everyMonth = priorMonths('2026-02-03', 13);
+    const window = coverMonths({ today: '2026-02-03', spendMonths: everyMonth });
     expect(window).toHaveLength(12);
     expect(window[0]).toBe('2025-02');
     expect(window[11]).toBe('2026-01');
   });
+});
 
-  it('does not reach back before the first month anything was spent in', () => {
-    expect(coverMonths({ today: '2026-01-15', firstSpendMonth: '2025-11' })).toEqual(['2025-11', '2025-12']);
+describe('earmarkedHoldings — which holdings are earmarked, apart from how much', () => {
+  it('counts each excluded earmark and how many have never been read', () => {
+    const result = earmarkedHoldings({
+      holdings: [
+        holding({ id: 'a', earmark: 'emergency' }),
+        holding({ id: 'b', earmark: 'emergency' }),
+        holding({ id: 'c', earmark: 'house' }),
+        holding({ id: 'd', earmark: 'retirement' }),
+        holding({ id: 'e' }),
+        holding({ id: 'f', earmark: 'child', isArchived: true }),
+      ],
+      valuations: [reading('a', inr(1)), reading('d', inr(1))],
+    });
+    expect(result.count).toEqual({ emergency: 2, child: 0, house: 1 });
+    expect(result.unvalued).toBe(2);
+    expect(result.unvaluedBy).toEqual({ emergency: 1, child: 0, house: 1 });
+  });
+
+  it('is all zero for a household that has earmarked nothing', () => {
+    const result = earmarkedHoldings({ holdings: [holding({ id: 'a' })], valuations: [] });
+    expect(result.count).toEqual({ emergency: 0, child: 0, house: 0 });
+    expect(result.unvalued).toBe(0);
   });
 });

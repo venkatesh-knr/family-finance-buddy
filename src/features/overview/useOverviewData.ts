@@ -3,9 +3,9 @@
  * exchange rates, the debts, and the net worth worked out from them.
  *
  * It lived inside the Overview screen. FIRE has to show how far the household is from its target, and
- * "how far" is measured from net worth: a second calculation of it would be a second answer, and the
- * two screens would disagree by exactly what they handled differently. So it is one hook, and the
- * figure on FIRE is the figure on the Overview.
+ * that is measured from the corpus, which is the net worth less what is earmarked for something other
+ * than retirement. Both are worked out here from the same holdings, readings, rates and debts, so the two
+ * screens cannot disagree about anything but the earmarks: the corpus is never more than the net worth.
  *
  * Which holdings are in view is the caller's `scope`: the household's, or one member's own.
  */
@@ -22,6 +22,7 @@ import {
 import { isQualified, type History } from '../../domain/position.ts';
 import {
   EXCLUDED_FROM_FIRE,
+  earmarkedHoldings,
   fireCorpus,
   type CorpusHolding,
   type ExcludedEarmark,
@@ -450,6 +451,7 @@ export function useOverviewData({
 
   const fire = useMemo(() => {
     const corpusTotals = fireCorpus({ holdings: corpusHoldings, valuations });
+    const earmarked = earmarkedHoldings({ holdings: corpusHoldings, valuations });
     const on = asOf ?? today;
     const corpus: NetWorth = netWorth({
       assets: [...corpusTotals.map((t) => t.included), ...hiddenAssets.map((entry) => entry.total)],
@@ -471,6 +473,8 @@ export function useOverviewData({
     return {
       corpus,
       excluded,
+      /** Which holdings are earmarked, valued or not: a total of nothing is not the same as nothing earmarked. */
+      earmarked,
       privateMembers: new Set(hiddenAssets.map((entry) => entry.memberId)).size,
     };
   }, [corpusHoldings, valuations, hiddenAssets, shownDebts, display, rates, asOf, today]);

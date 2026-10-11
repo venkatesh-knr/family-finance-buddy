@@ -433,6 +433,50 @@ export async function listPersonalSpend(options: {
   });
 }
 
+/**
+ * The caller's own private spending in a period, entry by entry.
+ *
+ * `personal_expense_totals` is other members' private spending as one sum each, and the household's
+ * shared totals leave all private spending out, so the caller's own private rows are the third part of
+ * what the household spends. Row-level security returns a personal row to the member it belongs to and
+ * to nobody else, so asking for personal rows returns exactly these.
+ *
+ * Counted, not trusted: if the server returned fewer rows than there are (a row cap), the sum would be
+ * short and nothing would say so, so a short page is an error and not a smaller total.
+ */
+export async function listOwnPrivateSpend(options: {
+  householdId: Uuid;
+  from: IsoDate;
+  to: IsoDate;
+}): Promise<readonly { readonly date: IsoDate; readonly amount: Money }[]> {
+  const { data, error, count } = await supabase()
+    .from('expense_txn')
+    .select('txn_date, amount_minor::text, currency', { count: 'exact' })
+    .eq('household_id', options.householdId)
+    .eq('visibility', 'personal')
+    .is('voided_at', null)
+    .gte('txn_date', options.from)
+    .lte('txn_date', options.to)
+    .limit(5000);
+
+  if (error !== null) throw asRepositoryError(error);
+  const rows = data ?? [];
+  if (count !== null && rows.length < count) {
+    throw new MalformedRowError('expense_txn', `returned ${String(rows.length)} of ${String(count)} private entries`);
+  }
+
+  return rows.map((row: unknown) => {
+    const record = requireRecord(row, 'expense_txn');
+    return {
+      date: requireString(record['txn_date'], 'expense_txn.txn_date'),
+      amount: money(
+        toBigIntExact(record['amount_minor'], 'expense_txn.amount_minor'),
+        requireString(record['currency'], 'expense_txn.currency'),
+      ),
+    };
+  });
+}
+
 /** Today, in Kolkata, as the quick-add form's default. */
 export function todayInIst(): string {
   return istCalendarDate(new Date());

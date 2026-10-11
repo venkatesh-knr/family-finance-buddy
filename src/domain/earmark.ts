@@ -161,33 +161,82 @@ export function monthsOfCover(options: {
   return Number((options.emergency.minor * BigInt(window.length) * 100n) / total) / 100;
 }
 
-/**
- * The complete calendar months the average is taken over, oldest first, as `YYYY-MM`.
- *
- * The month in progress is never in it: half a month's spending is not a month's, and an average with
- * it in would read low early in the month. The window opens at the first month anything was spent in,
- * so the months before the household started recording are not averaged in as months of spending
- * nothing, and is at most twelve long. `firstSpendMonth` is null for a household that has spent
- * nothing yet.
- */
-export function coverMonths(options: {
-  /** An IST calendar date, passed in. */
-  readonly today: string;
-  readonly firstSpendMonth: string | null;
-}): readonly string[] {
-  if (options.firstSpendMonth === null) return [];
-  let year = Number(options.today.slice(0, 4));
-  let month = Number(options.today.slice(5, 7));
+/** The `count` complete calendar months before the one `today` is in, oldest first, as `YYYY-MM`. */
+export function priorMonths(today: string, count: number): readonly string[] {
+  let year = Number(today.slice(0, 4));
+  let month = Number(today.slice(5, 7));
   const out: string[] = [];
-  for (let i = 0; i < COVER_WINDOW_MONTHS; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     month -= 1;
     if (month === 0) {
       month = 12;
       year -= 1;
     }
-    const label = `${String(year)}-${String(month).padStart(2, '0')}`;
-    if (label < options.firstSpendMonth) break;
-    out.push(label);
+    out.push(`${String(year)}-${String(month).padStart(2, '0')}`);
   }
   return out.reverse();
+}
+
+/**
+ * The months the average is taken over, oldest first, as `YYYY-MM`.
+ *
+ * Three rules, each there so the figure is never stated on thinner ground than it looks:
+ * - the month in progress is never in it, because half a month's spending is not a month's;
+ * - the month spending *began* in is not in it, because the first entry may be dated the 31st and a
+ *   month that is one day of data is not a month of data;
+ * - a month with nothing recorded in it is not in it, because it is a gap in the record more often than
+ *   a month of spending nothing, and averaged in as zero it would make the cover look longer.
+ *   Leaving it out can only make the average higher and the cover shorter.
+ *
+ * `spendMonths` is every month among the thirteen before `today` that has any spending in it. The
+ * thirteenth, oldest, month is a probe and not part of the window: spending in it means recording began
+ * before the window opens, so the window's oldest month is a whole month and stays. Without spending in
+ * it, the earliest month with any is where recording began, and it is dropped.
+ */
+export function coverMonths(options: {
+  /** An IST calendar date, passed in. */
+  readonly today: string;
+  readonly spendMonths: readonly string[];
+}): readonly string[] {
+  const prior = priorMonths(options.today, COVER_WINDOW_MONTHS + 1);
+  const has = new Set(options.spendMonths);
+  const [probe, ...window] = prior;
+  const earliest = prior.find((month) => has.has(month));
+  const beganInside = earliest !== undefined && earliest !== probe;
+  return window.filter((month) => has.has(month) && !(beganInside && month === earliest));
+}
+
+export interface EarmarkedHoldings {
+  /** How many live holdings carry each excluded earmark, valued or not. */
+  readonly count: Record<ExcludedEarmark, number>;
+  /** Of those, how many have never been read, so the amounts left out are short by them. */
+  readonly unvalued: number;
+  /** The same, by earmark: the emergency fund's own line must not read a zero from one nobody has valued. */
+  readonly unvaluedBy: Record<ExcludedEarmark, number>;
+}
+
+/**
+ * Which holdings are earmarked at all, separately from how much.
+ *
+ * An earmarked holding nobody has valued contributes nothing to what is left out, and a screen that
+ * read "nothing left out" from a total of zero would be saying nothing is earmarked when something is.
+ */
+export function earmarkedHoldings(options: {
+  readonly holdings: readonly CorpusHolding[];
+  readonly valuations: readonly ValuationInput[];
+}): EarmarkedHoldings {
+  const valued = new Set(options.valuations.map((v) => v.holdingId));
+  const count: Record<ExcludedEarmark, number> = { emergency: 0, child: 0, house: 0 };
+  const unvaluedBy: Record<ExcludedEarmark, number> = { emergency: 0, child: 0, house: 0 };
+  let unvalued = 0;
+  for (const holding of options.holdings) {
+    if (holding.isArchived) continue;
+    if (!(EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) continue;
+    count[holding.earmark as ExcludedEarmark] += 1;
+    if (!valued.has(holding.id)) {
+      unvalued += 1;
+      unvaluedBy[holding.earmark as ExcludedEarmark] += 1;
+    }
+  }
+  return { count, unvalued, unvaluedBy };
 }

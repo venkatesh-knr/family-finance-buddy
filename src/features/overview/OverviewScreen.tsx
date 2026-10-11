@@ -713,11 +713,20 @@ export function OverviewScreen({
       </div>
 
       <div className="flex flex-col gap-4.5 empty:hidden lg:col-start-1 lg:row-start-3">
-        {scope === 'household' && emergency !== null && emergency.minor > 0n && (
-          <Card title="Emergency fund">
-            <div data-testid="months-of-cover">
-              <div className="figure">
-                {cover.status === 'ready' && cover.months !== null ? (
+        {/*
+          One line and not a card (protection-and-flow.md §6): the months of cover, at the stat step,
+          or the reason there are none. It is there whenever a holding is earmarked emergency, even if
+          no amount can be shown, because a line that vanished would read as no emergency fund.
+        */}
+        {scope === 'household' && fire.earmarked.count.emergency > 0 && (
+          <div data-testid="months-of-cover">
+            <dl>
+              <Stat label="Emergency fund">
+                {fire.earmarked.unvaluedBy.emergency === fire.earmarked.count.emergency ? (
+                  <Absent label="Why there is no months of cover">
+                    The emergency fund has not been valued yet, so there is nothing to divide.
+                  </Absent>
+                ) : cover.status === 'ready' && cover.months !== null ? (
                   <>
                     {String(Math.round(cover.months * 10) / 10)} <Unit>months of spending</Unit>
                   </>
@@ -730,16 +739,28 @@ export function OverviewScreen({
                         : (cover.why ?? '')}
                   </Absent>
                 )}
-              </div>
-              <p className="note mt-1.5">
-                <Amount value={emergency} privacy={privacy} compact /> set aside, against the household&rsquo;s
-                shared spending over the last{' '}
-                {cover.status === 'ready' && cover.history > 0 ? String(cover.history) : 'twelve'} complete{' '}
-                {cover.status === 'ready' && cover.history === 1 ? 'month' : 'months'}, or all there is. Spending
-                kept private by a member is not in that average, so the cover is high by whatever it comes to.
-              </p>
-            </div>
-          </Card>
+              </Stat>
+            </dl>
+            <p className="note mt-1.5">
+              {emergency !== null && (
+                <>
+                  <Amount value={emergency} privacy={privacy} compact /> set aside
+                  {cover.status === 'ready' && cover.history > 0
+                    ? `, against the household's spending over ${String(cover.history)} whole ${cover.history === 1 ? 'month' : 'months'} with spending recorded.`
+                    : '.'}
+                </>
+              )}
+              {fire.earmarked.unvaluedBy.emergency > 0 &&
+                fire.earmarked.unvaluedBy.emergency < fire.earmarked.count.emergency && (
+                  <>
+                    {' '}
+                    {String(fire.earmarked.unvaluedBy.emergency)} emergency{' '}
+                    {fire.earmarked.unvaluedBy.emergency === 1 ? 'holding has' : 'holdings have'} never been
+                    valued, so the cover is short by {fire.earmarked.unvaluedBy.emergency === 1 ? 'it' : 'them'}.
+                  </>
+                )}
+            </p>
+          </div>
         )}
         {allocation.length > 0 && (
           <Card

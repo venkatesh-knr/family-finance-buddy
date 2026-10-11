@@ -23,8 +23,9 @@ import type { usePlan } from './usePlan.ts';
  *
  * Four things, in the order somebody asks them: what is the number, when does the corpus meet it, how
  * far along is it, and what is a year of living costing. The projection is `fireProjection`
- * (blueprint §06) over the household's own assumptions, and starts from the same net worth as the
- * Overview, from the same hook, so the two screens cannot give two answers.
+ * (blueprint §06) over the household's own assumptions, and starts from the corpus: the Overview's net
+ * worth, from the same hook, less what is earmarked as an emergency fund, a child's savings or a house
+ * deposit. The two screens cannot disagree about anything but those earmarks.
  *
  * It says what it is not. A projection is not a forecast, and this one starts from what has been
  * recorded: property and the rest of the balance sheet arrive in later stages, and until they do the
@@ -80,8 +81,21 @@ export function FireReadout({
     const currency = parts[0]?.amount.currency;
     const total =
       currency === undefined ? null : money(parts.reduce((sum, p) => sum + p.amount.minor, 0n), currency);
-    return { parts, total };
-  }, [data.fire.excluded]);
+    const held = data.fire.earmarked;
+    const anyEarmarked = held.count.emergency + held.count.child + held.count.house > 0;
+    // A total of nothing is not nothing earmarked. A holding nobody has valued, or an amount in a
+    // currency with no rate, leaves the sum short, and the line says so rather than read as complete.
+    const unconverted = data.fire.excluded.some((entry) => !entry.amount.ok);
+    const shortBy: string | null =
+      held.unvalued > 0 || unconverted
+        ? `${
+            held.unvalued > 0
+              ? `${String(held.unvalued)} earmarked ${held.unvalued === 1 ? 'holding has' : 'holdings have'} never been valued`
+              : ''
+          }${held.unvalued > 0 && unconverted ? ' and ' : ''}${unconverted ? 'some earmarked amounts could not be converted without a rate' : ''}, so what is left out is short by ${held.unvalued > 0 && !unconverted ? 'it' : 'them'}.`
+        : null;
+    return { parts, total, anyEarmarked, shortBy };
+  }, [data.fire.excluded, data.fire.earmarked]);
 
   // The first time the number falls because of this, say why. It is the most consequential figure on
   // the screen and it changed under somebody without their doing anything.
@@ -229,11 +243,17 @@ export function FireReadout({
           </div>
         )}
         <p className="note mt-3" data-testid="fire-left-out">
-          {leftOut.total === null ? (
+          {!leftOut.anyEarmarked ? (
             <>
               Against today&rsquo;s target, from net worth as it stands. Nothing is earmarked, so nothing
               is left out. Mark a holding as an emergency fund, a child&rsquo;s savings or a house deposit
               on Holdings and it leaves this figure.
+            </>
+          ) : leftOut.total === null ? (
+            <>
+              Against today&rsquo;s target. Holdings earmarked as an emergency fund, a child&rsquo;s
+              savings or a house deposit are left out, but there is no amount to show for them:{' '}
+              {leftOut.shortBy ?? 'they have no value recorded.'}
             </>
           ) : (
             <>
@@ -251,7 +271,7 @@ export function FireReadout({
                   (<Amount value={leftOut.total} privacy={privacy} compact /> in all)
                 </>
               )}
-              .
+              .{leftOut.shortBy !== null && <> {leftOut.shortBy.charAt(0).toUpperCase() + leftOut.shortBy.slice(1)}</>}
             </>
           )}{' '}
           Property and anything else not yet recorded is not in it, so the figure is short by what those
@@ -265,7 +285,7 @@ export function FireReadout({
             </>
           )}
         </p>
-        {leftOut.total !== null && !noticeSeen && (
+        {leftOut.anyEarmarked && !noticeSeen && (
           <div className="note mt-3 flex flex-wrap items-center gap-3" role="status">
             <span>
               Money earmarked as an emergency fund, a child&rsquo;s savings or a house deposit is not
