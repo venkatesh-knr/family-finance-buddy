@@ -16,6 +16,7 @@ import {
   requireString,
   toBigIntExact,
 } from '../lib/guards.ts';
+import { EARMARKS, SCHEMES } from '../domain/earmark.ts';
 import { money } from '../lib/money.ts';
 import {
   CATEGORY_NATURES,
@@ -199,6 +200,10 @@ export function toInstrument(raw: unknown): Instrument {
     priceSource: optionalString(row['price_source'], 'instrument.price_source'),
     priceExternalId: optionalString(row['price_external_id'], 'instrument.price_external_id'),
     isForeignAsset: requireBoolean(row['is_foreign_asset'], 'instrument.is_foreign_asset'),
+    scheme:
+      row['scheme'] === null || row['scheme'] === undefined
+        ? null
+        : requireOneOf(row['scheme'], SCHEMES, 'instrument.scheme'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
   };
@@ -257,6 +262,7 @@ export function toHolding(
       ? null
       : requireIsoDate(row['opened_on'], 'holding.opened_on'),
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'holding.visibility'),
+    earmark: requireOneOf(row['earmark'], EARMARKS, 'holding.earmark'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'holding.status') === 'archived',
     archivedOn: istDayOf(row['archived_at']),

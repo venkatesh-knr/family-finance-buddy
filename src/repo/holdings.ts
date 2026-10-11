@@ -22,6 +22,7 @@ import { currentAccountId } from './account.ts';
 import { parseQuantity, quantityToNumeric } from '../lib/quantity.ts';
 import { MalformedRowError, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import type { IsoDate } from '../lib/dates.ts';
+import type { Earmark, Scheme } from '../domain/earmark.ts';
 import { toDisposal, toHolding, toInstrument, toLot, toMember, toValuation } from './mapping.ts';
 import { isKnownCurrency, money, type Money } from '../lib/money.ts';
 import {
@@ -56,10 +57,10 @@ const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 // query makes the database hand over the decimal string it already holds, so
 // precision is never a matter of luck about magnitude.
 const HOLDING_COLUMNS =
-  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, archived_at, visibility, stated_quantity::text, stated_as_at, stated_source_batch_id';
+  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, archived_at, visibility, earmark, stated_quantity::text, stated_as_at, stated_source_batch_id';
 
 const INSTRUMENT_COLUMNS =
-  'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, status, tax_asset_class, price_source, price_external_id';
+  'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, scheme, status, tax_asset_class, price_source, price_external_id';
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
@@ -407,6 +408,8 @@ export interface HoldingPatch {
   readonly cost?: Money | null;
   readonly openedOn?: IsoDate | null;
   readonly visibility?: Visibility;
+  /** What this household's money here is for. */
+  readonly earmark?: Earmark;
   readonly instrument?: {
     readonly name?: string;
     readonly symbol?: string | null;
@@ -414,6 +417,8 @@ export interface HoldingPatch {
     readonly currency?: string;
     readonly exposureCurrency?: string;
     readonly isForeignAsset?: boolean;
+    /** Null clears it. The database refuses one on anything but a deposit, so a kind change away from deposit sends null with it. */
+    readonly scheme?: Scheme | null;
     readonly taxAssetClass?: string | null;
     readonly priceSource?: string | null;
     readonly priceExternalId?: string | null;
@@ -459,6 +464,7 @@ export async function updateHolding(
       fields['exposure_currency'] = i.exposureCurrency;
     }
     if (i.isForeignAsset !== undefined) fields['is_foreign_asset'] = i.isForeignAsset;
+    if (i.scheme !== undefined) fields['scheme'] = i.scheme;
     if (i.taxAssetClass !== undefined) {
       fields['tax_asset_class'] = i.taxAssetClass === '' ? null : i.taxAssetClass;
     }
@@ -500,6 +506,7 @@ export async function updateHolding(
   }
   if (patch.openedOn !== undefined) fields['opened_on'] = patch.openedOn;
   if (patch.visibility !== undefined) fields['visibility'] = patch.visibility;
+  if (patch.earmark !== undefined) fields['earmark'] = patch.earmark;
 
   if (Object.keys(fields).length === 0) return;
 

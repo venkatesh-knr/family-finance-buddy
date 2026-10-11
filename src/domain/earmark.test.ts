@@ -7,6 +7,7 @@ import {
   SCHEMES,
   SCHEME_LABELS,
   fireCorpus,
+  coverMonths,
   isScheme,
   monthsOfCover,
   schemeAllowedFor,
@@ -212,5 +213,31 @@ describe('PF-C6 — every scheme and every earmark resolves to a label', () => {
   it('has a label for nothing else', () => {
     expect(Object.keys(EARMARK_LABELS).sort()).toEqual([...EARMARKS].sort());
     expect(Object.keys(SCHEME_LABELS).sort()).toEqual([...SCHEMES].sort());
+  });
+});
+
+describe('PF-C9 — the window is the complete months since spending began, at most twelve', () => {
+  it('leaves out the month in progress', () => {
+    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: '2026-07' })).toEqual([
+      '2026-07',
+      '2026-08',
+      '2026-09',
+    ]);
+  });
+
+  it('is empty when nothing has been spent, and when the first spend is this month', () => {
+    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: null })).toEqual([]);
+    expect(coverMonths({ today: '2026-10-11', firstSpendMonth: '2026-10' })).toEqual([]);
+  });
+
+  it('stops at twelve and crosses a year end', () => {
+    const window = coverMonths({ today: '2026-02-03', firstSpendMonth: '2020-01' });
+    expect(window).toHaveLength(12);
+    expect(window[0]).toBe('2025-02');
+    expect(window[11]).toBe('2026-01');
+  });
+
+  it('does not reach back before the first month anything was spent in', () => {
+    expect(coverMonths({ today: '2026-01-15', firstSpendMonth: '2025-11' })).toEqual(['2025-11', '2025-12']);
   });
 });

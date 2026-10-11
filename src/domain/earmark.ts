@@ -160,3 +160,34 @@ export function monthsOfCover(options: {
   // not money, so it is formed at the end from the exact integers rather than from a rounded average.
   return Number((options.emergency.minor * BigInt(window.length) * 100n) / total) / 100;
 }
+
+/**
+ * The complete calendar months the average is taken over, oldest first, as `YYYY-MM`.
+ *
+ * The month in progress is never in it: half a month's spending is not a month's, and an average with
+ * it in would read low early in the month. The window opens at the first month anything was spent in,
+ * so the months before the household started recording are not averaged in as months of spending
+ * nothing, and is at most twelve long. `firstSpendMonth` is null for a household that has spent
+ * nothing yet.
+ */
+export function coverMonths(options: {
+  /** An IST calendar date, passed in. */
+  readonly today: string;
+  readonly firstSpendMonth: string | null;
+}): readonly string[] {
+  if (options.firstSpendMonth === null) return [];
+  let year = Number(options.today.slice(0, 4));
+  let month = Number(options.today.slice(5, 7));
+  const out: string[] = [];
+  for (let i = 0; i < COVER_WINDOW_MONTHS; i += 1) {
+    month -= 1;
+    if (month === 0) {
+      month = 12;
+      year -= 1;
+    }
+    const label = `${String(year)}-${String(month).padStart(2, '0')}`;
+    if (label < options.firstSpendMonth) break;
+    out.push(label);
+  }
+  return out.reverse();
+}

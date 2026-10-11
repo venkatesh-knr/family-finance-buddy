@@ -10,6 +10,7 @@
 
 import type { IsoDate } from '../lib/dates.ts';
 import type { AssetClass } from '../domain/tax-rules.ts';
+import type { Earmark, Scheme } from '../domain/earmark.ts';
 import type { Money } from '../lib/money.ts';
 
 export type Uuid = string;
@@ -245,6 +246,8 @@ export interface Instrument {
   readonly exposureCurrency: string;
   /** Schedule FA classification. A recorded decision, never inferred. */
   readonly isForeignAsset: boolean;
+  /** What a deposit is (FD, PPF, SSY...). Null on anything that is not a deposit, and on a deposit nobody labelled. */
+  readonly scheme: Scheme | null;
   /**
    * Which capital-gains rules apply, or null for "not classified".
    *
@@ -296,6 +299,8 @@ export interface Holding {
    * a personal one of theirs never arrives here at all.
    */
   readonly visibility: Visibility;
+  /** What this household's money here is for. Only emergency, child and house leave the FIRE corpus. */
+  readonly earmark: Earmark;
   /**
    * What a registrar's statement said this position holds, and on what date.
    *
