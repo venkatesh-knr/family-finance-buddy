@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ledgerEntry } from './ledger.ts';
+import { setEarmark } from './earmark.ts';
 
 /**
  * Privacy mode must remove the amount, not hide it.
@@ -123,4 +124,61 @@ test('no figure from the Holdings screen is left in the document under privacy m
   const markup = await page.evaluate(() => document.documentElement.outerHTML);
   const left = figures.filter((f) => markup.includes(f));
   expect(left, 'figures still in the page, under privacy mode').toEqual([]);
+});
+
+test('the emergency fund and what the FIRE corpus leaves out are not in the document under privacy mode', async ({
+  page,
+}) => {
+  // The line that says how many months an emergency fund covers, and the line on FIRE that says what was
+  // left out of the corpus and how much. Both carry the earmarked total, which is a figure like any other.
+  // Nothing is earmarked in the demo household until this does it, so it earmarks one holding and puts it back.
+  test.setTimeout(180_000);
+  const name = /Vanguard/;
+  const figureIn = (text: string): string[] => text.replace(/\s+/g, '').match(/[₹$][\d.,]+(?:Cr|L|K|M|B)?/g) ?? [];
+  let failure: unknown = null;
+
+  try {
+    await setEarmark(page, name, 'Emergency fund');
+
+    await page.goto('/#overview');
+    await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+    const cover = page.getByTestId('months-of-cover');
+    await expect(cover).toBeVisible({ timeout: 20_000 });
+    // Not "Reading…": the months, or the reason there are none, has been worked out.
+    await expect(cover).not.toContainText('Reading…', { timeout: 20_000 });
+    const onOverview = figureIn(await cover.innerText());
+    expect(onOverview.length, 'the earmarked total is shown first, or the test proves nothing').toBeGreaterThan(0);
+
+    await page.goto('/#fire');
+    await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+    const leftOut = page.getByTestId('fire-left-out');
+    await expect(leftOut).toContainText(/Left out because it is set aside/, { timeout: 20_000 });
+    const onFire = figureIn(await leftOut.innerText());
+    expect(onFire.length, 'a left-out total is shown first, or the test proves nothing').toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: /Amounts shown/ }).click();
+    await expect(page.getByRole('button', { name: /Amounts hidden/ })).toBeVisible();
+    let markup = await page.evaluate(() => document.documentElement.outerHTML);
+    for (const figure of onFire) {
+      expect(markup, `${figure} is still on FIRE under privacy mode`).not.toContain(figure);
+    }
+
+    await page.getByRole('group', { name: 'Screen' }).first().getByText('Overview', { exact: true }).click();
+    await expect(page.getByTestId('months-of-cover')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('months-of-cover')).not.toContainText('Reading…', { timeout: 20_000 });
+    markup = await page.evaluate(() => document.documentElement.outerHTML);
+    for (const figure of onOverview) {
+      expect(markup, `${figure} is still on the Overview under privacy mode`).not.toContain(figure);
+    }
+  } catch (error) {
+    failure = error;
+  }
+
+  // Put the holding back whatever happened, and report both if both go wrong.
+  try {
+    await setEarmark(page, name, 'No earmark');
+  } catch (restore) {
+    throw new Error(`${String(failure)} — and putting the holding back failed too: ${String(restore)}`);
+  }
+  if (failure !== null) throw failure;
 });
