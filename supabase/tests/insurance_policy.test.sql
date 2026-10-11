@@ -14,7 +14,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(19);
+select plan(20);
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -90,7 +90,7 @@ insert into public.insurance_policy
    'Term life', 'term_life', 'Demo Life', '4821', 1000000000, 1800000,
    'fa000000-0000-4000-8000-0000000000a3');
 
--- ═════════════════════════════════════════════════ what the owner can record (7)
+-- ═════════════════════════════════════════════════ what the owner can record (8)
 
 set local role authenticated;
 set local request.jwt.claim.sub to 'f1f11111-1111-4111-8111-111111111111';
@@ -118,6 +118,16 @@ select throws_ok(
   '23514'::char(5),
   null::text,
   'a cover below nothing is refused'
+);
+
+-- A premium term (20261013120000) cannot end before the policy began.
+select throws_ok(
+  $q$ update public.insurance_policy
+         set started_on = date '2024-01-01', premiums_end_on = date '2023-01-01'
+       where id = 'fd000000-0000-4000-8000-0000000000d1' $q$,
+  '23514'::char(5),
+  null::text,
+  'a premium term cannot end before the policy began'
 );
 
 select lives_ok(

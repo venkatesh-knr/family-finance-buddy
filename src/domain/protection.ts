@@ -36,9 +36,20 @@ export function cumulativePremiums(options: {
   readonly cadence: Cadence;
   readonly startedOn: IsoDate | null;
   readonly today: IsoDate;
+  /** The day the policy lapsed, if it has: no premium falls due after it. */
+  readonly lapsedOn?: IsoDate | null;
+  /** The date the last premium falls due, for a policy paid over a limited term. */
+  readonly premiumsEndOn?: IsoDate | null;
 }): Money | null {
-  const { premium, cadence, startedOn, today } = options;
+  const { premium, cadence, startedOn } = options;
   if (premium === null || startedOn === null) return null;
+
+  // Counted to whichever came first: today, the day it lapsed, or the end of the premium term. A figure that
+  // kept growing after the household stopped paying would be a number that never happened.
+  let today = options.today;
+  for (const stop of [options.lapsedOn, options.premiumsEndOn]) {
+    if (stop !== null && stop !== undefined && stop < today) today = stop;
+  }
 
   const [sy, sm, sd] = startedOn.split('-').map(Number) as [number, number, number];
   const [ty, tm, td] = today.split('-').map(Number) as [number, number, number];

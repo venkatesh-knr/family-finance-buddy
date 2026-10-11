@@ -70,7 +70,7 @@ function unwrapEmbedded(raw: unknown): unknown {
 }
 
 /** The IST calendar day of a timestamp, or null if there is none or it is not one. */
-function istDayOf(value: unknown): IsoDate | null {
+export function istDayOf(value: unknown): IsoDate | null {
   if (typeof value !== 'string') return null;
   const instant = new Date(value);
   return Number.isNaN(instant.getTime()) ? null : istCalendarDate(instant);

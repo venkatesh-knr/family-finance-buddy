@@ -50,6 +50,28 @@ describe('cumulativePremiums — what has been paid in, counted from the start d
     ).toBeNull();
   });
 
+  it('stops at the day a policy lapsed, and does not keep adding premiums after it', () => {
+    const base = { premium: inr(50000), cadence: 'yearly' as const, startedOn: '2022-03-01' };
+    // Lapsed in June 2024: the March 2022, 2023 and 2024 premiums fell due, and nothing after.
+    expect(cumulativePremiums({ ...base, lapsedOn: '2024-06-10', today: '2026-10-11' })?.minor).toBe(3n * 5000000n);
+    expect(cumulativePremiums({ ...base, lapsedOn: '2024-06-10', today: '2031-10-11' })?.minor).toBe(3n * 5000000n);
+  });
+
+  it('stops at the end of the premium term, for a policy paid over a limited time', () => {
+    const base = { premium: inr(50000), cadence: 'yearly' as const, startedOn: '2022-03-01' };
+    // Five years of premiums on a ten-year policy: March 2022 to March 2026.
+    expect(cumulativePremiums({ ...base, premiumsEndOn: '2026-03-01', today: '2031-10-11' })?.minor).toBe(5n * 5000000n);
+    // Before the term ends it is still counting.
+    expect(cumulativePremiums({ ...base, premiumsEndOn: '2026-03-01', today: '2024-10-11' })?.minor).toBe(3n * 5000000n);
+  });
+
+  it('stops at whichever of the two came first', () => {
+    const base = { premium: inr(50000), cadence: 'yearly' as const, startedOn: '2022-03-01' };
+    expect(
+      cumulativePremiums({ ...base, lapsedOn: '2023-06-01', premiumsEndOn: '2026-03-01', today: '2026-10-11' })?.minor,
+    ).toBe(2n * 5000000n);
+  });
+
   it('is null for a policy that has not started yet', () => {
     expect(
       cumulativePremiums({ premium: inr(1), cadence: 'yearly', startedOn: '2027-01-01', today: '2026-10-11' }),

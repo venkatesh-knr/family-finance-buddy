@@ -662,7 +662,12 @@ export interface InsurancePolicy {
    */
   readonly cover: Money | null;
   readonly startedOn: IsoDate | null;
+  /** The date the last premium falls due, for a policy paid over a limited term; null for no end or none recorded. */
+  readonly premiumsEndOn: IsoDate | null;
+  /** The IST day it lapsed, if it has: no premium falls due after it. */
+  readonly lapsedOn: IsoDate | null;
   readonly renewalOn: IsoDate | null;
+  readonly note: string | null;
   /** The holding that carries a hybrid policy's surrender value. */
   readonly linkedHoldingId: Uuid | null;
 }

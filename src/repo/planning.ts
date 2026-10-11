@@ -20,7 +20,7 @@ import {
   toBigIntExact,
 } from '../lib/guards.ts';
 import { money, type Money } from '../lib/money.ts';
-import { toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
+import { istDayOf, toExpenseCategory, toHousehold, toMember, toRole } from './mapping.ts';
 import {
   BUDGET_CADENCES,
   COMMITMENT_CADENCES,
@@ -47,7 +47,7 @@ const BUDGET_COLUMNS = 'id, category_id, fy, cadence, period, planned_minor::tex
 const LIABILITY_COLUMNS =
   'id, name, kind, instalment_minor::text, currency, cadence, member_id, status, outstanding_minor::text, outstanding_as_of';
 const POLICY_COLUMNS =
-  'id, name, kind, premium_minor::text, currency, cadence, member_id, status, insurer, policy_last4, cover_minor::text, started_on, renewal_on, linked_holding_id';
+  'id, name, kind, premium_minor::text, currency, cadence, member_id, status, insurer, policy_last4, cover_minor::text, started_on, premiums_end_on, lapsed_at, renewal_on, note, linked_holding_id';
 
 /**
  * What is still owed, or null.
@@ -239,7 +239,10 @@ export async function listPlan(options: {
               requireString(row['currency'], 'insurance_policy.currency'),
             ),
       startedOn: optionalString(row['started_on'], 'insurance_policy.started_on') as IsoDate | null,
+      premiumsEndOn: optionalString(row['premiums_end_on'], 'insurance_policy.premiums_end_on') as IsoDate | null,
+      lapsedOn: istDayOf(row['lapsed_at']),
       renewalOn: optionalString(row['renewal_on'], 'insurance_policy.renewal_on') as IsoDate | null,
+      note: optionalString(row['note'], 'insurance_policy.note'),
       linkedHoldingId: optionalString(row['linked_holding_id'], 'insurance_policy.linked_holding_id'),
     };
   });
@@ -463,7 +466,9 @@ export interface PolicyDetail {
   readonly policyLast4?: string | null;
   readonly cover?: Money | null;
   readonly startedOn?: IsoDate | null;
+  readonly premiumsEndOn?: IsoDate | null;
   readonly renewalOn?: IsoDate | null;
+  readonly note?: string | null;
   readonly linkedHoldingId?: Uuid | null;
   readonly memberId?: Uuid | null;
 }
@@ -486,6 +491,10 @@ function policyFields(detail: PolicyDetail): Record<string, unknown> {
     fields['cover_minor'] = detail.cover === null ? null : detail.cover.minor.toString();
   }
   if (detail.startedOn !== undefined) fields['started_on'] = detail.startedOn;
+  if (detail.premiumsEndOn !== undefined) fields['premiums_end_on'] = detail.premiumsEndOn;
+  if (detail.note !== undefined) {
+    fields['note'] = detail.note === null || detail.note.trim() === '' ? null : detail.note.trim();
+  }
   if (detail.renewalOn !== undefined) fields['renewal_on'] = detail.renewalOn;
   if (detail.linkedHoldingId !== undefined) fields['linked_holding_id'] = detail.linkedHoldingId;
   if (detail.memberId !== undefined) fields['member_id'] = detail.memberId;
