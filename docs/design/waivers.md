@@ -27,7 +27,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 ## protection-and-flow.md
 
 - PF-C2 — not built: the policy and net-worth interplay arrives with slice 2b (build-plan step 2b) — 2026-10-10
-- PF-C3 — not built: cover arrives with slice 2b, and the assertion needs a cover to keep out of the calculations — 2026-10-10
 - PF-C10 — not built: the transfer rule and the account it moves money between arrive with slice 6a (build-plan step 6a) — 2026-10-10
 - PF-C11 — not built: the step-at-credit rule for PPF, SSY, NSC and KVP belongs to the balance sheet (build-plan step 6) — 2026-10-10
 - PF-C12 — not built: the cover gap and its household settings arrive with slice 2b — 2026-10-10

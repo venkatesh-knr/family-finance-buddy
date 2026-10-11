@@ -444,6 +444,7 @@ export function useOverviewData({
           id: h.id,
           currency: h.instrument.currency,
           earmark: h.earmark,
+          scheme: h.instrument.scheme,
           isArchived: h.isArchived || paidOut.has(h.id),
         })),
     [listing, scope, mine, paidOut],

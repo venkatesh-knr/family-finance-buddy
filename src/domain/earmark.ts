@@ -49,6 +49,14 @@ export const SCHEME_LABELS: Record<Scheme, string> = {
   other: 'Other scheme',
 };
 
+/**
+ * The schemes that lock money in, by law or by penalty. A deposit under one is not liquid: it cannot be
+ * had when the emergency comes. An FD or an RD can be broken and a deposit of no named scheme is taken as
+ * available, so neither is here. A classification and not a household's judgement, which is why it is a
+ * list in code and the years of dependency are a setting.
+ */
+export const LOCKED_SCHEMES = ['ppf', 'ssy', 'nsc', 'kvp', 'scss', 'pomis', 'po_td'] as const;
+
 export function isScheme(value: string): value is Scheme {
   return (SCHEMES as readonly string[]).includes(value);
 }
@@ -63,6 +71,8 @@ export interface CorpusHolding {
   /** The instrument's own currency. Totals are grouped by it. */
   readonly currency: string;
   readonly earmark: Earmark;
+  /** What a deposit is, or null. A locked scheme is not liquid. */
+  readonly scheme: Scheme | null;
   readonly isArchived: boolean;
 }
 
@@ -73,6 +83,13 @@ export interface CorpusTotal {
   /** What is left out, by earmark, so the screen can say what and how much. */
   readonly excluded: Record<ExcludedEarmark, Money>;
   readonly excludedTotal: Money;
+  /**
+   * What could be had in an emergency, for the cover gap: valued holdings less a child's savings, a house
+   * deposit and anything in a locked scheme. A different filter over the same holdings as `included`
+   * (a PPF is in the corpus and is not liquid; the emergency fund is liquid and is not in the corpus), so
+   * it is worked out here, beside it, and not defined a second time on another screen.
+   */
+  readonly liquid: Money;
   /** Holdings never read: in neither side, and the screen already says the total is short by them. */
   readonly unvalued: number;
 }
@@ -84,7 +101,7 @@ export function fireCorpus(options: {
   const latest = latestValuationPerHolding(options.valuations);
   const buckets = new Map<
     string,
-    { included: bigint; excluded: Record<ExcludedEarmark, bigint>; unvalued: number }
+    { included: bigint; excluded: Record<ExcludedEarmark, bigint>; liquid: bigint; unvalued: number }
   >();
 
   for (const holding of options.holdings) {
@@ -93,6 +110,7 @@ export function fireCorpus(options: {
     const bucket = buckets.get(holding.currency) ?? {
       included: 0n,
       excluded: { emergency: 0n, child: 0n, house: 0n },
+      liquid: 0n,
       unvalued: 0,
     };
     buckets.set(holding.currency, bucket);
@@ -102,6 +120,10 @@ export function fireCorpus(options: {
       bucket.unvalued += 1;
       continue;
     }
+
+    const committed = holding.earmark === 'child' || holding.earmark === 'house';
+    const locked = holding.scheme !== null && (LOCKED_SCHEMES as readonly string[]).includes(holding.scheme);
+    if (!committed && !locked) bucket.liquid += reading.amount.minor;
 
     if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) {
       bucket.excluded[holding.earmark as ExcludedEarmark] += reading.amount.minor;
@@ -122,6 +144,7 @@ export function fireCorpus(options: {
       bucket.excluded.emergency + bucket.excluded.child + bucket.excluded.house,
       currency,
     ),
+    liquid: money(bucket.liquid, currency),
     unvalued: bucket.unvalued,
   }));
 }
