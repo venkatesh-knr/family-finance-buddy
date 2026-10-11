@@ -130,6 +130,31 @@ begin
   select count(distinct b.cadence) into n from public.budget b where b.household_id = v_household;
   if n < 2 then raise exception 'expected both monthly and yearly budgets'; end if;
 
+  -- Earmarks and schemes (20261011120000): the three tagged deposits the FIRE corpus has something to leave
+  -- out of, and a scheme on a deposit and nowhere else.
+  select count(distinct h.earmark) into n from public.holding h
+   where h.household_id = v_household and h.earmark in ('emergency', 'child', 'house');
+  if n < 3 then raise exception 'expected an emergency, a child and a house earmark, found %', n; end if;
+
+  select count(*) into n from public.instrument i
+   where i.household_id = v_household and i.scheme is not null and i.kind = 'deposit';
+  if n < 3 then raise exception 'expected deposits with a scheme, found %', n; end if;
+
+  -- Protection (20261012120000): a cover with no value, a ULIP that cites the holding carrying its surrender
+  -- value, and a renewal inside thirty days for Needs attention to call out.
+  select count(*) into n from public.insurance_policy p
+   where p.household_id = v_household and p.cover_minor is not null;
+  if n < 3 then raise exception 'expected policies with a cover, found %', n; end if;
+
+  select count(*) into n from public.insurance_policy p
+   where p.household_id = v_household and p.linked_holding_id is not null;
+  if n = 0 then raise exception 'no policy linked to the holding that carries its surrender value'; end if;
+
+  select count(*) into n from public.insurance_policy p
+   where p.household_id = v_household
+     and p.renewal_on between (now() at time zone 'Asia/Kolkata')::date and (now() at time zone 'Asia/Kolkata')::date + 30;
+  if n = 0 then raise exception 'no policy renewing within thirty days'; end if;
+
   raise notice 'every edge case present';
 end;
 $assert$;

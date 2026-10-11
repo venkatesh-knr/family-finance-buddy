@@ -4,6 +4,7 @@ import {
   EARMARKS,
   EARMARK_LABELS,
   EXCLUDED_FROM_FIRE,
+  LOCKED_SCHEMES,
   SCHEMES,
   SCHEME_LABELS,
   fireCorpus,
@@ -23,6 +24,7 @@ const usd = (dollars: number) => money(BigInt(Math.round(dollars * 100)), 'USD')
 const holding = (over: Partial<CorpusHolding> & { id: string }): CorpusHolding => ({
   currency: 'INR',
   earmark: 'none',
+  scheme: null,
   isArchived: false,
   ...over,
 });
@@ -140,6 +142,48 @@ describe('PF-C7 — the FIRE corpus leaves out emergency, child and house, and k
 
   it('returns nothing for no holdings', () => {
     expect(fireCorpus({ holdings: [], valuations: [] })).toEqual([]);
+  });
+});
+
+describe('the liquid corpus — the other named output of the one classification', () => {
+  const liquidOf = (holdings: CorpusHolding[], values: number[]) =>
+    fireCorpus({
+      holdings,
+      valuations: holdings.map((h, i) => reading(h.id, inr(values[i] ?? 0))),
+    })[0]?.liquid.minor;
+
+  it('names the schemes that lock money in', () => {
+    expect([...LOCKED_SCHEMES].sort()).toEqual(['kvp', 'nsc', 'po_td', 'pomis', 'ppf', 'scss', 'ssy']);
+  });
+
+  it('counts ordinary holdings and the emergency fund, which is the most liquid money there is', () => {
+    expect(
+      liquidOf([holding({ id: 'a' }), holding({ id: 'b', earmark: 'emergency' })], [100, 50]),
+    ).toBe(15000n);
+  });
+
+  it("leaves out money that is committed or is somebody else's: a child's savings and a house deposit", () => {
+    expect(
+      liquidOf([holding({ id: 'a', earmark: 'child' }), holding({ id: 'b', earmark: 'house' })], [100, 50]),
+    ).toBe(0n);
+  });
+
+  it('leaves out a locked scheme even when it counts toward FIRE: a PPF is in the corpus and not liquid', () => {
+    const [total] = fireCorpus({
+      holdings: [holding({ id: 'ppf', scheme: 'ppf' }), holding({ id: 'fd', scheme: 'fd' })],
+      valuations: [reading('ppf', inr(100)), reading('fd', inr(40))],
+    });
+    expect(total?.included.minor).toBe(14000n);
+    expect(total?.liquid.minor).toBe(4000n);
+  });
+
+  it('is a subset of nothing: an SSY earmarked for a child is out of both', () => {
+    const [total] = fireCorpus({
+      holdings: [holding({ id: 'ssy', scheme: 'ssy', earmark: 'child' })],
+      valuations: [reading('ssy', inr(100))],
+    });
+    expect(total?.included.minor).toBe(0n);
+    expect(total?.liquid.minor).toBe(0n);
   });
 });
 

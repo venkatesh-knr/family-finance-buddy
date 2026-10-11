@@ -17,6 +17,8 @@ import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { FireScreen } from '../features/plan/PlanScreen.tsx';
 import { TaxScreen } from '../features/tax/TaxScreen.tsx';
+import { InsuranceScreen } from '../features/insurance/InsuranceScreen.tsx';
+import { MoreScreen } from './MoreScreen.tsx';
 import { ProfileScreen } from '../features/profile/ProfileScreen.tsx';
 import { SettingsScreen } from '../features/settings/SettingsScreen.tsx';
 import { SignInScreen } from '../features/auth/SignInScreen.tsx';
@@ -26,7 +28,7 @@ import { Card, EyeIcon, Problem } from '../ui/primitives.tsx';
 import { NavGlyph } from './NavGlyph.tsx';
 import { NAV_GLYPHS } from './navGlyphs.ts';
 import { useScreen, type Screen } from './useScreen.ts';
-import { allowedScreen, screensFor } from '../domain/access.ts';
+import { allowedScreen, moreFor, screensFor } from '../domain/access.ts';
 import { SummaryScreen } from '../features/summary/SummaryScreen.tsx';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
@@ -69,6 +71,8 @@ const ALL_SCREENS: readonly (readonly [Screen, string])[] = [
   ['holdings', 'Holdings'],
   ['tax', 'Tax'],
   ['fire', 'FIRE'],
+  ['insurance', 'Insurance'],
+  ['more', 'More'],
 ];
 
 export function App() {
@@ -189,6 +193,11 @@ function SignedIn({
     () => screensFor(role).flatMap((id) => ALL_SCREENS.filter(([screenId]) => screenId === id)),
     [role],
   );
+  // The screens behind More, and More itself lit while one of them (or Profile or Settings) is showing,
+  // so the bar still says where you are.
+  const behindMore = useMemo(() => [...moreFor(role), 'profile' as const, 'settings' as const], [role]);
+  const isPressed = (id: Screen): boolean =>
+    screen === id || (id === 'more' && behindMore.includes(screen));
 
   /**
    * An asset class clicked on Overview, carried to Holdings.
@@ -289,7 +298,7 @@ function SignedIn({
             <button
               key={id}
               type="button"
-              aria-pressed={screen === id}
+              aria-pressed={isPressed(id)}
               onClick={() => {
                 setHoldingsFilter(null);
                 setScreen(id);
@@ -345,6 +354,9 @@ function SignedIn({
               setHoldingsFilter(filter);
               setScreen('holdings');
             }}
+            onOpenInsurance={() => {
+              setScreen('insurance');
+            }}
           />
         )}
         {screen === 'expenses' && (
@@ -365,6 +377,16 @@ function SignedIn({
           />
         )}
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'insurance' && <InsuranceScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'more' && (
+          <MoreScreen
+            screens={behindMore}
+            onOpen={(next) => {
+              setScreen(next);
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
         {screen === 'summary' && <SummaryScreen privacy={privacy} householdId={householdId} role={role} />}
       </main>
 
@@ -386,7 +408,7 @@ function SignedIn({
           <button
             key={id}
             type="button"
-            aria-pressed={screen === id}
+            aria-pressed={isPressed(id)}
             onClick={() => {
               setScreen(id);
               // Back to the top: arriving halfway down a screen you have not

@@ -19,7 +19,7 @@ import { test, expect, type Page } from '@playwright/test';
  * Read-only: it opens each screen and reads the layout.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'tax', 'fire', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'expenses', 'holdings', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
 
 async function ready(page: Page, screen: string) {
   await page.goto(`/#${screen}`);

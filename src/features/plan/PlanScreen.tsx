@@ -17,9 +17,8 @@ import type {
   CommitmentCadence,
   LiabilityKind,
   PlanListing,
-  PolicyKind,
 } from '../../repo/types.ts';
-import { COMMITMENT_CADENCES, LIABILITY_KINDS, POLICY_KINDS } from '../../repo/types.ts';
+import { COMMITMENT_CADENCES, LIABILITY_KINDS } from '../../repo/types.ts';
 import { canPlan } from '../../repo/planning.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { CATEGORY_CATALOGUE } from './categoryCatalogue.ts';
@@ -883,7 +882,7 @@ function NewCategory({
         </select>
       </label>
       <Button type="submit" disabled={busy || name.trim() === ''}>
-        Add
+        Add a loan
       </Button>
     </form>
   );
@@ -908,9 +907,10 @@ function Commitments({
       title="Loans and policies"
       aside={
         <Caveat tone="info" label="What these count toward, and what they do not">
-          These leave the account like any other spending and count toward the year. What makes a
-          loan reduce net worth and a policy not — principal, cover, renewal — belongs with the
-          screen that answers that question, and is not recorded here yet.
+          These leave the account like any other spending and count toward the year. A policy&rsquo;s
+          cover, renewal and the rest are on Insurance, under More, where policies are added and changed;
+          this list shows the premium each one adds to the year. A loan&rsquo;s balance is set here, because
+          it reduces net worth and a policy does not.
         </Caveat>
       }
       collapsible
@@ -986,7 +986,6 @@ function CommitmentRow({
 
 function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
   const { listing } = plan;
-  const [what, setWhat] = useState<'liability' | 'policy'>('liability');
   const [name, setName] = useState('');
   const [kind, setKind] = useState<string>('home_loan');
   const [amount, setAmount] = useState('');
@@ -994,7 +993,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const kinds = what === 'liability' ? LIABILITY_KINDS : POLICY_KINDS;
+  const kinds = LIABILITY_KINDS;
 
   const submit = useCallback(
     async (event: React.FormEvent) => {
@@ -1017,19 +1016,11 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
           name,
           cadence,
         };
-        if (what === 'liability') {
-          await plan.createLiability({
-            ...common,
-            kind: kind as LiabilityKind,
-            instalment: money(minor, listing.household.baseCurrency),
-          });
-        } else {
-          await plan.createPolicy({
-            ...common,
-            kind: kind as PolicyKind,
-            premium: money(minor, listing.household.baseCurrency),
-          });
-        }
+        await plan.createLiability({
+          ...common,
+          kind: kind as LiabilityKind,
+          instalment: money(minor, listing.household.baseCurrency),
+        });
         setName('');
         setAmount('');
       } catch (error) {
@@ -1038,7 +1029,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
         setBusy(false);
       }
     },
-    [amount, cadence, kind, listing, name, plan, what],
+    [amount, cadence, kind, listing, name, plan],
   );
 
   return (
@@ -1048,26 +1039,10 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
         void submit(event);
       }}
     >
-      <label className="flex w-full flex-col gap-1.5 sm:w-[130px] sm:shrink-0">
-        <span className="label">Add</span>
-        <select
-          className="field"
-          value={what}
-          onChange={(event) => {
-            const next = event.target.value as 'liability' | 'policy';
-            setWhat(next);
-            setKind(next === 'liability' ? 'home_loan' : 'health');
-          }}
-        >
-          <option value="liability">a loan</option>
-          <option value="policy">a policy</option>
-        </select>
-      </label>
-
       <div className="w-full sm:w-auto sm:min-w-[160px] sm:flex-1">
         <Field
           label="Name"
-          placeholder={what === 'liability' ? 'Home loan' : 'Health cover'}
+          placeholder="Home loan"
           required
           value={name}
           onChange={(event) => {

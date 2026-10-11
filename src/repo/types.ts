@@ -98,6 +98,12 @@ export interface Household {
     readonly stepUpPct: string;
     readonly monthlyContributionMinor: bigint;
   };
+  /**
+   * How many years of the household's annual expenses a dependant would need covered, for the cover gap
+   * (protection-and-flow.md §5). A judgement, so a household setting with its default on the face of the
+   * screen. Defaults to 10 for a database that has not had the migration that added it.
+   */
+  readonly coverDependencyYears: number;
 }
 
 export interface Member {
@@ -620,6 +626,8 @@ export type PolicyKind =
   | 'health'
   | 'term_life'
   | 'endowment'
+  | 'ulip'
+  | 'money_back'
   | 'vehicle'
   | 'home'
   | 'personal_accident'
@@ -629,6 +637,8 @@ export const POLICY_KINDS: readonly PolicyKind[] = [
   'health',
   'term_life',
   'endowment',
+  'ulip',
+  'money_back',
   'vehicle',
   'home',
   'personal_accident',
@@ -643,6 +653,23 @@ export interface InsurancePolicy {
   readonly cadence: CommitmentCadence;
   readonly memberId: Uuid | null;
   readonly isLapsed: boolean;
+  readonly insurer: string | null;
+  /** The last four characters of the policy number, and no more. */
+  readonly policyLast4: string | null;
+  /**
+   * What the policy pays if it is claimed. Not money the household owns: never an input to net worth,
+   * allocation or FIRE. Null where nobody has said, which is not a cover of nothing.
+   */
+  readonly cover: Money | null;
+  readonly startedOn: IsoDate | null;
+  /** The date the last premium falls due, for a policy paid over a limited term; null for no end or none recorded. */
+  readonly premiumsEndOn: IsoDate | null;
+  /** The IST day it lapsed, if it has: no premium falls due after it. */
+  readonly lapsedOn: IsoDate | null;
+  readonly renewalOn: IsoDate | null;
+  readonly note: string | null;
+  /** The holding that carries a hybrid policy's surrender value. */
+  readonly linkedHoldingId: Uuid | null;
 }
 
 /** Everything the planning screen needs in one load. */

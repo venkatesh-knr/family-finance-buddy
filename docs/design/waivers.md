@@ -26,13 +26,7 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## protection-and-flow.md
 
-- PF-C2 — not built: the policy and net-worth interplay arrives with slice 2b (build-plan step 2b) — 2026-10-10
-- PF-C3 — not built: cover arrives with slice 2b, and the assertion needs a cover to keep out of the calculations — 2026-10-10
-- PF-C4 — not built: the hybrid policy and its linked holding arrive with slice 2b — 2026-10-10
 - PF-C10 — not built: the transfer rule and the account it moves money between arrive with slice 6a (build-plan step 6a) — 2026-10-10
 - PF-C11 — not built: the step-at-credit rule for PPF, SSY, NSC and KVP belongs to the balance sheet (build-plan step 6) — 2026-10-10
-- PF-C12 — not built: the cover gap and its household settings arrive with slice 2b — 2026-10-10
-- PF-C13 — not built: the cover columns and their every-verb denial tests arrive with slice 2b; the existing insurance_policy policies are covered by rls_role_reads.test.sql, which does not name this rule — 2026-10-10
-- PF-C14 — not built: policy identifiers arrive with slice 2b, and whether they exist beyond the last four digits is an open decision recorded in the build plan — 2026-10-10
-- PF-C15 — not built: income arrives with slice 6a and cover with slice 2b, and privacy mode is asserted for each as it lands — 2026-10-10
+- PF-C15 — half built: the cover half is asserted in tests/e2e/insurance.spec.ts, which does not carry the ID because the rule also names income, and the income ledger arrives with slice 6a (build-plan step 6a) — 2026-10-11
 - PF-C16 — not built: the Overview's stock and flow regions arrive with slice 6a — 2026-10-10

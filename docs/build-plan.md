@@ -410,6 +410,14 @@ recommendation; health cover gets no suggested figure.
 - The renewal reminder uses the machinery that already calls out a maturity within
   thirty days on Needs attention.
 
+*Decisions taken (by the owner, before the migration):* **nominees are left out** of
+this slice, so there is no nominee column or table and the waiver is plain "not built";
+**years of dependency start at 10**, a household setting shown on the face of the
+arithmetic; a policy number is **last four characters only** (`policy_last4`). The
+migration is `20261012120000`, with `supabase/tests/insurance_policy.test.sql`.
+
+**Built** (`20261012120000`, `src/domain/protection.ts`, `src/features/insurance`): the policy columns and the household setting; the Insurance screen with policies as editable rows, an add form with every column behind a "More details" fold, and the cover gap with every input shown; the liquid corpus as the second output of `fireCorpus`; the More slot in the bar; the Protection line and the renewal entry on the Overview. Taken while building: **"liquid" is the holdings left after a child's savings, a house deposit and the locked schemes** (PPF, SSY, NSC, KVP, SCSS, POMIS, PO time deposit), so an FD or RD counts and the emergency fund counts; other members' private holdings cannot be classified and are not in it, said on the screen. FIRE's list of loans and policies is read-only for policies, which are added on Insurance, and still the only place a loan's balance is set. The review of the slice found the cover gap counting a loan twice (its balance, and its instalments inside the annual expenses), and corrected it: instalments are left out of the expense term and said so. A follow-up migration (`20261013120000`) adds `premiums_end_on`, because premiums paid so far cannot be worked out for a limited-pay policy from the start date and the cadence alone.
+
 *Done when:* the design's pgTAP tests pass for every verb across households (the
 existing `rls_role_reads.test.sql` already covers select); a policy with no
 linked holding contributes exactly 0 to net worth (assert the total); privacy mode
