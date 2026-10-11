@@ -752,6 +752,38 @@
     padding: 0.75rem 0.85rem;
   }
 
+  /* A destination listed on the More screen: the name, and a line saying what it is for. A 44px target at least. */
+  .more-link {
+    background: none;
+    border: 0;
+    color: var(--ink);
+    cursor: pointer;
+    display: grid;
+    font: inherit;
+    gap: 0.15rem;
+    min-height: 2.75rem;
+    padding: 0.7rem 0.25rem;
+    text-align: left;
+    width: 100%;
+  }
+
+  .more-link:hover .more-link-name {
+    text-decoration: underline;
+  }
+
+  .more-link-name {
+    font-weight: 600;
+  }
+
+  /* A number inside a sentence, which the full-width field would break out of. */
+  .field.inline-field {
+    display: inline-block;
+    margin-inline: 0.25rem;
+    min-height: 2.25rem;
+    text-align: center;
+    width: 4.5rem;
+  }
+
   .edit-row-name {
     align-items: center;
     display: flex;
