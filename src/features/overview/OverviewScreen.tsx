@@ -43,6 +43,8 @@ import { assetHistory, movementSince } from '../../domain/history.ts';
 import { AllocationDonut } from './AllocationDonut.tsx';
 import { useOverviewData } from './useOverviewData.ts';
 import { useMonthsOfCover } from './useMonthsOfCover.ts';
+import { insuranceFacts } from '../insurance/insuranceFacts.ts';
+import { annualFromListing } from '../plan/annualFromListing.ts';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
 import { Field } from '../../ui/primitives.tsx';
 import { formatIsoDate } from '../../lib/dates.ts';
@@ -90,6 +92,7 @@ export function OverviewScreen({
   householdId,
   displayCurrency,
   onOpenHoldings,
+  onOpenInsurance,
 }: {
   privacy: boolean;
   householdId: string | null;
@@ -112,6 +115,8 @@ export function OverviewScreen({
    * link.
    */
   onOpenHoldings: (filter: { kind: string; currency: string }) => void;
+  /** The Protection line is a link: it opens the screen that has the arithmetic. */
+  onOpenInsurance: () => void;
 }) {
   // The rate form is the answer to a question the page only sometimes asks, so
   // it waits behind the sentence that asks it.
@@ -180,6 +185,7 @@ export function OverviewScreen({
     heroWarnings,
     worth,
     fire,
+    planListing,
   } = useOverviewData({ householdId, displayCurrency, scope });
 
   // What is set aside as the emergency fund, and how many months of the household's usual spending it
@@ -196,6 +202,38 @@ export function OverviewScreen({
     rates,
     emergency,
   });
+
+  // Protection: the cover in force and the gap, from the same facts the Insurance screen reads, so the two
+  // cannot say different things. A policy has a cover and no value, and it is read here and nowhere near
+  // the figures above it (PF-C3). Household scope only: a member's own share of a household's cover is
+  // not a number about anything.
+  const protection = useMemo(() => {
+    if (scope !== 'household' || planListing === null) return null;
+    const active = planListing.policies.filter((policy) => !policy.isLapsed);
+    if (active.length === 0) return null;
+    const annual = annualFromListing(planListing)?.total ?? null;
+    const surrenderValues = new Map<string, Money>();
+    const latest = new Map<string, { date: string; amount: Money }>();
+    for (const v of valuations) {
+      const held = latest.get(v.holdingId);
+      if (held === undefined || v.date > held.date) latest.set(v.holdingId, { date: v.date, amount: v.amount });
+    }
+    for (const [id, reading] of latest) surrenderValues.set(id, reading.amount);
+    return {
+      active: active.length,
+      facts: insuranceFacts({
+        policies: planListing.policies,
+        liabilities: planListing.liabilities,
+        surrenderValues,
+        annualExpenses: annual !== null && annual.minor > 0n ? annual : null,
+        years: planListing.household.coverDependencyYears,
+        liquid: fire.liquid.ok ? fire.liquid.amount : null,
+        base: planListing.household.baseCurrency,
+        rates,
+        today,
+      }),
+    };
+  }, [scope, planListing, valuations, fire.liquid, rates, today]);
 
   const privateLeftOut = scope === 'household' && hiddenAssets.length > 0;
   const privateSums = hiddenAssets.map((entry) => formatMoney(entry.total, { privacy })).join(' + ');
@@ -875,6 +913,42 @@ export function OverviewScreen({
           </Card>
         )}
 
+        {/*
+          Protection (protection-and-flow.md §6): one line, the term cover in force and the gap if there
+          is one, and a link to the screen that has the arithmetic. Below the allocation and above Needs
+          attention, as the design orders them. Not a card and not a hero: a line.
+        */}
+        {protection !== null && (
+          <div data-testid="protection-line">
+            <dl>
+              <Stat label="Protection">
+                {protection.facts.termCover !== null && protection.facts.termCount > 0 ? (
+                  <>
+                    <Amount value={protection.facts.termCover} privacy={privacy} compact /> <Unit>term cover in force</Unit>
+                  </>
+                ) : (
+                  <Unit>{String(protection.active)} {protection.active === 1 ? 'policy' : 'policies'}, no term cover recorded</Unit>
+                )}
+              </Stat>
+            </dl>
+            <p className="note mt-1.5">
+              {protection.facts.gap === null ? (
+                <>The cover gap cannot be worked out yet: {protection.facts.gapRefusedBecause}</>
+              ) : protection.facts.gap.short.minor > 0n ? (
+                <>
+                  Short by <Amount value={protection.facts.gap.short} privacy={privacy} compact /> on the household&rsquo;s own
+                  figures.
+                </>
+              ) : (
+                <>No gap on the household&rsquo;s own figures.</>
+              )}{' '}
+              <button type="button" className="note underline" onClick={onOpenInsurance}>
+                Open Insurance
+              </button>
+            </p>
+          </div>
+        )}
+
       </div>
 
       <div className="lg:col-start-2 lg:row-start-3">
@@ -887,6 +961,7 @@ export function OverviewScreen({
           gaps.neverRead.length === 0 &&
           staleness.stale.length === 0 &&
           alerts.length === 0 &&
+          (protection?.facts.renewals.length ?? 0) === 0 &&
           !fixedIncomeFailed &&
           !ratingsFailed &&
           shortPositions.length === 0 ? (
@@ -987,6 +1062,26 @@ export function OverviewScreen({
                 >
                   The money comes back. Decide where it goes before it does, and add it as a new deposit or
                   bond when it is placed.
+                </Attention>
+              )}
+              {protection !== null && protection.facts.renewals.length > 0 && (
+                <Attention
+                  tone={protection.facts.renewals.some((r) => r.overdue) ? 'due' : 'gap'}
+                  headline={
+                    <>
+                      {protection.facts.renewals.length}{' '}
+                      {protection.facts.renewals.length === 1 ? 'policy renews' : 'policies renew'} within thirty
+                      days{protection.facts.renewals.some((r) => r.overdue) ? ', or are past their date' : ''}
+                    </>
+                  }
+                  names={protection.facts.renewals.map(
+                    (r) =>
+                      `${r.name} — ${formatIsoDate(r.renewalOn)}, ${r.overdue ? 'past its date' : daysPhrase(r.daysLeft)}`,
+                  )}
+                  namesLabel="Which"
+                >
+                  A policy that lapses is cover the household thought it had. Renew it, or mark it lapsed on
+                  Insurance if it is meant to end.
                 </Attention>
               )}
               {renewals.length > 0 && (
