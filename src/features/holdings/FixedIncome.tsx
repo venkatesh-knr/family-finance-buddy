@@ -74,12 +74,19 @@ export function FixedIncome({
   privacy,
   canWrite,
   onChanged,
+  only,
 }: {
   listing: HoldingListing;
   privacy: boolean;
   canWrite: boolean;
   /** Called after a write that changes holdings or readings, so the screen above reloads. */
   onChanged: () => void;
+  /**
+   * One holding's terms and actions and nothing around them: the body of a deposit's or a bond's own screen
+   * (docs/design/holdings.md). Without it this is the card of every deposit and bond, which the Holdings list
+   * no longer shows.
+   */
+  only?: string;
 }) {
   const [data, setData] = useState<FixedIncomeListing | null>(null);
   const [ratings, setRatings] = useState<readonly RatingChange[]>([]);
@@ -191,6 +198,64 @@ export function FixedIncome({
     }
     return [...byCurrency.entries()];
   }, [rows]);
+
+  if (only !== undefined) {
+    if (loading) return <p className="note">Loading…</p>;
+    const mine = rows.find((r) => r.holdingId === only);
+    if (mine !== undefined) {
+      return (
+        <PositionRow
+          row={mine}
+          listing={listing}
+          today={today}
+          privacy={privacy}
+          canWrite={canWrite}
+          householdId={householdId}
+          named={false}
+          onChanged={() => {
+            void load();
+            onChanged();
+          }}
+        />
+      );
+    }
+    // A deposit or bond entered before there were terms: it is offered its terms, and not a second holding.
+    const bare = withoutTerms.find((h) => h.id === only);
+    if (bare === undefined) return problem === null ? null : <Problem>{problem}</Problem>;
+    return (
+      <div className="flex flex-col gap-2.5">
+        <p className="note">The terms of this {bare.instrument.kind} are not recorded, so there is nothing to work a value out from.</p>
+        {canWrite && giving === null && (
+          <div>
+            <Button
+              type="button"
+              variant="quiet"
+              onClick={() => {
+                setGiving(bare);
+              }}
+            >
+              Give the terms
+            </Button>
+          </div>
+        )}
+        {canWrite && giving !== null && (
+          <TermsForm
+            key={giving.id}
+            listing={listing}
+            mode={{ kind: 'existing', holding: giving }}
+            onCancel={() => {
+              setGiving(null);
+            }}
+            onDone={() => {
+              setGiving(null);
+              void load();
+              onChanged();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -396,7 +461,10 @@ function PositionRow({
   canWrite,
   householdId,
   onChanged,
+  named = true,
 }: {
+  /** False on the holding's own screen, which has already said whose it is and what it is called. */
+  named?: boolean;
   row: Row;
   listing: HoldingListing;
   today: IsoDate;
@@ -447,7 +515,7 @@ function PositionRow({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <span className="min-w-0">
-          <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{row.name}</span>{' '}
+          {named && <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{row.name}</span>}{' '}
           {canWrite && (
             <EditButton
               label={`Correct the terms of ${row.name}`}
@@ -459,11 +527,13 @@ function PositionRow({
               }}
             />
           )}{' '}
-          <span className="note">
-            {[row.member, row.institution, row.last4 === null ? null : `…${row.last4}`]
-              .filter((part) => part !== null)
-              .join(' · ')}
-          </span>
+          {named && (
+            <span className="note">
+              {[row.member, row.institution, row.last4 === null ? null : `…${row.last4}`]
+                .filter((part) => part !== null)
+                .join(' · ')}
+            </span>
+          )}
         </span>
         <span className="flex flex-wrap items-center gap-2">
           <Pill tone="neutral">{position.kind === 'deposit' ? 'Deposit' : 'Bond'}</Pill>

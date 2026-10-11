@@ -1715,6 +1715,219 @@
     white-space: nowrap;
   }
 
+  /*
+   * Holdings (docs/design/holdings.md). Filter chips are links that set the URL (HD-I4), a group is a heading that
+   * collapses its rows, and a row is one glance: tile, name, the member and one fact, the value, and under it the
+   * gain or the reason there is none. About 64px at the default text size, and it grows with the text because
+   * nothing here has a fixed height.
+   */
+  .chips {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.5rem;
+  }
+
+  .chip {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.8rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .chip:hover {
+    border-color: var(--line-strong);
+  }
+
+  .chip[aria-current='true'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .chip-count {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .chip[aria-current='true'] .chip-count {
+    color: inherit;
+    opacity: 0.8;
+  }
+
+  .chip-divider {
+    align-self: stretch;
+    background: var(--line);
+    margin: 0.2rem 0.1rem;
+    width: 1px;
+  }
+
+  .holding-group + .holding-group {
+    margin-top: 0.9rem;
+  }
+
+  .group-head {
+    align-items: baseline;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    font: inherit;
+    gap: 0.15rem 0.75rem;
+    justify-content: space-between;
+    min-height: 2.75rem;
+    padding: 0.55rem 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .group-name {
+    font-size: 0.90625rem;
+    font-weight: 600;
+  }
+
+  .group-figures {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .holding-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .holding-row {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 4rem;
+    padding: 0.6rem 0;
+    position: relative;
+  }
+
+  .holding-rows > .holding-row:last-child {
+    border-bottom: 0;
+  }
+
+  /* The whole row is the link: the anchor is the name, stretched over the row, as on the Overview's allocation. */
+  .holding-link {
+    color: var(--ink);
+    display: block;
+    text-decoration: none;
+  }
+
+  .holding-link::after {
+    content: '';
+    inset: 0;
+    position: absolute;
+  }
+
+  .holding-link:hover .holding-name,
+  .holding-link:focus-visible .holding-name {
+    text-decoration: underline;
+  }
+
+  .holding-name {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .holding-sub {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.15rem 0.4rem;
+    margin-top: 1px;
+  }
+
+  .holding-figures {
+    align-items: flex-end;
+    display: grid;
+    gap: 2px;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .holding-value {
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .holding-reason {
+    align-items: center;
+    color: var(--muted);
+    display: inline-flex;
+    font-size: 0.71875rem;
+    gap: 0.2rem;
+    justify-content: flex-end;
+  }
+
+  .holding-figures .delta {
+    background: none;
+    font-size: 0.71875rem;
+    gap: 3px;
+    padding: 0;
+  }
+
+  .holding-row .caveat-mark {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The visible Archive on a holding's screen: a button named for the holding, and a 44px target like the rest. */
+  .archive-button {
+    min-height: 2.75rem;
+    text-align: left;
+  }
+
+  .back-link {
+    align-items: center;
+    color: var(--ink-2);
+    display: inline-flex;
+    font-size: 0.875rem;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  .detail-name {
+    color: var(--ink);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 0;
+  }
+
   /* Wide content scrolls inside its own container; the page body never does. */
   .scroll-x {
     overflow-x: auto;

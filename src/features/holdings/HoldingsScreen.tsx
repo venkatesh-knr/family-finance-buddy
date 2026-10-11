@@ -1,175 +1,149 @@
 /**
- * Holdings, and the month-end readings that make disclosure possible.
+ * Holdings: a list that is one glance a holding, and a screen for each holding (docs/design/holdings.md).
  *
- * The screen's real job is the second card: recording a value takes a few
- * seconds and cannot be done retrospectively, so it is put in front of you
- * rather than behind a menu. The gaps are shown for the same reason — a missing
- * month is only fixable while you can still remember to fix it.
+ * Eight holdings took about 6.7 phone screens when every one rendered its full detail inline. The list is a
+ * summary, filter chips that live in the URL, and holdings grouped by class with an Ended group last; a row opens
+ * the holding, whose own screen takes the shape of its kind. Recording a value is still the thing this screen is
+ * for — it takes seconds and cannot be done retrospectively — so it is on the detail, one tap from the row.
  */
 
-import { FixedIncome } from './FixedIncome.tsx';
-import { splitFundName } from './fundName.ts';
-import { useCallback, useMemo, useState } from 'react';
-import { formatIsoDate } from '../../lib/dates.ts';
-import {
-  exactMoney,
-  formatMoney,
-  percentOfCost,
-  isKnownCurrency,
-  knownCurrencyCodes,
-  money,
-  parseAmountToMinor,
-} from '../../lib/money.ts';
-import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
-import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
-import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import {
-  Absent,
-  Amount,
-  Button,
-  Card,
-  Caveat,
-  Field,
-  Pill,
-  Problem,
-  RowAction,
-  Stat,
-  Unit,
-} from '../../ui/primitives.tsx';
-import { kindLabel } from '../../ui/labels.ts';
+import { useMemo, useState } from 'react';
 import { isQualified } from '../../domain/position.ts';
-import { EARMARK_LABELS, SCHEMES, SCHEME_LABELS, isScheme, type Scheme } from '../../domain/earmark.ts';
-import { CostAndGains } from './CostAndGains.tsx';
-import { COST_MISSING_REFUSED_BECAUSE, IMPORT_THE_FULL_STATEMENT, RECORD_THE_COST, costMissing, RETURN_REFUSED_BECAUSE, shortPositions } from './history.ts';
-import { EditHolding } from './EditHolding.tsx';
+import type { Earmark } from '../../domain/earmark.ts';
+import { money, percentOfCost } from '../../lib/money.ts';
+import { formatQuantity } from '../../lib/quantity.ts';
+import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
+import { Button, Card, Problem } from '../../ui/primitives.tsx';
+import { kindLabel } from '../../ui/labels.ts';
+import { splitFundName } from './fundName.ts';
+import { groupHoldings, type Filter, type ListHolding } from './holdingGroups.ts';
+import { AddHolding, RefreshPrices } from './holdingParts.tsx';
+import { TermsForm } from './FixedIncomeForms.tsx';
+import { HoldingDetail } from './HoldingDetail.tsx';
+import { Chips, FixedExtras, GroupSection, Summary, type RowModel } from './HoldingsList.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
-import { updateDisposal, updateLot } from '../../repo/lots.ts';
-import { archiveHolding } from '../../repo/holdings.ts';
+import { rowFact } from './rowFact.ts';
+import { useFixedIncomeFacts } from './useFixedIncomeFacts.ts';
 import { useHoldings, type HoldingRow } from './useHoldings.ts';
 
-type SortBy = 'value' | 'name' | 'member';
+/** "a deposit", "a mutual fund": what the list's Add says it adds when the list is filtered to a class. */
+const A: Record<string, string> = {
+  mutual_fund: 'a mutual fund',
+  etf: 'an ETF',
+  equity: 'a share',
+  bond: 'a bond',
+  deposit: 'a deposit',
+  other: 'a holding',
+};
 
 export function HoldingsScreen({
   privacy,
   householdId,
-  filter = null,
-  onClearFilter,
+  filter,
+  holdingId,
 }: {
   privacy: boolean;
   householdId: string | null;
-  /**
-   * An asset class asked for on Overview, where clicking "Bonds" means "show
-   * me the bonds". Null is the ordinary case: every holding.
-   *
-   * Currency as well as kind, because Overview's shares are per currency —
-   * "Bonds, 100% of what is valued" is an answer about the rupee column, and
-   * following it into a list that also contained dollar bonds would be
-   * answering a question nobody asked.
-   */
-  filter?: { kind: string; currency?: string } | null;
-  onClearFilter?: () => void;
+  /** The class, earmark and currency the URL asks for; empty is All. */
+  filter: Filter;
+  /** The holding whose own screen this is, or null for the list. */
+  holdingId: string | null;
 }) {
-  const { listing, rows, year, setYear, today, loading, problem, add, record, recordLot, recordSale, reload, taxRules, refresh, paidOut, paidOutFailed } =
-    useHoldings(householdId);
-  const [sortBy, setSortBy] = useState<SortBy>('value');
-  /** Narrow the list to one scheme, or all of them. Empty is all. */
-  const [scheme, setScheme] = useState<Scheme | ''>('');
-  /** Which of the two ways of adding is open beneath the controls, if either. */
+  const hook = useHoldings(householdId);
+  const { listing, rows, loading, problem, today, paidOut, paidOutFailed } = hook;
+  const fixed = useFixedIncomeFacts(listing, today);
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
 
-  /**
-   * Totals per currency, on the same terms as Overview: never summed across
-   * currencies, and a holding nobody has read is absent rather than zero.
-   */
-  const totals = useMemo(() => {
-    const byCurrency = new Map<
-      string,
-      { value: bigint; invested: bigint; unread: number; short: number; missing: number }
-    >();
-    for (const row of rows) {
-      // Paid out: the money is back in an account, so it is not part of what is held. The same
-      // rule as the Overview's net worth, or the two screens would disagree about one household.
-      if (paidOut.has(row.holding.id)) continue;
-      const currency = row.holding.instrument.currency;
-      const bucket = byCurrency.get(currency) ?? {
-        value: 0n,
-        invested: 0n,
-        unread: 0,
-        short: 0,
-        missing: 0,
-      };
+  const base = listing?.household.baseCurrency ?? 'INR';
 
+  /** Per currency, on the Overview's terms: never summed across currencies; a holding nobody has read is absent. */
+  const totals = useMemo(() => {
+    const byCurrency = new Map<string, { value: bigint; invested: bigint; unread: number; short: number; missing: number }>();
+    for (const row of rows) {
+      // Paid out: the money is back in an account, so it is not part of what is held. The same rule as the
+      // Overview's net worth, or the two screens would disagree about one household.
+      if (paidOut.has(row.holding.id) || row.unitsHeld === 0n) continue;
+      const currency = row.holding.instrument.currency;
+      const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0, short: 0, missing: 0 };
       if (row.latest === null) {
-        // Unread on both sides of the comparison, or neither.
-        //
-        // This used to count an unvalued holding's cost as invested while
-        // having no value to set against it, so importing three funds nobody
-        // had valued turned a portfolio into a 61% loss. The cost was real and
-        // the loss was a subtraction from a figure that did not exist.
-        //
-        // Overview has always done it this way — its figure is named
-        // `investedValued` — and the two screens disagreeing about one
-        // household's return is worse than either answer alone.
+        // Unread on both sides of the comparison, or neither: an unvalued holding's cost set against no value
+        // once turned a portfolio into a 61% loss.
         bucket.unread += 1;
       } else {
-        // The row's cost, not the holding's: where lots exist it is derived
-        // from them net of sales, which is what is actually still invested.
         bucket.invested += row.cost.amount?.minor ?? 0n;
         bucket.value += row.latest.amountMinor;
-        // Valued, with a cost that covers only part of what is valued. The
-        // value stays in: it is right. What cannot be trusted is anything
-        // computed by setting the two against each other.
         if (isQualified(row.history)) bucket.short += 1;
-        // Valued, with no cost recorded at all. Not a cost of zero: summed as one it turns a
-        // gain into a larger gain, so the return is refused here as it is on Overview.
         if (row.cost.amount === null) bucket.missing += 1;
       }
-
       byCurrency.set(currency, bucket);
     }
     return [...byCurrency.entries()].map(([currency, b]) => ({ currency, ...b }));
   }, [rows, paidOut]);
 
-  /** Only the schemes somebody holds: a filter with nine empty choices is a list of things that are not there. */
-  const schemesHeld = useMemo(
-    () => SCHEMES.filter((option) => rows.some((row) => row.holding.instrument.scheme === option)),
-    [rows],
+  const listHoldings = useMemo<readonly ListHolding[]>(
+    () =>
+      rows.map((row) => ({
+        id: row.holding.id,
+        kind: row.holding.instrument.kind,
+        currency: row.holding.instrument.currency,
+        earmark: row.holding.earmark,
+        latest: row.latest === null ? null : money(row.latest.amountMinor, row.holding.instrument.currency),
+        unitsHeld: row.unitsHeld,
+        paidOutOn: paidOut.get(row.holding.id) ?? null,
+      })),
+    [rows, paidOut],
   );
-  // The filter that is in force: one nobody holds any more (the last holding of that scheme was edited or
-  // archived) is not in force, so a list never stays filtered by a control that has gone.
-  const activeScheme: Scheme | '' = scheme !== '' && schemesHeld.includes(scheme) ? scheme : '';
 
-  // Biggest first by default: on a list of twenty, the largest position is
-  // almost always the one the question is about.
-  const ordered = useMemo(() => {
-    const byKind =
-      filter === null
-        ? [...rows]
-        : rows.filter(
-            (row) =>
-              row.holding.instrument.kind === filter.kind &&
-              (filter.currency === undefined || row.holding.instrument.currency === filter.currency),
-          );
-    const copy = activeScheme === '' ? byKind : byKind.filter((row) => row.holding.instrument.scheme === activeScheme);
-    copy.sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.holding.instrument.name.localeCompare(b.holding.instrument.name);
+  const grouped = useMemo(() => groupHoldings({ holdings: listHoldings, base, filter }), [listHoldings, base, filter]);
+
+  const modelOf = useMemo(() => {
+    const byId = new Map<string, HoldingRow>(rows.map((row) => [row.holding.id, row]));
+    return (id: string): RowModel | null => {
+      const row = byId.get(id);
+      if (row === undefined) return null;
+      const { holding } = row;
+      const currency = holding.instrument.currency;
+      const facts = fixed.get(id);
+      const isFixed = holding.instrument.kind === 'deposit' || holding.instrument.kind === 'bond';
+      const value = row.latest === null ? null : money(row.latest.amountMinor, currency);
+
+      let gain: RowModel['gain'] = { kind: 'none' };
+      if (isFixed) {
+        // A deposit's newer worked-out value lives on its detail view, beside the action that records it
+        // (HD-I1): the row's figure is the reading, and says when it was taken.
+        if (row.latest !== null) gain = { kind: 'asat', date: row.latest.date };
+      } else if (row.latest !== null) {
+        if (isQualified(row.history)) gain = { kind: 'refused', short: true, missing: false };
+        else if (row.cost.amount === null) gain = { kind: 'refused', short: false, missing: true };
+        else {
+          const diff = money(row.latest.amountMinor - row.cost.amount.minor, currency);
+          gain = { kind: 'gain', gain: diff, percent: percentOfCost(diff.minor, row.cost.amount.minor) };
+        }
       }
-      if (sortBy === 'member') {
-        return (
-          a.holding.member.displayName.localeCompare(b.holding.member.displayName) ||
-          a.holding.instrument.name.localeCompare(b.holding.instrument.name)
-        );
-      }
-      const av = a.latest?.amountMinor ?? -1n;
-      const bv = b.latest?.amountMinor ?? -1n;
-      return bv > av ? 1 : bv < av ? -1 : 0;
-    });
-    return copy;
-  }, [rows, sortBy, filter, activeScheme]);
+
+      return {
+        id,
+        title: splitFundName(holding.instrument.name).title,
+        kind: holding.instrument.kind,
+        member: holding.member.displayName,
+        fact: rowFact({
+          kind: holding.instrument.kind,
+          symbol: holding.instrument.symbol,
+          unitsText: formatQuantity(row.unitsHeld),
+          position: facts?.position ?? null,
+          view: facts?.view ?? null,
+          institution: facts?.institution ?? null,
+          privacy,
+        }),
+        value,
+        earmark: holding.earmark as Earmark,
+        isForeign: holding.instrument.isForeignAsset,
+        gain,
+      };
+    };
+  }, [rows, fixed, privacy]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
-
   if (problem !== null && listing === null) {
     return (
       <div className="px-4.5 py-4.5">
@@ -181,1213 +155,178 @@ export function HoldingsScreen({
 
   const canWrite = listing.viewer.canRecord;
 
+  // A holding's own screen.
+  if (holdingId !== null) {
+    return (
+      <HoldingDetail hook={hook} holdingId={holdingId} privacy={privacy} canWrite={canWrite} fixed={fixed} />
+    );
+  }
+
+  const filtered = (filter.kind ?? '') !== '' || (filter.earmark ?? '') !== '';
+  const addLabel = (filter.kind ?? '') !== '' ? `Add ${A[filter.kind ?? ''] ?? 'a holding'}` : 'Add';
+  const count = grouped.groups.reduce((sum, g) => sum + g.holdings.length, 0);
+
   return (
     <div className="flex flex-col gap-4.5">
-      {/*
-        Two ways of adding to what is below, as controls and not as two cards
-        the size of the data they act on. "Not everything is a card"
-        (docs/tokens.md §4): at 375px two folded cards took the first screen
-        and no holding was visible until you scrolled past them. A holding is
-        added a handful of times a year and read every week.
-
-        Beside each other because they are the same errand, one holding by hand
-        or a statement of many: "imports are accelerants, not prerequisites"
-        (§791). One panel at a time opens beneath the row.
-      */}
-      {canWrite && (
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="quiet"
-            type="button"
-            aria-expanded={panel === 'add'}
-            onClick={() => {
-              setPanel((was) => (was === 'add' ? null : 'add'));
-            }}
-          >
-            Add a holding
-          </Button>
-          <Button
-            variant="quiet"
-            type="button"
-            aria-expanded={panel === 'import'}
-            onClick={() => {
-              setPanel((was) => (was === 'import' ? null : 'import'));
-            }}
-          >
-            Import a statement
-          </Button>
-        </div>
-      )}
-      {canWrite && panel === 'add' && <AddHolding listing={listing} onAdd={add} />}
-      {canWrite && panel === 'import' && (
-        <ImportStatement
-          listing={listing}
-          onImported={() => {
-            void reload();
-          }}
-        />
-      )}
-
-      {totals.length > 0 && (
-        <Card
-          lift
-          title="Portfolio"
-          aside={
-            <span className="flex flex-wrap items-center gap-2.5">
-              <span className="note">
-                {listing.viewer.role === 'contributor' ? 'your holdings, latest readings' : 'latest readings'}
-              </span>
-              {/*
-                Said once, on the heading, rather than as a standing paragraph
-                under figures somebody has read a hundred times. The half of it
-                that WARNS — that an unread holding is missing from the total —
-                is not here: it rides on the affected figure below, and only
-                when there is one.
-              */}
-              <Caveat tone={paidOutFailed ? 'warn' : 'info'} label="How these totals are put together">
-                Each currency on its own, never added across. A holding nobody has read is not in
-                these figures at all, because counting it as zero would make the total look
-                complete while being short. A deposit or bond that has paid out is left out from
-                the day it did.
-                {paidOutFailed &&
-                  ' Deposits and bonds could not be read just now, so one that has paid out may still be counted here. Reload to try again.'}
-              </Caveat>
-              {canWrite && <RefreshPrices onRefresh={refresh} />}
-            </span>
-          }
-        >
-          <div className="flex flex-col gap-4.5">
-            {totals.map((total) => {
-              const gain = total.value - total.invested;
-              return (
-                <div key={total.currency}>
-                  {/* A div and not a p: a caveat opens a popover, and a div may not sit inside a p. */}
-                  <div
-                    className="figure"
-                    style={{ color: 'var(--ink)' }}
-                    title={exactMoney(money(total.value, total.currency), privacy) ?? undefined}
-                  >
-                    <Amount value={money(total.value, total.currency)} privacy={privacy} compact />
-                    {total.unread > 0 && (
-                      <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
-                        {total.unread} {total.unread === 1 ? 'holding has' : 'holdings have'} never
-                        been valued, so this total is short by whatever they are worth. They are
-                        absent rather than counted as zero, which would make it look complete.
-
-                        Record a value on the holding and it is counted.
-                      </Caveat>
-                    )}
-                  </div>
-                  <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
-                    <Stat label="Invested">
-                      {formatMoney(money(total.invested, total.currency), { privacy })}
-                      {(total.short > 0 || total.missing > 0) && (
-                        <Caveat tone="warn" label={`Why this ${total.currency} cost is short`}>
-                          {total.short > 0 && (
-                            <>
-                              {shortPositions(total.short)} a statement that covers only part of the
-                              history, so what was paid for the earlier units is not in this
-                              figure.{' '}
-                            </>
-                          )}
-                          {total.missing > 0 && (
-                            <>
-                              {costMissing(total.missing)} no cost recorded, so nothing for{' '}
-                              {total.missing === 1 ? 'it is' : 'them is'} in this figure.{' '}
-                            </>
-                          )}
-                          It is the sum of the costs that were recorded, and nothing has been made
-                          up to fill the rest.
-
-                          {total.short > 0 && IMPORT_THE_FULL_STATEMENT}{total.short > 0 && total.missing > 0 && ' '}{total.missing > 0 && RECORD_THE_COST}
-                        </Caveat>
-                      )}
-                    </Stat>
-                    {total.short > 0 || total.missing > 0 ? (
-                      // Refused, and said so where the figure would be. An
-                      // empty space would read as a portfolio with no return;
-                      // a number would read as a portfolio that made 1,300%.
-                      <Stat label="Total return">
-                        <Absent label={`Why there is no ${total.currency} return`}>
-                          {total.short > 0 && (
-                            <>
-                              {shortPositions(total.short)} a statement that covers only part of the
-                              history. {RETURN_REFUSED_BECAUSE}{' '}
-                            </>
-                          )}
-                          {total.missing > 0 && (
-                            <>
-                              {costMissing(total.missing)} no cost recorded.{' '}
-                              {COST_MISSING_REFUSED_BECAUSE}{' '}
-                            </>
-                          )}
-                          The value above is right; it is the cost that is not all there.
-                        </Absent>
-                      </Stat>
-                    ) : (
-                      <Stat
-                        label={gain < 0n ? 'Total loss' : 'Total return'}
-                        tone={gain < 0n ? 'loss' : 'gain'}
-                      >
-                        {formatMoney(money(gain, total.currency), { privacy })}
-                        {/*
-                          The percentage beside the amount, because ₹67,500 says
-                          nothing about whether it was a good year until you know
-                          what was staked to get it. The sign carries the
-                          direction; the colour only agrees with it.
-                        */}
-                        {percentOfCost(gain, total.invested) !== null && (
-                          <span className="note"> {percentOfCost(gain, total.invested)}</span>
-                        )}
-                      </Stat>
-                    )}
-                    {total.unread > 0 && (
-                      <Stat label="Unread">
-                        {total.unread} <Unit>{total.unread === 1 ? 'holding' : 'holdings'}</Unit>
-                      </Stat>
-                    )}
-                  </dl>
-                </div>
-              );
-            })}
-          </div>
-
-        </Card>
-      )}
-
-      <FixedIncome
-        listing={listing}
+      <Summary
+        grouped={grouped}
+        base={base}
+        filter={filter}
         privacy={privacy}
-        canWrite={canWrite}
-        onChanged={() => {
-          void reload();
-        }}
+        totals={totals}
+        paidOutFailed={paidOutFailed}
+        extra={
+          (filter.kind ?? '') === 'deposit' ? (
+            <FixedExtras
+              privacy={privacy}
+              rows={grouped.groups.flatMap((g) =>
+                g.holdings.flatMap((h) => {
+                  const f = fixed.get(h.id);
+                  const row = rows.find((x) => x.holding.id === h.id);
+                  return f === undefined || row === undefined ? [] : [{ name: row.holding.instrument.name, view: f.view }];
+                }),
+              )}
+            />
+          ) : null
+        }
       />
 
       <Card
-        title={
-          filter !== null
-            ? `${kindLabel(filter.kind)}${filter.currency === undefined ? '' : ` in ${filter.currency}`} (${String(ordered.length)})`
-            : activeScheme !== ''
-              ? `${SCHEME_LABELS[activeScheme]} (${String(ordered.length)} of ${String(rows.length)})`
-              : rows.length === 0
-              ? 'Holdings'
-              : `Holdings (${String(rows.length)})`
-        }
-        aside={
-          <label className="flex items-center gap-2">
-            <span className="label">
-              Peak for
-              {/*
-                This explained the whole screen from the bottom of it, where
-                somebody reads it once and then scrolls past it forever. It
-                belongs to the control it is about.
-              */}
-              <Caveat tone="info" label="What this peak is, and why the readings matter">
-                Foreign-asset disclosure asks for the highest value a holding reached during the
-                calendar year — January to December — not its closing value, and not the tax year.
-                It cannot be reconstructed from a year-end statement, which is why the readings
-                matter.
-              </Caveat>
-            </span>
-            <select
-              className="field w-[92px]"
-              value={year}
-              onChange={(event) => {
-                setYear(Number(event.target.value));
+        title={filtered ? `${filter.kind !== undefined && filter.kind !== '' ? kindLabel(filter.kind) : 'Holdings'}` : 'Holdings'}
+        aside={<span className="note">{count}</span>}
+      >
+        {/* One Add on the screen (HD-I5), naming the class when the list is filtered to one, and one Import. */}
+        {canWrite && (
+          <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+            <Button
+              variant="quiet"
+              type="button"
+              aria-expanded={panel === 'add'}
+              onClick={() => {
+                setPanel((was) => (was === 'add' ? null : 'add'));
               }}
             >
-              {yearsAround(today).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-        }
-      >
-        {rows.length === 0 ? (
+              {addLabel}
+            </Button>
+            <Button
+              variant="quiet"
+              type="button"
+              aria-expanded={panel === 'import'}
+              onClick={() => {
+                setPanel((was) => (was === 'import' ? null : 'import'));
+              }}
+            >
+              Import a statement
+            </Button>
+            <RefreshPrices onRefresh={hook.refresh} />
+          </div>
+        )}
+        {canWrite && panel === 'add' && (
+          <AddPanel
+            listing={listing}
+            initialKind={filter.kind ?? ''}
+            onAdd={hook.add}
+            onDone={() => {
+              fixed.reload();
+              void hook.reload();
+              setPanel(null);
+            }}
+          />
+        )}
+        {canWrite && panel === 'import' && (
+          <div className="mb-3.5">
+            <ImportStatement
+              listing={listing}
+              onImported={() => {
+                void hook.reload();
+              }}
+            />
+          </div>
+        )}
+
+        {listHoldings.length === 0 ? (
           <p className="note">
-            Nothing recorded yet. Add a holding above, then record what it is worth at each month
-            end — that reading is the only way the year&rsquo;s peak can ever be known.
+            Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is
+            the only way the year&rsquo;s peak can ever be known.
           </p>
         ) : (
           <>
-            {/*
-              A filtered list has to say so where the list is, not only in the
-              heading: somebody who scrolled past the heading is looking at a
-              short list with no sign that the rest exists.
-            */}
-            {filter !== null && (
-              <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-                <Pill tone="neutral">
-                  {kindLabel(filter.kind)}
-                  {filter.currency === undefined ? '' : ` · ${filter.currency}`}
-                </Pill>
-                <span className="note">
-                  {ordered.length === rows.length
-                    ? 'every holding is in this class'
-                    : `${String(rows.length - ordered.length)} other ${
-                        rows.length - ordered.length === 1 ? 'holding is' : 'holdings are'
-                      } hidden`}
-                </span>
-                {onClearFilter !== undefined && (
-                  <button type="button" className="note underline" onClick={onClearFilter}>
-                    Show all holdings
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* The same rule as the kind filter above: a filtered list says so where the list is. */}
-            {activeScheme !== '' && (
-              <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-                <Pill tone="neutral">{SCHEME_LABELS[activeScheme]}</Pill>
-                <span className="note">
-                  {rows.length - ordered.length} other {rows.length - ordered.length === 1 ? 'holding is' : 'holdings are'}{' '}
-                  hidden
-                </span>
-                <button
-                  type="button"
-                  className="note underline"
-                  onClick={() => {
-                    setScheme('');
-                  }}
-                >
-                  Show all schemes
-                </button>
-              </div>
-            )}
-
-            <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-              <span className="label">Sort</span>
-              <span className="segmented" role="group" aria-label="Sort holdings">
-                {(['value', 'name', 'member'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={sortBy === option}
-                    onClick={() => {
-                      setSortBy(option);
-                    }}
-                  >
-                    {option === 'value' ? 'Largest' : option === 'name' ? 'Name' : 'Member'}
-                  </button>
-                ))}
-              </span>
-              {schemesHeld.length > 0 && (
-                <label className="ml-2 flex items-center gap-2">
-                  <span className="label">Scheme</span>
-                  <select
-                    className="field w-[190px]"
-                    value={activeScheme}
-                    onChange={(event) => {
-                      setScheme(isScheme(event.target.value) ? event.target.value : '');
-                    }}
-                  >
-                    <option value="">All</option>
-                    {schemesHeld.map((option) => (
-                      <option key={option} value={option}>
-                        {SCHEME_LABELS[option]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <Chips chips={grouped.chips} filter={filter} />
+            <div className="mt-3.5">
+              {grouped.groups.length === 0 && grouped.ended.length === 0 && (
+                <p className="note">Nothing here matches that filter.</p>
               )}
-            </div>
-
-            <div className="flex flex-col gap-4.5">
-              {ordered.map((row) => (
-                <HoldingCard
-                  key={row.holding.id}
-                  row={row}
-                  listing={listing}
+              {grouped.groups.map((group) => (
+                <GroupSection
+                  key={group.kind}
+                  kind={group.kind}
+                  count={group.holdings.length}
+                  subtotals={group.subtotals}
+                  shares={group.shares}
+                  rows={group.holdings.flatMap((h) => modelOf(h.id) ?? [])}
                   privacy={privacy}
-                  today={today}
-                  canWrite={canWrite}
-                  onRecord={record}
-                  onLot={recordLot}
-                  onSale={recordSale}
-                  onReload={reload}
-                  taxRules={taxRules}
                 />
               ))}
+              {grouped.ended.length > 0 && (
+                <GroupSection
+                  kind="ended"
+                  label="Ended"
+                  count={grouped.ended.length}
+                  subtotals={[]}
+                  shares={[]}
+                  rows={grouped.ended.flatMap((h) => modelOf(h.id) ?? [])}
+                  privacy={privacy}
+                  open={false}
+                />
+              )}
             </div>
           </>
         )}
       </Card>
-
     </div>
   );
 }
 
-function yearsAround(today: string): readonly number[] {
-  const current = Number(today.slice(0, 4));
-  return [current, current - 1, current - 2];
-}
-
-function HoldingCard({
-  row,
-  listing,
-  privacy,
-  today,
-  canWrite,
-  onRecord,
-  onLot,
-  onSale,
-  onReload,
-  taxRules,
-}: {
-  row: HoldingRow;
-  listing: HoldingListing;
-  privacy: boolean;
-  today: string;
-  canWrite: boolean;
-  onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
-  taxRules: ReturnType<typeof useHoldings>['taxRules'];
-  onLot: ReturnType<typeof useHoldings>['recordLot'];
-  onSale: ReturnType<typeof useHoldings>['recordSale'];
-  onReload: ReturnType<typeof useHoldings>['reload'];
-}) {
-  const { holding, latest, peak } = row;
-  const currency = holding.instrument.currency;
-  const [editing, setEditing] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const fund = splitFundName(holding.instrument.name);
-
-  return (
-    <section
-      className="rounded p-3.5"
-      style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
-    >
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-          {/*
-            The fund, then its plan and former name beneath, in the quiet type.
-            The registered name is one long line at 360px; every word is still
-            here, in the order it was read.
-          */}
-          <span className="min-w-0" title={holding.instrument.name}>
-            <span className="block" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-              {fund.title}
-            </span>
-            {fund.detail !== null && <span className="note block">{fund.detail}</span>}
-          </span>
-          {holding.instrument.symbol !== null && (
-            <span className="note">{holding.instrument.symbol}</span>
-          )}
-          {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
-          {holding.instrument.scheme !== null && (
-            <Pill tone="neutral">{SCHEME_LABELS[holding.instrument.scheme]}</Pill>
-          )}
-          {holding.earmark !== 'none' && <Pill tone="neutral">{EARMARK_LABELS[holding.earmark]}</Pill>}
-          {/*
-            "A privacy control nobody can observe working is indistinguishable
-            from one that does nothing" (§20). A holding reaching this screen
-            at all is one the caller may read, so a personal one here is always
-            their own — and without this the toggle in the editor saved a state
-            with nothing on the screen to show for it.
-          */}
-          {holding.visibility === 'personal' && <Pill tone="own">Private</Pill>}
-          {holding.instrument.currency !== holding.instrument.exposureCurrency && (
-            <Pill tone="neutral">
-              {holding.instrument.currency} · tracks {holding.instrument.exposureCurrency}
-            </Pill>
-          )}
-        </div>
-        <span className="note">
-          <span className="tabular-nums">{formatQuantity(row.unitsHeld)}</span> units ·{' '}
-          {holding.member.displayName}
-        </span>
-      </header>
-
-      <dl className="mt-3 flex flex-wrap gap-x-9 gap-y-2.5">
-        <div>
-          <dt className="label">Latest reading</dt>
-          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
-            {latest === null ? (
-              <Unit>none yet</Unit>
-            ) : (
-              <>
-                {formatMoney(money(latest.amountMinor, currency), { privacy })}{' '}
-                <span className="note">{formatIsoDate(latest.date)}</span>
-              </>
-            )}
-          </dd>
-        </div>
-
-        <div>
-          <dt className="label">
-            Peak {peak.year}
-            {/*
-              Only against a figure. `isProvisional` means "a lower bound,
-              because months are missing", and a year with no readings at all
-              has every month missing — so this read "Peak 2025 (provisional)"
-              above the words "not known", which is a qualification of nothing.
-            */}
-            {peak.isProvisional && peak.peak !== null && ' (provisional)'}
-          </dt>
-          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
-            {peak.peak === null ? (
-              <Unit>not known</Unit>
-            ) : (
-              <>
-                {formatMoney(peak.peak, { privacy })}{' '}
-                {peak.peakDate !== null && (
-                  <span className="note">{formatIsoDate(peak.peakDate)}</span>
-                )}
-                {/*
-                  On the figure, not under the card. A peak taken across months
-                  that were never read is too low, and too low on a disclosure
-                  is a wrong figure rather than a missing one — so the number
-                  itself has to carry the mark, or somebody reads it as clean.
-                */}
-                {peak.missingMonths.length > 0 && (
-                  <Caveat tone="warn" label={`Why this ${String(peak.year)} peak is a lower bound`}>
-                    <MissingMonths months={peak.missingMonths} />
-
-                    Record a reading for each of those months on the holdings that were held.
-                  </Caveat>
-                )}
-              </>
-            )}
-          </dd>
-        </div>
-      </dl>
-
-      {row.quoted !== null && (
-        <QuotedValue
-          row={row}
-          canWrite={canWrite}
-          today={today}
-          privacy={privacy}
-          onRecord={onRecord}
-          listing={listing}
-        />
-      )}
-
-      {/*
-        The forms are folded away, and the figures are not.
-
-        A card carrying three permanently open forms reads as a data-entry
-        screen, and this one is mostly read rather than written: a reading is
-        taken once a month, a correction almost never. So the actions sit on
-        one quiet line and open what they name — which also stops an empty
-        amount box, showing its placeholder, being mistaken for a value of
-        nothing.
-      */}
-      {canWrite && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="quiet-button"
-            aria-expanded={recording}
-            onClick={() => {
-              setRecording((was) => !was);
-            }}
-          >
-            {recording ? 'Cancel this reading' : 'Record a value'}
-          </button>
-          {/* The same 44px target as archive beside it: the step that cannot be undone from here is not the
-              one that gets the bigger control. */}
-          <RowAction
-            icon="edit"
-            label={editing ? 'Cancel editing this holding' : 'Edit this holding'}
-            expanded={editing}
-            onClick={() => {
-              setEditing((was) => !was);
-            }}
-          />
-          <ArchiveHolding row={row} onDone={onReload} />
-        </div>
-      )}
-
-      {canWrite && recording && (
-        <RecordReading
-          listing={listing}
-          holdingId={holding.id}
-          quantity={quantityToNumeric(row.unitsHeld)}
-          currency={currency}
-          today={today}
-          onRecord={async (valuation) => {
-            await onRecord(valuation);
-            setRecording(false);
-          }}
-        />
-      )}
-
-      {canWrite && editing && (
-        <EditHolding
-          holding={holding}
-          isMine={holding.member.id === listing.viewer.memberId}
-          // Readings, purchases or sales already denominated in this currency.
-          // Changing it would leave them behind in the old one.
-          hasHistory={
-            latest !== null ||
-            listing.lots.some((lot) => lot.holdingId === holding.id) ||
-            listing.disposals.some((sale) => sale.holdingId === holding.id)
-          }
-          hasLots={listing.lots.some((lot) => lot.holdingId === holding.id)}
-          currencyOptions={<CurrencyOptions />}
-          onDone={async () => {
-            setEditing(false);
-            await onReload();
-          }}
-          onCancel={() => {
-            setEditing(false);
-          }}
-        />
-      )}
-
-      <CostAndGains
-        taxRules={taxRules}
-        row={row}
-        listing={listing}
-        privacy={privacy}
-        today={today}
-        canWrite={canWrite}
-        onLot={onLot}
-        onSale={onSale}
-        onEditLot={async (id, patch) => {
-          await updateLot(id, patch);
-          await onReload();
-        }}
-        onEditSale={async (id, patch) => {
-          await updateDisposal(id, patch);
-          await onReload();
-        }}
-      />
-    </section>
-  );
-}
-
 /**
- * The gaps, named rather than counted.
- *
- * A peak taken across months that were never recorded is too low, and too low
- * on a disclosure is a wrong figure rather than a missing one. Saying which
- * months are absent is what lets someone go and find them.
+ * The kind picker (HD-I5): what is being added decides the form, because a fund is units and a cost and a
+ * deposit is a principal, a rate and a date. Preselected to the class the list is filtered to.
  */
-function MissingMonths({ months }: { months: readonly string[] }) {
-  const label = months.length === 1 ? '1 month has no reading' : `${String(months.length)} months have no reading`;
-
-  // The months are named rather than counted, because naming them is what lets
-  // somebody go and find the readings. They live inside the caveat now: the
-  // mark on the figure says the number is a lower bound, and this says why and
-  // which months to go looking for.
-  return (
-    <>
-      <span>{label}, so this peak is a lower bound, not the figure.</span>
-      <ul className="notice-names">
-        {months.map((month) => (
-          <li key={month}>{month}</li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-function RecordReading({
+function AddPanel({
   listing,
-  holdingId,
-  quantity,
-  currency,
-  today,
-  onRecord,
-}: {
-  listing: HoldingListing;
-  holdingId: string;
-  quantity: string;
-  currency: string;
-  today: string;
-  onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
-}) {
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(today);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      setProblem(null);
-
-      let minor: bigint;
-      try {
-        minor = parseAmountToMinor(amount, currency);
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'That is not an amount.');
-        return;
-      }
-
-      setBusy(true);
-      try {
-        await onRecord({
-          householdId: listing.household.id,
-          holdingId,
-          date,
-          quantity,
-          amount: money(minor, currency),
-          // A reading taken now is 'manual'; one reconstructed from a statement
-          // later is 'backfill', and should be visibly weaker.
-          source: date === today ? 'manual' : 'backfill',
-        });
-        setAmount('');
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'Could not record that.');
-      } finally {
-        setBusy(false);
-      }
-    },
-    [amount, currency, date, holdingId, listing.household.id, onRecord, quantity, today],
-  );
-
-  return (
-    <form
-      className="inset-form mt-3.5 flex flex-wrap items-end gap-3"
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      <div className="w-full sm:w-[8.75rem] sm:shrink-0">
-        <Field
-          label={`Value (${currency})`}
-          numeric
-          inputMode="decimal"
-          placeholder="0.00"
-          required
-          value={amount}
-          onChange={(event) => {
-            setAmount(event.target.value);
-          }}
-        />
-      </div>
-      <div className="w-full sm:w-[9.375rem] sm:shrink-0">
-        <Field
-          label="As at"
-          type="date"
-          value={date}
-          onChange={(event) => {
-            setDate(event.target.value);
-          }}
-        />
-      </div>
-      <Button type="submit" disabled={busy || amount.trim() === ''}>
-        {busy ? 'Saving…' : 'Record'}
-      </Button>
-      {problem !== null && (
-        <div className="w-full">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-    </form>
-  );
-}
-
-function AddHolding({
-  listing,
+  initialKind,
   onAdd,
-}: {
-  listing: HoldingListing;
-  onAdd: (holding: Parameters<ReturnType<typeof useHoldings>['add']>[0]) => Promise<void>;
-}) {
-  // Same rule as expenses: a contributor records only against their own
-  // holdings, so that is all the form offers.
-  const selectableMembers = useMemo(
-    () =>
-      listing.viewer.canFileForOthers
-        ? listing.members.filter((member) => !member.isArchived)
-        : listing.members.filter((member) => member.id === listing.viewer.memberId),
-    [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
-  );
-
-  const [name, setName] = useState('');
-  const [symbol, setSymbol] = useState('');
-  const [kind, setKind] = useState<InstrumentKind>('etf');
-  const [currency, setCurrency] = useState('USD');
-  const [exposure, setExposure] = useState('USD');
-  const [isForeign, setIsForeign] = useState(true);
-  const [quantity, setQuantity] = useState('');
-  const [memberId, setMemberId] = useState(listing.viewer.memberId);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      setProblem(null);
-
-      if (!/^\d+(\.\d+)?$/.test(quantity.trim())) {
-        setProblem('Quantity must be a number. Fractional shares are fine — 12.5 or 0.734.');
-        return;
-      }
-
-      // The selects cannot offer a bad code, but a runtime without ICU falls
-      // back to the shape test and would let one through again.
-      if (!isKnownCurrency(currency) || !isKnownCurrency(exposure)) {
-        setProblem('Choose real currencies. Both must be ISO codes like INR or USD.');
-        return;
-      }
-
-      setBusy(true);
-      try {
-        await onAdd({
-          householdId: listing.household.id,
-          memberId,
-          instrument: {
-            name: name.trim(),
-            kind,
-            symbol: symbol.trim() === '' ? null : symbol.trim().toUpperCase(),
-            currency: currency.trim().toUpperCase(),
-            exposureCurrency: exposure.trim().toUpperCase(),
-            isForeignAsset: isForeign,
-          },
-          quantity: quantity.trim(),
-        });
-        setName('');
-        setSymbol('');
-        setQuantity('');
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'Could not add that.');
-      } finally {
-        setBusy(false);
-      }
-    },
-    [currency, exposure, isForeign, kind, listing.household.id, memberId, name, onAdd, quantity, symbol],
-  );
-
-  return (
-    <Card title="Add a holding" aside={<span className="note">{listing.household.name}</span>}>
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          void submit(event);
-        }}
-      >
-        <div className="w-full sm:w-auto sm:min-w-[180px] sm:flex-1">
-          <Field
-            label="Name"
-            placeholder="Vanguard S&P 500 ETF"
-            required
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-[110px] sm:shrink-0">
-          <Field
-            label="Symbol"
-            placeholder="VOO"
-            value={symbol}
-            onChange={(event) => {
-              setSymbol(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full sm:w-[130px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value as InstrumentKind);
-            }}
-          >
-            {INSTRUMENT_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {option.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/*
-          Chosen, not typed. These were free-text three-character boxes, and a
-          testing round put "ABC" in one: three capitals is what the shape test
-          asks for, and the field asked for three capitals. A list cannot
-          produce a currency that does not exist.
-        */}
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Priced in</span>
-          <select
-            className="field"
-            value={currency}
-            onChange={(event) => {
-              setCurrency(event.target.value);
-            }}
-          >
-            <CurrencyOptions />
-          </select>
-        </label>
-
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Tracks
-            {/*
-              The distinction that made the two boxes look broken beside each
-              other: an Indian feeder fund is priced in rupees and moves with
-              the dollar, so these are genuinely two answers and neither
-              follows from the other.
-            */}
-            <Caveat tone="info" label="What Tracks means, and how it differs from Priced in">
-              What the value actually follows. An Indian fund tracking a US index is priced in INR
-              and tracks USD — its rupee value moves when the dollar does. A US stock bought
-              directly is USD and USD. Leave it the same as the currency unless the two genuinely
-              differ.
-            </Caveat>
-          </span>
-          <select
-            className="field"
-            aria-label="Tracks"
-            value={exposure}
-            onChange={(event) => {
-              setExposure(event.target.value);
-            }}
-          >
-            <CurrencyOptions />
-          </select>
-        </label>
-
-        <div className="w-full sm:w-[120px] sm:shrink-0">
-          <Field
-            label="Quantity"
-            numeric
-            inputMode="decimal"
-            placeholder="12.5"
-            required
-            value={quantity}
-            onChange={(event) => {
-              setQuantity(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full sm:w-[9.375rem] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Member</span>
-          <select
-            className="field"
-            value={memberId}
-            onChange={(event) => {
-              setMemberId(event.target.value);
-            }}
-          >
-            {selectableMembers.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" disabled={busy || name.trim() === '' || quantity.trim() === ''}>
-          {busy ? 'Adding…' : 'Add'}
-        </Button>
-
-        {problem !== null && (
-          <div className="w-full">
-            <Problem>{problem}</Problem>
-          </div>
-        )}
-      </form>
-
-      <label className="mt-3 flex items-start gap-2.5">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={isForeign}
-          onChange={(event) => {
-            setIsForeign(event.target.checked);
-          }}
-        />
-        <span className="note">
-          <strong>Foreign asset for disclosure.</strong>
-          {/*
-            Four sentences beside a checkbox, every time. The first one is the
-            decision; the rest is why, which is worth reading once.
-          */}
-          <Caveat tone="info" label="Which holdings count as a foreign asset">
-            A US stock or ETF bought through a US broker is. An Indian fund that merely tracks a US
-            index is not — it is an Indian asset for tax, even though its value moves with the
-            dollar. This is a tax question, not a currency one, so the app will not guess it.
-          </Caveat>
-        </span>
-      </label>
-    </Card>
-  );
-}
-
-/**
- * Every currency this runtime knows, with the two this household actually uses
- * first.
- *
- * A hundred and sixty codes in alphabetical order is a list, not a chooser —
- * INR and USD are the answer almost every time, so they go where the thumb
- * already is, and the rest follow for the once a year they do not.
- */
-function CurrencyOptions() {
-  const all = knownCurrencyCodes();
-  const common = ['INR', 'USD'].filter((code) => all.length === 0 || all.includes(code));
-  const rest = all.filter((code) => !common.includes(code));
-
-  return (
-    <>
-      {common.map((code) => (
-        <option key={code} value={code}>
-          {code}
-        </option>
-      ))}
-      {rest.length > 0 && (
-        <optgroup label="Everything else">
-          {rest.map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </optgroup>
-      )}
-    </>
-  );
-}
-
-/**
- * Retiring a holding you no longer own — or one that should never have been
- * entered.
- *
- * Archive rather than delete, and the button says so, because the two are
- * different promises and somebody clicking this is entitled to know which one
- * they are getting. The readings stay: they are the only record of what this
- * was worth on the dates they cover, and a calendar-year peak cannot be
- * reconstructed from anything else once they are gone.
- *
- * Behind a confirmation, and the confirmation says what is not yet possible —
- * there is no screen that lists archived holdings, so bringing one back needs
- * somebody with database access. That is worth saying before the click rather
- * than discovering after it.
- */
-function ArchiveHolding({
-  row,
   onDone,
 }: {
-  row: HoldingRow;
-  onDone: ReturnType<typeof useHoldings>['reload'];
-}) {
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-
-  if (!confirming) {
-    return (
-      <>
-        <RowAction
-          icon="archive"
-          label={`Archive ${row.holding.instrument.name}, ${row.holding.member.displayName}`}
-          onClick={() => {
-            setConfirming(true);
-          }}
-        />
-        {problem !== null && (
-          <div className="mt-2 w-full">
-            <Problem>{problem}</Problem>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <div className="mt-3">
-      <p className="text-caption" style={{ color: 'var(--ink-2)' }}>
-        Archive <strong>{row.holding.instrument.name}</strong>? It leaves every total and every
-        screen. Nothing is deleted — its readings, purchases and sales stay, because they are the
-        record of what it was worth on the dates they cover. There is no screen yet that lists
-        archived holdings, so bringing it back would need database access.
-      </p>
-      <div className="mt-2.5 flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            setProblem(null);
-            archiveHolding(row.holding.id)
-              .then(onDone)
-              .catch((error: unknown) => {
-                setProblem(error instanceof Error ? error.message : 'Could not archive that.');
-              })
-              .finally(() => {
-                setBusy(false);
-                setConfirming(false);
-              });
-          }}
-        >
-          {busy ? 'Archiving…' : 'Yes, archive it'}
-        </Button>
-        <button
-          type="button"
-          className="quiet-button"
-          onClick={() => {
-            setConfirming(false);
-          }}
-        >
-          Keep it
-        </button>
-      </div>
-      {problem !== null && (
-        <div className="mt-2">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * What the driver says this is worth, offered rather than assumed.
- *
- * The figure is not a reading until somebody records it, and that distinction
- * is the point rather than an extra click. A valuation is a statement the
- * household makes about its own position — §606's whole argument is that these
- * readings are the record, and a record that wrote itself from a feed is a
- * different kind of claim from one a person stood behind. It also keeps the
- * feed auditable: every stored valuation has a member and a moment attached.
- *
- * The date the price is FOR is shown, not the date it was fetched. A NAV for
- * Friday read on Monday is Friday's figure, and showing Monday would quietly
- * misdate every valuation taken from it.
- */
-function QuotedValue({
-  row,
-  canWrite,
-  today,
-  privacy,
-  onRecord,
-  listing,
-}: {
-  row: HoldingRow;
-  canWrite: boolean;
-  today: string;
-  privacy: boolean;
-  onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
   listing: HoldingListing;
+  initialKind: string;
+  onAdd: React.ComponentProps<typeof AddHolding>['onAdd'];
+  onDone: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-
-  const quoted = row.quoted;
-  if (quoted === null) return null;
-
-  // Already recorded for that date, so there is nothing to offer.
-  const already = row.latest !== null && row.latest.date >= quoted.price.asOf;
-
+  const [what, setWhat] = useState<'holding' | 'fixed'>(initialKind === 'deposit' || initialKind === 'bond' ? 'fixed' : 'holding');
   return (
-    <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-      <span className="label">Quoted</span>
-      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
-        {formatMoney(quoted.value, { privacy })}
-      </span>
-      <span className="note">
-        {quoted.price.value} on {formatIsoDate(quoted.price.asOf)}
-      </span>
-
-      {already ? (
-        <span className="note">already recorded</span>
+    <div className="mb-3.5 flex flex-col gap-3">
+      <label className="flex w-full flex-col gap-1.5 sm:w-[260px]">
+        <span className="label">What are you adding</span>
+        <select
+          className="field"
+          value={what}
+          onChange={(event) => {
+            setWhat(event.target.value === 'fixed' ? 'fixed' : 'holding');
+          }}
+        >
+          <option value="holding">A fund, an ETF, a share or something else</option>
+          <option value="fixed">A deposit or a bond</option>
+        </select>
+      </label>
+      {what === 'holding' ? (
+        <AddHolding
+          listing={listing}
+          onAdd={onAdd}
+          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' ? {} : { initialKind: initialKind as InstrumentKind })}
+        />
       ) : (
-        canWrite && (
-          <button
-            type="button"
-            className="quiet-button"
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              setProblem(null);
-              void onRecord({
-                householdId: listing.household.id,
-                holdingId: row.holding.id,
-                date: quoted.price.asOf,
-                quantity: quantityToNumeric(row.unitsHeld),
-                amount: quoted.value,
-                // Recorded on the date the price is for. 'manual' when that is
-                // today, 'backfill' when it is an earlier day being caught up
-                // — the same rule a typed reading follows, and the weaker
-                // label is the honest one for a figure reconstructed later.
-                source: quoted.price.asOf === today ? 'manual' : 'backfill',
-              })
-                .catch((error: unknown) => {
-                  setProblem(error instanceof Error ? error.message : 'Could not record that.');
-                })
-                .finally(() => {
-                  setBusy(false);
-                });
-            }}
-          >
-            {busy ? 'Recording…' : 'Record this as the reading'}
-          </button>
-        )
-      )}
-
-      {problem !== null && (
-        <div className="w-full">
-          <Problem>{problem}</Problem>
-        </div>
+        <TermsForm listing={listing} mode={{ kind: 'new' }} onCancel={onDone} onDone={onDone} />
       )}
     </div>
-  );
-}
-
-/**
- * Ask the driver to fetch.
- *
- * A button rather than something the screen does on load, for the same reason
- * the month-end close is: "a screen that quietly writes rows is harder to
- * trust than one that says what it is about to do". This one reaches a vendor
- * as well, which is a second reason not to do it behind somebody's back on
- * every page view.
- *
- * It reports what happened rather than just finishing. Nothing written because
- * nothing is linked to a feed, and nothing written because the vendor was
- * unreachable, look identical from the outside and mean entirely different
- * things.
- */
-function RefreshPrices({
-  onRefresh,
-}: {
-  onRefresh: ReturnType<typeof useHoldings>['refresh'];
-}) {
-  const [busy, setBusy] = useState(false);
-  const [said, setSaid] = useState<string | null>(null);
-
-  return (
-    <>
-      <button
-        type="button"
-        className="note underline"
-        disabled={busy}
-        onClick={() => {
-          setBusy(true);
-          setSaid(null);
-          onRefresh()
-            .then((result) => {
-              setSaid(
-                result.note ??
-                  (result.written === 0
-                    ? 'Nothing new to record.'
-                    : `${String(result.written)} price${result.written === 1 ? '' : 's'} recorded.`),
-              );
-            })
-            .catch((error: unknown) => {
-              setSaid(error instanceof Error ? error.message : 'Could not fetch prices.');
-            })
-            .finally(() => {
-              setBusy(false);
-            });
-        }}
-      >
-        {busy ? 'Fetching…' : 'Fetch prices'}
-      </button>
-      {said !== null && <span className="note">{said}</span>}
-    </>
   );
 }
