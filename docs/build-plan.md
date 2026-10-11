@@ -410,6 +410,12 @@ recommendation; health cover gets no suggested figure.
 - The renewal reminder uses the machinery that already calls out a maturity within
   thirty days on Needs attention.
 
+*Decisions taken (by the owner, before the migration):* **nominees are left out** of
+this slice, so there is no nominee column or table and the waiver is plain "not built";
+**years of dependency start at 10**, a household setting shown on the face of the
+arithmetic; a policy number is **last four characters only** (`policy_last4`). The
+migration is `20261012120000`, with `supabase/tests/insurance_policy.test.sql`.
+
 *Done when:* the design's pgTAP tests pass for every verb across households (the
 existing `rls_role_reads.test.sql` already covers select); a policy with no
 linked holding contributes exactly 0 to net worth (assert the total); privacy mode
