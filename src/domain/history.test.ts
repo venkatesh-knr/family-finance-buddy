@@ -309,6 +309,20 @@ describe('assetHistory', () => {
     });
   });
 
+  it('says what stopped it when a holding was unread at the month before, not that the history is short', () => {
+    // Read in March, so the as-at total stands; not read in February, so there is no February to join it to.
+    const result = run(
+      [holding('a'), holding('b')],
+      [reading('a', '2026-01-15', inr(500)), reading('a', '2026-03-10', inr(600)), reading('b', '2026-03-10', inr(400))],
+      '2026-03-31',
+    );
+    expect(result).toEqual({
+      ok: false,
+      reason: 'stopped',
+      limit: { reason: 'unread', at: '2026-02-28', holdingIds: ['b'] },
+    });
+  });
+
   it('refuses a single point, which is a dot and not a history', () => {
     const result = run([holding('a')], [reading('a', '2026-03-10', inr(1000))], '2026-03-20');
     expect(result).toEqual({ ok: false, reason: 'short' });

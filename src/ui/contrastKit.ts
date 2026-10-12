@@ -30,6 +30,18 @@ export function resolve(theme: Theme, token: string): string {
   return found;
 }
 
+/** Every colour stop in a token that is a gradient, in order, as hex: the stops of `--surface-lift`. */
+export function gradientStops(theme: Theme, token: string): string[] {
+  const name = token.replace(/-/g, '\\-');
+  const read = (block: string): string[] | undefined => {
+    const declaration = new RegExp(`${name}\\s*:\\s*([^;]*);`).exec(block)?.[1];
+    return declaration === undefined ? undefined : (declaration.match(/#[0-9a-fA-F]{6}/g) ?? undefined);
+  };
+  const stops = (theme === 'dark' ? read(darkBlock) : undefined) ?? read(lightBlock);
+  if (stops === undefined || stops.length === 0) throw new Error(`no ${theme} gradient stops for ${token}`);
+  return stops;
+}
+
 /** The body of the first rule for a selector in base.css, or an empty string. */
 export function ruleFor(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -87,7 +87,7 @@ export function App() {
   // Empty until somebody chooses: the household's base currency is the answer
   // for a device that has never been asked.
   const [displayCurrency, setDisplayCurrency] = useDeviceChoice(DISPLAY_CURRENCY, '');
-  const { screen, setScreen } = useScreen();
+  const { screen, params, setScreen } = useScreen();
 
   const refreshAuth = useCallback(async () => {
     try {
@@ -140,6 +140,7 @@ export function App() {
         setChoice={setChoice}
         email={auth.email}
         screen={screen}
+        params={params}
         setScreen={setScreen}
         displayCurrency={displayCurrency}
         onDisplayCurrency={setDisplayCurrency}
@@ -161,6 +162,7 @@ function SignedIn({
   setChoice,
   email,
   screen: requestedScreen,
+  params,
   setScreen,
   hideAmountsByDefault,
   onHideAmountsByDefault,
@@ -173,7 +175,9 @@ function SignedIn({
   setChoice: (next: ThemeChoice) => void;
   email: string | null;
   screen: Screen;
-  setScreen: (next: Screen) => void;
+  /** The filters in the URL, which on Holdings are the class being looked at. */
+  params: URLSearchParams;
+  setScreen: (next: Screen, filters?: Readonly<Record<string, string | undefined>>) => void;
   hideAmountsByDefault: boolean;
   onHideAmountsByDefault: (next: boolean) => void;
   /** Empty means the household's base currency. */
@@ -200,17 +204,18 @@ function SignedIn({
     screen === id || (id === 'more' && behindMore.includes(screen));
 
   /**
-   * An asset class clicked on Overview, carried to Holdings.
+   * The class Holdings is filtered to, read from the URL (`#/holdings?kind=deposit`, HD-I4).
    *
-   * Here rather than inside Holdings because it is set on one screen and read
-   * on another, and it is cleared by the tabs: arriving at Holdings by asking
-   * for Holdings means all of them. A filter that outlived the click that set
-   * it is a list quietly missing rows.
+   * It lived in this component's state, set by a click on Overview and cleared by the tabs. In the URL it
+   * is a link: an Overview allocation row points straight at it, the back button undoes it, and arriving
+   * at Holdings by asking for Holdings (the bare `#/holdings`) means all of them, so a filter cannot
+   * outlive the click that set it and leave a list quietly missing rows.
    */
-  const [holdingsFilter, setHoldingsFilter] = useState<{
-    kind: string;
-    currency: string;
-  } | null>(null);
+  const kindFilter = params.get('kind');
+  const holdingsFilter =
+    kindFilter === null || kindFilter === ''
+      ? null
+      : { kind: kindFilter, ...(params.get('currency') ? { currency: params.get('currency') as string } : {}) };
 
   return (
     <div className="min-h-screen">
@@ -300,7 +305,6 @@ function SignedIn({
               type="button"
               aria-pressed={isPressed(id)}
               onClick={() => {
-                setHoldingsFilter(null);
                 setScreen(id);
               }}
             >
@@ -350,10 +354,6 @@ function SignedIn({
             privacy={privacy}
             householdId={householdId}
             displayCurrency={displayCurrency}
-            onOpenHoldings={(filter) => {
-              setHoldingsFilter(filter);
-              setScreen('holdings');
-            }}
             onOpenInsurance={() => {
               setScreen('insurance');
             }}
@@ -372,7 +372,7 @@ function SignedIn({
             householdId={householdId}
             filter={holdingsFilter}
             onClearFilter={() => {
-              setHoldingsFilter(null);
+              setScreen('holdings');
             }}
           />
         )}

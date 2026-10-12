@@ -98,6 +98,8 @@ export function CostAndGains({
                 the tax figures rely on. The units, and so the value, are the statement&rsquo;s own
                 count. {RETURN_REFUSED_BECAUSE} A statement that begins before the first purchase
                 fills the gap; nothing already recorded is doubled.
+
+                Import the full statement, from before the first purchase, to complete it.
               </Caveat>
             )}
             {cost.source === 'holding' && cost.amount !== null && (
@@ -155,6 +157,8 @@ export function CostAndGains({
                   ', or were made in a different currency from the purchase'}
                 . No gain is shown for the uncovered part: costing it at zero would read as a
                 hundred-percent gain and put a tax bill on this screen that nobody owes.
+
+                Record the purchases the sale was made from and the gain is worked out.
               </Caveat>
             )}
           </dd>

@@ -116,10 +116,18 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 | `--surface-2` | a step off its parent, no shadow | table headers, code, a quiet surface |
 | `--inset` | recessed: darker than its card in both themes, no shadow | an editable row, which is a record and the inputs that change it on one line |
 
-The gradient is a **corner light, not a wash**: it never crosses a figure, and tabular
-numerals always sit on flat ground. One lifted surface per screen — a second one is two
-things claiming to be the most important, which is §4's "not everything is a card" in
-another form.
+The gradient is painted across the whole card, and a figure may sit on it. The rule is
+measured and not drawn: **a figure on the lifted surface holds 4.5:1 against the gradient
+in both themes** — against the stop it is hardest to read on, which is the brightest in
+dark, where the figures are light, and the dimmest in light, where they are dark. The test
+(`src/ui/liftContrast.test.ts`) reads the shipped values of `--surface-lift`, `--ink`,
+`--ink-2` and `--muted` and measures every stop, so a lighter glow or a dimmer ink fails the
+build rather than a review. (Today the worst pair is `--muted` at 5.19:1 on the light
+theme's `#F7F9FD` and 5.02:1 on the dark theme's `#26324C`.) An earlier version of this
+section said the gradient "never crosses a figure"; the canvas it described did, and the rule
+was the part that was wrong. One lifted surface per screen — a second one is two things
+claiming to be the most important, which is §4's "not everything is a card" in another
+form.
 
 ---
 
@@ -143,6 +151,15 @@ saturation, not less: a brighter coral is more tempting to rely on alone.
 A figure that is incomplete rather than falling takes the muted ⓘ — the mistake this
 palette inherited was a coral ▲ sitting in the same column as a teal ▲, which made an
 incompletely-valued holding read as a losing one.
+
+**A caveat mark is amber only while the person can do something about it.** The default is
+the muted ⓘ above. A mark turns to the brass `!` when what it qualifies can be put right by an
+action the person can take (import the full statement, record a value, record a renewal,
+reload), and its text then says what the action is. The marks that only say what a figure
+leaves out (another member's private holdings, what a share is of) stay muted whatever the
+household holds. This is the owner's rule, made when the amber marks on Overview, Holdings and
+FIRE were classified one by one; `src/ui/amberMarks.test.ts` lists every amber mark with the
+action it names and fails a new one that names none.
 
 Contrast meets WCAG AA in both themes: 4.5:1 for body text, 3:1 for large text.
 
@@ -203,7 +220,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 
 | Role | Size | Weight | Face | Notes |
 |---|---|---|---|---|
-| Hero figure (net worth) | `clamp(23px, 5vw, 34px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.02em`. Lowered from `clamp(32px, 6vw, 48px)`: at 32px a lakh figure with a symbol filled a 375px screen edge to edge, and a number that large reads as a headline rather than a fact. |
+| Hero figure (net worth) | `clamp(32px, 11.3vw, 48px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.025em`. 44px at a 390px phone, which is what `vibrant-canvas.html` draws and what the owner chose, with the magnitude suffix at 0.6 of it. It was lowered to `clamp(23px, 5vw, 34px)` because a lakh figure with a symbol filled a 375px screen edge to edge; the floor and the vw term are why it does not now, and `text-size.spec.ts` holds the Overview to no sideways scroll at 200%. |
 | Page title | 22px | 500 | display | `-.01em` |
 | Section title (doc) | 25–30px | 500 | display | `text-wrap:balance` |
 | Card title | 14.5px | 600 | ui | |

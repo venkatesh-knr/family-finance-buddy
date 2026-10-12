@@ -21,12 +21,22 @@ account or a class needs to be identified at a glance.
 
 | property | value |
 | --- | --- |
-| size | 40 × 40 |
-| radius | `--radius` — not a literal |
-| glyph box | 20 × 20, drawn on a 24-unit viewBox |
+| size | 40 × 40, or **32 × 32 compact** (below) |
+| radius | `--radius` — not a literal; compact is `--radius` less 2px |
+| glyph box | 20 × 20 (16 × 16 compact), drawn on a 24-unit viewBox |
 | stroke | 1.9, round caps, round joins, `fill="none"` |
 | border | 1px, always, in both themes |
 | fill | a tint of the glyph colour over `--surface` |
+
+**The compact tile** is 32px with a 16px glyph and a radius of `--radius` less 2px (10px
+at today's token, which is what the canvas draws). It is for a row that carries its tile
+beside two lines of text: an allocation row on the Overview, a holding's row on Holdings.
+It is the same tile and not another one: the same stroke, the same 1px border and the same
+tint percentages over `--surface`, so every contrast in §5 is unchanged, and the stylesheet
+gives it a size and a radius and nothing else. A screen uses 40px where the tile is the
+subject (a holding's detail, an account) and 32px where it is a mark beside a name. The
+canvas drew the 32px tile before this section allowed one, which made the 40px rule and the
+picture disagree; this is the rule catching up with the picture.
 
 Three things about that list are decisions rather than defaults.
 
@@ -198,6 +208,6 @@ rule and a rule cannot be dropped without the test failing
 
 **IC-R10 — A glyph is stroked and never filled:** stroke 1.9, round caps and round joins. (§1)
 
-**IC-R11 — A tile is 40px square on `--radius` and always has a 1px border.** (§1)
+**IC-R11 — A tile is 40px square on `--radius` (32px on `--radius` less 2px when compact) and always has a 1px border.** (§1)
 
 **IC-R12 — A tile's glyph, as painted at device pixel ratio 1, holds 3:1 against its fill.** The token table is the colour of a solid stroke and a thin one is rasterised, so this is measured from the pixels. (§5)

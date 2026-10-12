@@ -501,7 +501,11 @@ export function useOverviewData({
   // on the number were five buttons to open, and the two of them that were not
   // warnings carried the same "i" as the heading's.
   const heroWarnings: string[] = [];
+  // Whether the person can act on any of them. A mark is amber only where there is something to do, and says what
+  // (docs/tokens.md, "A caveat is never coral"): the other members' unvalued private holdings are theirs to value.
+  let heroActionable = false;
   if (personalTotalsFailed && scope === 'household') {
+    heroActionable = true; // reload
     heroWarnings.push(
       'The private holdings of other members could not be read, so this figure may be short by whatever they are worth. It is not that there are none: the request failed. Reload before relying on this number.',
     );
@@ -512,16 +516,19 @@ export function useOverviewData({
     );
   }
   if (visibleUnvalued > 0) {
+    heroActionable = true; // record a value
     heroWarnings.push(
       `${String(visibleUnvalued)} ${visibleUnvalued === 1 ? 'holding has' : 'holdings have'} never been valued, so this total is short by whatever ${visibleUnvalued === 1 ? 'it is' : 'they are'} worth. Record a value on Holdings and it is counted.`,
     );
   }
   if (shownUnbalanced > 0) {
+    heroActionable = true; // record the balance
     heroWarnings.push(
       `${String(shownUnbalanced)} ${shownUnbalanced === 1 ? 'loan has' : 'loans have'} no outstanding balance recorded, so nothing is subtracted for ${shownUnbalanced === 1 ? 'it' : 'them'}. This figure is high by whatever is still owed. Record the balance on FIRE.`,
     );
   }
   if (plansFailed) {
+    heroActionable = true; // reload
     heroWarnings.push(
       'The loans could not be read, so nothing has been subtracted for them and this figure may be high by whatever is owed. It is not that there are none: the request failed. Reload before relying on this number.',
     );
@@ -568,6 +575,7 @@ export function useOverviewData({
     shownUnbalanced,
     hiddenAssets,
     heroWarnings,
+    heroActionable,
     worth,
     fire,
     planListing,

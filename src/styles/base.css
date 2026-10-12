@@ -61,26 +61,20 @@
   }
 
   /*
-   * The one lifted surface on a screen (docs/tokens.md §1, Depth). A corner light and not a
-   * wash: --surface-lift is painted across the header band only, then faded to the card's
-   * own ground before the band ends, so the gradient never reaches a figure and tabular
-   * numerals always sit on flat --surface. The band is the card's padding plus a line and a
-   * half of header, in rem, so it keeps its place when the text is scaled to 200%: a band
-   * in px would end partway down a larger heading, and one that outgrew the header would
-   * run on under the number below it.
+   * The one lifted surface on a screen (docs/tokens.md §1, Depth). --surface-lift is painted
+   * across the whole card, as docs/design/vibrant-canvas.html draws it, and the figure sits on
+   * the glow. That is allowed because it is measured: ink, body text and the muted label each
+   * hold 4.5:1 against every stop of the gradient in both themes, and
+   * src/ui/liftContrast.test.ts reads the shipped token values to say so. A stop that got
+   * lighter, or an ink that got dimmer, fails the build.
    *
    * Everything else is the ordinary card: the same border, the same radius. What the lift
    * adds is the deeper shadow and a 1px light along the top edge.
    */
   .card-lift {
-    --lift-band: calc(18px + 1.9rem);
     background-color: var(--surface);
-    background-image:
-      linear-gradient(to bottom, transparent, var(--surface) var(--lift-band)),
-      var(--surface-lift);
-    background-position: top left, top left;
+    background-image: var(--surface-lift);
     background-repeat: no-repeat;
-    background-size: 100% var(--lift-band), 100% var(--lift-band);
     box-shadow: var(--shadow-lift);
     position: relative;
   }
@@ -1178,6 +1172,26 @@
   }
 
   /*
+   * The net worth: the canvas's 44px at a 390px phone (docs/design/vibrant-canvas.html), the same figure a size
+   * up and not another face. In rem and vw with a floor and a cap, so it keeps its place at 200% text and does
+   * not run past the edge of a card at 320px.
+   */
+  .figure-hero {
+    font-size: clamp(2rem, 11.3vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+  }
+
+  /* The date the figure is as at, and what net worth is: one muted line under the figure. */
+  .hero-asat {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.45rem;
+    margin-top: 0.45rem;
+  }
+
+  /*
    * Stat tile. A label above a figure in the sans face (docs/tokens.md §5).
    *
    * Three screens hand-rolled this before it existed, which is how the label
@@ -1556,9 +1570,9 @@
     align-items: center;
     border-bottom: 1px solid var(--line);
     display: grid;
-    gap: 12px;
+    gap: 10px;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    padding: 11px 0;
+    padding: 9px 0;
   }
 
   .alloc-row:last-child {
@@ -1611,11 +1625,59 @@
     width: 1.25rem;
   }
 
+  /*
+   * The compact tile: 32px, a 16px glyph, a 10px radius, for a row that carries its tile beside two lines of
+   * text (an allocation row; a holding's row). The same stroke, the same border and the same tints as the
+   * 40px one, so every contrast the tile is held to is unchanged. docs/design/icons.md section 1.
+   */
+  .asset-tile-compact {
+    border-radius: calc(var(--radius) - 2px);
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .asset-tile-compact svg {
+    height: 1rem;
+    width: 1rem;
+  }
+
   .alloc-name {
     color: var(--ink);
+    font-size: 0.84375rem;
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /*
+   * The whole row is the link: the anchor is the name, stretched over the row by its pseudo-element, so there is
+   * one link per row and its target is the row. Anything on the row that is a control of its own (a caveat
+   * mark) sits above the stretch and keeps its own press. No underline: the row is a link by its shape, its
+   * hover and its focus ring, and a column of underlined words is a column of links.
+   */
+  .alloc-row {
+    position: relative;
+  }
+
+  .alloc-link {
+    text-decoration: none;
+  }
+
+  .alloc-link::after {
+    content: '';
+    inset: 0;
+    position: absolute;
+  }
+
+  .alloc-link:hover,
+  .alloc-link:focus-visible {
+    text-decoration: underline;
+  }
+
+  .alloc-row .caveat-mark {
+    position: relative;
+    z-index: 1;
   }
 
   .alloc-share {
@@ -1629,6 +1691,21 @@
     gap: 2px;
     justify-items: end;
     text-align: right;
+  }
+
+  /*
+   * A return on an allocation row is the canvas's small arrowed figure and not a pill: the arrow and the sign
+   * still say which way it went, and the pill was a hundred pixels the class name was squeezed out of.
+   */
+  .alloc-figures .delta {
+    background: none;
+    font-size: 0.71875rem;
+    gap: 3px;
+    padding: 0;
+  }
+
+  .alloc-donut {
+    width: clamp(5.25rem, 25vw, 8rem);
   }
 
   .alloc-value {

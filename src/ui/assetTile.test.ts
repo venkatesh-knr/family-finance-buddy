@@ -44,4 +44,19 @@ describe('the tile’s rule', () => {
   it('IC-R11 — always has a 1px border, because forced-colours mode drops a tint and keeps a border', () => {
     expect(rule).toMatch(/border:\s*1px solid/);
   });
+
+  it('IC-R11 — the compact tile is 2rem square with a 16px glyph, and a radius derived from the token', () => {
+    const compact = ruleFor('.asset-tile-compact');
+    expect(compact).toMatch(/height:\s*2rem/);
+    expect(compact).toMatch(/width:\s*2rem/);
+    expect(compact).toMatch(/border-radius:\s*calc\(var\(--radius\) - 2px\)/);
+    expect(ruleFor('.asset-tile-compact svg')).toMatch(/height:\s*1rem/);
+  });
+
+  it('IC-R11 — the compact tile is the same tile: no border, tint or colour of its own', () => {
+    const compact = ruleFor('.asset-tile-compact');
+    expect(compact).not.toMatch(/border:/);
+    expect(compact).not.toMatch(/background/);
+    expect(compact).not.toMatch(/color/);
+  });
 });
