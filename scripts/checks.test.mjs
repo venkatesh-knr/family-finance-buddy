@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { checkAgentAuthority } from './lib/agent-authority.mjs';
+import { checkDepartures, departureRows } from './lib/departures.mjs';
 import { checkInvariants, parseDoc, parseWaivers, readTsTitles } from './lib/invariants.mjs';
 import { readPgTap } from './lib/sql-tap.mjs';
 
@@ -312,5 +313,66 @@ describe('the reviewer brief', () => {
 
   it('fails when there is no brief at all', () => {
     expect(checkAgentAuthority(repo({ 'docs/design/a.md': '#' })).errors.join('\n')).toContain('does not exist');
+  });
+});
+
+describe('the Departures table says whose decision each row is', () => {
+  const table = (...rows) =>
+    [
+      '# Design conformance',
+      '',
+      '## Screens',
+      '',
+      '| Item | Kind | Status | Where |',
+      '|---|---|---|---|',
+      '| overview | screen | built | `src/x` |',
+      '',
+      '## Departures',
+      '',
+      'Some prose.',
+      '',
+      '| What | The prototype | The app | Why | Status |',
+      '|---|---|---|---|---|',
+      ...rows,
+      '',
+      'After the table.',
+    ].join(String.fromCharCode(10));
+
+  it('accepts a row that is unreviewed, proposed or decided', () => {
+    const md = table(
+      '| Pill radius | 3px | 100px | tokens | unreviewed |',
+      '| Nav | tabs | bar | thumb | proposed |',
+      '| Glow | flat | lit | measured | decided |',
+    );
+    expect(checkDepartures(md)).toEqual([]);
+    expect(departureRows(md).map((r) => r.status)).toEqual(['unreviewed', 'proposed', 'decided']);
+  });
+
+  it('fails a row with no Status, naming it', () => {
+    const problems = checkDepartures(table('| Pill radius | 3px | 100px | tokens | |'));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/Pill radius/);
+    expect(problems[0]).toMatch(/owner/);
+  });
+
+  it('fails a Status that is not one of the three, so "ok" and "approved" are not decisions', () => {
+    const problems = checkDepartures(table('| Nav | tabs | bar | thumb | approved |'));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/"approved"/);
+  });
+
+  it('fails an old four-column row, which would otherwise read its Why as a Status', () => {
+    const problems = checkDepartures(table('| Nav | tabs | bar | a long reason about why |'));
+    expect(problems).toHaveLength(1);
+  });
+
+  it('reads only the Departures table and stops at the end of it', () => {
+    const md = table('| Nav | tabs | bar | thumb | proposed |');
+    // The Screens table above has a Status column too, with a different vocabulary, and is left alone.
+    expect(departureRows(md)).toHaveLength(1);
+  });
+
+  it('says so when there is no table to read', () => {
+    expect(checkDepartures(['# Design conformance', '', 'Nothing here.'].join(String.fromCharCode(10)))).toHaveLength(1);
   });
 });

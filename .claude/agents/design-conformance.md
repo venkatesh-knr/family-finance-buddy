@@ -36,18 +36,24 @@ When two documents disagree, this is the order. Say which one you applied.
    is right and `icons.md` is the file to fix, so report the disagreement
    against `icons.md`.
 5. **The feature design documents** — `docs/design/protection-and-flow.md`
-   (insurance, the small-savings schemes, earmarks, income and transfers) and
-   `docs/design/detail-level.md` (the per-viewer detail preference). Each is
+   (insurance, the small-savings schemes, earmarks, income and transfers),
+   `docs/design/detail-level.md` (the per-viewer detail preference) and
+   `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
+   holding). Each is
    authoritative for the feature it specifies and for nothing else, and sits below
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `DL-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `DL-…`, `HD-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
 6. **`docs/design/conformance.md`** — what is built, what is not, and the
-   Departures table of deliberate divergences.
+   Departures table of deliberate divergences. A departure is the owner's to
+   accept, so each row carries a Status: `unreviewed` (nobody has decided it, so
+   it is not settled just because it is written down), `proposed` (new, and a
+   question for the owner) or `decided`. Do not treat an `unreviewed` row as a
+   decision when it is the reason a screen differs from the canvas.
 7. **The references, which are not authorities:** `docs/design/prototype.html`
    and `docs/design/vibrant-canvas.html`.
    - `prototype.html` is superseded visually. It is the screen inventory, not a

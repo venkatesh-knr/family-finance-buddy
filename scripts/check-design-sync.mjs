@@ -7,7 +7,7 @@
  * deliberately disagrees with the mock.
  *
  * A record like that is worth exactly as much as its accuracy, and hand-kept
- * records rot. So three things are checked:
+ * records rot. So four things are checked:
  *
  *   1. Every screen the prototype defines has a row in the ledger. Add a screen
  *      to the mock and the build fails until somebody says when it gets built.
@@ -16,6 +16,8 @@
  *      folder is worse than no ledger, because it is believed.
  *   3. Nothing is claimed for a screen the prototype does not have, which
  *      catches a row left behind after a rename.
+ *   4. Every row of the Departures table has a Status (unreviewed, proposed or
+ *      decided), because a departure is the owner's to accept.
  *
  * What it does NOT check, and cannot: whether a screen looks like its mock,
  * whether the hierarchy matches, whether the copy reads right. That comparison
@@ -26,6 +28,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
+import { checkDepartures } from './lib/departures.mjs';
 
 const PROTOTYPE = 'docs/design/prototype.html';
 const LEDGER = 'docs/design/conformance.md';
@@ -106,6 +109,12 @@ for (const row of rows) {
     }
   }
 }
+
+/**
+ * A departure is the owner's to accept: every row of the Departures table says whether it is
+ * unreviewed, proposed or decided, so a reason written down is not mistaken for a decision made.
+ */
+problems.push(...checkDepartures(ledger));
 
 if (problems.length > 0) {
   console.log('  ✗ The design ledger and the code disagree:\n');
