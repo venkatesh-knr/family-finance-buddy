@@ -80,11 +80,14 @@ export function TermsForm({
   mode,
   onDone,
   onCancel,
+  initialKind,
 }: {
   listing: HoldingListing;
   mode: TermsMode;
   onDone: () => void;
   onCancel?: () => void;
+  /** A new one starts as a bond when the list was filtered to bonds, so Add preselects what the filter is. */
+  initialKind?: 'deposit' | 'bond';
 }) {
   const members = useMemo(
     () =>
@@ -98,7 +101,7 @@ export function TermsForm({
   const old = mode.kind === 'edit' ? mode.terms : undefined;
 
   const [kind, setKind] = useState<'deposit' | 'bond'>(
-    old !== undefined ? old.kind : held?.instrument.kind === 'bond' ? 'bond' : 'deposit',
+    old !== undefined ? old.kind : (initialKind ?? (held?.instrument.kind === 'bond' ? 'bond' : 'deposit')),
   );
   const [name, setName] = useState('');
   const [memberId, setMemberId] = useState(listing.viewer.memberId);

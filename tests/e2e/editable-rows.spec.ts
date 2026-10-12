@@ -108,27 +108,37 @@ test('each spending-plan action names the row it acts on', async ({ page }) => {
   expect(new Set(labels).size, 'a name that is the same for every row says nothing about which').toBe(labels.length);
 });
 
-test.describe('Holdings', () => {
-  test('a holding’s actions are quiet buttons, an icon and a disclosure, not links', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
+/**
+ * A fund's own screen: the Holdings list is a row each, and the actions live on the holding
+ * (docs/design/holdings.md). Opened from the list the way a person gets there.
+ */
+async function fundScreen(page: Page) {
+  await page.goto('/#/holdings?kind=mutual_fund');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  await page.locator('.holding-row').first().locator('a.holding-link').click();
+  await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
+}
+
+test.describe('A holding\u2019s own screen', () => {
+  test('its actions are quiet buttons, an icon and a disclosure, not links', async ({ page }) => {
+    await fundScreen(page);
 
     const record = page.getByRole('button', { name: 'Record a value' }).first();
     await expect(record).toHaveClass(/quiet-button/);
     await expect(record).not.toHaveClass(/underline/);
 
-    const archive = page.getByRole('button', { name: /^Archive / }).first();
-    await expect(archive).toHaveClass(/row-action/);
-    const target = await box(archive);
-    expect(target.width).toBeGreaterThanOrEqual(43.5);
-    expect(target.height).toBeGreaterThanOrEqual(43.5);
-
-    // The pencil beside it is the same target: the step that cannot be undone from here is not the one that
-    // gets the bigger control.
-    const edit = page.getByRole('button', { name: 'Edit this holding' }).first();
+    // Edit is an icon in the top bar, a 44px target around a 34px face.
+    const edit = page.getByRole('button', { name: /^Edit / }).first();
     await expect(edit).toHaveClass(/row-action/);
     const editBox = await box(edit);
     expect(editBox.width).toBeGreaterThanOrEqual(43.5);
     expect(editBox.height).toBeGreaterThanOrEqual(43.5);
+
+    // Archive is a visible button named for the holding, not behind an overflow and not an icon (HD-I6).
+    const archive = page.getByRole('button', { name: /^Archive / }).first();
+    await expect(archive).toHaveClass(/quiet-button/);
+    expect((await box(archive)).height).toBeGreaterThanOrEqual(43.5);
 
     const purchase = page.getByRole('button', { name: 'Add a purchase or sale' }).first();
     await expect(purchase).toHaveClass(/quiet-button/);
@@ -139,7 +149,7 @@ test.describe('Holdings', () => {
   });
 
   test('the workings open and close from a disclosure, and its chevron turns', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
+    await fundScreen(page);
     const chevron = (l: Locator) => l.locator('.disclosure-chevron').evaluate((el) => getComputedStyle(el).transform);
 
     const workings = page.getByRole('button', { name: /^Show the workings/ }).first();
@@ -156,28 +166,23 @@ test.describe('Holdings', () => {
     await expect(page.getByRole('button', { name: /^Show the workings/ }).first()).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('no holding card carries underlined text buttons for its actions', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
-    // The list of holdings: every section that has a Record a value button. Whatever else is on the
-    // screen (Fetch prices, a filter's clear, a form's cancel) is one of a kind and not per holding.
-    const cards = page.locator('section').filter({ has: page.getByRole('button', { name: 'Record a value' }) });
-    expect(await cards.count()).toBeGreaterThan(0);
-    for (let i = 0; i < (await cards.count()); i += 1) {
-      await expect(cards.nth(i).locator('button.underline'), `card ${String(i + 1)} has underlined text buttons`).toHaveCount(0);
+  test('carries no underlined text buttons for its actions', async ({ page }) => {
+    await fundScreen(page);
+    await expect(page.locator('main button.underline'), 'underlined text buttons on a holding\u2019s screen').toHaveCount(0);
+  });
+
+  test('the list has no per-row action at all: a row is one link', async ({ page }) => {
+    await page.goto('/#/holdings');
+    await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+    const rows = page.locator('.holding-row');
+    for (let i = 0; i < (await rows.count()); i += 1) {
+      await expect(rows.nth(i).locator('a'), `row ${String(i + 1)} has one link`).toHaveCount(1);
+      await expect(rows.nth(i).getByRole('button', { name: /Record|Archive|Edit|Add/ })).toHaveCount(0);
     }
   });
 
-  test('each archive button names the holding it acts on', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
-    const labels = await page
-      .locator('button.row-action[aria-label^="Archive "]')
-      .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
-    expect(labels.length, 'an archive button on every holding').toBeGreaterThanOrEqual(8);
-    expect(new Set(labels).size, 'eight buttons all called the same say nothing about which').toBe(labels.length);
-  });
-
   test('the purchase and sale forms open on the same recessed ground as the reading form', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
+    await fundScreen(page);
     await page.getByRole('button', { name: 'Add a purchase or sale' }).first().click();
     const panel = page.locator('.inset-form').filter({ hasText: 'purchase' }).first();
     await expect(panel).toBeVisible();
@@ -185,7 +190,7 @@ test.describe('Holdings', () => {
   });
 
   test('a form that opens in a card sits on the recessed ground', async ({ page }) => {
-    await ready(page, 'holdings', 'Holdings (8)');
+    await fundScreen(page);
     await page.getByRole('button', { name: 'Record a value' }).first().click();
     const form = page.locator('.inset-form').first();
     await expect(form).toBeVisible();

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { card, setEarmark } from './earmark.ts';
+import { rowOf, setEarmark } from './earmark.ts';
 
 /**
  * Earmarking a holding takes it out of the FIRE corpus, and un-earmarking it puts it back (PF-C7, PF-C8).
@@ -18,7 +18,7 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
   const name = /Vanguard/;
   try {
     await setEarmark(page, name, "Child's savings");
-    await expect(card(page, name).getByText("Child's savings", { exact: true })).toBeVisible();
+    await expect((await rowOf(page, name)).getByText("Child's savings", { exact: true })).toBeVisible();
 
     await page.goto('/#fire');
     await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });

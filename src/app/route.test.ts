@@ -21,6 +21,13 @@ describe('parseHash — the screen and its filters, from the URL and from nothin
     expect(route.params.get('currency')).toBe('INR');
   });
 
+  it('reads a holding\'s own screen and which holding it is', () => {
+    const route = parseHash('#/holding?id=abc-123');
+    expect(route.screen).toBe('holding');
+    expect(route.params.get('id')).toBe('abc-123');
+    expect(hashFor('holding', { id: 'abc-123' })).toBe('#/holding?id=abc-123');
+  });
+
   it('reads an earmark filter', () => {
     expect(parseHash('#/holdings?earmark=emergency').params.get('earmark')).toBe('emergency');
   });
