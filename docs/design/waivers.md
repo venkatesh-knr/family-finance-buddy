@@ -31,3 +31,13 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - PF-C15 — half built: the cover half is asserted in tests/e2e/insurance.spec.ts, which does not carry the ID because the rule also names income, and the income ledger arrives with slice 6a (build-plan step 6a) — 2026-10-11
 - PF-C16 — not built: the Overview's stock and flow regions arrive with slice 6a — 2026-10-10
 
+## goals.md
+
+- GL-I1 — not built: goals (a holding links to at most one goal) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I2 — not built: goals (the independence goal is the FIRE target) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I3 — not built: goals (the emergency goal) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I4 — not built: goals (targets in today's money) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I5 — not built: goals (locked money and a goal) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I6 — not built: goals ("needs a month" as a calculation) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I7 — not built: goals (progress uses the values net worth uses) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+- GL-I8 — not built: goals (private holdings inside goals) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
