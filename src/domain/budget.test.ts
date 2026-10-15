@@ -6,6 +6,7 @@ import {
   daysInclusive,
   monthBounds,
   paceState,
+  periodSummary,
   taxYearBounds,
   taxYearOf,
   type BudgetComparison,
@@ -415,5 +416,58 @@ describe('taxYearsToOffer', () => {
 
   it('never offers a year after the current one', () => {
     expect(taxYearsToOffer({ currentFy: 2026, saleDates: ['2027-04-05'] })).toEqual([2026]);
+  });
+});
+
+describe('periodSummary — the one line above the plan: how much, of how much, and whether that is early', () => {
+  const summary = (planned: number, spent: number, daysElapsed: number, daysInPeriod: number) =>
+    periodSummary({ planned: inr(planned), spent: inr(spent), daysElapsed, daysInPeriod });
+
+  it('reads the canvas example: 37,790 of 62,500 on day 15 of 31 is 60% spent, 48% gone, and ahead of the pace', () => {
+    const s = summary(62500, 37790, 15, 31);
+    expect(s.spentShare).toBeCloseTo(0.6046, 4);
+    expect(s.elapsedShare).toBeCloseTo(15 / 31, 6);
+    expect(s.left).toEqual(inr(24710));
+    expect(s.daysLeft).toBe(16);
+    expect(s.verdict).toBe('ahead');
+  });
+
+  it('says over plan once the plan is spent, with a negative left, and not a pace', () => {
+    const s = summary(10000, 10500.5, 20, 30);
+    expect(s.verdict).toBe('over-plan');
+    expect(s.left).toEqual(inr(-500.5));
+    expect(s.spentShare).toBeCloseTo(1.05005, 4);
+  });
+
+  it('is on pace inside the same five per cent band the categories use, and behind outside it', () => {
+    // 15 of 30 days is half; half of 10,000 is 5,000. 5,200 is a pace of 1.04.
+    expect(summary(10000, 5200, 15, 30).verdict).toBe('on-pace');
+    expect(summary(10000, 4800, 15, 30).verdict).toBe('on-pace');
+    expect(summary(10000, 4000, 15, 30).verdict).toBe('behind');
+    expect(summary(10000, 6000, 15, 30).verdict).toBe('ahead');
+  });
+
+  it('has no verdict without a plan: a share of nothing is not zero', () => {
+    const s = summary(0, 3000, 10, 30);
+    expect(s.verdict).toBe('no-plan');
+    expect(s.spentShare).toBeNull();
+    expect(s.left).toBeNull();
+  });
+
+  it('on the first day of a period, and before it, is on pace: there is no calendar to be ahead of', () => {
+    expect(summary(10000, 0, 0, 30).verdict).toBe('on-pace');
+    expect(summary(10000, 400, 0, 30).verdict).toBe('on-pace');
+  });
+
+  it('a finished period has no days left and its whole calendar gone', () => {
+    const s = summary(10000, 9000, 30, 30);
+    expect(s.daysLeft).toBe(0);
+    expect(s.elapsedShare).toBe(1);
+  });
+
+  it('refuses a plan and a spend in different currencies rather than dividing one by the other', () => {
+    const s = periodSummary({ planned: inr(1000), spent: money(500n, 'USD'), daysElapsed: 10, daysInPeriod: 30 });
+    expect(s.verdict).toBe('no-plan');
+    expect(s.left).toBeNull();
   });
 });
