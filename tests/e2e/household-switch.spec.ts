@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { householdSwitcher } from './created.ts';
 
 /**
  * Switching household changes everything the screen is about.
@@ -18,25 +19,35 @@ import { test, expect } from '@playwright/test';
 
 test('the figures change when the household changes', async ({ page }) => {
   await page.goto('/#overview');
+  // The shell, then the data: counting the switcher's options before it has rendered reads none, and skipped this
+  // spec on an account that had two households.
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
 
-  const switcher = page.getByRole('combobox').first();
-
-  const options = await switcher.locator('option').allTextContents();
+  const switcher = householdSwitcher(page);
+  const options = await switcher.locator('option').evaluateAll((all) =>
+    all.map((option) => (option as HTMLOptionElement).value),
+  );
   test.skip(
     options.length < 2,
     'only one household on this account — add a second demo household to exercise the switcher',
   );
 
-  const headline = page.getByRole('heading', { name: /net worth/i }).locator('..');
+  // The net worth figure itself: the heading's parent holds only the title and the Household/Mine toggle.
+  const headline = page.locator('.figure-hero').first();
+  await expect(headline).toBeVisible({ timeout: 20_000 });
   const before = await headline.innerText();
 
-  await switcher.selectOption({ index: 1 });
+  // The household that is not the one showing.
+  const current = await switcher.inputValue();
+  const other = options.find((value) => value !== current);
+  await switcher.selectOption(other ?? options[1] ?? '');
 
   // Not a sleep: wait for the figure itself to differ. Two households with
   // identical net worth would make this flake, which is why the seed gives them
   // different positions.
   await expect
-    .poll(async () => headline.innerText(), { timeout: 10_000 })
+    .poll(async () => headline.innerText(), { timeout: 20_000 })
     .not.toBe(before);
 });
 
@@ -45,18 +56,21 @@ test('a holdings filter does not survive the household it was set in', async ({ 
   // a list quietly missing rows." Arriving at Holdings by asking for Holdings
   // means all of them.
   await page.goto('/#overview');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
 
-  const allocationRow = page.getByRole('link').filter({ hasText: /mutual funds|bonds|etf/i }).first();
-  test.skip((await allocationRow.count()) === 0, 'no allocation rows in this household');
+  const allocationLink = page.locator('a.alloc-link').first();
+  test.skip((await allocationLink.count()) === 0, 'no allocation rows in this household');
 
-  await allocationRow.click();
-  await expect(page).toHaveURL(/holdings/);
+  await allocationLink.click();
+  await expect(page).toHaveURL((url) => url.hash.includes('kind='));
 
   await page.getByRole('group', { name: 'Screen' }).first().getByText('Overview', { exact: true }).click();
   await page.getByRole('group', { name: 'Screen' }).first().getByText('Holdings', { exact: true }).click();
 
+  // Asking for Holdings means all of them: no class in the address, and the All chip is the one pressed.
+  await expect(page).toHaveURL((url) => !url.hash.includes('kind='));
   await expect(
-    page.getByRole('button', { name: /clear filter|all holdings/i }),
+    page.locator('.chips a[aria-current="true"]'),
     'a class filter survived navigating away and back',
-  ).toHaveCount(0);
+  ).toHaveText(/^All/, { timeout: 20_000 });
 });
