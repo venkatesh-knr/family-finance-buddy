@@ -17,7 +17,7 @@ import { ledgerEntry } from './ledger.ts';
  */
 
 test('an expense can be added and is listed with the amount as typed', async ({ page }) => {
-  const payee = `round-trip-${Date.now()}`;
+  const payee = `e2e-round-trip-${Date.now()}`;
   const amount = '1234.56';
   const rendered = '1,234.56';
 
@@ -40,7 +40,7 @@ test('a mistyped entry can be corrected rather than re-entered', async ({ page }
   // `CLAUDE.md`: transactions are freely editable until a figure has been relied
   // upon. Until a snapshot is frozen, editing is the supported path and the user
   // asked for it explicitly.
-  const payee = `editable-${Date.now()}`;
+  const payee = `e2e-editable-${Date.now()}`;
 
   await page.goto('/#expenses');
   await page.getByLabel(/^Amount \(/).fill('100.50');
@@ -64,7 +64,7 @@ test('an amount is never stored as a float', async ({ page }) => {
   // A figure that cannot be represented exactly in binary floating point. If
   // anything in the path does `parseFloat` and multiplies, this is where it
   // shows: 0.1 + 0.2 arithmetic turns 1070.10 into 1070.09 or 1070.1000000001.
-  const payee = `paise-${Date.now()}`;
+  const payee = `e2e-paise-${Date.now()}`;
 
   await page.goto('/#expenses');
   await page.getByLabel(/^Amount \(/).fill('1070.10');

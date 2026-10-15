@@ -25,11 +25,38 @@ Add to `package.json`:
 "test:e2e:ui": "playwright test --ui"
 ```
 
-## The account these tests use
+## The household these tests run in
 
-**It must belong to a household marked demo.** These specs write expenses. The
-setup step asserts the DEMO badge is present and fails the whole run if it is
-not, because test rows in a real household become part of the family's
+**Their own, marked demo, with the test account as its owner.** These specs write
+expenses, deposits, bonds, a policy and readings, and almost none of that can be
+deleted from the app: deletes are soft, readings and terms are append-only, a
+policy has no delete grant and the audit trail is permanent. Run in the household
+anybody uses, the rows showed up on Expenses, Insurance and Profile and moved the
+budget figures. So the suite does not delete what it creates. It runs in a
+household that is reset instead.
+
+Once, as the project owner, run `supabase/bootstrap/e2e_household.sql` in the
+SQL editor and put `E2E_HOUSEHOLD=E2E test household` in `.env.e2e`. Then:
+
+- **setup** switches to that household and resets it to the seed
+  (`reset_demo_household`, which only an owner with a second factor in the
+  session can run, and only on a demo household);
+- every spec names what it creates through `testName()` in `created.ts` (or the
+  `E2E policy` constant), so one pattern finds it;
+- **the teardown** resets the household again and then reads Expenses, Holdings
+  and Insurance in every household the account belongs to. A test-created row
+  still visible anywhere fails the run, which is the check that a reset, a
+  spec or a new table did not leave something behind.
+
+Without `E2E_HOUSEHOLD` the suite still runs, in whatever household the account
+opens in, and warns that it cannot clean up.
+
+The audit trail keeps the test household's history by design (it is append-only,
+and a reset records each deletion). That is why the history belongs to a household
+nobody looks at.
+
+The setup step also asserts the DEMO badge is present and fails the whole run if
+it is not, because test rows in a real household become part of the family's
 arithmetic and the soft-delete rules mean they do not simply go away.
 
 Three values in `.env.e2e`, which is gitignored and must stay that way:
@@ -70,6 +97,6 @@ The privacy spec checks `outerHTML` rather than visibility, because the promise
 in `docs/tokens.md` §8 is that the figure is gone — a blurred or clipped figure
 is still in the screenshot's source.
 
-**Give every row a unique payee.** These run against a shared demo household
-that is not reset between specs, so a fixed string collides with itself on the
-second run.
+**Give every row a unique name, through `testName()`.** The household is reset
+once per run and not between specs, so a fixed string collides with itself within
+a run. The `e2e-` prefix is also what the teardown looks for.

@@ -39,7 +39,11 @@ export default defineConfig({
     // Signs in once, with the second factor, and saves the session. Everything
     // else depends on it. See tests/e2e/auth.setup.ts for why this is not
     // optional and cannot be shortcut.
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    //
+    // Its teardown runs after every other project, passed or failed: it resets the test household and fails the
+    // run if a test-created row is still visible in any household the account belongs to.
+    { name: 'setup', testMatch: /auth\.setup\.ts/, teardown: 'cleanup' },
+    { name: 'cleanup', testMatch: /cleanup\.teardown\.ts/, use: { storageState: 'tests/e2e/.auth/user.json' } },
 
     {
       name: 'desktop',

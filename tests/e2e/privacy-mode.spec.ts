@@ -21,7 +21,7 @@ test('an amount is absent from the page, not merely hidden', async ({ page }) =>
   // figure, a date, a percentage or an element id.
   const amount = '4242.42';
   const rendered = '4,242.42';
-  const payee = `privacy-${Date.now()}`;
+  const payee = `e2e-privacy-${Date.now()}`;
 
   await page.goto('/#expenses');
 
