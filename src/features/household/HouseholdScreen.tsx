@@ -7,7 +7,7 @@
  * consequence stated rather than implied.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
   createInvite,
@@ -19,6 +19,7 @@ import {
   type InviteState,
 } from '../../repo/invites.ts';
 import { listExpenses } from '../../repo/expenses.ts';
+import { memberMarks, type MemberMark } from '../expenses/memberMark.ts';
 import {
   HOUSEHOLD_ROLES,
   MEMBER_COLOURS,
@@ -39,20 +40,33 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
   // take its code off the screen — a revoked code shown under "give them this"
   // is worse than no code at all.
   const [issued, setIssued] = useState<{ code: string; validForDays: number } | null>(null);
+  // The invitation form opens from the Invite button and closes when it is done with; the members who are no
+  // longer in the household, and the invitations, are one fold under the list.
+  const [inviting, setInviting] = useState(false);
+  const [rest, setRest] = useState(false);
+
+  // The household id changes as the shell settles on which household it is showing, and a read for the one it
+  // started with can come back after a read for the one it ended on. The latest request is the only one that counts,
+  // or the screen shows one household's members under another's name.
+  const latest = useRef(0);
 
   const load = useCallback(async () => {
+    latest.current += 1;
+    const mine = latest.current;
     try {
       const [next, open] = await Promise.all([
         listExpenses(householdId === null ? { limit: 1 } : { limit: 1, householdId }),
         listInvites(householdId ?? undefined),
       ]);
+      if (mine !== latest.current) return;
       setListing(next);
       setInvites(open);
       setProblem(null);
     } catch (error) {
+      if (mine !== latest.current) return;
       setProblem(error instanceof Error ? error.message : 'Could not load the household.');
     } finally {
-      setLoading(false);
+      if (mine === latest.current) setLoading(false);
     }
   }, [householdId]);
 
@@ -65,36 +79,69 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
   if (listing === null) return null;
 
   const isOwner = listing.viewer.role === 'owner';
+  const active = listing.members.filter((member) => !member.isArchived);
+  const former = listing.members.filter((member) => member.isArchived);
+  const marks = memberMarks(listing.members);
+  const folded = former.length + invites.length;
 
   return (
-    <div className="flex flex-col gap-4.5">
-      {isOwner ? (
-        <IssueInvite
-          householdId={listing.household.id}
-          issued={issued}
-          onIssued={(next) => {
-            setIssued(next);
-            void load();
-          }}
-          onDismiss={() => {
-            setIssued(null);
-          }}
-        />
-      ) : (
-        <Card title="Invite someone">
-          <p className="note">
-            Your role is <strong>{listing.viewer.role}</strong>. Only an owner can invite someone
-            to a household — and the database enforces that, not this screen.
-          </p>
-        </Card>
+    <section>
+      <div className="grouphead">
+        <h2>Members</h2>
+        {isOwner ? (
+          <button
+            type="button"
+            className="invite-button"
+            aria-expanded={inviting}
+            onClick={() => {
+              setInviting((was) => !was);
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            <span>Invite</span>
+          </button>
+        ) : (
+          <span className="who">Only an owner can invite</span>
+        )}
+      </div>
+
+      {isOwner && inviting && (
+        <div className="mb-3">
+          <IssueInvite
+            householdId={listing.household.id}
+            issued={issued}
+            onIssued={(next) => {
+              setIssued(next);
+              void load();
+            }}
+            onDismiss={() => {
+              setIssued(null);
+              setInviting(false);
+            }}
+          />
+        </div>
       )}
 
-      <Card title="Members" aside={<span className="note">{listing.household.name}</span>}>
-        <ul className="row-separated">
-          {listing.members.map((member) => (
+      <div className="setgrp">
+        <ul>
+          {active.map((member) => (
             <MemberRow
               key={member.id}
               member={member}
+              mark={marks.get(member.id) ?? { text: '?', showName: false }}
               isYou={member.id === listing.viewer.memberId}
               canChangeRoles={isOwner}
               onChanged={load}
@@ -102,36 +149,78 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
           ))}
         </ul>
 
-        {isOwner && (
-          <p className="note mt-3">
-            An owner administers the household and is the only role that can invite. There must
-            always be one — the app refuses to remove the last, because a household without an owner
-            cannot invite, administer or recover itself.
-          </p>
+        {folded > 0 && (
+          <button
+            type="button"
+            className="setfold"
+            aria-expanded={rest}
+            onClick={() => {
+              setRest((was) => !was);
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ transform: rest ? 'rotate(90deg)' : undefined, transition: 'transform 120ms' }}
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <span className="tabular-nums">
+              {[
+                former.length > 0 ? `${String(former.length)} former ${former.length === 1 ? 'member' : 'members'}` : null,
+                invites.length > 0 ? `${String(invites.length)} ${invites.length === 1 ? 'invite' : 'invites'}` : null,
+              ]
+                .filter((part): part is string => part !== null)
+                .join(' · ')}
+            </span>
+          </button>
         )}
-      </Card>
 
-      {invites.length > 0 && (
-        <Card title="Invites">
-          <ul className="row-separated">
-            {invites.map((invite) => (
-              <InviteRow
-                key={invite.id}
-                invite={invite}
-                canRevoke={isOwner}
-                onChanged={async () => {
-                  // Whichever invite was revoked, no code on screen is worth
-                  // keeping: it is either the one just killed, or one the owner
-                  // has had ample time to send.
-                  setIssued(null);
-                  await load();
-                }}
-              />
-            ))}
-          </ul>
-        </Card>
-      )}
-    </div>
+        {rest && (
+          <>
+            {former.length > 0 && (
+              <ul>
+                {former.map((member) => (
+                  <MemberRow
+                    key={member.id}
+                    member={member}
+                    mark={marks.get(member.id) ?? { text: '?', showName: false }}
+                    isYou={false}
+                    canChangeRoles={false}
+                    onChanged={load}
+                  />
+                ))}
+              </ul>
+            )}
+            {invites.length > 0 && (
+              <ul>
+                {invites.map((invite) => (
+                  <InviteRow
+                    key={invite.id}
+                    invite={invite}
+                    canRevoke={isOwner}
+                    onChanged={async () => {
+                      // Whichever invite was revoked, no code on screen is worth
+                      // keeping: it is either the one just killed, or one the owner
+                      // has had ample time to send.
+                      setIssued(null);
+                      await load();
+                    }}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -144,11 +233,13 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
  */
 function MemberRow({
   member,
+  mark,
   isYou,
   canChangeRoles,
   onChanged,
 }: {
   member: Member;
+  mark: MemberMark;
   isYou: boolean;
   canChangeRoles: boolean;
   onChanged: () => Promise<void>;
@@ -174,46 +265,49 @@ function MemberRow({
     [member.id, onChanged],
   );
 
+  const editable = canChangeRoles && member.role != null;
+  const roleWord = member.role == null ? 'no sign-in' : member.role.charAt(0).toUpperCase() + member.role.slice(1);
+
   return (
-    <li className="flex flex-col gap-1.5 py-2.5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span
-          aria-hidden="true"
-          className="inline-block h-2 w-2 rounded-pill"
-          style={{ background: `var(--${member.colour})` }}
-        />
-        <span style={{ color: 'var(--ink)' }}>{member.displayName}</span>
-        {isYou && <Pill tone="own">you</Pill>}
-        {member.isArchived && <Pill tone="neutral">Archived</Pill>}
-
-        <span className="ml-auto flex items-center gap-2">
-          {canChangeRoles && member.role != null ? (
-            <label className="flex items-center gap-2">
-              <span className="label">Role</span>
-              <select
-                className="field w-auto"
-                value={member.role}
-                disabled={busy}
-                onChange={(event) => {
-                  change(event.target.value as HouseholdRole);
-                }}
-              >
-                {HOUSEHOLD_ROLES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <Pill tone={member.role === 'owner' ? 'own' : 'neutral'}>
-              {member.role ?? 'no login'}
-            </Pill>
-          )}
+    <li className="member-row">
+      <span
+        className="member-ring"
+        aria-hidden="true"
+        style={{ borderColor: `var(--${member.colour})`, color: `var(--${member.colour})` }}
+      >
+        {mark.text}
+      </span>
+      <span className="member-name">
+        {member.displayName}
+        {isYou && <span className="member-you"> · you</span>}
+        {member.isArchived && <span className="member-you"> · former</span>}
+      </span>
+      {editable && member.role != null ? (
+        <label className="member-role member-role-edit">
+          <span>{roleWord}</span>
+          <select
+            aria-label={`Role of ${member.displayName}`}
+            value={member.role}
+            disabled={busy}
+            onChange={(event) => {
+              change(event.target.value as HouseholdRole);
+            }}
+          >
+            {HOUSEHOLD_ROLES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <span className="member-role">{roleWord}</span>
+      )}
+      {problem !== null && (
+        <span className="member-problem">
+          <Problem>{problem}</Problem>
         </span>
-      </div>
-
-      {problem !== null && <Problem>{problem}</Problem>}
+      )}
     </li>
   );
 }
@@ -238,7 +332,7 @@ function InviteRow({
   const state = inviteState(invite, new Date());
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2.5 py-2.5">
+    <li className="invite-row">
       <span className="flex flex-wrap items-center gap-2">
         <span style={{ color: 'var(--ink)' }}>{invite.displayName}</span>
         <Pill tone="neutral">{invite.role}</Pill>
@@ -281,6 +375,7 @@ function IssueInvite({
   householdId: string;
   issued: { code: string; validForDays: number } | null;
   onIssued: (issued: { code: string; validForDays: number }) => void;
+  /** Done with the form: either the code has been sent on, or nobody is being invited after all. */
   onDismiss: () => void;
 }) {
   const [displayName, setDisplayName] = useState('');
@@ -317,11 +412,13 @@ function IssueInvite({
   return (
     <Card
       title="Invite someone"
-      // Twice a year, at most. Open by default it put a seven-field form
-      // between the reader and the member list they came for.
-      collapsible
-      defaultOpen={false}
-      summary="Open to create a single-use, expiring invitation."
+      aside={
+        issued === null ? (
+          <button type="button" className="note underline" onClick={onDismiss}>
+            Cancel
+          </button>
+        ) : undefined
+      }
     >
       {issued !== null ? (
         <IssuedCode code={issued.code} validForDays={issued.validForDays} onDone={onDismiss} />

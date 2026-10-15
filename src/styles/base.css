@@ -598,69 +598,252 @@
   }
 
   /*
-   * Settings rows.
-   *
-   * A label, the reason it exists, and its current value — in that order,
-   * because a setting nobody can explain is a setting nobody should change.
-   * The description is not decoration: half of these have consequences that
-   * are invisible until months later, like which calendar a tax year uses.
+   * Settings rows (docs/design/vibrant-canvas.html, Settings): a name, its value, and a chevron where the row opens a
+   * choice. A row says what it is for in a line under its name only where that is the thing to know; the rest of
+   * what used to sit under every row is gone, because a setting nobody can act on is not a row.
    */
   .setgrp {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+    box-shadow: var(--shadow);
     overflow: hidden;
   }
 
   .setrow {
     align-items: center;
-    border-bottom: 1px solid var(--line);
-    display: grid;
-    gap: 16px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 13px 16px;
+    background: transparent;
+    border: 0;
+    color: var(--ink);
+    display: flex;
+    font: inherit;
+    gap: 0.625rem;
+    min-height: 3.25rem;
+    padding: 0.375rem 1rem;
+    position: relative;
+    text-align: left;
+    width: 100%;
   }
 
-  .setrow:last-child {
-    border-bottom: none;
+  .setgrp > .setrow + .setrow::before,
+  .setgrp > ul > li + li::before,
+  .setgrp > .setfold::before {
+    background: var(--line);
+    content: '';
+    height: 1px;
+    left: 1rem;
+    position: absolute;
+    right: 1rem;
+    top: 0;
+  }
+
+  .setrow-button {
+    cursor: pointer;
+  }
+
+  .setrow-button:disabled {
+    cursor: default;
+  }
+
+  .setrow-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  .setrow > .sk {
+    flex: 1;
   }
 
   .setrow .sk {
     color: var(--ink);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.875rem;
   }
 
   .setrow .sd {
     color: var(--muted);
-    font-size: 0.7625rem;
-    margin-top: 2px;
+    font-size: 0.75rem;
   }
 
   .setrow .sv {
     color: var(--ink-2);
     font-family: var(--font-ui);
-    font-size: 0.7875rem;
+    font-size: 0.875rem;
+  }
+
+  .setrow-chevron {
+    color: var(--muted);
+    flex: none;
+  }
+
+  /* A row that opens the device's own picker: the select lies over the whole row, unseen. */
+  .setrow-select select {
+    cursor: pointer;
+    height: 100%;
+    inset: 0;
+    opacity: 0;
+    position: absolute;
+    width: 100%;
   }
 
   .grouphead {
-    align-items: baseline;
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 9px;
+    gap: 0.5rem;
     justify-content: space-between;
-    margin-bottom: 9px;
+    margin: 0 0.25rem 0.5rem;
   }
 
   .grouphead h2 {
-    font-size: 0.90625rem;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
     font-weight: 600;
     margin: 0;
   }
 
   .grouphead .who {
     color: var(--muted);
-    font-size: 0.7375rem;
+    font-size: 0.75rem;
+  }
+
+  /* A switch: 48 by 28, a knob that moves; on is the teal, and the state is also in aria-checked. */
+  .switch {
+    background: var(--surface-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    flex: none;
+    height: 1.75rem;
+    padding: 0;
+    position: relative;
+    transition: background 120ms;
+    width: 3rem;
+  }
+
+  .switch > span {
+    background: var(--muted);
+    border-radius: var(--radius-pill);
+    height: 1.25rem;
+    left: 0.1875rem;
+    position: absolute;
+    top: 0.1875rem;
+    transition: transform 120ms;
+    width: 1.25rem;
+  }
+
+  .switch[aria-checked='true'] {
+    background: var(--teal);
+    border-color: var(--teal);
+  }
+
+  .switch[aria-checked='true'] > span {
+    background: var(--bg);
+    transform: translateX(1.25rem);
+  }
+
+  /* Members: a ring with the initial, the name, the role at the right. */
+  .member-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    min-height: 3.5rem;
+    padding: 0.375rem 1rem;
+    position: relative;
+  }
+
+  .member-ring {
+    align-items: center;
+    border: 1.5px solid currentcolor;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 700;
+    height: 1.875rem;
+    justify-content: center;
+    width: 1.875rem;
+  }
+
+  .member-name {
+    flex: 1;
+    font-size: 0.875rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .member-you {
+    color: var(--muted);
+  }
+
+  .member-role {
+    color: var(--ink-2);
+    font-size: 0.75rem;
+  }
+
+  .member-role-edit {
+    cursor: pointer;
+    position: relative;
+  }
+
+  .member-role-edit select {
+    cursor: pointer;
+    height: 100%;
+    inset: 0;
+    opacity: 0;
+    position: absolute;
+    width: 100%;
+  }
+
+  .member-problem {
+    flex-basis: 100%;
+  }
+
+  .invite-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    justify-content: space-between;
+    min-height: 3rem;
+    padding: 0.375rem 1rem;
+    position: relative;
+  }
+
+  .setfold {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1rem;
+    position: relative;
+    text-align: left;
+    width: 100%;
+  }
+
+  .invite-button {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.8125rem;
+    gap: 0.375rem;
+    min-height: 2.5rem;
+    padding: 0 0.875rem 0 0.625rem;
   }
 
   /*

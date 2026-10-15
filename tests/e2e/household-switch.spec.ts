@@ -18,6 +18,17 @@ import { householdSwitcher } from './created.ts';
  */
 
 test('the figures change when the household changes', async ({ page }) => {
+  // What differs between two households is who is in them. Their money can be the same: a household reset to the
+  // seed holds the seed, so the net worth of two of them is one figure and says nothing about whether the switcher
+  // reached the queries. The members listed on Settings are read for the household chosen, so they do.
+  async function membersListed(): Promise<string> {
+    await page.goto('/#settings');
+    await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.locator('.member-row').first()).toBeVisible({ timeout: 20_000 });
+    return (await page.locator('.member-row .member-name').allInnerTexts()).join(' | ');
+  }
+
   await page.goto('/#overview');
   // The shell, then the data: counting the switcher's options before it has rendered reads none, and skipped this
   // spec on an account that had two households.
@@ -33,22 +44,17 @@ test('the figures change when the household changes', async ({ page }) => {
     'only one household on this account — add a second demo household to exercise the switcher',
   );
 
-  // The net worth figure itself: the heading's parent holds only the title and the Household/Mine toggle.
-  const headline = page.locator('.figure-hero').first();
-  await expect(headline).toBeVisible({ timeout: 20_000 });
-  const before = await headline.innerText();
+  const before = await membersListed();
 
   // The household that is not the one showing.
+  await page.goto('/#overview');
+  await expect(switcher).toBeVisible({ timeout: 20_000 });
   const current = await switcher.inputValue();
   const other = options.find((value) => value !== current);
   await switcher.selectOption(other ?? options[1] ?? '');
 
-  // Not a sleep: wait for the figure itself to differ. Two households with
-  // identical net worth would make this flake, which is why the seed gives them
-  // different positions.
-  await expect
-    .poll(async () => headline.innerText(), { timeout: 20_000 })
-    .not.toBe(before);
+  // Not a sleep: the other household's members have to be what is listed.
+  await expect.poll(membersListed, { timeout: 30_000 }).not.toBe(before);
 });
 
 test('a holdings filter does not survive the household it was set in', async ({ page }) => {
