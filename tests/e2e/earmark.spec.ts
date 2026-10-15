@@ -47,7 +47,7 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
   await page.goto('/#fire');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByTestId('fire-left-out')).toBeVisible({ timeout: 20_000 });
-  // Back to where it was: the same line it opened on, and nothing about a child's savings in it.
+  // Back to where it was: the same line it opened on. (Not "nothing about a child's savings": the seed has an SSY
+  // earmarked for one, so it is in the baseline.)
   await expect(page.getByTestId('fire-left-out')).toHaveText(before);
-  await expect(page.getByTestId('fire-left-out')).not.toContainText(/child.s savings/i);
 });
