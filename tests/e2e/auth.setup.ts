@@ -80,7 +80,7 @@ setup('authenticate', async ({ page }) => {
     // Case-insensitive: the badge's text node is "Demo" and the pill's
     // `text-transform: uppercase` only paints it as DEMO. Matching the
     // rendered form would never find it.
-    page.getByText(/^demo$/i),
+    page.getByText(/^demo$/i).first(),
     'The E2E account must be in a household marked demo — these specs write expenses.',
   ).toBeVisible();
 

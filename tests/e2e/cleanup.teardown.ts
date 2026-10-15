@@ -1,5 +1,5 @@
 import { test as teardown, expect } from '@playwright/test';
-import { chooseHousehold, resetHousehold, testHouseholdName, testRowsVisible } from './created.ts';
+import { chooseHousehold, householdSwitcher, resetHousehold, testHouseholdName, testRowsVisible } from './created.ts';
 
 /**
  * After the run: put the test household back to the seed, then fail if any row a spec created is still visible.
@@ -28,7 +28,7 @@ teardown('nothing a spec created survives the run', async ({ page }) => {
   await chooseHousehold(page, dedicated);
   await resetHousehold(page);
 
-  const switcher = page.getByLabel('Household', { exact: true });
+  const switcher = householdSwitcher(page);
   const options = (await switcher.count()) === 0 ? [dedicated] : await switcher.locator('option').allTextContents();
   const survivors: string[] = [];
   for (const [index, label] of options.entries()) {

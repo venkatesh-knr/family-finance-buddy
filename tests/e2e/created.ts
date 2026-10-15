@@ -84,7 +84,7 @@ export async function resetHousehold(page: Page) {
 /** Choose a household in the shell's switcher by its name. */
 export async function chooseHousehold(page: Page, name: string): Promise<void> {
   await page.goto('/#overview');
-  const select = page.getByLabel('Household', { exact: true });
+  const select = householdSwitcher(page);
   const name_ = page.getByText(name, { exact: true });
   // One household and no switcher: the shell names it instead, and that has to be the test household.
   await expect(select.or(name_).first()).toBeVisible({ timeout: 20_000 });
@@ -101,4 +101,9 @@ export async function chooseHousehold(page: Page, name: string): Promise<void> {
   ).toBeGreaterThanOrEqual(0);
   await select.selectOption({ index });
   await loaded(page);
+}
+
+/** The shell's household switcher. Its accessible name carries the demo badge ("Household Demo"), so not an exact label. */
+export function householdSwitcher(page: Page) {
+  return page.getByRole('combobox', { name: /^Household\b/ });
 }
