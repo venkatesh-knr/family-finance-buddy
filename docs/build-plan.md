@@ -181,7 +181,7 @@ never a backlog for it to light up red against. Design documents declare an
 invariant prefix and number their rules; `npm run check:docs` fails the build for a
 rule with no test and no waiver, for a test naming a rule no document declares, and
 for a design document the reviewer's brief has never heard of. The rules of
-`protection-and-flow.md` are numbered `PF-C1` to `PF-C16` and all but `PF-C1` are
+`protection-and-flow.md` are numbered `PF-C1` to `PF-C17` and all but `PF-C1` are
 waived, each naming the step above that builds it; **the waiver for a rule is
 removed in the commit that adds its test**, and a waiver left past ninety days
 warns. The slice's own post-development loop (invariants, design sync, authority,
@@ -548,13 +548,16 @@ Three things are owed before it is built:
   it to every deposit would reverse a decision the maintainer made on purpose.
   It is recorded in `docs/decisions.md`, which is where the design's "sibling of
   `tokens.md` for data rules" already lives.
-- **The scheme list is not the retirement list.** The design's `scheme` has `ppf`
+- **The scheme list is not the retirement list. Decided (October 2026): retirement is a kind.** EPF and NPS are retirement holdings, and
+  so is PPF, which moves out of the deposit schemes when this step builds the kind (a migration then; the `ppf` scheme and its credit
+  rule from 2a follow it). The allocation donut and the tile follow `icons.md` §4. The question as it was asked: The design's `scheme` has `ppf`
   and no `epf` or `nps`; this step lists all three; `icons.md` §4 draws
   "retirement (PF · PPF · NPS)" as a future *kind* with its own tile. One answer,
   before build: either EPF and NPS are `deposit` schemes, or retirement is a kind
   and PPF is a retirement holding, or `other`. The allocation donut and the tile
   follow from it.
-- **Is an owned home in the FIRE corpus?** The earmark `house` means a deposit
+- **Is an owned home in the FIRE corpus? Decided (October 2026): no.** A home you live in is excluded from the corpus, as it is
+  not money that can be spent in retirement. It is still in net worth, which is what the household owns. The question as it was asked: the earmark `house` means a deposit
   being saved, not a house lived in. Property arrives here, and the corpus
   function (2a) needs to say what it does with it. The conservative answer is
   that a home you live in is excluded.

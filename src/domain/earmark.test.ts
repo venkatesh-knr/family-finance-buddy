@@ -9,6 +9,7 @@ import {
   SCHEME_LABELS,
   fireCorpus,
   coverMonths,
+  coverPhrase,
   earmarkedHoldings,
   isScheme,
   monthsOfCover,
@@ -25,6 +26,7 @@ const holding = (over: Partial<CorpusHolding> & { id: string }): CorpusHolding =
   currency: 'INR',
   earmark: 'none',
   scheme: null,
+  carriesPolicy: false,
   isArchived: false,
   ...over,
 });
@@ -172,6 +174,15 @@ describe('the liquid corpus — the other named output of the one classification
     const [total] = fireCorpus({
       holdings: [holding({ id: 'ppf', scheme: 'ppf' }), holding({ id: 'fd', scheme: 'fd' })],
       valuations: [reading('ppf', inr(100)), reading('fd', inr(40))],
+    });
+    expect(total?.included.minor).toBe(14000n);
+    expect(total?.liquid.minor).toBe(4000n);
+  });
+
+  it('PF-C17 — leaves out the surrender value a policy carries: a ULIP is in the corpus and cannot be had in an emergency', () => {
+    const [total] = fireCorpus({
+      holdings: [holding({ id: 'ulip', carriesPolicy: true }), holding({ id: 'fd', scheme: 'fd' })],
+      valuations: [reading('ulip', inr(100)), reading('fd', inr(40))],
     });
     expect(total?.included.minor).toBe(14000n);
     expect(total?.liquid.minor).toBe(4000n);
@@ -328,5 +339,23 @@ describe('earmarkedHoldings — which holdings are earmarked, apart from how muc
     const result = earmarkedHoldings({ holdings: [holding({ id: 'a' })], valuations: [] });
     expect(result.count).toEqual({ emergency: 0, child: 0, house: 0 });
     expect(result.unvalued).toBe(0);
+  });
+});
+
+describe('the cover figure is said in the unit a person would use', () => {
+  it('keeps months below two years, to one decimal', () => {
+    expect(coverPhrase(12)).toEqual({ value: '12', unit: 'months of spending' });
+    expect(coverPhrase(6.04)).toEqual({ value: '6', unit: 'months of spending' });
+    expect(coverPhrase(23.9)).toEqual({ value: '23.9', unit: 'months of spending' });
+  });
+
+  it('says years from two years, so a large fund is not a number of months nobody can picture', () => {
+    expect(coverPhrase(24)).toEqual({ value: '2', unit: 'years of spending' });
+    expect(coverPhrase(30)).toEqual({ value: '2.5', unit: 'years of spending' });
+    expect(coverPhrase(305.4)).toEqual({ value: '25', unit: 'years of spending' });
+  });
+
+  it('says one year and one month in the singular', () => {
+    expect(coverPhrase(1)).toEqual({ value: '1', unit: 'month of spending' });
   });
 });

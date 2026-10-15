@@ -44,6 +44,7 @@ import {
 import { assetHistory, movementSince } from '../../domain/history.ts';
 import { AllocationDonut } from './AllocationDonut.tsx';
 import { useOverviewData } from './useOverviewData.ts';
+import { coverPhrase } from '../../domain/earmark.ts';
 import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { insuranceFacts } from '../insurance/insuranceFacts.ts';
 import { annualFromListing } from '../plan/annualFromListing.ts';
@@ -788,7 +789,7 @@ export function OverviewScreen({
                   </Absent>
                 ) : cover.status === 'ready' && cover.months !== null ? (
                   <>
-                    {String(Math.round(cover.months * 10) / 10)} <Unit>months of spending</Unit>
+                    {coverPhrase(cover.months).value} <Unit>{coverPhrase(cover.months).unit}</Unit>
                   </>
                 ) : (
                   <Absent label="Why there is no months of cover">
