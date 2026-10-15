@@ -391,14 +391,14 @@ select is(
 );
 
 select ok(
-  (select coalesce(sum(l.quantity), 0) < h.quantity
+  (select h.stated_quantity is not null and coalesce(sum(l.quantity), 0) < h.stated_quantity
      from public.holding h
      join public.instrument i on i.id = h.instrument_id
      left join public.lot l on l.holding_id = h.id
     where h.household_id = 'd1000000-0000-4000-8000-0000000000d1'
-      and i.name = 'Demo Flexi Cap Fund (partial statement)'
-    group by h.quantity),
-  'the seed has a fund whose purchases cover fewer units than it holds, which is a position resting on a partial statement'
+      and i.name = 'Demo Flexi Cap Fund'
+    group by h.stated_quantity),
+  'the seed has a fund whose purchases cover fewer units than its stated closing balance, which is a position resting on a partial statement'
 );
 
 -- ═════════════════════════════════════════════ the guard on the next table (1)
