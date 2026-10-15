@@ -16,6 +16,13 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
   // Four page loads and two saves against a hosted database: well over the default thirty seconds.
   test.setTimeout(150_000);
   const name = /Vanguard/;
+
+  // Where the household starts: the seed earmarks a deposit as the emergency fund, so "nothing is earmarked" is not
+  // the baseline, and a household somebody has been trying things in has its own. The test compares with this.
+  await page.goto('/#fire');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  const before = await page.getByTestId('fire-left-out').innerText({ timeout: 20_000 });
+
   try {
     await setEarmark(page, name, "Child's savings");
     await expect((await rowOf(page, name)).getByText("Child's savings", { exact: true })).toBeVisible();
@@ -40,7 +47,7 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
   await page.goto('/#fire');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByTestId('fire-left-out')).toBeVisible({ timeout: 20_000 });
-  // Back to where it was: nothing earmarked, so nothing left out. (Not a search for the words, which the hint uses.)
-  await expect(page.getByTestId('fire-left-out')).toContainText(/Nothing is earmarked/);
-  await expect(page.getByTestId('fire-left-out')).not.toContainText(/Left out because/);
+  // Back to where it was: the same line it opened on, and nothing about a child's savings in it.
+  await expect(page.getByTestId('fire-left-out')).toHaveText(before);
+  await expect(page.getByTestId('fire-left-out')).not.toContainText(/child.s savings/i);
 });
