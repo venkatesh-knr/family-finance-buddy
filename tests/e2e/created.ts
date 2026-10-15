@@ -22,8 +22,12 @@ export function testName(what: string): string {
 /** The one policy the insurance spec uses. It also matches {@link TEST_ROW}. */
 export const POLICY_NAME = 'E2E policy';
 
-/** A test-created row, by name: the `e2e-` prefix, or the policy's. */
-export const TEST_ROW = /\be2e[- ][\w -]*/gi;
+/**
+ * A test-created row, by name: the `e2e-` prefix, or the policy's. The second alternative is the names the specs
+ * used before the prefix (`privacy-1791744164302`), so residue from those runs is found too. No word boundary at
+ * the front: the text of neighbouring elements is joined without a space.
+ */
+export const TEST_ROW = /e2e-[\w-]*|E2E policy|(?:privacy|round-trip|editable|paise)-\d{10,}/gi;
 
 /** The household the suite runs in, or null for the legacy shared-household mode. */
 export function testHouseholdName(): string | null {
@@ -46,12 +50,24 @@ export async function testRowsVisible(page: Page): Promise<string[]> {
   const found = new Set<string>();
   for (const hash of SCREENS) {
     await page.goto(`/${hash}`);
+    await page.reload();
+    await expect(page.locator('main h2, main h3').first()).toBeVisible({ timeout: 20_000 });
     await loaded(page);
-    await expect(page.locator('main')).toBeVisible({ timeout: 20_000 });
-    // A screen can be empty and still be loaded; give the first read a moment to settle.
-    await page.waitForTimeout(500);
+    // Quiet: a ledger loads after the card around it, and a screen that has not finished reads as one with nothing
+    // in it. The text has to be the same on two reads a beat apart.
+    let previous = '';
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const now = (await page.locator('main').textContent()) ?? '';
+      if (now === previous && now.length > 0) break;
+      previous = now;
+      await page.waitForTimeout(800);
+    }
+    // Text, and the value of every field: an editable row (a policy) holds its name in an input.
     const text = (await page.locator('main').textContent()) ?? '';
-    for (const match of text.matchAll(TEST_ROW)) found.add(match[0].trim());
+    const values = await page.locator('main input, main textarea').evaluateAll((fields) =>
+      fields.map((field) => (field as HTMLInputElement).value),
+    );
+    for (const match of [text, ...values].join('\n').matchAll(TEST_ROW)) found.add(match[0].trim());
   }
   return [...found].sort();
 }
