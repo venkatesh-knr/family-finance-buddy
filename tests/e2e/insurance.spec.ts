@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { POLICY_NAME } from './created.ts';
 
 /**
  * Insurance: a policy has a cover and no value, and the household's cover gap is a stated calculation.
@@ -8,7 +9,7 @@ import { test, expect, type Page } from '@playwright/test';
  * lapsed and not deleted (the table has no delete grant), so this is the tidy way to leave it.
  */
 
-const NAME = 'E2E policy';
+const NAME = POLICY_NAME;
 
 test.use({ actionTimeout: 15_000 });
 

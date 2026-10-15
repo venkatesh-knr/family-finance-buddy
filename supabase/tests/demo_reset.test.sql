@@ -11,7 +11,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(26);
+select plan(29);
 
 -- ─────────────────────────────────────────────────────────────── fixtures
 --
@@ -237,7 +237,8 @@ select is_empty(
       union all
       select 1 from public.instrument where id = 'f1000000-0000-4000-8000-0000000000f1'
       union all
-      select 1 from public.fx_rate where household_id = 'd1000000-0000-4000-8000-0000000000d1' $q$,
+      select 1 from public.fx_rate where household_id = 'd1000000-0000-4000-8000-0000000000d1'
+         and as_of_date = date '2026-08-01' $q$,
   'the experiment is gone — expense, lot, disposal, instrument and rate'
 );
 
@@ -366,6 +367,38 @@ select results_eq(
              (select count(*) from public.member      where household_id = 'd1000000-0000-4000-8000-0000000000d1') $q$,
   $q$ select txns, holdings, members from first_reset $q$,
   'resetting twice lands in the same state as resetting once'
+);
+
+-- ══════════════════════════════════════ a reset household the app can show (3)
+--
+-- The seed once had no rate, no terms and no partial statement, so a reset household read "₹11.73L + $41.8K"
+-- and could not open a deposit on its terms. These are the three things the screens and the end-to-end suite
+-- stand on, and they are in the seed and not in anyone's hand-built household.
+
+select is(
+  (select count(*)::int from public.fx_rate
+    where household_id = 'd1000000-0000-4000-8000-0000000000d1'
+      and base_currency = 'USD' and quote_currency = 'INR'),
+  3,
+  'the seed leaves dated USD to INR rates, so a dollar holding can be turned into rupees'
+);
+
+select is(
+  (select count(*)::int from public.fixed_income_terms
+    where household_id = 'd1000000-0000-4000-8000-0000000000d1' and kind = 'deposit'),
+  2,
+  'the seed gives its deposits terms, so a deposit can be opened on them'
+);
+
+select ok(
+  (select coalesce(sum(l.quantity), 0) < h.quantity
+     from public.holding h
+     join public.instrument i on i.id = h.instrument_id
+     left join public.lot l on l.holding_id = h.id
+    where h.household_id = 'd1000000-0000-4000-8000-0000000000d1'
+      and i.name = 'Demo Flexi Cap Fund (partial statement)'
+    group by h.quantity),
+  'the seed has a fund whose purchases cover fewer units than it holds, which is a position resting on a partial statement'
 );
 
 -- ═════════════════════════════════════════════ the guard on the next table (1)

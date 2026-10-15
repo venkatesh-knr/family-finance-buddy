@@ -1,6 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import { TOTP } from 'otpauth';
 import { mkdirSync } from 'node:fs';
+import { chooseHousehold, resetHousehold, testHouseholdName } from './created.ts';
 
 /**
  * Sign in once, with the second factor, and save the session for every spec.
@@ -21,6 +22,10 @@ import { mkdirSync } from 'node:fs';
  * write expenses. Pointing them at a real household would put test rows in the
  * family's arithmetic, and the whole point of the demo household is that you can
  * experiment destructively without care.
+ *
+ * Not the household anybody uses, either. Most of what a spec writes cannot be deleted (see created.ts), so with
+ * `E2E_HOUSEHOLD` set the run switches to that household and resets it to the seed first; the teardown resets it
+ * again and fails the run if a test-created row is visible anywhere.
  */
 
 const STATE = 'tests/e2e/.auth/user.json';
@@ -59,12 +64,23 @@ setup('authenticate', async ({ page }) => {
     timeout: 20_000,
   });
 
+  const dedicated = testHouseholdName();
+  if (dedicated !== null) {
+    await chooseHousehold(page, dedicated);
+    await resetHousehold(page);
+  } else {
+    console.warn(
+      'E2E_HOUSEHOLD is not set: this run writes to whatever household the account opens in, and nothing it ' +
+        'creates can be removed. Set it to the test household (supabase/bootstrap/e2e_household.sql).',
+    );
+  }
+
   // Guard against the suite silently running against real money.
   await expect(
     // Case-insensitive: the badge's text node is "Demo" and the pill's
     // `text-transform: uppercase` only paints it as DEMO. Matching the
     // rendered form would never find it.
-    page.getByText(/^demo$/i),
+    page.getByText(/^demo$/i).first(),
     'The E2E account must be in a household marked demo — these specs write expenses.',
   ).toBeVisible();
 

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { checkAgentAuthority } from './lib/agent-authority.mjs';
+import { artboardIds, checkArtboards } from './lib/artboards.mjs';
 import { checkDepartures, departureRows } from './lib/departures.mjs';
 import { checkInvariants, parseDoc, parseWaivers, readTsTitles } from './lib/invariants.mjs';
 import { readPgTap } from './lib/sql-tap.mjs';
@@ -374,5 +375,34 @@ describe('the Departures table says whose decision each row is', () => {
 
   it('says so when there is no table to read', () => {
     expect(checkDepartures(['# Design conformance', '', 'Nothing here.'].join(String.fromCharCode(10)))).toHaveLength(1);
+  });
+});
+
+describe('every screen names its artboard, or says none', () => {
+  const canvas = [
+    '<section class="board" id="Main"><h2>Overview</h2></section>',
+    '<section class="board" id="Holdings"><h2>Holdings</h2></section>',
+    '<section id="fill">not a board</section>',
+  ].join(String.fromCharCode(10));
+  const ids = artboardIds(canvas);
+
+  it('reads the boards the canvas declares, and only those', () => {
+    expect(ids).toEqual(['Main', 'Holdings']);
+  });
+
+  it('passes a named board, a list of boards, and none', () => {
+    expect(checkArtboards([{ item: 'overview', artboard: 'Main' }, { item: 'x', artboard: 'Main, Holdings' }, { item: 'y', artboard: 'none' }], ids)).toEqual([]);
+  });
+
+  it('fails a screen with an empty Artboard cell', () => {
+    const problems = checkArtboards([{ item: 'tax', artboard: ' ' }], ids);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('"tax" has no Artboard');
+  });
+
+  it('fails a screen that names a board the canvas does not have', () => {
+    const problems = checkArtboards([{ item: 'tax', artboard: 'Taxes' }], ids);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('"Taxes"');
   });
 });

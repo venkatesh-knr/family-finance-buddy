@@ -131,12 +131,6 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
           </ul>
         </Card>
       )}
-
-      <p className="note">
-        An invited person needs an account before they can accept. Until the app can create one
-        itself, add them from the Supabase dashboard first — Authentication → Users → Create new
-        user — then give them the code.
-      </p>
     </div>
   );
 }

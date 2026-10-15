@@ -562,13 +562,16 @@ function StackedRow({
   privacy: boolean;
   onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
+  // A voided entry is struck through and says Voided: not dimmed, which put its figures under 4.5:1 and left the
+  // meaning to a lighter shade.
+  const struck = expense.isVoided ? 'line-through' : undefined;
   return (
-    <li className="flex flex-col gap-1 py-2.5" style={expense.isVoided ? { opacity: 0.55 } : undefined}>
+    <li className="flex flex-col gap-1 py-2.5">
       <div className="flex items-baseline justify-between gap-3">
-        <span style={{ color: 'var(--ink)' }}>
+        <span style={{ color: 'var(--ink)', textDecoration: struck }}>
           {expense.payee ?? <span className="note">No payee</span>}
         </span>
-        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)' }}>
+        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)', textDecoration: struck }}>
           {formatMoney(expense.amount, { privacy })}
         </span>
       </div>
@@ -626,14 +629,16 @@ function Row({
   onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
   const foreign = expense.amount.currency !== 'INR';
+  // Struck through and labelled Voided, not dimmed: dimming put its figures under 4.5:1.
+  const struck = expense.isVoided ? 'line-through' : undefined;
 
   return (
-    <tr style={expense.isVoided ? { opacity: 0.55 } : undefined}>
+    <tr>
       <td className="num px-2.5 py-2 align-top" style={{ color: 'var(--muted)' }}>
         {formatIsoDate(expense.date)}
       </td>
       <td className="px-2.5 py-2 align-top" style={{ color: 'var(--ink)' }}>
-        {expense.payee ?? <span className="note">—</span>}
+        <span style={{ textDecoration: struck }}>{expense.payee ?? <span className="note">—</span>}</span>
         {expense.isVoided && (
           <>
             {' '}
@@ -669,7 +674,7 @@ function Row({
         <MemberTag member={expense.member} mark={mark} />
       </td>
       <td className="num px-2.5 py-2 text-right align-top" style={{ color: 'var(--ink)' }}>
-        {formatMoney(expense.amount, { privacy })}
+        <span style={{ textDecoration: struck }}>{formatMoney(expense.amount, { privacy })}</span>
         {foreign && (
           <>
             {' '}

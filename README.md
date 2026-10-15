@@ -86,6 +86,10 @@ npm run test:policies   # row-level security — this one gates the deploy
 6. **Create the first account** from the Supabase dashboard — Authentication → Users →
    Invite. Public sign-up is disabled in `supabase/config.toml`, and there is no
    registration route in the app.
+7. **Add another member.** An invited person needs an account before they can accept, and the app
+   cannot create one yet. Create them in the Supabase dashboard — Authentication → Users → Create
+   new user — then issue the invitation from Settings and give them the code. Delete this step
+   when the app can create invitees itself.
 
 ---
 

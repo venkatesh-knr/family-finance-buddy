@@ -115,6 +115,14 @@ the maintainer's standing working agreements, and where the last session stopped
   *looks* like its mock is a person with both open; the check only stops the
   ledger becoming fiction. Deliberate departures go in that file's Departures
   table with the reason, so they are decisions rather than drift.
+- **Before changing a screen, read its artboard** in `docs/design/vibrant-canvas.html` (the index at the
+  top of the file lists them) as well as `docs/tokens.md`, `docs/design/icons.md` and the screen's own
+  design document. **Values** — colour, size, radius, glyph — come from the token and icon documents, which
+  win on any disagreement; the boards are drawn dark-only and their hex values do not settle light theme.
+  **Layout and hierarchy** — what is on the screen, in what order, what is most prominent — come from the
+  artboard. Where a build would differ from its artboard, do not decide it: add a `proposed` row to the
+  Departures table in `docs/design/conformance.md` and list it in your report. Every screen's row in that
+  file names its artboard in the Artboard column (`none` only where the canvas has no board).
 - **A finished vertical slice gets a design-conformance review before I see it.** Invoke the
   `design-conformance` subagent, read what it says, and tell me which findings you agree with and
   which you reject and why — do not silently act on all of them, and do not silently discard one.
