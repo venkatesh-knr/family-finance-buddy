@@ -39,7 +39,7 @@ When two documents disagree, this is the order. Say which one you applied.
    (insurance, the small-savings schemes, earmarks, income and transfers),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
-   holding). Each is
+   holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9). Each is
    authoritative for the feature it specifies and for nothing else, and sits below
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify

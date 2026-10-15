@@ -20,7 +20,7 @@
 do $$
 declare
   -- ─── edit these ──────────────────────────────────────────────────────────
-  v_email     text := 'test-account@example.com';   -- the E2E_EMAIL account
+  v_email     text := 'testdemo1@ggmail.com';   -- the E2E_EMAIL account
   v_household text := 'E2E test household';          -- must match E2E_HOUSEHOLD
   v_display   text := 'E2E';                         -- its name as a member
   -- ─────────────────────────────────────────────────────────────────────────
