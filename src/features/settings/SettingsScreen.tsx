@@ -1,28 +1,42 @@
 /**
- * Settings — two groups, deliberately separated.
+ * Settings: this device, this household, its members, and the one thing that destroys data.
  *
- * "Device settings need nobody's permission and affect only you. Household
- * settings change the app for everyone — owners and partners edit them,
- * everyone else sees them read-only, so the rules are never a mystery."
+ * Drawn as docs/design/vibrant-canvas.html draws it: a few groups of plain rows, each a name and its value, with
+ * a switch where it is a switch and a chevron where it opens a choice. The separation is still the design:
+ * "Device settings need nobody's permission and affect only you. Household settings change the app for everyone,
+ * owners and partners edit them, everyone else sees them read-only." A screen that mixed them would leave every
+ * member guessing which of their changes the household is about to notice.
  *
- * The separation is the design. A screen that mixed them would leave every
- * member guessing which of their changes the household is about to notice,
- * and the honest answer to "why can't I edit this?" should be legible from
- * where the row sits rather than from an error after trying.
- *
- * Minimal and growing, on purpose. Each row here is one somebody can actually
- * change today; a row showing a value nothing reads would be a promise the app
- * has not made yet. The prototype's fuller list arrives a row at a time, as
- * the thing behind each one gets built.
+ * Minimal and growing, on purpose. Each row here is one somebody can actually change today, or one that says
+ * what is true; a row showing a value nothing reads would be a promise the app has not made yet.
  */
 
 import { useEffect, useState } from 'react';
 import { HouseholdScreen } from '../household/HouseholdScreen.tsx';
 import { ThemeToggle, type ThemeChoice } from '../../app/theme.tsx';
-import { Button, Card, Pill, Problem } from '../../ui/primitives.tsx';
-import { useHouseholdChoice } from '../../app/household.tsx';
+import { Button, Problem } from '../../ui/primitives.tsx';
+import { DemoBadge, useHouseholdChoice } from '../../app/household.tsx';
 import { resetDemoHousehold } from '../../repo/households.ts';
 import { listRates } from '../../repo/rates.ts';
+
+function Chevron() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="setrow-chevron"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
 
 export function SettingsScreen({
   householdId,
@@ -45,7 +59,6 @@ export function SettingsScreen({
   const { current, reload } = useHouseholdChoice();
   const household = current?.household ?? null;
   const role = current?.role ?? null;
-  const canEdit = role === 'owner' || role === 'partner';
 
   // Bumped by a reset so the members list below remounts and reads again: the
   // reset replaces the members nobody signs in as, and a list still showing
@@ -55,24 +68,32 @@ export function SettingsScreen({
   /**
    * Which currencies this household can actually be read in.
    *
-   * Its base, plus every currency it has recorded a rate against — in either
+   * Its base, plus every currency it has recorded a rate against, in either
    * direction, since a rate reads both ways. Offering the full ISO list would
    * be offering a hundred and fifty choices that all answer "there is no rate
    * for that", which is a menu of disappointments.
    */
   const [convertible, setConvertible] = useState<readonly string[]>([]);
+  // A rate list that did not load is a different thing from one with nothing in it, and the screen says which.
+  const [ratesFailed, setRatesFailed] = useState(false);
 
   useEffect(() => {
     if (householdId === null) return;
     let live = true;
     listRates(householdId)
       .then((rates) => {
-        if (live) setConvertible([...new Set(rates.flatMap((r) => [r.base, r.quote]))]);
+        if (live) {
+          setConvertible([...new Set(rates.flatMap((r) => [r.base, r.quote]))]);
+          setRatesFailed(false);
+        }
       })
       .catch(() => {
-        // A rate list that will not load is not worth a broken settings screen.
-        // The base currency alone is a correct, if narrow, set of options.
-        if (live) setConvertible([]);
+        // A rate list that will not load is not worth a broken settings screen. The base currency alone is a
+        // correct, if narrow, set of options, and the row says the rates could not be read.
+        if (live) {
+          setConvertible([]);
+          setRatesFailed(true);
+        }
       });
     return () => {
       live = false;
@@ -80,169 +101,115 @@ export function SettingsScreen({
   }, [householdId]);
 
   const base = household?.baseCurrency ?? 'INR';
-  const options = [...new Set([base, ...convertible])];
+  const reading = displayCurrency === '' ? base : displayCurrency;
+  // What the device is reading in is always offered: the setting belongs to the device and the rates to the
+  // household, so after a switch (or a failed read) the device can still be on a currency this household has no
+  // rate for, and the only way off it is this list.
+  const options = [...new Set([base, reading, ...convertible])];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4.5">
       <section>
         <div className="grouphead">
           <h2>This device</h2>
-          <span className="who">Yours alone · no permission needed</span>
+          <span className="who">remembered here only</span>
         </div>
 
         <div className="setgrp">
           <div className="setrow">
-            <div>
-              <div className="sk">Theme</div>
-              <div className="sd">Light, dark, or follow the system</div>
-            </div>
+            <span className="sk">Theme</span>
             <ThemeToggle choice={theme} onChange={onTheme} />
           </div>
 
           <div className="setrow">
-            <div>
-              <div className="sk">Hide amounts by default</div>
-              <div className="sd">
-                Opens with figures masked; one tap in the top bar reveals them. Worth turning on
-                for a device other people pick up.
-              </div>
-            </div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={hideAmountsByDefault}
-                onChange={(event) => {
-                  onHideAmountsByDefault(event.target.checked);
-                }}
-              />
-              <span className="sv">{hideAmountsByDefault ? 'On' : 'Off'}</span>
-            </label>
+            <span className="setrow-text">
+              <span className="sk" id="hide-amounts-label">
+                Hide amounts when the app opens
+              </span>
+              <span className="sd">for a device other people pick up</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={hideAmountsByDefault}
+              aria-labelledby="hide-amounts-label"
+              className="switch"
+              onClick={() => {
+                onHideAmountsByDefault(!hideAmountsByDefault);
+              }}
+            >
+              <span />
+            </button>
           </div>
 
-          <div className="setrow">
-            <div>
-              <div className="sk">Read amounts in</div>
-              <div className="sd">
-                Converts figures for display. Nothing stored changes — a holding bought in dollars
-                stays a dollar holding, and the household&rsquo;s own currency is still {base}.
-              </div>
-            </div>
-            <label className="flex items-center gap-2">
-              <span className="label">Currency</span>
-              <select
-                className="field w-auto"
-                value={displayCurrency === '' ? base : displayCurrency}
-                onChange={(event) => {
-                  // The base currency is stored as "no choice", so a household
-                  // that later changes its base takes this device with it.
-                  onDisplayCurrency(event.target.value === base ? '' : event.target.value);
-                }}
-              >
-                {options.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          {/*
+            A row that opens a choice. The choice is the browser's own select laid invisibly over the row, so the
+            whole row is the target and the picker is the one the device already knows how to draw.
+          */}
+          <label className="setrow setrow-select">
+            <span className="setrow-text">
+              <span className="sk">Read amounts in</span>
+              {ratesFailed ? (
+                <span className="sd">The exchange rates could not be read just now.</span>
+              ) : (
+                options.length === 1 && <span className="sd">Only {base} until a rate is recorded on Overview.</span>
+              )}
+            </span>
+            <span className="sv">{reading}</span>
+            {options.length > 1 && <Chevron />}
+            <select
+              aria-label="Read amounts in"
+              disabled={options.length === 1}
+              value={reading}
+              onChange={(event) => {
+                // The base currency is stored as "no choice", so a household
+                // that later changes its base takes this device with it.
+                onDisplayCurrency(event.target.value === base ? '' : event.target.value);
+              }}
+            >
+              {options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-
-        <p className="note mt-2">
-          These are remembered on this device only. A different phone, or a private window, starts
-          from the default again.
-          {options.length === 1 &&
-            ' Only ' + base + ' is offered because no exchange rate has been recorded yet — add one on Overview, and the currency it names can be read here.'}
-        </p>
       </section>
 
       <section>
         <div className="grouphead">
           <h2>This household</h2>
-          <span className="who">
-            {canEdit ? 'You can edit these' : 'Owner and partner can edit · you see them read-only'}
-          </span>
         </div>
 
         <div className="setgrp">
           <div className="setrow">
-            <div>
-              <div className="sk">Household name</div>
-              <div className="sd">Shown in the switcher and on exports</div>
-            </div>
+            <span className="sk">Name</span>
             <span className="sv">{household?.name ?? '—'}</span>
+            {household !== null && <DemoBadge kind={household.kind} />}
           </div>
-
           <div className="setrow">
-            <div>
-              <div className="sk">Base currency</div>
-              <div className="sd">Net worth, FIRE and allocation are computed in this</div>
-            </div>
+            <span className="sk">Base currency</span>
             <span className="sv">{household?.baseCurrency ?? '—'}</span>
           </div>
-
           <div className="setrow">
-            <div>
-              <div className="sk">Tax year starts</div>
-              <div className="sd">
-                Foreign-asset reporting still uses the calendar year — the two calendars both
-                apply and neither replaces the other
-              </div>
-            </div>
+            <span className="sk">Tax year starts</span>
             <span className="sv">1 April</span>
           </div>
-
-          <div className="setrow">
-            <div>
-              <div className="sk">Kind</div>
-              <div className="sd">
-                A demo household carries a badge everywhere, so there is never a moment of
-                wondering which figures you are looking at
-              </div>
-            </div>
-            {household?.kind === 'demo' ? (
-              <Pill tone="warn">Demo</Pill>
-            ) : (
-              <Pill tone="own">Real</Pill>
-            )}
-          </div>
         </div>
-
-        <p className="note mt-2">
-          These are shown rather than editable for now. Each becomes editable as the screen that
-          depends on it is built — a settable value nothing reads yet would be a promise the app
-          has not made.
-        </p>
       </section>
 
-      {/*
-        Members and invitations, which used to be a tab of its own.
-        Administering who is in a household is a household setting, and having
-        it as a peer of Expenses implied it was somewhere you go regularly. It
-        is somewhere you go twice a year.
-      */}
-      <section>
-        <div className="grouphead">
-          <h2>Members and invitations</h2>
-          <span className="who">Invite-only, single use, expiring</span>
-        </div>
-        <HouseholdScreen key={resets} householdId={householdId} />
-      </section>
+      <HouseholdScreen key={resets} householdId={householdId} />
 
       {/*
-        Data. The prototype's group also holds the template, the upload, the
-        export and deleting a household; each arrives with the thing behind
-        it. Only the reset exists today, and only a demo household has one — on
-        a real household the row would be offering something the database will
-        always refuse.
+        Data. The prototype's group also holds the template, the upload, the export and deleting a household; each
+        arrives with the thing behind it. Only the reset exists today, and only a demo household has one: on a real
+        household the row would be offering something the database will always refuse.
       */}
       {household?.kind === 'demo' && householdId !== null && (
         <section>
           <div className="grouphead">
             <h2>Data</h2>
-            <span className="who">
-              {role === 'owner' ? 'Owner only' : 'Owner only · you see it read-only'}
-            </span>
           </div>
 
           <ResetDemoHousehold
@@ -256,29 +223,6 @@ export function SettingsScreen({
           />
         </section>
       )}
-
-      <Card title="Spending plan">
-        <p className="note">
-          Categories and their planned figures live together on the Expenses screen, because they
-          are the same decision: naming a category and saying what it should cost is one thought,
-          and separating them would mean visiting two screens to set one envelope. The
-          household-wide parts — nesting, reordering, archiving policy — move here when they
-          exist.
-        </p>
-      </Card>
-
-      <Card
-        title="Not here yet"
-        collapsible
-        defaultOpen={false}
-        summary="What this screen will hold as the things behind each row get built."
-      >
-        <p className="note">
-          Number grouping, auto-lock, biometric unlock, the opening screen, allocation profile,
-          price sources, the monthly snapshot and the export flows all belong on this screen. Each
-          arrives with the thing it configures rather than ahead of it.
-        </p>
-      </Card>
     </div>
   );
 }
@@ -290,7 +234,7 @@ export function SettingsScreen({
  * the two lists are the whole decision: somebody who has been logging real
  * spending in the demo household to try the entry flow should find that out
  * here, not afterwards. The database refuses anyone but the owner, anything
- * without a second factor, and any household not marked demo — this screen only
+ * without a second factor, and any household not marked demo; this screen only
  * avoids offering what would be refused.
  */
 function ResetDemoHousehold({
@@ -312,32 +256,30 @@ function ResetDemoHousehold({
   return (
     <>
       <div className="setgrp">
-        <div className="setrow">
-          <div>
-            <div className="sk">Reset the demo household</div>
-            <div className="sd">Wipes and reseeds it — your real household is untouched</div>
-          </div>
-          {isOwner ? (
-            !confirming && (
-              <Button
-                type="button"
-                variant="quiet"
-                onClick={() => {
-                  setConfirming(true);
-                  setDone(false);
-                  setProblem(null);
-                }}
-              >
-                Reset…
-              </Button>
-            )
-          ) : (
-            <Pill tone="neutral">Owner only</Pill>
-          )}
-        </div>
+        <button
+          type="button"
+          className="setrow setrow-button"
+          disabled={!isOwner}
+          aria-expanded={isOwner ? confirming : undefined}
+          onClick={() => {
+            setConfirming((was) => !was);
+            setDone(false);
+            setProblem(null);
+          }}
+        >
+          <span className="setrow-text">
+            <span className="sk" style={{ color: isOwner ? 'var(--coral)' : 'var(--muted)' }}>
+              Reset the demo household
+            </span>
+            <span className="sd">
+              {isOwner ? 'Wipes and reseeds it. Your real household is untouched.' : 'Only the owner can reset it.'}
+            </span>
+          </span>
+          {isOwner && <Chevron />}
+        </button>
       </div>
 
-      {confirming && (
+      {confirming && isOwner && (
         <div className="mt-3">
           <p className="text-caption" style={{ color: 'var(--ink-2)' }}>
             Reset <strong>{householdName}</strong>? Every expense, category, budget, holding,
@@ -347,7 +289,7 @@ function ResetDemoHousehold({
           </p>
           <p className="text-caption mt-2" style={{ color: 'var(--ink-2)' }}>
             What stays: the household itself, everyone who signs in and their roles, invitations,
-            and the activity history — which will record each deletion under your name.
+            and the activity history, which will record each deletion under your name.
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-3">
             <Button

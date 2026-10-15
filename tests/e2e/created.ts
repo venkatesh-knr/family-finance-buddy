@@ -76,7 +76,7 @@ export async function testRowsVisible(page: Page): Promise<string[]> {
 export async function resetHousehold(page: Page) {
   await page.goto('/#settings');
   await loaded(page);
-  await page.getByRole('button', { name: 'Reset…' }).click();
+  await page.getByRole('button', { name: /Reset the demo household/ }).click();
   await page.getByRole('button', { name: 'Yes, wipe and reseed it' }).click();
   await expect(page.getByRole('status').filter({ hasText: /^Reset\./ })).toBeVisible({ timeout: 60_000 });
 }
