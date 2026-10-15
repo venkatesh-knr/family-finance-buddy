@@ -1,28 +1,22 @@
 /**
- * The expenses screen: a list, and a quick-add field.
+ * The expenses screen, in the order of its artboard (docs/design/vibrant-canvas.html, Expenses): the month's
+ * spending and how it is going, a quick add folded to an amount, the plan beside what has been spent, and what was
+ * recorded most recently.
  *
- * One screen, deliberately. It is the whole of the walking skeleton's UI — the
- * point is that a figure typed here travels through the repository, the
- * policies and the change stream and comes back on another device.
+ * A figure typed here travels through the repository, the policies and the change stream and comes back on another
+ * device; the comparison is read in whatever this device asked for, and the ledger stays in what was entered.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { formatIsoDate } from '../../lib/dates.ts';
-import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
-import { todayInIst } from '../../repo/expenses.ts';
-import type { LiveStatus } from '../../repo/expenses.ts';
-import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Button, Card, Caveat, EditButton, Field, Pill, Problem, Table } from '../../ui/primitives.tsx';
-import { ShowMore, useReveal } from '../../ui/ShowMore.tsx';
-import { JoinHousehold } from '../household/JoinHousehold.tsx';
-import { BudgetVsActual } from './BudgetVsActual.tsx';
-import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
-import { memberMarks, type MemberMark } from './memberMark.ts';
-
-/** For an entry whose member is somehow not in the list: the mark still says something. */
-const FALLBACK_MARK: MemberMark = { text: '?', showName: true };
-import { useExpenses } from './useExpenses.ts';
+import { useEffect, useState } from 'react';
 import { listRates, type FxRate } from '../../repo/rates.ts';
+import type { Expense as ExpenseRow } from '../../repo/types.ts';
+import { Card, Problem } from '../../ui/primitives.tsx';
+import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import { PlanCard, SpentHero, useBudgetComparison } from './budgetView.tsx';
+import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
+import { QuickAdd } from './QuickAdd.tsx';
+import { RecentList } from './RecentList.tsx';
+import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({
   privacy,
@@ -35,6 +29,9 @@ export function ExpensesScreen({
   displayCurrency: string;
 }) {
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
+  // "File them" on the plan: the ledger shows only the entries with no category in the period the plan was
+  // showing, until it is left.
+  const [uncategorisedIn, setUncategorisedIn] = useState<{ start: string; end: string } | null>(null);
 
   /**
    * The rates this household has recorded.
@@ -97,56 +94,53 @@ export function ExpensesScreen({
   if (listing === null) return null;
 
   // The household's own currency until this device says otherwise.
-  const reading = displayCurrency === '' ? (listing?.household.baseCurrency ?? 'INR') : displayCurrency;
+  const reading = displayCurrency === '' ? (listing.household.baseCurrency ?? 'INR') : displayCurrency;
+
+  const quickAdd = listing.viewer.canRecord ? (
+    <QuickAdd listing={listing} onAdd={add} />
+  ) : (
+    <Card title="Quick add">
+      <p className="note">
+        Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
+        database enforces that, not this screen.
+      </p>
+    </Card>
+  );
 
   return (
     <div className="flex flex-col gap-4.5">
-      {listing.viewer.canRecord ? (
-        <QuickAdd listing={listing} onAdd={add} />
-      ) : (
-        <Card title="Quick add">
-          <p className="note">
-            Your role in this household is <strong>{listing.viewer.role}</strong>, which can read
-            but not record. The database enforces that, not this screen.
-          </p>
-        </Card>
-      )}
-
       {/*
-        The comparison is read in whatever this device asked for; the ledger
-        below stays in what was entered. A ledger is the record, and the rule
-        is to never overwrite an original figure with a converted one — the
-        currency pill on a foreign row says which is which.
-      */}
-      {/*
-        The comparison adds up the entries it can see and sets them against the
-        household's plan. A contributor can read only their own entries, so for
-        them it would show their spending as the household's, a partial figure
-        that looks whole. They get their own ledger below and the household's
-        totals on the Summary screen.
+        The comparison adds up the entries it can see and sets them against the household's plan. A contributor can
+        read only their own entries, so for them it would show their spending as the household's, a partial figure
+        that looks whole. They get their own ledger below and the household's totals on the Summary screen.
       */}
       {listing.viewer.role === 'contributor' ? (
-        <Card title="Budget vs actual">
-          <p className="note">
-            You can read your own entries. The household&rsquo;s spending, by category, is on the
-            Summary screen.
-          </p>
-        </Card>
+        <>
+          {quickAdd}
+          <Card title="This month">
+            <p className="note">
+              You can read your own entries. The household&rsquo;s spending, by category, is on the Summary screen.
+            </p>
+          </Card>
+        </>
       ) : (
-        <BudgetVsActual
+        <Budget
+          quickAdd={quickAdd}
           categories={listing.categories}
           budgets={budgets}
           expenses={listing.expenses}
           members={listing.members}
-          // Null means the sums could not be read, which is not the same as
-          // nobody having any. The card says which it is rather than showing a
-          // total that might be short by an unknown amount.
+          // Null means the sums could not be read, which is not the same as nobody having any. The plan says which
+          // it is rather than showing a total that might be short by an unknown amount.
           personalSpend={personalSpend}
           today={today}
           fy={fy}
           currency={reading}
           rates={rates}
           privacy={privacy}
+          onFile={(period) => {
+            setUncategorisedIn(period);
+          }}
         />
       )}
 
@@ -169,547 +163,43 @@ export function ExpensesScreen({
         />
       )}
 
-      <ExpenseList
+      <RecentList
         listing={listing}
+        today={today}
         onEdit={listing.viewer.canRecord ? setEditing : null}
         privacy={privacy}
         refreshing={refreshing}
         live={live}
         liveDetail={liveDetail}
+        uncategorisedIn={uncategorisedIn}
+        onShowAll={() => {
+          setUncategorisedIn(null);
+        }}
       />
     </div>
   );
 }
 
-function QuickAdd({
-  listing,
-  onAdd,
-}: {
-  listing: ExpenseListing;
-  onAdd: (expense: Parameters<ReturnType<typeof useExpenses>['add']>[0]) => Promise<void>;
-}) {
-  // A contributor may only file under their own name, so they are offered only
-  // their own name. The policy would refuse anything else; a form that offered
-  // it would be teaching people the app is unreliable rather than that they
-  // lack the permission.
-  const selectableMembers = useMemo(
-    () =>
-      listing.viewer.canFileForOthers
-        ? listing.members.filter((member) => !member.isArchived)
-        : listing.members.filter((member) => member.id === listing.viewer.memberId),
-    [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
-  );
-
-  const [amount, setAmount] = useState('');
-  const [payee, setPayee] = useState('');
-  const [date, setDate] = useState(todayInIst);
-  const [memberId, setMemberId] = useState(listing.viewer.memberId);
-  const [categoryId, setCategoryId] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  /**
-   * Private, and off by default (§20).
-   *
-   * "A shared ledger is the premise of the app"; a form that remembered the
-   * tick would slowly turn one into something else without anybody deciding
-   * to. So it resets after every entry, and privacy is a choice made per
-   * entry rather than a mode somebody is left in.
-   */
-  const [personal, setPersonal] = useState(false);
-
-  const currency = listing.household.baseCurrency;
-
-  const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      setProblem(null);
-
-      let minor: bigint;
-      try {
-        minor = parseAmountToMinor(amount, currency);
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'That is not an amount.');
-        return;
-      }
-
-      if (minor <= 0n) {
-        setProblem('An expense is a positive amount.');
-        return;
-      }
-
-      setBusy(true);
-      try {
-        await onAdd({
-          householdId: listing.household.id,
-          memberId,
-          // Blank stays blank. Guessing a category to avoid an empty field
-          // would file spending somewhere nobody chose, and the comparison
-          // downstream would treat that guess as a fact.
-          categoryId: categoryId === '' ? null : categoryId,
-          date,
-          amount: money(minor, currency),
-          payee: payee.trim() === '' ? null : payee.trim(),
-          visibility: personal ? 'personal' : 'household',
-        });
-        setAmount('');
-        setPayee('');
-        setPersonal(false);
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'Could not save that.');
-      } finally {
-        setBusy(false);
-      }
-    },
-    [amount, categoryId, currency, date, listing.household.id, memberId, onAdd, payee, personal],
-  );
-
-  return (
-    <Card
-      title="Quick add"
-      aside={
-        <span className="flex items-center gap-2.5">
-          <span className="note">{listing.household.name}</span>
-          {/*
-            Said once, on the heading, rather than as a paragraph under the form
-            that was read on the first day and scrolled past on every day after.
-          */}
-          <Caveat tone="info" label="How an entry is recorded">
-            Dates are the calendar day in India, whatever this device is set to. Amounts are stored
-            in paise, in {currency}, exactly as entered.
-          </Caveat>
-        </span>
-      }
-    >
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          void submit(event);
-        }}
-      >
-        <div className="w-full sm:w-[130px] sm:shrink-0">
-          <Field
-            label={`Amount (${currency})`}
-            numeric
-            inputMode="decimal"
-            placeholder="0.00"
-            required
-            value={amount}
-            onChange={(event) => {
-              setAmount(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-auto sm:min-w-[160px] sm:flex-1">
-          <Field
-            label="Payee"
-            placeholder="Optional"
-            value={payee}
-            onChange={(event) => {
-              setPayee(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-[150px] sm:shrink-0">
-          <Field
-            label="Date"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              setDate(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="label">Category</span>
-          <select
-            className="field"
-            value={categoryId}
-            onChange={(event) => {
-              setCategoryId(event.target.value);
-            }}
-          >
-            <option value="">Uncategorised</option>
-            {listing.categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Member</span>
-          <select
-            className="field"
-            value={memberId}
-            onChange={(event) => {
-              setMemberId(event.target.value);
-            }}
-          >
-            {selectableMembers.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" disabled={busy || amount.trim() === ''}>
-          {busy ? 'Saving…' : 'Add'}
-        </Button>
-
-        {/*
-          Offered only when filing under your own name. A private entry is
-          readable by the member it belongs to, so marking somebody else's
-          entry private would hide it from them and from you both — the
-          database would accept it and nobody could ever read it again.
-        */}
-        {memberId === listing.viewer.memberId && (
-          <label className="flex w-full items-start gap-2">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={personal}
-              onChange={(event) => {
-                setPersonal(event.target.checked);
-              }}
-            />
-            <span className="text-caption" style={{ color: 'var(--ink-2)' }}>
-              <strong>Keep this private</strong> — only you will see it. The amount still counts
-              in the household total, shown to everyone else as one figure without the detail.
-            </span>
-          </label>
-        )}
-      </form>
-
-      {problem !== null && (
-        <div className="mt-3">
-          <Problem>{problem}</Problem>
-        </div>
-      )}
-
-    </Card>
-  );
-}
-
-function ExpenseList({
-  listing,
-  privacy,
-  refreshing,
-  live,
-  liveDetail,
-  onEdit,
-}: {
-  listing: ExpenseListing;
-  privacy: boolean;
-  refreshing: boolean;
-  live: LiveStatus;
-  liveDetail: string | null;
-  /** Null for a viewer, who may read every entry and correct none. */
-  onEdit: ((expense: ExpenseRow) => void) | null;
-}) {
-  const all = listing.expenses;
-  // Ten at a time; the rest as the list is scrolled to, or on the button.
-  const reveal = useReveal(all.length);
-  const expenses = all.slice(0, reveal.shown);
-
-  // A member is an initial in a ring of their colour; two that collide grow to
-  // two letters, and the name comes back only where letters cannot separate them.
-  const marks = useMemo(() => memberMarks(listing.members), [listing.members]);
-
-  // Resolved once for the whole list rather than searched per row: a category
-  // is referenced by id everywhere because "renaming a category changes the
-  // label only", so the name has to be looked up somewhere, and the ledger is
-  // the wrong place to do it thirty times.
-  const categoryNames = useMemo(
-    () => new Map(listing.categories.map((category) => [category.id, category.name])),
-    [listing.categories],
-  );
-
-  return (
-    <Card
-      title="Expenses"
-      aside={
-        <span className="flex items-center gap-2.5">
-          <LiveIndicator live={live} liveDetail={liveDetail} />
-          <span className="note" aria-live="polite">
-            {refreshing
-              ? 'Updating…'
-              : reveal.hidden > 0
-                ? `${String(expenses.length)} of the ${String(all.length)} most recent`
-                : `${String(all.length)} most recent`}
-          </span>
-        </span>
-      }
-    >
-      {expenses.length === 0 ? (
-        <p className="note">
-          Nothing recorded yet. The first amount you add above will appear here, and on any other
-          device signed in to this household.
-        </p>
-      ) : (
-        <>
-          {/*
-            Two renderings, not one that scrolls.
-            
-            Four columns do not fit a phone, and a table in a sideways-scrolling
-            box hides the amount — the one column anybody opened the screen for.
-            So a phone gets a stacked list where the figure is always visible,
-            and the table starts where there is room for it.
-          */}
-          <ul className="row-separated sm:hidden">
-            {expenses.map((expense) => (
-              <StackedRow
-                key={expense.id}
-                expense={expense}
-                mark={marks.get(expense.member.id) ?? FALLBACK_MARK}
-                categoryName={
-                  expense.categoryId === null ? null : (categoryNames.get(expense.categoryId) ?? null)
-                }
-                privacy={privacy}
-                onEdit={onEdit}
-              />
-            ))}
-          </ul>
-
-          {/*
-            The shared Table primitive rather than a hand-rolled one: it
-            carries the header styling, the hairline rows and the scroll
-            wrapper that keeps the page body from ever scrolling sideways.
-          */}
-          <div className="hidden sm:block">
-            <Table label="Recent expenses">
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Payee</th>
-                  <th scope="col">Category</th>
-                  <th scope="col">Member</th>
-                  <th scope="col" className="num-col">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((expense) => (
-                  <Row
-                    key={expense.id}
-                    expense={expense}
-                    mark={marks.get(expense.member.id) ?? FALLBACK_MARK}
-                    categoryName={
-                      expense.categoryId === null
-                        ? null
-                        : (categoryNames.get(expense.categoryId) ?? null)
-                    }
-                    privacy={privacy}
-                    onEdit={onEdit}
-                  />
-                ))}
-              </tbody>
-            </Table>
-          </div>
-
-          <ShowMore hidden={reveal.hidden} onMore={reveal.more} noun="expenses" />
-        </>
-      )}
-    </Card>
-  );
-}
-
 /**
- * Whether this screen is actually live.
- *
- * Shown rather than assumed: a channel that never joined behaves exactly like
- * one with nothing to report, so without this the list silently goes stale and
- * a figure entered on another device never arrives.
+ * The month's figure, quick add, and the plan, in that order. A component of its own because the hook that reads
+ * the plan against the spending feeds the first and the third, and quick add sits between them.
  */
-function LiveIndicator({ live, liveDetail }: { live: LiveStatus; liveDetail: string | null }) {
-  if (live === 'live') {
-    return <Pill tone="ok">Live</Pill>;
-  }
-  if (live === 'connecting') {
-    return <Pill tone="neutral">Connecting</Pill>;
-  }
-  return (
-    <span title={liveDetail ?? 'The change stream did not connect.'}>
-      <Pill tone="due">Not live</Pill>
-    </span>
-  );
-}
-
-/**
- * One expense on a phone.
- *
- * The amount leads, because it is what the eye is looking for, and it keeps the
- * tabular figures so a column of them still lines up. Everything else drops to
- * a second line rather than competing for width.
- */
-function StackedRow({
-  expense,
-  mark,
-  categoryName,
+function Budget({
+  quickAdd,
+  onFile,
   privacy,
-  onEdit,
-}: {
-  expense: ExpenseRow;
-  mark: MemberMark;
-  /** Null for an uncategorised entry — "a state to show, not a gap to fill in". */
-  categoryName: string | null;
+  ...inputs
+}: Parameters<typeof useBudgetComparison>[0] & {
+  quickAdd: React.ReactNode;
+  onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
-  onEdit: ((expense: ExpenseRow) => void) | null;
 }) {
-  // A voided entry is struck through and says Voided: not dimmed, which put its figures under 4.5:1 and left the
-  // meaning to a lighter shade.
-  const struck = expense.isVoided ? 'line-through' : undefined;
+  const view = useBudgetComparison(inputs);
   return (
-    <li className="flex flex-col gap-1 py-2.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <span style={{ color: 'var(--ink)', textDecoration: struck }}>
-          {expense.payee ?? <span className="note">No payee</span>}
-        </span>
-        <span className="tabular-nums whitespace-nowrap" style={{ color: 'var(--ink)', textDecoration: struck }}>
-          {formatMoney(expense.amount, { privacy })}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="tabular-nums note">{formatIsoDate(expense.date)}</span>
-        {/*
-          The category, which the ledger simply never showed — the id was
-          loaded and the name was never resolved, so an entry gave no clue what
-          it had been filed under. Uncategorised says so rather than showing
-          nothing, because a blank reads as "no category column" rather than
-          as "this one has no category".
-        */}
-        <span className="note">{categoryName ?? 'Uncategorised'}</span>
-        <MemberTag member={expense.member} mark={mark} />
-        {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
-        {expense.isVoided && <Pill tone="due">Voided</Pill>}
-        {/*
-          A row reaching this screen at all means the caller may read it, so a
-          personal one here is always the caller's own. "A privacy control
-          nobody can observe working is indistinguishable from one that does
-          nothing" (§20) — this is where it is observed.
-        */}
-        {expense.visibility === 'personal' && <Pill tone="own">Private</Pill>}
-        {/*
-          Not offered on a voided entry. Voiding is the end of a row's life:
-          "after that, void and re-enter", so the next step is a new entry
-          rather than an edit to a dead one.
-        */}
-        {onEdit !== null && !expense.isVoided && (
-          <EditButton
-            label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}`}
-            onClick={() => {
-              onEdit(expense);
-            }}
-          />
-        )}
-      </div>
-    </li>
-  );
-}
-
-function Row({
-  expense,
-  mark,
-  categoryName,
-  privacy,
-  onEdit,
-}: {
-  expense: ExpenseRow;
-  mark: MemberMark;
-  /** Null for an uncategorised entry. */
-  categoryName: string | null;
-  privacy: boolean;
-  onEdit: ((expense: ExpenseRow) => void) | null;
-}) {
-  const foreign = expense.amount.currency !== 'INR';
-  // Struck through and labelled Voided, not dimmed: dimming put its figures under 4.5:1.
-  const struck = expense.isVoided ? 'line-through' : undefined;
-
-  return (
-    <tr>
-      <td className="num px-2.5 py-2 align-top" style={{ color: 'var(--muted)' }}>
-        {formatIsoDate(expense.date)}
-      </td>
-      <td className="px-2.5 py-2 align-top" style={{ color: 'var(--ink)' }}>
-        <span style={{ textDecoration: struck }}>{expense.payee ?? <span className="note">—</span>}</span>
-        {expense.isVoided && (
-          <>
-            {' '}
-            <Pill tone="due">Voided</Pill>
-          </>
-        )}
-        {expense.visibility === 'personal' && (
-          <>
-            {' '}
-            <Pill tone="own">Private</Pill>
-          </>
-        )}
-        {/*
-          Not offered on a voided entry: voiding is the end of a row's life,
-          and the next step is a new entry rather than an edit to a dead one.
-        */}
-        {onEdit !== null && !expense.isVoided && (
-          <>
-            {' '}
-            <EditButton
-              label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}`}
-              onClick={() => {
-                onEdit(expense);
-              }}
-            />
-          </>
-        )}
-      </td>
-      <td className="px-2.5 py-2 align-top" style={{ color: 'var(--ink-2)' }}>
-        {categoryName ?? <span className="note">Uncategorised</span>}
-      </td>
-      <td className="px-2.5 py-2 align-top">
-        <MemberTag member={expense.member} mark={mark} />
-      </td>
-      <td className="num px-2.5 py-2 text-right align-top" style={{ color: 'var(--ink)' }}>
-        <span style={{ textDecoration: struck }}>{formatMoney(expense.amount, { privacy })}</span>
-        {foreign && (
-          <>
-            {' '}
-            <Pill tone="neutral">{expense.amount.currency}</Pill>
-          </>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-/**
- * Whose entry it is: the member's initials in a ring of their colour.
- *
- * The name printed on every row was the loudest thing on the line after the
- * amount, and it said the same two words down the whole list. The initial is
- * text, so ownership is still not carried by colour alone, and the full name is
- * the accessible name and the tooltip. Where two members share an initial the
- * ones that collide grow to two letters, and only where even that does not
- * separate them is the name shown as well (see memberMark.ts).
- */
-function MemberTag({ member, mark }: { member: Member; mark: MemberMark }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span
-        className="member-mark"
-        role="img"
-        aria-label={member.displayName}
-        title={member.displayName}
-        style={{ borderColor: `var(--${member.colour})` }}
-      >
-        {mark.text}
-      </span>
-      {mark.showName && <span style={{ color: 'var(--ink-2)' }}>{member.displayName}</span>}
-      {member.isArchived && <Pill tone="neutral">Archived</Pill>}
-    </span>
+    <>
+      <SpentHero view={view} privacy={privacy} />
+      {quickAdd}
+      <PlanCard view={view} privacy={privacy} onFile={onFile} />
+    </>
   );
 }

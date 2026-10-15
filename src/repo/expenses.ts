@@ -36,6 +36,12 @@ import {
 const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 
 /**
+ * How many entries a listing holds. A screen that adds the listing up is adding up at most this many, so when a
+ * listing comes back this full it has to say its total may be short (a month or a year can hold more).
+ */
+export const EXPENSE_LISTING_LIMIT = 50;
+
+/**
  * The most recent spends for the household the caller belongs to, newest first,
  * together with the household, the members and who the caller is within it.
  */
@@ -43,7 +49,7 @@ export async function listExpenses(
   options: { limit?: number; householdId?: Uuid } = {},
 ): Promise<ExpenseListing> {
   const client = supabase();
-  const limit = options.limit ?? 50;
+  const limit = options.limit ?? EXPENSE_LISTING_LIMIT;
 
   const { data: user, error: userError } = await client.auth.getUser();
   if (userError !== null) throw asRepositoryError(userError);
