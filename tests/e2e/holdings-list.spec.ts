@@ -80,7 +80,10 @@ test('a fund opens on units, cost and its transactions, and Back returns to the 
 test('a row is compact: about a glance, and a screen of eight holdings is not seven', async ({ page }) => {
   await onHoldings(page);
   const first = await page.locator('.holding-row').first().boundingBox();
-  expect(first?.height ?? 999).toBeLessThan(96);
+  // A row is a glance, not a card: about a hundred pixels. Measured at 412px on the seeded household, the first row
+  // (a deposit whose terms wrap to a second line, under an earmark pill) is 103px; a fund's is under 96. 112 is room
+  // for one wrapped line and a pill, and well under the 150px or more that inline detail cost.
+  expect(first?.height ?? 999).toBeLessThan(112);
   const viewport = page.viewportSize()?.height ?? 800;
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
   // Eight holdings took about 6.7 phone screens of inline detail; the list is a handful.

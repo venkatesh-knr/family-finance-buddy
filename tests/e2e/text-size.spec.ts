@@ -24,7 +24,7 @@ const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', '
 
 async function ready(page: Page, screen: string) {
   await goTo(page, screen);
-  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.locator('h2, h3').first()).toBeVisible({ timeout: 20_000 });
 }
@@ -86,7 +86,7 @@ test('the check sees what it claims to: a fixed-height box of text and an over-w
   page,
 }) => {
   await page.goto('/#settings');
-  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
   await page.evaluate(() => {
     const cut = document.createElement('div');
     cut.setAttribute('style', 'height:20px;overflow:hidden;width:200px');

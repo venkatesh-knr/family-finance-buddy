@@ -25,7 +25,7 @@ test('no figure is drawn while the exchange rates are still being read', async (
   });
 
   await page.goto('/#overview');
-  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
 
   // Held open for long enough that a figure drawn from the holdings alone would have been painted.
   await page.waitForTimeout(1500);

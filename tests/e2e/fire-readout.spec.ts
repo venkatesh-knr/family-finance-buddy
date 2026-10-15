@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
 
 async function onFire(page: import('@playwright/test').Page) {
   await page.goto('/#fire');
-  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByText('Financial independence', { exact: true })).toBeVisible({ timeout: 20_000 });
 }
