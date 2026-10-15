@@ -59,12 +59,16 @@ When two documents disagree, this is the order. Say which one you applied.
    - `prototype.html` is superseded visually. It is the screen inventory, not a
      visual reference. Never report "does not match the prototype" as a finding
      on its own.
-   - `vibrant-canvas.html` is a static export of the four design artboards, the
-     picture `icons.md` was read off. It is drawn dark-only, so no hex in it
-     settles light theme, and it contains at least one known error (the `other`
-     glyph, `icons.md` §3). Never report "does not match the canvas" as a
-     finding on its own either; compare against `icons.md`, and use the canvas
-     only to see what a rule in it means.
+   - `vibrant-canvas.html` is a static export of the design artboards; the index at the top of
+     the file lists them and says when it was exported. It is the authority for **layout and
+     hierarchy** (what is on a screen, in what order, what is most prominent) and not for values:
+     colour, size, radius and glyph come from `tokens.md` and `icons.md`, which win where the
+     board disagrees. It is drawn dark-only, so no hex in it settles light theme, and it contains
+     at least one known error (the `other` glyph, `icons.md` §3). **A visible difference between
+     a screen and its artboard that is not a `decided` Departure (the owner's acceptance) is a finding.** The review
+     compares the screens-suite capture with the artboard, both as images. Figures on the boards
+     after the first four are illustrative, so a different number is never a finding. The
+     Artboard column of `conformance.md` names the board for each screen.
 
 `docs/build-plan.md` tells you what stage the project is in and what is not
 supposed to exist yet. Read it before you report anything missing.
@@ -88,6 +92,8 @@ document is in neither this list nor the text above.
 
 - `blueprint.html` — a rendered presentation of `docs/blueprint.md`. The markdown is the source, and where the two differ the markdown is right.
 - `build-plan.html` — a rendered presentation of `docs/build-plan.md`, on the same terms.
+- `data-residency.md` — a reference recording where household data lives and the alternatives set aside. It states no requirement and carries no invariant IDs.
+- `trust-and-security.md` — a backlog of confidence-raising enhancements within the current design. Nothing in it is scheduled; an item becomes a specification when it is planned into `docs/build-plan.md`.
 - `icon-concepts.html` — concepts for the app's own icon, not for the asset-class tiles (`icons.md` says so). A palette reference that `scripts/check-design-tokens.mjs` compares, and not a specification of any screen.
 <!-- authority-exclusions:end -->
 
@@ -131,7 +137,7 @@ This list exists because without it you will produce the same noise every run.
 - Anything one of the `scripts/check-*` files already catches. Run them instead
   and report only a failure they produce.
 - Anything recorded in the **Departures** table of
-  `docs/design/conformance.md`. Those are decisions. If you think a departure is
+  `docs/design/conformance.md` with Status `decided`. Those are decisions. A `proposed` or `unreviewed` row is not one: the difference it records is still a finding, noted as already raised. If you think a departure is
   now wrong — because the thing it was waiting for has since been built — say
   so as a separate note at the end, not as a finding.
 - Anything belonging to a stage `docs/build-plan.md` says has not started. An

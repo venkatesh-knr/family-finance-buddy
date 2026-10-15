@@ -18,6 +18,8 @@
  *      catches a row left behind after a rename.
  *   4. Every row of the Departures table has a Status (unreviewed, proposed or
  *      decided), because a departure is the owner's to accept.
+ *   5. Every screen row names its artboard in the canvas, or says none, because
+ *      layout and hierarchy come from the artboard (CLAUDE.md).
  *
  * What it does NOT check, and cannot: whether a screen looks like its mock,
  * whether the hierarchy matches, whether the copy reads right. That comparison
@@ -28,10 +30,12 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
+import { artboardIds, checkArtboards } from './lib/artboards.mjs';
 import { checkDepartures } from './lib/departures.mjs';
 
 const PROTOTYPE = 'docs/design/prototype.html';
 const LEDGER = 'docs/design/conformance.md';
+const CANVAS = 'docs/design/vibrant-canvas.html';
 
 const prototype = readFileSync(PROTOTYPE, 'utf8');
 const ledger = readFileSync(LEDGER, 'utf8');
@@ -51,10 +55,16 @@ if (screens.length === 0) {
   process.exit(1);
 }
 
-/** Ledger rows: | item | kind | status | where | */
-const rows = [...ledger.matchAll(/^\|\s*([a-z0-9-]+)\s*\|\s*(screen|component)\s*\|\s*(built|partial|not-built)\s*\|([^|]*)\|/gm)].map(
-  (m) => ({ item: m[1], kind: m[2], status: m[3], where: m[4].trim() }),
-);
+/**
+ * Ledger rows: | item | screen | status | artboard | where |, and | item | component | status | where |.
+ * A screen has the extra column, so the rest of the row is split after the match.
+ */
+const rows = [...ledger.matchAll(/^\|\s*([a-z0-9-]+)\s*\|\s*(screen|component)\s*\|\s*(built|partial|not-built)\s*\|([^\n]*)\|\s*$/gm)].map((m) => {
+  const cells = (m[4] ?? '').split('|');
+  return m[2] === 'screen'
+    ? { item: m[1], kind: m[2], status: m[3], artboard: (cells[0] ?? '').trim(), where: cells.slice(1).join('|').trim() }
+    : { item: m[1], kind: m[2], status: m[3], artboard: null, where: cells.join('|').trim() };
+});
 
 if (rows.length === 0) {
   console.log(`  ✗ No rows parsed from ${LEDGER}. Has the table changed shape?`);
@@ -115,6 +125,14 @@ for (const row of rows) {
  * unreviewed, proposed or decided, so a reason written down is not mistaken for a decision made.
  */
 problems.push(...checkDepartures(ledger));
+
+/** Layout and hierarchy come from the artboard, so each screen names one or says none. */
+problems.push(
+  ...checkArtboards(
+    rows.filter((r) => r.kind === 'screen'),
+    artboardIds(readFileSync(CANVAS, 'utf8')),
+  ),
+);
 
 if (problems.length > 0) {
   console.log('  ✗ The design ledger and the code disagree:\n');
