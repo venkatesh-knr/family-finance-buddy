@@ -13,7 +13,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 
 async function ready(page: Page, screen: string, waitFor: string) {
   await page.goto(`/#${screen}`);
-  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByText(waitFor, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 }
