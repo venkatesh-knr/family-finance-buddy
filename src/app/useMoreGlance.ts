@@ -14,13 +14,17 @@ export interface TaxGlance {
   readonly tax: Money | null;
   /** What is left of the equity allowance, or null where no rule covers the year. */
   readonly allowanceUnused: Money | null;
+  /** Sales that could not be placed, and short-term gains taxed at the slab: what the figure leaves out. */
+  readonly unplacedSales: number;
+  readonly atSlab: Money;
 }
 
 /**
  * What More says under Tax and Insurance, read from the same figures those screens use.
  *
- * Read only for the places that person can open, and not at all until they are asked for: a household id of null
- * reads nothing. A line that has not arrived is absent and the row still opens; nothing waits on it.
+ * Read for the places that person can open. A line that has not arrived is absent and the row still opens;
+ * nothing waits on it. (The holdings read has no way to be told to wait, so it loads for the first household when
+ * given none; More always wants the Tax line, so it is always wanted.)
  */
 export function useMoreGlance(options: { householdId: string | null; wantsTax: boolean; wantsInsurance: boolean }) {
   const { householdId, wantsTax, wantsInsurance } = options;
@@ -43,6 +47,8 @@ export function useMoreGlance(options: { householdId: string | null; wantsTax: b
       tax: figures.total,
       allowanceUnused:
         allowance === null ? null : money(allowance.available.minor - allowance.used.minor, allowance.available.currency),
+      unplacedSales: gains.excluded.length,
+      atSlab: figures.otherShortAtSlab,
     };
   }, [wantsTax, listing, rows, today, taxRules, taxRulesFailed]);
 

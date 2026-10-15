@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { AppScreen } from '../domain/access.ts';
 import { formatMoney } from '../lib/money.ts';
 import { hashFor } from './route.ts';
-import { policiesPhrase, profileLine, renewalPill, taxYearLabel } from './moreGlance.ts';
+import { policiesPhrase, profileLine, renewalPill, taxLine, taxYearLabel } from './moreGlance.ts';
 import { useMoreGlance } from './useMoreGlance.ts';
 
 /**
@@ -86,12 +86,23 @@ export function MoreScreen({
     switch (id) {
       case 'tax': {
         if (tax === null) return { text: PURPOSE.tax ?? '', pill: null };
-        const gainsTax = tax.tax === null ? '' : ` · capital gains tax ${formatMoney(tax.tax, { privacy })}`;
+        const year = taxYearLabel(tax.fy);
+        const said = taxLine({
+          hasTotal: tax.tax !== null,
+          unplacedSales: tax.unplacedSales,
+          atSlabMinor: tax.atSlab.minor,
+        });
+        // Named as the Tax screen names it, and stated only when nothing was left out of it; the allowance pill
+        // is withheld under the same condition, since an unplaced equity sale would overstate what is unused.
+        if (said.kind === 'unplaced') {
+          return { text: `${year} · ${String(said.sales)} ${said.sales === 1 ? 'sale' : 'sales'} not counted`, pill: null };
+        }
+        if (said.kind === 'see-the-working' || tax.tax === null) return { text: `${year} · the working is on the Tax screen`, pill: null };
         const unused =
           tax.allowanceUnused !== null && tax.allowanceUnused.minor > 0n
             ? `${formatMoney(tax.allowanceUnused, { privacy })} allowance unused`
             : null;
-        return { text: `${taxYearLabel(tax.fy)}${gainsTax}`, pill: unused };
+        return { text: `${year} · tax on gains ${formatMoney(tax.tax, { privacy })}`, pill: unused };
       }
       case 'insurance':
         return insurance === null
@@ -122,10 +133,8 @@ export function MoreScreen({
                   onOpen(id);
                 }}
               >
-                <span className="more-tile" aria-hidden="true">
+                <span className="asset-tile" aria-hidden="true" style={{ ['--tile' as string]: 'var(--muted)' }}>
                   <svg
-                    width="20"
-                    height="20"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"

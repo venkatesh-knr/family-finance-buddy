@@ -245,6 +245,7 @@ function SignedIn({
           onTogglePrivacy={() => {
             setPrivacy((on) => !on);
           }}
+          showPrivacy={screen === 'tax' || screen === 'insurance'}
           householdKind={current?.household.kind ?? null}
         />
       )}

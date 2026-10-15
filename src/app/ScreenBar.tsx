@@ -16,6 +16,7 @@ export function ScreenBar({
   onBack,
   privacy,
   onTogglePrivacy,
+  showPrivacy,
   householdKind,
 }: {
   title: string;
@@ -23,6 +24,8 @@ export function ScreenBar({
   onBack: () => void;
   privacy: boolean;
   onTogglePrivacy: () => void;
+  /** The artboards draw the switch on Tax and Insurance, where there are amounts, and not on Profile or Settings. */
+  showPrivacy: boolean;
   householdKind: HouseholdKind | null;
 }) {
   return (
@@ -46,6 +49,7 @@ export function ScreenBar({
       <h1 className="app-title min-w-0 truncate">{title}</h1>
       <span className="screen-bar-end">
         {householdKind !== null && <DemoBadge kind={householdKind} />}
+        {showPrivacy && (
         <button
           type="button"
           className="iconbtn"
@@ -55,6 +59,7 @@ export function ScreenBar({
         >
           <EyeIcon crossed={privacy} />
         </button>
+        )}
       </span>
     </header>
   );

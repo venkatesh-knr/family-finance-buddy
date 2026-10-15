@@ -52,6 +52,30 @@ export function renewalPill(due: InsuranceGlance['due']): string | null {
   return `${String(due.count)} renew within 30 days`;
 }
 
+/**
+ * What the line under Tax may say. The Tax screen states the tax on gains only with the sales it could not place
+ * listed beside it and the slab-taxed gains named as left out, so a bare figure on a menu would read as more
+ * complete than it is. It is stated only when nothing was left out; otherwise the line says how many sales were
+ * not counted, or sends the reader to the screen that has the working.
+ */
+export type TaxLine =
+  | { readonly kind: 'figure' }
+  | { readonly kind: 'unplaced'; readonly sales: number }
+  | { readonly kind: 'see-the-working' };
+
+export function taxLine(options: {
+  /** Whether the tax could be worked out at all: a missing rule leaves it null. */
+  readonly hasTotal: boolean;
+  /** Sales the netting could not place, each with its reason on the Tax screen. */
+  readonly unplacedSales: number;
+  /** Short-term gold and unlisted gains, which are taxed at the slab and are not in the total. */
+  readonly atSlabMinor: bigint;
+}): TaxLine {
+  if (options.unplacedSales > 0) return { kind: 'unplaced', sales: options.unplacedSales };
+  if (!options.hasTotal || options.atSlabMinor !== 0n) return { kind: 'see-the-working' };
+  return { kind: 'figure' };
+}
+
 /** The tax year as it is written on a return: 2026 is 2026–27. */
 export function taxYearLabel(fy: number): string {
   return `${String(fy)}–${String((fy + 1) % 100).padStart(2, '0')}`;

@@ -2287,8 +2287,11 @@
     padding: 0 0.25rem 0 0;
   }
 
+  /* The serif face sits high in its box; the small drop puts its letters on the back link's line. */
   .screen-bar .app-title {
     flex: 1;
+    line-height: 1;
+    padding-top: 0.2em;
   }
 
   .screen-bar-end {
@@ -2325,19 +2328,6 @@
     min-height: 4.25rem;
     padding: 0.875rem;
     text-decoration: none;
-  }
-
-  .more-tile {
-    align-items: center;
-    background: var(--surface-2);
-    border: 1px solid var(--line-strong);
-    border-radius: 12px;
-    color: var(--ink-2);
-    display: flex;
-    flex: none;
-    height: 2.5rem;
-    justify-content: center;
-    width: 2.5rem;
   }
 
   .more-text {

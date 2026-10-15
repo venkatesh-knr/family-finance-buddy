@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insuranceGlance, policiesPhrase, profileLine, renewalPill, taxYearLabel } from './moreGlance.ts';
+import { insuranceGlance, policiesPhrase, profileLine, renewalPill, taxLine, taxYearLabel } from './moreGlance.ts';
 
 const policy = (id: string, renewalOn: string | null, isLapsed = false) => ({ id, name: id, isLapsed, renewalOn });
 
@@ -50,5 +50,21 @@ describe('the other lines', () => {
   it('says the role and that two-step sign-in is on', () => {
     expect(profileLine('owner')).toBe('Owner · two-step sign-in on');
     expect(profileLine(null)).toBe('Two-step sign-in on');
+  });
+});
+
+describe('the line under Tax says a figure only when nothing was left out of it', () => {
+  it('states the figure when every sale was placed, the tax was worked out and no gain is taxed at the slab', () => {
+    expect(taxLine({ hasTotal: true, unplacedSales: 0, atSlabMinor: 0n })).toEqual({ kind: 'figure' });
+  });
+
+  it('says how many sales were not counted before it says any figure', () => {
+    expect(taxLine({ hasTotal: true, unplacedSales: 2, atSlabMinor: 0n })).toEqual({ kind: 'unplaced', sales: 2 });
+    expect(taxLine({ hasTotal: false, unplacedSales: 1, atSlabMinor: 5n })).toEqual({ kind: 'unplaced', sales: 1 });
+  });
+
+  it('sends the reader to the working when the tax could not be worked out, or a gain is taxed at the slab', () => {
+    expect(taxLine({ hasTotal: false, unplacedSales: 0, atSlabMinor: 0n })).toEqual({ kind: 'see-the-working' });
+    expect(taxLine({ hasTotal: true, unplacedSales: 0, atSlabMinor: 12000n })).toEqual({ kind: 'see-the-working' });
   });
 });

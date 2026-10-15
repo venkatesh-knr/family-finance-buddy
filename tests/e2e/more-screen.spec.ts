@@ -44,17 +44,34 @@ test('a row opens its screen, and on a phone the screen has a bar with its name 
   await expect(bar.getByRole('heading', { name: 'Settings' })).toBeVisible();
   // The demo badge stays: a screen of fake money is never read as real because the bar changed.
   await expect(bar.getByText(/^demo$/i)).toBeVisible();
-  await expect(bar.getByRole('button', { name: /Amounts (shown|hidden)/ })).toBeVisible();
+  // The boards draw the privacy switch on Tax and Insurance, where there are amounts, and not on Profile or Settings.
+  await expect(bar.getByRole('button', { name: /Amounts (shown|hidden)/ })).toHaveCount(0);
 
   await bar.getByRole('button', { name: 'More' }).click();
   await expect(page).toHaveURL((url) => /more/.test(url.hash));
   await expect(page.getByRole('navigation', { name: 'More' })).toBeVisible();
 });
 
+test('the bar on Tax carries the privacy switch', async ({ page }, testInfo) => {
+  const phone = (page.viewportSize()?.width ?? 1000) < 640;
+  test.skip(!phone, `the bar is a phone's; ${testInfo.project.name} keeps the full header`);
+  await page.goto('/#tax');
+  await expect(page.locator('.screen-bar').getByRole('button', { name: /Amounts (shown|hidden)/ })).toBeVisible();
+});
+
+test('the line under Tax states a figure only when nothing was left out of it', async ({ page }) => {
+  await onMore(page);
+  const tax = page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: /^Tax/ });
+  // Whatever it says, it is one of the three things it may say; never a bare figure beside a sale it did not count.
+  await expect(tax).toContainText(/tax on gains|sales? not counted|working is on the Tax screen/, { timeout: 20_000 });
+  const text = await tax.innerText();
+  if (/not counted/.test(text)) expect(text).not.toMatch(/allowance unused|tax on gains/);
+});
+
 test('with amounts hidden, the figures on More are out of the document', async ({ page }) => {
   await onMore(page);
   const tax = page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: /^Tax/ });
-  await expect(tax).toContainText(/capital gains tax/, { timeout: 20_000 });
+  await expect(tax).toContainText(/tax on gains|not counted|working is on the Tax screen/, { timeout: 20_000 });
   await page.getByRole('button', { name: /Amounts shown/ }).click();
   // The year is a date and stays; no amount is left in the row, in the line or in the pill.
   const text = (await tax.innerText()).replace(/\d{4}–\d{2}/, '');
