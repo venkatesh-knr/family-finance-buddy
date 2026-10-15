@@ -328,3 +328,14 @@ The maintainer's decision, on the open question above: a deposit reaches net wor
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
   (item 7). Real statements are redacted by the maintainer and kept **outside the repository**, which is public; fixtures here
   are synthetic. Whether to add a spreadsheet library for XLS is **undecided**.
+
+## From the owner's answers to four open questions (October 2026)
+
+- **A policy's surrender value is not liquid.** The holding that carries it stays in net worth and in the FIRE corpus and is left out of
+  the liquid corpus the cover gap subtracts (PF-C17). It applies to every linked policy and not only a ULIP, since an endowment and a
+  money-back policy surrender on the same terms; narrowing it to ULIPs is a change to which policies link a holding.
+- **The cover figure is said in years from two years.** 305 months is twenty-five years. Below two years it stays months
+  (`coverPhrase` in `src/domain/earmark.ts`).
+- **An owned home is not in the FIRE corpus.** Not built yet: property is step 6, and the corpus function says so when it arrives.
+- **Retirement is a kind (EPF, NPS and PPF).** Not built yet: it is step 6. PPF moving out of the deposit schemes is a migration that
+  step makes.

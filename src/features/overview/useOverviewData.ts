@@ -440,6 +440,11 @@ export function useOverviewData({
    * applied and they count in full. `privateMembers` says how many members that is, so the screen can
    * say the corpus may be overstated by them rather than leave it as a surprise.
    */
+  // The holdings that carry a policy's surrender value: counted in the corpus, not available in an emergency (PF-C17).
+  const carriers = useMemo(
+    () => new Set((planListing?.policies ?? []).flatMap((p) => (p.linkedHoldingId === null ? [] : [p.linkedHoldingId]))),
+    [planListing],
+  );
   const corpusHoldings = useMemo<readonly CorpusHolding[]>(
     () =>
       (listing === null ? [] : listing.holdings)
@@ -449,9 +454,10 @@ export function useOverviewData({
           currency: h.instrument.currency,
           earmark: h.earmark,
           scheme: h.instrument.scheme,
+          carriesPolicy: carriers.has(h.id),
           isArchived: h.isArchived || paidOut.has(h.id),
         })),
-    [listing, scope, mine, paidOut],
+    [listing, scope, mine, paidOut, carriers],
   );
 
   const fire = useMemo(() => {

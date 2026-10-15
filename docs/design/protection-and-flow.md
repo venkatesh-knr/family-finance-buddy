@@ -178,6 +178,11 @@ suggested cover = outstanding liabilities
 gap             = suggested cover − total term cover in force
 ```
 
+**What counts as liquid.** Valued holdings, less a child's savings, a house deposit, anything in a
+locked scheme, and the surrender value a policy carries (PF-C17). A ULIP or an endowment can be
+surrendered, at a penalty and often after a lock-in, so it is in net worth and in the FIRE corpus and
+not in what could be had when the emergency comes.
+
 **Every input is a household setting with a visible default, not a built-in
 rule.** Years of dependency especially: the app does not know how old the
 children are or when the mortgage ends. The screen shows the arithmetic with the
@@ -350,3 +355,5 @@ document order; `C` is for constraint.
 **PF-C15 — Privacy mode removes income and cover amounts from the document,** by absence from the DOM, on the same terms as every other figure. (§6, §8)
 
 **PF-C16 — The Overview renders stock and flow as distinct regions, each with its own accessible name,** and still has exactly one lifted surface per screen. (§6, §8)
+
+**PF-C17 — A holding that carries a policy's surrender value is not in the liquid corpus,** though it stays in net worth and in the FIRE corpus (PF-C4, PF-C7). The owner's decision, October 2026. (§5)

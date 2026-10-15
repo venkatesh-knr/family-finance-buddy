@@ -73,6 +73,8 @@ export interface CorpusHolding {
   readonly earmark: Earmark;
   /** What a deposit is, or null. A locked scheme is not liquid. */
   readonly scheme: Scheme | null;
+  /** True where the holding carries a policy's surrender value (PF-C4). Surrendering costs a penalty and a wait, so it is not liquid. */
+  readonly carriesPolicy: boolean;
   readonly isArchived: boolean;
 }
 
@@ -123,7 +125,7 @@ export function fireCorpus(options: {
 
     const committed = holding.earmark === 'child' || holding.earmark === 'house';
     const locked = holding.scheme !== null && (LOCKED_SCHEMES as readonly string[]).includes(holding.scheme);
-    if (!committed && !locked) bucket.liquid += reading.amount.minor;
+    if (!committed && !locked && !holding.carriesPolicy) bucket.liquid += reading.amount.minor;
 
     if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) {
       bucket.excluded[holding.earmark as ExcludedEarmark] += reading.amount.minor;
@@ -182,6 +184,21 @@ export function monthsOfCover(options: {
   // months = emergency / (total / n) = emergency * n / total. A ratio of two minor-unit quantities,
   // not money, so it is formed at the end from the exact integers rather than from a rounded average.
   return Number((options.emergency.minor * BigInt(window.length) * 100n) / total) / 100;
+}
+
+/**
+ * The cover figure as it is said on the screen. Months below two years; above that a number of months stops
+ * being something a person can picture (305 months is twenty-five years), so it is said in years, to one
+ * decimal under ten and whole above.
+ */
+export function coverPhrase(months: number): { readonly value: string; readonly unit: string } {
+  const trim = (n: number, places: number) => String(Number(n.toFixed(places)));
+  if (months < 24) {
+    const value = trim(months, 1);
+    return { value, unit: value === '1' ? 'month of spending' : 'months of spending' };
+  }
+  const years = months / 12;
+  return { value: trim(years, years >= 10 ? 0 : 1), unit: 'years of spending' };
 }
 
 /** The `count` complete calendar months before the one `today` is in, oldest first, as `YYYY-MM`. */
