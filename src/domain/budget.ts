@@ -147,6 +147,56 @@ export function paceState(pace: number | null): PaceState {
   return 'on-track';
 }
 
+/**
+ * Whether the period's spending is early, on pace or late against the plan as a whole: the verdict under the
+ * big figure on Expenses. `over-plan` is a different thing from `ahead`: ahead is a pace, over is a fact.
+ */
+export type PeriodVerdict = 'no-plan' | 'over-plan' | 'ahead' | 'on-pace' | 'behind';
+
+export interface PeriodSummary {
+  /** Spent over planned: 0.60 is sixty per cent of the plan gone. Null with no plan: a share of nothing is not zero. */
+  readonly spentShare: number | null;
+  /** How much of the period has passed, 0 to 1. */
+  readonly elapsedShare: number;
+  /** Planned less spent, negative when over; null with no plan. */
+  readonly left: Money | null;
+  readonly daysLeft: number;
+  readonly verdict: PeriodVerdict;
+}
+
+/**
+ * The plan as a whole against the spending as a whole, and how far through the period that is.
+ *
+ * The same pace and the same band as a category's (`budgetPace`, `paceState`), applied to the totals, so the
+ * big figure and the rows under it cannot disagree about what "ahead" means. A plan and a spend in different
+ * currencies are not divided by each other: there is no plan to measure against, said so.
+ */
+export function periodSummary(options: {
+  readonly planned: Money;
+  readonly spent: Money;
+  readonly daysElapsed: number;
+  readonly daysInPeriod: number;
+}): PeriodSummary {
+  const { planned, spent, daysElapsed, daysInPeriod } = options;
+  const elapsedShare = daysInPeriod <= 0 ? 0 : Math.min(Math.max(daysElapsed, 0), daysInPeriod) / daysInPeriod;
+  const daysLeft = Math.max(daysInPeriod - Math.max(daysElapsed, 0), 0);
+  const comparable = planned.currency === spent.currency && planned.minor > 0n;
+
+  if (!comparable) {
+    return { spentShare: null, elapsedShare, left: null, daysLeft, verdict: 'no-plan' };
+  }
+
+  // Two integers, one division at the end, at four places: a ratio and not money.
+  const spentShare = Number((spent.minor * 10000n) / planned.minor) / 10000;
+  const left = money(planned.minor - spent.minor, planned.currency);
+
+  if (spent.minor > planned.minor) return { spentShare, elapsedShare, left, daysLeft, verdict: 'over-plan' };
+
+  const state = paceState(budgetPace(planned, spent, daysElapsed, daysInPeriod));
+  const verdict: PeriodVerdict = state === 'over' ? 'ahead' : state === 'under' ? 'behind' : 'on-pace';
+  return { spentShare, elapsedShare, left, daysLeft, verdict };
+}
+
 export interface CategoryPlanned {
   readonly categoryId: string;
   readonly name: string;

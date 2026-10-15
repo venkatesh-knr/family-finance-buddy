@@ -221,6 +221,7 @@ Three faces, three jobs. Load from Google Fonts with real fallback stacks.
 | Role | Size | Weight | Face | Notes |
 |---|---|---|---|---|
 | Hero figure (net worth) | `clamp(32px, 11.3vw, 48px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.025em`. 44px at a 390px phone, which is what `vibrant-canvas.html` draws and what the owner chose, with the magnitude suffix at 0.6 of it. It was lowered to `clamp(23px, 5vw, 34px)` because a lakh figure with a symbol filled a 375px screen edge to edge; the floor and the vw term are why it does not now, and `text-size.spec.ts` holds the Overview to no sideways scroll at 200%. |
+| Month figure (Expenses) | `clamp(28px, 9.7vw, 38px)` | 600 | ui | `tabular-nums`, `letter-spacing:-.025em`. 38px at a 390px phone, which is what `vibrant-canvas.html` draws for the month's spending, a step below the net worth. The canvas sets it at 700; the face is loaded for 400, 500 and 600, so it is 600, as the net worth is. |
 | Page title | 22px | 500 | display | `-.01em` |
 | Section title (doc) | 25–30px | 500 | display | `text-wrap:balance` |
 | Card title | 14.5px | 600 | ui | |
@@ -325,7 +326,7 @@ room inside the card does not.
 | **Quiet button / disclosure** | The two controls that replace a run of underlined links on a card. A **quiet button** is for something that acts: a hairline in `--line-strong`, no fill, 34px (44px on a coarse pointer). A **disclosure** is for something that only reveals: its words and a chevron that turns a quarter when open, `aria-expanded` driving it. An underlined word is for one-of-a-kind, a link that goes somewhere, not an action repeated on every row. |
 | **Segmented control** | `--surface-3` track, active pill `--surface` + weight 600 + 1px shadow. `aria-pressed` drives state. |
 | **Bar / progress** | 6–9px height, radius 3, `--surface-3` track. Over-target bars flip to `--coral`. |
-| **Quick-add** | Amount input in mono, 110px wide. Primary button `--brass` with light text. |
+| **Quick-add** | An amount and a payee side by side. The amount is a mono input with the currency symbol inside its box, 132px wide (the box, not the bare input: 110px was the bare input of the old form, which had no symbol). Category chips under it, a disclosure line ("Today · you · shared") that opens the date, the member and the private tick, and the primary button `--brass` with light text. Its focus ring is the token ring on the box. |
 | **Focus ring** | `2px solid var(--brass)`, `outline-offset:2px`. Visible on every interactive element. |
 
 ---

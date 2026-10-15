@@ -1,0 +1,279 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mock vs Build</title>
+<style>
+  /* Layout: one section per screen; the mock and the build side by side, then its numbered differences. */
+  :root {
+    --bg: #F3F5F9;
+    --panel: #FFFFFF;
+    --ink: #121826;
+    --ink-2: #4A5670;
+    --line: #D5DBE7;
+    --accent: #8A5A00;
+    --accent-bg: #FBF1D9;
+    --follow: #0B6B4F;
+    --follow-bg: #DDF3EA;
+    --call: #8A4A00;
+    --call-bg: #FDE8CC;
+    --new: #3A3FB0;
+    --new-bg: #E3E5FB;
+    --shot-bg: #080B12;
+    --font-body: 'Public Sans', system-ui, sans-serif;
+    --font-display: 'Newsreader', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #080B12; --panel: #121825; --ink: #EEF3FA; --ink-2: #9AA8C0; --line: #27324A;
+      --accent: #F0B429; --accent-bg: #3A2C0C; --follow: #5FD3A5; --follow-bg: #10382B;
+      --call: #FFB45C; --call-bg: #4A2E0A; --new: #A9AEFF; --new-bg: #232650; --shot-bg: #05070C; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #080B12; --panel: #121825; --ink: #EEF3FA; --ink-2: #9AA8C0; --line: #27324A;
+    --accent: #F0B429; --accent-bg: #3A2C0C; --follow: #5FD3A5; --follow-bg: #10382B;
+    --call: #FFB45C; --call-bg: #4A2E0A; --new: #A9AEFF; --new-bg: #232650; --shot-bg: #05070C; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; padding-inline: 16px; padding-block: 28px 80px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { font-family: var(--font-display); font-weight: 500; font-size: 34px; line-height: 1.15; margin: 0 0 10px; text-wrap: balance; }
+  h2 { font-family: var(--font-display); font-weight: 500; font-size: 26px; margin: 0; }
+  p { margin: 0; }
+  .lede { color: var(--ink-2); max-width: 68ch; }
+  .rules { display: grid; gap: 10px; margin-top: 18px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .rules strong { color: var(--ink); }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .tag { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .tag.follow { color: var(--follow); background: var(--follow-bg); }
+  .tag.call { color: var(--call); background: var(--call-bg); }
+  .tag.new { color: var(--new); background: var(--new-bg); }
+  .tag.size { color: var(--ink-2); background: transparent; border: 1px solid var(--line); font-family: var(--font-mono); font-weight: 500; }
+  section.screen { margin-top: 56px; }
+  .screen-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; }
+  .screen-head .sub { color: var(--ink-2); font-size: 13px; }
+  .shots { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  figure { margin: 0; min-width: 0; }
+  figcaption { font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 8px; }
+  .frame { background: var(--shot-bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 390px; max-width: 100%; }
+  .frame img { display: block; width: 100%; height: auto; }
+  .list { flex: 1 1 340px; min-width: 0; display: grid; gap: 12px; }
+  .item { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .item h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; margin: 0 0 8px; }
+  .item h3 .n { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+  .item dl { display: grid; grid-template-columns: 5.2rem 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+  .item dt { color: var(--ink-2); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 2px; }
+  .item dd { margin: 0; min-width: 0; }
+  .item .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .answer { margin-top: 64px; padding: 20px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .answer h2 { font-size: 22px; margin-bottom: 8px; }
+  .answer pre { margin: 12px 0 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+  .count { font-family: var(--font-mono); }
+  @media (max-width: 520px) { .item dl { grid-template-columns: 1fr; } .item dt { padding-top: 6px; } }
+</style>
+<div class="wrap">
+  <header>
+    <h1>Mock vs Build: the 37 differences, one screen at a time</h1>
+    <p class="lede">Each screen below shows the mock (left) and the app as it is today (right), at phone width in the dark theme, then the differences between them in plain words, numbered 1 to 37 as in <code>conformance.md</code>. Nothing is decided: all 37 are back to <strong>proposed</strong>.</p>
+    <div class="rules">
+      <p><strong>Your rule: the screens look like the mocks.</strong> So the recommendation on every item is to follow the mock, except four where the app does something the mock never drew. Those four are marked <span class="tag call">Your call</span>.</p>
+      <p><strong>What still wins over a mock:</strong> colours, sizes, radii and glyphs come from the token and icon documents (the mocks are dark-only, so their hex values do not settle the light theme); text must still reflow at 200% text size; a name may end in an ellipsis as in the mocks.</p>
+      <div class="tags">
+        <span class="tag follow">Follow the mock</span><span class="tag call">Your call</span><span class="tag new">Needs something new built</span>
+        <span class="tag size">S</span><span class="tag size">M</span><span class="tag size">L</span>
+      </div>
+      <p style="font-size:13px;color:var(--ink-2)">S: markup and styling only. M: rework a component or add a small calculation. L: new behaviour, such as a sign-in flow or reading names out of the audit log. The app images use the clean seeded test household, so figures differ from the mock; figures are never a difference.</p>
+    </div>
+  </header>
+  <main id="screens"></main>
+  <section class="answer" id="answer"></section>
+</div>
+<script>
+  // Every item: what the mock shows, what the app has, what to do. kind: follow | call | new
+  var SCREENS = [
+    { id: 'Main', title: 'Overview', sub: 'Artboard: Main', mock: 'board-Main.jpg', app: 'app-Main.jpg', items: [
+      { n: 1, t: 'Emergency-fund line', kind: 'call', size: 'S',
+        mock: 'No such line; the currency cards are followed by Allocation.',
+        app: 'A line under the currency cards: "16.8 months of spending", with what is set aside and how many months of spending it is measured against.',
+        rec: 'The mock was drawn before this feature existed. Keep it, but drawn in the mock\'s language: a small card in the same style as the currency cards. Or move it to Insurance or FIRE. Which?' },
+      { n: 2, t: 'Allocation across currencies', kind: 'call', size: 'M',
+        mock: 'One ring and one list, headed "India · ₹13.04 L".',
+        app: 'One ring and list per currency (India, then Abroad), because rupees and dollars cannot be added into one ring.',
+        rec: 'Keep a ring per currency, since one ring would be wrong, but make each exactly the mock\'s card: its header, ring with total inside, tile rows with share and change. Or show only the home currency and link to the rest. Which?' },
+      { n: 3, t: 'Needs attention', kind: 'follow', size: 'S',
+        mock: 'Two items, each with an icon, one sentence and a chevron.',
+        app: 'The same items, plus the year in the header, and a "Close Sept 2026" button with an info mark underneath.',
+        rec: 'Match the mock\'s items exactly. Month close has nowhere else to live, so it stays as one more row in the same style.' }
+    ]},
+    { id: 'Fire', title: 'FIRE', sub: 'Artboard: Fire (now the independence goal\'s detail)', mock: 'board-Fire.jpg', app: 'app-Fire.jpg', items: [
+      { n: 4, t: 'The head', kind: 'follow', size: 'S',
+        mock: 'Small caps label "FINANCIAL INDEPENDENCE", the target large, one muted line ("Target, at 6% inflation · reached 2041").',
+        app: 'A sentence-case label, the target, then a long sentence starting "25× what the household spends…".',
+        rec: 'Match the mock; the long sentence moves to the "How it adds up" detail.' },
+      { n: 5, t: 'Projection chart', kind: 'follow', size: 'S',
+        mock: 'The target labelled on its own line; no legend; one grey note underneath.',
+        app: 'A legend (corpus, target as prices rise, the year it is reached), an Adjust link and an info mark.',
+        rec: 'Label the lines on the chart as the mock does and drop the legend; Adjust moves to the next card, as in the mock.' },
+      { n: 6, t: 'How far along', kind: 'new', size: 'M',
+        mock: 'A ring with Reached, Target and Shortfall, then one line: "Adding ₹8,000 a month brings it to 2039" with Adjust →.',
+        app: 'A titled card with the ring and the three figures, a long caveat dismissed with a Got it button. No "adding a month" line.',
+        rec: 'Match the mock. The "adding ₹X a month brings it to year Y" line needs a new calculation, which I would write test-first.' },
+      { n: 7, t: 'Planning on the same screen', kind: 'call', size: 'M',
+        mock: 'The board ends after "What a year costs".',
+        app: 'Below it: the FIRE target inputs, Annual expense, the Spending plan, and Loans and policies.',
+        rec: 'The planning has to live somewhere until Goals is built. Keep it below the mock\'s content, each part a folded card in the mock\'s style, and settle its final home when Goals arrives. Or move it to its own screen now. Which?' }
+    ]},
+    { id: 'Holdings', title: 'Holdings, all', sub: 'Artboard: Holdings', mock: 'board-Holdings.jpg', app: 'app-Holdings.jpg', items: [
+      { n: 8, t: 'Allocation bar in the summary', kind: 'follow', size: 'S',
+        mock: 'A stacked coloured bar and a legend ("Funds 70.1% · Deposits 18.0% · Bonds 11.8%") under the total.',
+        app: 'The same shares as one line of text.', rec: 'Match the mock.' },
+      { n: 9, t: 'Sort', kind: 'new', size: 'M',
+        mock: 'A "↓ Largest" sort control beside the count; groups and rows ordered by size.',
+        app: 'No sort control; rows inside a group are in name order.',
+        rec: 'Match the mock: add the sort, defaulting to Largest.' },
+      { n: 10, t: 'Filter chips', kind: 'call', size: 'S',
+        mock: 'One row that scrolls sideways: All, then a chip per asset class. No earmark chips.',
+        app: 'Chips that wrap onto several lines, with extra chips per earmark (Emergency fund, Child\'s savings, House deposit).',
+        rec: 'Follow the mock for the look: one scrolling row. The earmark chips come from the Holdings spec, not the mock, so: keep them at the end of the same row, or drop them? Which?' },
+      { n: 11, t: 'A row', kind: 'follow', size: 'M',
+        mock: 'The pill (Emergency) sits beside the name; a globe marks a foreign holding; figures in full (₹6,28,300.11); units with separators; one tidy line under the name.',
+        app: 'The pill on its own line under the row, an "ABROAD" pill, compact figures (₹6.28 L), units without separators, and the line under the name wraps.',
+        rec: 'Match the mock: pill beside the name, globe, full figures, separators. A long name ends in an ellipsis like the mock; the detail line may still wrap at large text sizes.' },
+      { n: 12, t: 'Holdings filtered to one class', kind: 'new', size: 'M', shotKey: 'HoldingsDeposits',
+        mock: 'Chips first; then a summary headed "DEPOSITS" with its share of the portfolio at the right and two columns of stats; a "Worked out today" note; a one-line helper under the list header; an Emergency fund card under the list.',
+        app: 'The summary first, with an extra "+2.4% on cost" chip and stacked stats, and none of the note, helper line or Emergency fund card. The chips sit below the summary.',
+        rec: 'Match the mock. The Emergency fund card reuses the months-of-cover calculation that already exists.' }
+    ]},
+    { id: 'HoldingsDeposits', title: 'Holdings, filtered to deposits', sub: 'Artboard: HoldingsDeposits (item 12 above)', mock: 'board-HoldingsDeposits.jpg', app: 'app-HoldingsDeposits.jpg', items: [] },
+    { id: 'HoldingDeposit', title: 'A deposit', sub: 'Artboard: HoldingDeposit', mock: 'board-HoldingDeposit.jpg', app: 'app-HoldingDeposit.jpg', items: [
+      { n: 13, t: 'Top bar (all holding screens)', kind: 'follow', size: 'S',
+        mock: 'A bar reading "‹ Holdings" with the eye and Edit, in place of the app header.',
+        app: 'The app header and household strip, then a "← Holdings" link with Edit.', rec: 'Match the mock.' },
+      { n: 14, t: 'Identity', kind: 'follow', size: 'S',
+        mock: 'The name in the serif face; "HDFC · Venkatesh" with the member as a coloured link; pills for the kind (Fixed deposit) and the earmark.',
+        app: 'The name in the sans face; one muted line of "member · kind · institution"; the earmark only in its own card.', rec: 'Match the mock.' },
+      { n: 15, t: 'The value card', kind: 'new', size: 'M',
+        mock: 'The figure in full. A deposit shows "Worked out today" with its change and "not in net worth until recorded", and a full-width "Record as today\'s reading" button. A fund shows "Quoted" with Record a value and Fetch price side by side.',
+        app: 'A compact figure; a deposit\'s worked-out value is a stat further down; the buttons are quiet; a fund has no Fetch price on the holding.',
+        rec: 'Match the mock. Fetch price on a single holding needs wiring to the existing price fetch.' },
+      { n: 16, t: 'The Term card', kind: 'follow', size: 'S',
+        mock: '"293 days to go" at the right of the title; a bar with a "today" tick; four stats: Principal, Rate, Interest so far, This term pays.',
+        app: 'A "worked out from the terms" note, a bar without the tick, a terms sentence, a DEPOSIT tag, a pencil, and extra stats (Value today, Matures). Record a renewal sits inside the card.',
+        rec: 'Match the mock; Record a renewal moves to the bottom pair of buttons, as drawn.' }
+    ]},
+    { id: 'HoldingFund', title: 'A fund', sub: 'Artboard: HoldingFund', mock: 'board-HoldingFund.jpg', app: 'app-HoldingFund.jpg', items: [
+      { n: 17, t: 'The Position card', kind: 'follow', size: 'M',
+        mock: 'Units and Cost, then Return and Realised, then the partial-statement note, then Peak last. Transactions are a separate collapsed card with one "Add a purchase or sale" button.',
+        app: 'Peak first with its year selector, then cost and realised; transactions inside the same card.', rec: 'Match the mock\'s order and split the transactions into their own card.' },
+      { n: 18, t: 'Archive', kind: 'follow', size: 'S',
+        mock: 'A short "Archive" button with an icon.',
+        app: 'A button whose label is the whole name ("Archive ICICI Prudential Large Cap Fund (erstwhile …)").',
+        rec: 'Show "Archive" with the icon, and keep the full name as the button\'s accessible name so a screen reader still hears which holding.' }
+    ]},
+    { id: 'Expenses', title: 'Expenses', sub: 'Artboard: Expenses', mock: 'board-Expenses.jpg', app: 'app-Expenses.jpg', items: [
+      { n: 19, t: 'Order of the screen', kind: 'follow', size: 'M',
+        mock: 'The Spent hero first, then quick add, then Plan, then Recent.',
+        app: 'Quick add first, then Budget vs actual, then the ledger.', rec: 'Match the mock; what is most prominent is the month\'s spending.' },
+      { n: 20, t: 'The Spent hero', kind: 'follow', size: 'M',
+        mock: 'The amount spent large; "of ₹62,500 planned · day 15 of 31"; a bar with a marker for how far through the month it is; what is left and for how many days; a pace verdict ("ahead of the month\'s pace").',
+        app: 'A "Budget vs actual" card with a This month / This year toggle and an "Over by" figure.',
+        rec: 'Match the mock. The pace calculation already exists in the budget code.' },
+      { n: 21, t: 'Quick add', kind: 'follow', size: 'M',
+        mock: 'Amount and payee side by side, a row of category chips, one line "Today · you · shared" that opens the rest, and Add.',
+        app: 'Five stacked labelled fields (amount, payee, date, category, member), Add, and a private checkbox.',
+        rec: 'Match the mock. Date, member and the private option go behind the "Today · you · shared" line.' },
+      { n: 22, t: 'The ledger', kind: 'follow', size: 'M',
+        mock: '"Recent" with See all; grouped under Today and Yesterday; each row a payee, its category, a member ring, the amount.',
+        app: '"Expenses" with a LIVE tag and "10 of the 50 most recent"; rows dated one by one with the member\'s name and a pencil; Show 10 more.', rec: 'Match the mock; the edit pencil stays but moves into the row\'s tap target.' }
+    ]},
+    { id: 'More', title: 'More', sub: 'Artboard: More', mock: 'board-More.jpg', app: 'app-More.jpg', items: [
+      { n: 23, t: 'A row', kind: 'follow', size: 'M',
+        mock: 'One card; each row a tile, the title, a status line ("2026–27 · ₹1,53,296 estimated"), an amber pill when something is due, and a chevron.',
+        app: 'Each row a title and a sentence saying what the screen is for. No tile, status line, pill or chevron.', rec: 'Match the mock. The status lines read data the Tax and Insurance screens already compute.' },
+      { n: 24, t: 'Top bar on the screens behind More', kind: 'follow', size: 'S',
+        mock: 'Tax, Insurance, Profile and Settings each open with a bar: "‹ More" and the screen\'s title in the serif face, with the eye.',
+        app: 'The app header and household strip; no back link or title bar.', rec: 'Match the mock (same treatment as item 13).' }
+    ]},
+    { id: 'Tax', title: 'Tax', sub: 'Artboard: Tax', mock: 'board-Tax.jpg', app: 'app-Tax.jpg', items: [
+      { n: 25, t: 'The head', kind: 'follow', size: 'L',
+        mock: 'Year and member as two controls with "167 days left"; then an Estimated tax card: the figure, a New / Old regime toggle, salary and other income as fields, "Typed here, never saved", and a fold "How it adds up".',
+        app: 'A Tax year card (year, "Whose return", a paragraph), then Capital gains, then "Tax on your income" with the workings already open.',
+        rec: 'Match the mock: the answer first, the workings folded.' },
+      { n: 26, t: 'Capital gains', kind: 'follow', size: 'M',
+        mock: 'Long and short term, net and taxable, then the allowance as one bar: "₹85,000 unused · lapses on 31 Mar".',
+        app: 'The same figures as separate stats, the allowance in its own "Expiring this year" card, and a "Capital gains, by lot" card of prose.', rec: 'Match the mock.' },
+      { n: 27, t: 'What the page says about itself', kind: 'follow', size: 'S',
+        mock: 'One muted line ("A working paper, not a filing — your CA should check it. Rates checked 24 Sept 2026") and two buttons: What this assumes, Rates applied.',
+        app: 'Several paragraphs and two amber notices, each with a fold.', rec: 'Match the mock. This also meets the amber rule: amber only where you can act.' }
+    ]},
+    { id: 'Insurance', title: 'Insurance', sub: 'Artboard: Insurance', mock: 'board-Insurance.jpg', app: 'app-Insurance.jpg', items: [
+      { n: 28, t: 'The verdict', kind: 'follow', size: 'M',
+        mock: '"Short by ₹62 L" in coral, a bar of term cover against the suggested cover, years as a − / + stepper, and the working in a fold "How this is worked out".',
+        app: 'The question as a title, the arithmetic as rows, years as a typed field, and the explanation as paragraphs on the card.', rec: 'Match the mock.' },
+      { n: 29, t: 'Policies', kind: 'follow', size: 'L',
+        mock: 'Grouped (Life, Health, With a surrender value); each a tile, the name, insurer and member, a renewal pill, cover and yearly premium; "Add a policy" in the header opens the form.',
+        app: 'One list of editable rows (cover, premium and dates are fields you edit in place) and the Add a policy form always open beneath.',
+        rec: 'Match the mock: read-only rows grouped as drawn, editing opens on tap, the form opens from the button.' }
+    ]},
+    { id: 'Profile', title: 'Profile', sub: 'Artboard: Profile', mock: 'board-Profile.jpg', app: 'app-Profile.jpg', items: [
+      { n: 30, t: 'Identity', kind: 'new', size: 'L',
+        mock: 'A large avatar, the name, the household, an OWNER pill; then rows: Email, Password (Change ›), Two-step sign-in (On ›).',
+        app: 'The email as the heading with a role pill; then "Signed in as", "Household", "Role" as fields. No Password or Two-step row.',
+        rec: 'Match the mock\'s layout now. The Password change and the two-step management are new sign-in flows that do not exist yet; I would build the rows first showing status, then the flows.' },
+      { n: 31, t: 'Privacy', kind: 'new', size: 'M',
+        mock: '"2 of your entries are private" with two buttons, See them and How it works.',
+        app: 'A "Your privacy" card with a sentence and no buttons.', rec: 'Match the mock. "See them" needs a list of your own private entries.' },
+      { n: 32, t: 'Recent activity', kind: 'new', size: 'L',
+        mock: 'Sentences that name the thing ("Recorded a value · Parag Parikh Flexi Cap"), grouped by day, with the time, and one muted line "Shows changes, not who viewed what".',
+        app: '"Changed a holding", a YOU pill and a date and time, Show 10 more, and an amber notice that the log records changes and not reads.',
+        rec: 'Match the mock. The audit log records the table and not the thing\'s name, so naming it needs the names read alongside; the amber notice becomes the muted line.' },
+      { n: 33, t: 'Sign out', kind: 'follow', size: 'S',
+        mock: 'An outlined Sign out button at the foot of the screen.',
+        app: 'No button on the screen; sign-out is in the account menu.', rec: 'Match the mock.' }
+    ]},
+    { id: 'Settings', title: 'Settings', sub: 'Artboard: Settings', mock: 'board-Settings.jpg', app: 'app-Settings.jpg', items: [
+      { n: 34, t: 'This device', kind: 'follow', size: 'M',
+        mock: 'A caps heading; Theme as a segmented control; "Hide amounts when the app opens" as a switch with one line; "Read amounts in" as a row with a chevron.',
+        app: 'A sentence under each setting; the hide setting as a checkbox reading "Off"; an inline Currency select; and a paragraph after the card.', rec: 'Match the mock.' },
+      { n: 35, t: 'This household', kind: 'follow', size: 'S',
+        mock: 'Name (with the DEMO badge), Base currency and Tax year starts as plain rows.',
+        app: 'The same with a sentence under each, a Kind row, and a paragraph about what is not editable yet.', rec: 'Match the mock.' },
+      { n: 36, t: 'Members', kind: 'follow', size: 'M',
+        mock: 'A Members heading with an Invite button; a row per member with an initial in a ring and the role at the right; "1 former member · 3 invites" folded.',
+        app: 'An "Invite someone" card, a Members card with dots and pills, and an Invites card listing every invitation.', rec: 'Match the mock.' },
+      { n: 37, t: 'Cards the mock does not have', kind: 'follow', size: 'S',
+        mock: 'None.',
+        app: 'A "Spending plan" note and a collapsed "Not here yet". Both are placeholders.', rec: 'Remove them to match the mock.' }
+    ]}
+  ];
+  var LABEL = { follow: 'Follow the mock', call: 'Your call', new: 'Needs something new built' };
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; }
+  var root = document.getElementById('screens');
+  var counts = { follow: 0, call: 0, new: 0 };
+  SCREENS.forEach(function (s) {
+    var sec = el('section', 'screen'); sec.id = s.id;
+    var head = el('div', 'screen-head', '<h2>' + s.title + '</h2><span class="sub">' + s.sub + '</span>');
+    sec.appendChild(head);
+    var shots = el('div', 'shots');
+    var f1 = el('figure', '', '<figcaption>The mock</figcaption><div class="frame"><img src="img/' + s.mock + '" alt="The mock for ' + s.title + '" loading="lazy"></div>');
+    var f2 = el('figure', '', '<figcaption>The app today</figcaption><div class="frame"><img src="img/' + s.app + '" alt="The app screen for ' + s.title + '" loading="lazy"></div>');
+    shots.appendChild(f1); shots.appendChild(f2);
+    var list = el('div', 'list');
+    s.items.forEach(function (it) {
+      counts[it.kind] += 1;
+      var card = el('div', 'item');
+      card.innerHTML = '<h3><span class="n">' + it.n + '</span>' + it.t + '</h3><dl><dt>Mock</dt><dd>' + it.mock + '</dd><dt>App</dt><dd>' + it.app + '</dd><dt>Do</dt><dd>' + it.rec + '</dd></dl>' +
+        '<div class="chips"><span class="tag ' + it.kind + '">' + LABEL[it.kind] + '</span><span class="tag size">' + it.size + '</span></div>';
+      list.appendChild(card);
+    });
+    if (s.items.length === 0) list.appendChild(el('p', 'lede', 'The differences for this screen are item 12 under Holdings, all.'));
+    shots.appendChild(list);
+    sec.appendChild(shots);
+    root.appendChild(sec);
+  });
+  var total = counts.follow + counts.call + counts.new;
+  document.getElementById('answer').innerHTML =
+    '<h2>How to answer</h2><p class="lede">' + total + ' items: <span class="count">' + counts.follow + '</span> follow the mock as is, <span class="count">' + counts.new + '</span> follow the mock but need something new built, and <span class="count">' + counts.call + '</span> need your call (items 1, 2, 7 and 10). You can reply with numbers, or paste and edit this:</p>' +
+    '<pre>Follow the mocks for everything.\nItems 1, 2, 7, 10: &lt;your choice for each&gt;.\nOrder: &lt;which screens first&gt;.</pre>' +
+    '<p class="lede" style="margin-top:12px">Once answered, I turn each into a slice per screen, change the screen to match, run the design-conformance review on it, and remove the Departure row for every item that now matches. Items that stay different, and why, stay listed as proposed until you decide them.</p>';
+</script>
+
+</body></html>
