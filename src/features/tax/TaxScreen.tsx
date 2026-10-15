@@ -27,7 +27,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { capitalGainsTax, netCapitalGains, type ExclusionReason } from '../../domain/capital-gains.ts';
+import type { ExclusionReason } from '../../domain/capital-gains.ts';
 import { taxYearBounds, taxYearOf, taxYearsToOffer } from '../../domain/budget.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
@@ -35,7 +35,8 @@ import { taxClassLabel } from '../../ui/labels.ts';
 import { Absent, Bar, Card, Caveat, Notice, Pill, Problem, Qualifier, Stat } from '../../ui/primitives.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
 import { IncomeTaxCard } from './IncomeTaxCard.tsx';
-import { taxLotsFor, type TaxLot } from './taxLots.ts';
+import { taxFigures } from './taxFigures.ts';
+import type { TaxLot } from './taxLots.ts';
 
 /** A gain or loss with its sign written out: the direction is never carried by colour alone. */
 function signed(value: Money, privacy: boolean): string {
@@ -110,22 +111,10 @@ export function TaxScreen({
     [listing],
   );
 
-  const lots = useMemo(
-    () => taxLotsFor({ rows, memberId, fy, rules: taxRules, disposalKindOf }),
+  const { lots, gains, tax } = useMemo(
+    () => taxFigures({ rows, memberId, fy, rules: taxRules, disposalKindOf }),
     [rows, memberId, fy, taxRules, disposalKindOf],
   );
-  const gains = useMemo(
-    () =>
-      netCapitalGains({
-        parcels: lots.parcels,
-        assetClassOf: lots.assetClassOf,
-        disposalKindOf,
-        rules: taxRules,
-        fy,
-      }),
-    [lots, disposalKindOf, taxRules, fy],
-  );
-  const tax = useMemo(() => capitalGainsTax(gains, taxRules), [gains, taxRules]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
 

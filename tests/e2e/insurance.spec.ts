@@ -65,7 +65,7 @@ test('the Insurance screen opens on the cover gap, with every input on its face,
   await expect(page.getByLabel('Years of dependency')).toBeVisible();
   await expect(page.getByText('Add a policy')).toBeVisible();
   // More is where the screen lives, so More is lit.
-  await expect(page.getByRole('button', { name: 'More' }).first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: 'Screen' }).getByRole('button', { name: 'More' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('PF-C2 — a policy with a cover of ten crore leaves net worth exactly where it was', async ({ page }) => {

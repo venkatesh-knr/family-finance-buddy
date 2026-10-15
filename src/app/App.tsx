@@ -39,6 +39,7 @@ import {
   useDevicePreference,
 } from './preferences.ts';
 import { AccountMenu } from './AccountMenu.tsx';
+import { ScreenBar } from './ScreenBar.tsx';
 
 /**
  * Household is gone as a destination of its own; administering who belongs to
@@ -206,6 +207,16 @@ function SignedIn({
     // A holding's own screen is Holdings, one level down.
     (id === 'holdings' && screen === 'holding');
 
+  // The screens one level below More. On a phone each opens with a bar of its own, "‹ More", its name and the
+  // privacy switch, in place of the app's header and the household strip; a wide screen keeps both. A contributor
+  // reaches Tax from the bar itself and has no More to go back to, so keeps the ordinary header.
+  const subTitle =
+    SCREENS.some(([id]) => id === 'more')
+      ? ({ tax: 'Tax', insurance: 'Insurance', profile: 'Profile', settings: 'Settings' } as Partial<Record<Screen, string>>)[
+          screen
+        ] ?? null
+      : null;
+
   /**
    * The class Holdings is filtered to, read from the URL (`#/holdings?kind=deposit`, HD-I4).
    *
@@ -222,8 +233,23 @@ function SignedIn({
 
   return (
     <div className="min-h-screen">
+      {subTitle !== null && (
+        <ScreenBar
+          title={subTitle}
+          backLabel="More"
+          onBack={() => {
+            setScreen('more');
+            window.scrollTo({ top: 0 });
+          }}
+          privacy={privacy}
+          onTogglePrivacy={() => {
+            setPrivacy((on) => !on);
+          }}
+          householdKind={current?.household.kind ?? null}
+        />
+      )}
       <header
-        className="inset-safe-top inset-safe-x mb-4.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5"
+        className={`inset-safe-top inset-safe-x mb-4.5 ${subTitle === null ? 'flex' : 'hide-narrow-flex'} flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5`}
         style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
       >
         {/*
@@ -294,7 +320,7 @@ function SignedIn({
         the ones they want.
       */}
       <nav
-        className={`inset-safe-x mx-auto mb-4.5 flex ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} items-center justify-between gap-3 scroll-x`}
+        className={`inset-safe-x mx-auto mb-4.5 ${subTitle === null ? 'flex' : 'hide-narrow-flex'} ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} items-center justify-between gap-3 scroll-x`}
       >
         {/*
           Hidden on a phone, where the bar at the bottom does this job under
@@ -382,6 +408,9 @@ function SignedIn({
         {screen === 'more' && (
           <MoreScreen
             screens={behindMore}
+            role={role}
+            householdId={householdId}
+            privacy={privacy}
             onOpen={(next) => {
               setScreen(next);
               window.scrollTo({ top: 0 });
