@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatIsoDate } from '../../lib/dates.ts';
+import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import {
   createInvite,
   inviteState,
@@ -83,6 +83,9 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
   const former = listing.members.filter((member) => member.isArchived);
   const marks = memberMarks(listing.members);
   const folded = former.length + invites.length;
+  // "3 invites" reads the same whether three can still let somebody in or none can, so the fold says which.
+  const open = invites.filter((invite) => inviteState(invite, new Date()) === 'open').length;
+  const past = invites.length - open;
 
   return (
     <section>
@@ -136,7 +139,7 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
       )}
 
       <div className="setgrp">
-        <ul>
+        <ul className="member-list">
           {active.map((member) => (
             <MemberRow
               key={member.id}
@@ -175,7 +178,8 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
             <span className="tabular-nums">
               {[
                 former.length > 0 ? `${String(former.length)} former ${former.length === 1 ? 'member' : 'members'}` : null,
-                invites.length > 0 ? `${String(invites.length)} ${invites.length === 1 ? 'invite' : 'invites'}` : null,
+                open > 0 ? `${String(open)} open ${open === 1 ? 'invite' : 'invites'}` : null,
+                past > 0 ? `${String(past)} past` : null,
               ]
                 .filter((part): part is string => part !== null)
                 .join(' · ')}
@@ -186,7 +190,7 @@ export function HouseholdScreen({ householdId }: { householdId: string | null })
         {rest && (
           <>
             {former.length > 0 && (
-              <ul>
+              <ul className="member-list">
                 {former.map((member) => (
                   <MemberRow
                     key={member.id}
@@ -285,6 +289,19 @@ function MemberRow({
       {editable && member.role != null ? (
         <label className="member-role member-role-edit">
           <span>{roleWord}</span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
           <select
             aria-label={`Role of ${member.displayName}`}
             value={member.role}
@@ -338,14 +355,15 @@ function InviteRow({
         <Pill tone="neutral">{invite.role}</Pill>
         <Pill tone={STATE_TONE[state]}>{state}</Pill>
         {state === 'open' && (
-          <span className="note">expires {formatIsoDate(invite.expiresAt.slice(0, 10))}</span>
+          <span className="note">expires {formatIsoDate(istCalendarDate(new Date(invite.expiresAt)))}</span>
         )}
       </span>
 
       {canRevoke && state === 'open' && (
         <button
           type="button"
-          className="note underline"
+          className="quiet-button"
+          aria-label={`Revoke ${invite.displayName}'s invite`}
           disabled={busy}
           onClick={() => {
             void (async () => {

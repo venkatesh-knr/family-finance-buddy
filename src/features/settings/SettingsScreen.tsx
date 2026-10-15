@@ -74,18 +74,26 @@ export function SettingsScreen({
    * for that", which is a menu of disappointments.
    */
   const [convertible, setConvertible] = useState<readonly string[]>([]);
+  // A rate list that did not load is a different thing from one with nothing in it, and the screen says which.
+  const [ratesFailed, setRatesFailed] = useState(false);
 
   useEffect(() => {
     if (householdId === null) return;
     let live = true;
     listRates(householdId)
       .then((rates) => {
-        if (live) setConvertible([...new Set(rates.flatMap((r) => [r.base, r.quote]))]);
+        if (live) {
+          setConvertible([...new Set(rates.flatMap((r) => [r.base, r.quote]))]);
+          setRatesFailed(false);
+        }
       })
       .catch(() => {
-        // A rate list that will not load is not worth a broken settings screen.
-        // The base currency alone is a correct, if narrow, set of options.
-        if (live) setConvertible([]);
+        // A rate list that will not load is not worth a broken settings screen. The base currency alone is a
+        // correct, if narrow, set of options, and the row says the rates could not be read.
+        if (live) {
+          setConvertible([]);
+          setRatesFailed(true);
+        }
       });
     return () => {
       live = false;
@@ -93,8 +101,11 @@ export function SettingsScreen({
   }, [householdId]);
 
   const base = household?.baseCurrency ?? 'INR';
-  const options = [...new Set([base, ...convertible])];
   const reading = displayCurrency === '' ? base : displayCurrency;
+  // What the device is reading in is always offered: the setting belongs to the device and the rates to the
+  // household, so after a switch (or a failed read) the device can still be on a currency this household has no
+  // rate for, and the only way off it is this list.
+  const options = [...new Set([base, reading, ...convertible])];
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -138,8 +149,10 @@ export function SettingsScreen({
           <label className="setrow setrow-select">
             <span className="setrow-text">
               <span className="sk">Read amounts in</span>
-              {options.length === 1 && (
-                <span className="sd">Only {base} until a rate is recorded on Overview.</span>
+              {ratesFailed ? (
+                <span className="sd">The exchange rates could not be read just now.</span>
+              ) : (
+                options.length === 1 && <span className="sd">Only {base} until a rate is recorded on Overview.</span>
               )}
             </span>
             <span className="sv">{reading}</span>
