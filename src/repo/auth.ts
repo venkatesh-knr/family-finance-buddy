@@ -249,6 +249,33 @@ export async function verifyTotpCode(code: string, factorId?: string): Promise<v
   }
 }
 
+/**
+ * Change the signed-in person's password.
+ *
+ * The session is already two-factor (that is how anybody gets to this screen), so this is a change made by
+ * someone who has just proved who they are twice. The server applies its own password rules and the message it
+ * refuses with is passed on. Nothing here keeps the password.
+ */
+export async function changePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase().auth.updateUser({ password: newPassword });
+  if (error !== null) throw new Error(error.message);
+}
+
+export interface TotpStatus {
+  /** Whether a verified authenticator is enrolled. Signing in requires one, so this is true for anyone signed in. */
+  readonly enrolled: boolean;
+  /** When it was set up, if the provider says. */
+  readonly since: string | null;
+}
+
+/** What the second factor looks like to the person who has it. Read only: nothing here enrols, removes or changes one. */
+export async function totpStatus(): Promise<TotpStatus> {
+  const { data, error } = await supabase().auth.mfa.listFactors();
+  if (error !== null) throw new Error(error.message);
+  const factor = data.totp[0];
+  return { enrolled: factor !== undefined, since: factor?.created_at ?? null };
+}
+
 export async function signOut(): Promise<void> {
   const client = supabase();
   const { error } = await client.auth.signOut();

@@ -2565,4 +2565,82 @@
     color: var(--muted);
     flex: none;
   }
+
+  /*
+   * Profile (docs/design/vibrant-canvas.html): who you are, how you sign in, your private entries, what has been
+   * done, and Sign out. The rows are Settings' rows; these are what Profile adds.
+   */
+  .profile-hero {
+    align-items: center;
+    display: flex;
+    gap: 0.875rem;
+  }
+
+  .profile-avatar {
+    cursor: default;
+    flex: none;
+    font-size: 1.5rem;
+    height: 3.5rem;
+    justify-content: center;
+    width: 3.5rem;
+  }
+
+  .profile-name {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  /* What opens under a row: the same card, a hairline above, the words or the form. */
+  .setpanel {
+    border-top: 1px solid var(--line);
+    font-size: 0.875rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .activity-row {
+    align-items: center;
+    display: flex;
+    font-size: 0.84375rem;
+    gap: 0.625rem;
+    justify-content: space-between;
+    min-height: 3.125rem;
+  }
+
+  .profile-note {
+    align-items: flex-start;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 0.4375rem;
+    margin-top: 0.5rem;
+    padding: 0.625rem 0 0.25rem;
+  }
+
+  .profile-note svg {
+    flex: none;
+    margin-top: 0.1875rem;
+  }
+
+  .profile-signout {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    justify-content: center;
+    min-height: 2.75rem;
+  }
 }
