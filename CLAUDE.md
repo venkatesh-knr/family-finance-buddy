@@ -28,6 +28,11 @@ from a cloud session, one at a time, and handed over through git. It says how to
 leave (`npm run handoff -- --arriving` / `--leaving`), what differs between the two environments,
 the maintainer's standing working agreements, and where the last session stopped.
 
+**At the end of every session here, including a Remote Control one, run `npm run handoff -- --leaving`,
+push every branch with work on it, and rewrite "Where the last session stopped" in `docs/handoff.md`**,
+even if nothing else is planned. The MSI can become unreachable without warning, and nobody will be
+here to push what was left. The next session may be a cloud one that sees only what is on GitHub.
+
 ---
 
 ## Invariants — never violate without discussing first
