@@ -280,21 +280,21 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #90. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #92. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
   reversals (#79); the Holdings redesign (#80); the owner's answers on surrender value, the cover figure
   and step 6 (#81); the canvas rule, the Artboard column, the end-to-end suite in its own household and the
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
-  mistake and its reversal (#86, #87); and the three screens rebuilt to their artboards: **Expenses
-  (#88), More with the bar on the screens behind it (#89), Settings (#90)**.
+  mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
+  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92)**.
 - **In flight:** branch `handoff-remote`, pull request #91 (this note, the Working remotely, Cloud environment
   and Before stepping away sections, and the end-of-session rule in `CLAUDE.md`). Documentation only. Its CI
-  check failed three times at "Start a local stack" on `ghcr.io` answering `toomanyrequests` while pulling
-  Supabase's images: a registry throttle, not this change. Re-run it and merge on green; do not use the admin
-  bypass. Nothing else is unmerged: no other remote branch carries work that `main` lacks. Local branches left over from earlier
-  pull requests are merged and safe to delete.
+  failed for a few hours on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
+  images (CI downloads them on every run and caches nothing); it cleared on its own, and the same check passes
+  now. If it recurs, re-run the job, and consider a retry around `supabase start` in `.github/workflows/deploy.yml`
+  (shown to the maintainer first). Nothing else is unmerged.
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
@@ -308,27 +308,27 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   from two years; an owned home is not in the FIRE corpus; retirement is a kind (EPF, NPS and PPF, which
   means PPF moves out of the deposit schemes with a migration when step 6 builds it). In
   `docs/decisions.md` and `docs/build-plan.md`.
-- **Open for the maintainer:** the four "Your call" items in the mock-vs-build review: **1** the
+- **Open for the maintainer:** whether a voided or archived private entry should count as private (the
+  database function behind the Profile count counts them, so the list does and marks them; changing it is a
+  migration); the four "Your call" items in the mock-vs-build review: **1** the
   emergency-fund line on Overview, **2** one ring per currency on Overview, **7** where the FIRE planning
   sections live until Goals, **10** the earmark chips on Holdings; the six older `proposed` Departures (hero
   weight, allocation at large text, the Add picker, Fetch prices, refused returns amber against the grey
   ⓘ, Holdings list chrome); the other `proposed` rows in `docs/design/conformance.md`; bank statements for
   step 7 (below).
 - **Queued, in this order:**
-  1. **Profile** to its artboard (mock-vs-build items 30–33). Needs new work for the Password and
-     Two-step rows, "See them" for private entries, and naming the thing in recent activity.
-  2. **Tax** (25–27), then **Insurance** (28–29), then **the holding screens** (13–18).
-  3. **Overview** (1–3), **FIRE** (4–7) and **Holdings list** (8–12), each once the "Your call" items
+  1. **Tax** (25–27), then **Insurance** (28–29), then **the holding screens** (13–18).
+  2. **Overview** (1–3), **FIRE** (4–7) and **Holdings list** (8–12), each once the "Your call" items
      it contains are answered.
-  4. Follow-ups found on the way: month and year totals on Expenses add up the 50 most recent entries
+  3. Follow-ups found on the way: month and year totals on Expenses add up the 50 most recent entries
      the screen reads (the figure now says so; the fix is period-scoped reads in the repository layer);
      the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
      Insurance (the maintainer's file); other screens may share the stale-read race fixed in the members
      list on Settings.
-  5. **Step 6**: `property` and `property_improvement` with a pure cost-basis function (fixtures first,
+  4. **Step 6**: `property` and `property_improvement` with a pure cost-basis function (fixtures first,
      migration shown for review before any screen), then the retirement kind (PPF, EPF, NPS).
-  6. **Step 5**: Reports and export first (the gate is a round trip).
-  7. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
+  5. **Step 5**: Reports and export first (the gate is a round trip).
+  6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
