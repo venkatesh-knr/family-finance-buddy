@@ -245,7 +245,7 @@ function SignedIn({
           onTogglePrivacy={() => {
             setPrivacy((on) => !on);
           }}
-          showPrivacy={screen === 'tax' || screen === 'insurance'}
+          showPrivacy={screen === 'tax' || screen === 'insurance' || screen === 'profile'}
           householdKind={current?.household.kind ?? null}
         />
       )}
@@ -367,7 +367,7 @@ function SignedIn({
             displayCurrency={displayCurrency}
           />
         )}
-        {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} />}
+        {screen === 'profile' && <ProfileScreen email={email} householdId={householdId} privacy={privacy} />}
         {screen === 'settings' && (
           <SettingsScreen
             householdId={householdId}

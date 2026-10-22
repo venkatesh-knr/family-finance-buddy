@@ -64,6 +64,25 @@ export function moreFor(role: HouseholdRole | null): readonly AppScreen[] {
   }
 }
 
+/**
+ * What a role can do, in a sentence, so nobody has to guess (blueprint, Profile). It says what the database lets
+ * the role do, which is narrower than what every screen offers.
+ */
+export function roleSummary(role: HouseholdRole | null): string {
+  switch (role) {
+    case 'owner':
+      return 'Can see and change everything in this household, invite people, change roles and reset a demo household.';
+    case 'partner':
+      return 'Can see and change everything in this household, apart from inviting people and changing roles.';
+    case 'contributor':
+      return 'Can add expenses and holdings under their own name and read their own entries. The household’s totals are on the Summary.';
+    case 'viewer':
+      return 'Can read the household’s Summary and nothing else.';
+    case null:
+      return 'Has no role in this household yet.';
+  }
+}
+
 /** Profile and Settings are reached from the account menu, by everybody. */
 const FOR_EVERYONE: readonly AppScreen[] = ['profile', 'settings'];
 
