@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedScreen, moreFor, screensFor, type AppScreen } from './access.ts';
+import { allowedScreen, moreFor, roleSummary, screensFor, type AppScreen } from './access.ts';
 
 describe('screensFor', () => {
   it('gives an owner and a partner five places in the bar, the last being More, and no summary', () => {
@@ -64,5 +64,23 @@ describe('allowedScreen', () => {
     for (const role of ['owner', 'partner', 'contributor', 'viewer', null] as const) {
       for (const screen of everyone) expect(allowedScreen(role, screen)).toBe(screen);
     }
+  });
+});
+
+describe('what a role can do, said in a sentence', () => {
+  it('says something different and specific for each role', () => {
+    const roles = ['owner', 'partner', 'contributor', 'viewer'] as const;
+    const sentences = roles.map((role) => roleSummary(role));
+    expect(new Set(sentences).size).toBe(4);
+    for (const sentence of sentences) expect(sentence.length).toBeGreaterThan(30);
+  });
+
+  it('keeps the owner as the only role that invites, changes roles and resets', () => {
+    expect(roleSummary('owner')).toMatch(/invite people, change roles and reset/);
+    expect(roleSummary('partner')).toMatch(/apart from inviting people and changing roles/);
+  });
+
+  it('says a person with no role has none, and does not guess', () => {
+    expect(roleSummary(null)).toBe('Has no role in this household yet.');
   });
 });

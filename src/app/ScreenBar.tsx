@@ -24,7 +24,10 @@ export function ScreenBar({
   onBack: () => void;
   privacy: boolean;
   onTogglePrivacy: () => void;
-  /** The artboards draw the switch on Tax and Insurance, where there are amounts, and not on Profile or Settings. */
+  /**
+   * The artboards draw the switch on Tax and Insurance, where there are amounts, and not on Profile or Settings.
+   * Profile lists a member's private entries with their amounts, so it carries one too; Settings has none to hide.
+   */
   showPrivacy: boolean;
   householdKind: HouseholdKind | null;
 }) {
