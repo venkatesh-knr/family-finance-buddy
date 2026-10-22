@@ -289,9 +289,11 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the three screens rebuilt to their artboards: **Expenses
   (#88), More with the bar on the screens behind it (#89), Settings (#90)**.
-- **In flight:** branch `handoff-remote` (this note, the Working remotely, Cloud environment and Before
-  stepping away sections, and the end-of-session rule in `CLAUDE.md`). Documentation only. Nothing else is
-  unmerged: no other remote branch carries work that `main` lacks. Local branches left over from earlier
+- **In flight:** branch `handoff-remote`, pull request #91 (this note, the Working remotely, Cloud environment
+  and Before stepping away sections, and the end-of-session rule in `CLAUDE.md`). Documentation only. Its CI
+  check failed three times at "Start a local stack" on `ghcr.io` answering `toomanyrequests` while pulling
+  Supabase's images: a registry throttle, not this change. Re-run it and merge on green; do not use the admin
+  bypass. Nothing else is unmerged: no other remote branch carries work that `main` lacks. Local branches left over from earlier
   pull requests are merged and safe to delete.
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
