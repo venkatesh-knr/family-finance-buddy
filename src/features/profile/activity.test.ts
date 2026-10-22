@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { activityLine, activityPhrase, clockTime, dayLabel, groupByDay } from './activity.ts';
 
-// Local times, as the screen reads them: the device's own clock is what "today" means here.
-const at = (month: number, day: number, hour: number, minute = 0) => new Date(2026, month - 1, day, hour, minute).toISOString();
-const now = new Date(2026, 9, 15, 22, 0);
+// Fixed instants, and Kolkata's answers: the test must give the same result on a device in any zone.
+// 2026-10-15T16:30:00Z is 22:00 IST on 15 October.
+const now = new Date('2026-10-15T16:30:00Z');
 
 describe('the log in plain words', () => {
   it('says what was done, as the board does: "Recorded a value", "Added a policy", "Renewed"', () => {
@@ -19,39 +19,67 @@ describe('the log in plain words', () => {
     expect(activityPhrase('expense_txn', 'delete')).toBe('Removed an expense');
   });
 
+  it('has a phrase for the audited tables a screen would otherwise show as a raw name', () => {
+    expect(activityPhrase('bond_rating_change', 'insert')).toBe('Recorded a rating change');
+    expect(activityPhrase('user_account', 'update')).toBe('Updated an account');
+  });
+
   it('shows an unknown table by its name and not as nothing: unlabelled should look unfinished', () => {
     expect(activityPhrase('reminder_rule', 'update')).toBe('Changed reminder rule');
     expect(activityPhrase('something_new', 'read')).toBe('Read something new');
   });
 
-  it('puts a name after the sentence only when there is one', () => {
+  it('puts a name after the phrase when there is one', () => {
     expect(activityLine('Recorded a value', 'Parag Parikh Flexi Cap')).toEqual({ lead: 'Recorded a value', name: 'Parag Parikh Flexi Cap' });
+    expect(activityLine('Renewed', 'FD 1')).toEqual({ lead: 'Renewed', name: 'FD 1' });
+  });
+
+  it('turns a fragment into a sentence when no name follows it, and leaves a whole phrase alone', () => {
+    expect(activityLine('Set the terms', null)).toEqual({ lead: "Set a deposit's terms", name: null });
+    expect(activityLine('Renewed', '  ')).toEqual({ lead: 'Renewed a deposit', name: null });
+    expect(activityLine('Invited', null)).toEqual({ lead: 'Invited someone', name: null });
     expect(activityLine('Changed a budget', null)).toEqual({ lead: 'Changed a budget', name: null });
-    expect(activityLine('Added an expense', '   ')).toEqual({ lead: 'Added an expense', name: null });
   });
 });
 
-describe('days and times', () => {
+describe('days and times are Kolkata\'s', () => {
   it('calls today and yesterday by those names and any other day by its date', () => {
-    expect(dayLabel(at(10, 15, 21, 42), now)).toBe('Today');
-    expect(dayLabel(at(10, 14, 6, 5), now)).toBe('Yesterday');
-    expect(dayLabel(at(10, 13, 18, 5), now)).toBe('13 Oct');
+    expect(dayLabel('2026-10-15T16:12:00Z', now)).toBe('Today'); // 21:42 IST, 15 Oct
+    expect(dayLabel('2026-10-14T00:35:00Z', now)).toBe('Yesterday'); // 06:05 IST, 14 Oct
+    expect(dayLabel('2026-10-13T12:35:00Z', now)).toBe('13 Oct'); // 18:05 IST, 13 Oct
   });
 
-  it('reads the time as the board does: "9:42 pm"', () => {
-    expect(clockTime(at(10, 15, 21, 42))).toBe('9:42 pm');
-    expect(clockTime(at(10, 13, 11, 18))).toBe('11:18 am');
+  it('puts an entry made late in the evening in India under that evening, not under the next UTC day', () => {
+    // 2026-10-15T19:00:00Z is 00:30 IST on the 16th; the 15th in UTC.
+    const afterMidnight = new Date('2026-10-15T19:00:00Z');
+    expect(dayLabel('2026-10-15T16:12:00Z', afterMidnight)).toBe('Yesterday');
+    expect(dayLabel('2026-10-15T19:00:00Z', afterMidnight)).toBe('Today');
   });
 
-  it('gathers entries under their day, in the order given, with one heading a day', () => {
+  it('reads the time as the board does, in Kolkata: "9:42 pm"', () => {
+    expect(clockTime('2026-10-15T16:12:00Z')).toBe('9:42 pm');
+    expect(clockTime('2026-10-13T05:48:00Z')).toBe('11:18 am');
+  });
+
+  it('gathers entries under their Kolkata day, in the order given, with one heading a day', () => {
     const groups = groupByDay(
-      [{ at: at(10, 15, 21, 42) }, { at: at(10, 15, 21, 30) }, { at: at(10, 13, 18, 5) }, { at: at(10, 13, 11, 18) }],
+      [
+        { at: '2026-10-15T16:12:00Z' }, // 21:42 on the 15th
+        { at: '2026-10-15T10:30:00Z' }, // 16:00 on the 15th
+        { at: '2026-10-13T12:35:00Z' }, // 18:05 on the 13th
+        { at: '2026-10-13T05:48:00Z' }, // 11:18 on the 13th
+      ],
       now,
     );
     expect(groups.map((g) => [g.label, g.entries.length])).toEqual([
       ['Today', 2],
       ['13 Oct', 2],
     ]);
+  });
+
+  it('keeps 18:30 UTC and 18:29 UTC on opposite sides of an Indian midnight', () => {
+    const groups = groupByDay([{ at: '2026-10-14T18:31:00Z' }, { at: '2026-10-14T18:29:00Z' }], now);
+    expect(groups.map((g) => g.label)).toEqual(['Today', 'Yesterday']);
   });
 
   it('gives an empty list no groups', () => {

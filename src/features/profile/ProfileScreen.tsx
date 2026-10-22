@@ -14,10 +14,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHouseholdChoice } from '../../app/household.tsx';
-import { formatIsoDate } from '../../lib/dates.ts';
+import { roleSummary } from '../../domain/access.ts';
+import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import { passwordProblem } from '../../lib/password.ts';
-import { changePassword, signOut, totpStatus, type TotpStatus } from '../../repo/auth.ts';
+import { changePassword, signOut, totpStatus, verifyTotpCode, type TotpStatus } from '../../repo/auth.ts';
 import { listExpenses } from '../../repo/expenses.ts';
 import {
   activityNames,
@@ -28,7 +29,7 @@ import {
   type PrivateEntries,
   type PrivateEntryCount,
 } from '../../repo/profile.ts';
-import { Button, Caveat, Notice, PasswordField, Pill, Problem } from '../../ui/primitives.tsx';
+import { Button, Caveat, Field, Notice, PasswordField, Pill, Problem } from '../../ui/primitives.tsx';
 import { ShowMore, useReveal } from '../../ui/ShowMore.tsx';
 import { activityLine, activityPhrase, clockTime, groupByDay } from './activity.ts';
 
@@ -140,6 +141,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
           <span className="note block">{current?.household.name ?? '—'}</span>
         </span>
         {role !== null && <Pill tone="own">{role}</Pill>}
+        <p className="note profile-permits">{roleSummary(role)}</p>
       </section>
 
       {problem !== null && <Problem>{problem}</Problem>}
@@ -183,7 +185,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
         >
           <span className="sk">Two-step sign-in</span>
           <span className="sv" style={{ color: totp?.enrolled === false ? 'var(--coral)' : 'var(--ink)' }}>
-            {totp === null ? '' : totp.enrolled ? '✓ On' : 'Off'}
+            {loading ? '' : totp === null ? 'Could not be read' : totp.enrolled ? '✓ On' : 'Off'}
           </span>
           <Chevron open={openTotp} />
         </button>
@@ -192,7 +194,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
             <p>
               Signing in asks for a six-digit code from your authenticator app as well as your password. It is
               required for every member, so it cannot be turned off.
-              {totp?.since != null && <> Set up on {formatIsoDate(totp.since.slice(0, 10))}.</>}
+              {totp?.since != null && <> Set up on {formatIsoDate(istCalendarDate(new Date(totp.since)))}.</>}
             </p>
             <p className="note mt-2">
               Replacing the authenticator app is not something this screen does yet: a replacement that went wrong
@@ -214,7 +216,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
         ) : (
           <>
             <div className="flex items-center gap-2.5">
-              <span className="asset-tile" aria-hidden="true" style={{ ['--tile' as string]: 'var(--muted)', height: '2.25rem', width: '2.25rem' }}>
+              <span className="asset-tile asset-tile-compact" aria-hidden="true" style={{ ['--tile' as string]: 'var(--muted)' }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="5" y="11" width="14" height="9" rx="2" />
                   <path d="M8 11V8a4 4 0 0 1 8 0v3" />
@@ -233,24 +235,26 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
               {total > 0 && who !== null && (
                 <button
                   type="button"
-                  className="quiet-button"
+                  className="disclosure"
                   aria-expanded={openEntries}
                   onClick={() => {
                     setOpenEntries((was) => !was);
                   }}
                 >
                   See them
+                  <Chevron open={openEntries} />
                 </button>
               )}
               <button
                 type="button"
-                className="quiet-button"
+                className="disclosure"
                 aria-expanded={openHow}
                 onClick={() => {
                   setOpenHow((was) => !was);
                 }}
               >
                 How it works
+                <Chevron open={openHow} />
               </button>
             </div>
 
@@ -261,7 +265,8 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
               <p className="note mt-2.5">
                 Nobody else in this household can read those rows, the owner included: the database refuses them
                 rather than the screen hiding them. Their amounts still count in household totals, where they
-                appear to others as a single figure with no detail.
+                appear to others as a single figure with no detail. With only one private entry, anyone who adds
+                up the rest can work out its amount from the total.
               </p>
             )}
           </>
@@ -314,11 +319,6 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
         <ShowMore hidden={reveal.hidden} onMore={reveal.more} noun="entries" />
 
         <p className="note profile-note">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="8.5" />
-            <path d="M12 11v5" />
-            <path d="M12 8h.01" />
-          </svg>
           <span>
             Shows changes, not who viewed what.
             <Caveat tone="info" label="What this log does not record">
@@ -359,6 +359,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
 function ChangePassword({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [code, setCode] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -370,12 +371,20 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
       setProblem(wrong);
       return;
     }
+    if (!/^\d{6}$/.test(code.trim())) {
+      setProblem('Enter the six-digit code from your authenticator app.');
+      return;
+    }
     setBusy(true);
     setProblem(null);
     try {
+      // A fresh code first: changing the credential is a sensitive action, and a signed-in device that has been left
+      // unlocked should not be enough to take the account (blueprint, security layer 4).
+      await verifyTotpCode(code);
       await changePassword(password);
       setPassword('');
       setConfirmation('');
+      setCode('');
       setSaved(true);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not change the password.');
@@ -421,9 +430,21 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
           setConfirmation(event.target.value);
         }}
       />
+      <Field
+        label="Six-digit code"
+        hint="From your authenticator app, to confirm it is you."
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        numeric
+        value={code}
+        onChange={(event) => {
+          setCode(event.target.value.replace(/\D/g, ''));
+        }}
+      />
       {problem !== null && <Problem>{problem}</Problem>}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={busy || password === '' || confirmation === ''}>
+        <Button type="submit" disabled={busy || password === '' || confirmation === '' || code === ''}>
           {busy ? 'Saving…' : 'Change password'}
         </Button>
         <button type="button" className="note underline" onClick={onDone}>
@@ -465,13 +486,18 @@ function MyPrivateEntries({ householdId, memberId, privacy }: { householdId: str
               <span style={{ color: 'var(--ink)' }}>{expense.payee ?? 'An expense'}</span>
               <span className="note"> · {formatIsoDate(expense.date)}</span>
             </span>
-            <span className="tabular-nums">{formatMoney(expense.amount, { privacy })}</span>
+            <span className="flex items-center gap-2">
+              {expense.isVoided && <Pill tone="due">Voided</Pill>}
+              <span className="tabular-nums" style={{ textDecoration: expense.isVoided ? 'line-through' : undefined }}>
+                {formatMoney(expense.amount, { privacy })}
+              </span>
+            </span>
           </li>
         ))}
         {entries.holdings.map((holding) => (
           <li key={holding.id} className="activity-row">
             <span style={{ color: 'var(--ink)' }}>{holding.name}</span>
-            <span className="note">a holding</span>
+            <span className="note">{holding.isArchived ? 'a holding, archived' : 'a holding'}</span>
           </li>
         ))}
       </ul>

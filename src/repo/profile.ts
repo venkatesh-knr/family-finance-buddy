@@ -65,6 +65,8 @@ export interface ActivityEntry {
   readonly entity: string;
   /** The row the entry is about. Not a name: see `activityNames`. */
   readonly entityId: string;
+  /** The row as it was after the change, or before it for a removal: where a name is read when the row is gone. */
+  readonly snapshot: Readonly<Record<string, unknown>> | null;
   readonly action: AuditAction;
   readonly at: string;
   /** Null for a scheduled job, which is a real answer: nobody did this. */
@@ -98,7 +100,7 @@ export async function listRecentActivity(
 
   const { data, error } = await client
     .from('audit_log')
-    .select('id, entity, entity_id, action, at, actor')
+    .select('id, entity, entity_id, action, at, actor, before, after')
     .eq('household_id', householdId)
     .order('at', { ascending: false })
     .limit(limit);
@@ -118,6 +120,7 @@ export async function listRecentActivity(
       id: String(record['id']),
       entity: requireString(record['entity'], 'audit_log.entity'),
       entityId: String(record['entity_id'] ?? ''),
+      snapshot: snapshotOf(record['after']) ?? snapshotOf(record['before']),
       action: action as AuditAction,
       at: requireString(record['at'], 'audit_log.at'),
       actor: typeof actor === 'string' ? actor : null,
@@ -126,139 +129,124 @@ export async function listRecentActivity(
   });
 }
 
-/** Where a name lives for the tables a person would recognise an entry by. */
-const NAME_OF: Readonly<Record<string, { readonly table: string; readonly column: string }>> = {
-  expense_txn: { table: 'expense_txn', column: 'payee' },
-  instrument: { table: 'instrument', column: 'name' },
-  insurance_policy: { table: 'insurance_policy', column: 'name' },
-  expense_category: { table: 'expense_category', column: 'name' },
-  liability: { table: 'liability', column: 'name' },
-  member: { table: 'member', column: 'display_name' },
-  invite: { table: 'invite', column: 'display_name' },
-  import_batch: { table: 'import_batch', column: 'label' },
+/** The row a snapshot holds, or null: the audit log stores it as json and a read of it is checked, not assumed. */
+function snapshotOf(value: unknown): Readonly<Record<string, unknown>> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+/** Where a name lives in the row, for the tables a person would recognise an entry by. */
+const NAME_COLUMN: Readonly<Record<string, string>> = {
+  expense_txn: 'payee',
+  instrument: 'name',
+  insurance_policy: 'name',
+  expense_category: 'name',
+  liability: 'name',
+  member: 'display_name',
+  invite: 'display_name',
+  import_batch: 'label',
 };
 
-/** Tables whose rows hang off a holding, and the column that says which: the holding's instrument is the name. */
-const HOLDING_KEY: Readonly<Record<string, string>> = {
-  holding: 'id',
-  valuation_snapshot: 'holding_id',
-  lot: 'holding_id',
-  disposal: 'holding_id',
-  fixed_income_terms: 'holding_id',
-};
+/** Tables whose rows are about a holding, and so are named by the holding's instrument. */
+const ABOUT_A_HOLDING: ReadonlySet<string> = new Set([
+  'holding',
+  'valuation_snapshot',
+  'lot',
+  'disposal',
+  'fixed_income_terms',
+  'deposit_renewal',
+  'bond_rating_change',
+]);
 
 /**
  * What each entry was about, by name: the payee, the fund, the policy.
  *
- * The audit log records a table and a row id and nothing else, so "Recorded a value" had nothing to follow it. The
- * names are read here, from the tables themselves, for the entries on the screen only, and under the same policies
- * as any other read: a row the caller may not see has no name here, as it has no row in the ledger. A name that
- * cannot be found, or a read that fails, leaves the entry without one and never takes the list down with it.
+ * The audit log records a table and a row id and a snapshot of the row, and a snapshot of a removal is the row as it
+ * was, so even something that has been removed can be named from it. A name in the snapshot is used as it is. A row
+ * about a holding is named by the holding's instrument: its id is in the snapshot, and the instrument is looked up
+ * beside it, for the entries on the screen only and under the same policies as any other read. An entry with
+ * nothing to name it by, or whose lookup fails, has no name and the sentence stands alone; a failed read never takes
+ * the list down with it.
  */
 export async function activityNames(entries: readonly ActivityEntry[]): Promise<ReadonlyMap<string, string>> {
-  const client = supabase();
   const names = new Map<string, string>();
-  const byEntity = new Map<string, Set<string>>();
+  const holdingOf = new Map<string, string>();
+  const instrumentOfEntry = new Map<string, string>();
+
   for (const entry of entries) {
-    if (entry.entityId === '') continue;
-    const ids = byEntity.get(entry.entity) ?? new Set<string>();
-    ids.add(entry.entityId);
-    byEntity.set(entry.entity, ids);
+    const snap = entry.snapshot;
+    const column = NAME_COLUMN[entry.entity];
+    if (column !== undefined) {
+      const own = snap?.[column];
+      if (typeof own === 'string' && own.trim() !== '') names.set(entry.id, own);
+      continue;
+    }
+    if (!ABOUT_A_HOLDING.has(entry.entity)) continue;
+    if (entry.entity === 'holding') {
+      const instrument = snap?.['instrument_id'];
+      if (typeof instrument === 'string') instrumentOfEntry.set(entry.id, instrument);
+      else if (entry.entityId !== '') holdingOf.set(entry.id, entry.entityId);
+    } else {
+      const holding = snap?.['holding_id'];
+      if (typeof holding === 'string') holdingOf.set(entry.id, holding);
+    }
   }
 
-  // entity -> row id -> name, filled as the reads come back.
-  const direct = new Map<string, Map<string, string>>();
-  // entity -> row id -> the holding it belongs to.
-  const holdingOf = new Map<string, Map<string, string>>();
-
-  await Promise.all(
-    [...byEntity.entries()].map(async ([entity, idSet]) => {
-      const ids = [...idSet];
-      try {
-        const named = NAME_OF[entity];
-        if (named !== undefined) {
-          const { data } = await client.from(named.table).select(`id, ${named.column}`).in('id', ids);
-          const found = new Map<string, string>();
-          for (const row of data ?? []) {
-            const record = requireRecord(row, named.table);
-            const value = record[named.column];
-            if (typeof value === 'string' && value.trim() !== '') found.set(String(record['id']), value);
-          }
-          direct.set(entity, found);
-          return;
-        }
-        const key = HOLDING_KEY[entity];
-        if (key !== undefined) {
-          if (key === 'id') {
-            holdingOf.set(entity, new Map(ids.map((id) => [id, id])));
-          } else {
-            // fixed_income_terms is keyed by its holding; the others have a row id of their own.
-            const idColumn = entity === 'fixed_income_terms' ? 'holding_id' : 'id';
-            const { data } = await client.from(entity).select(`${idColumn}, holding_id`).in(idColumn, ids);
-            const found = new Map<string, string>();
-            for (const row of data ?? []) {
-              const record = requireRecord(row, entity);
-              found.set(String(record[idColumn]), String(record['holding_id']));
-            }
-            holdingOf.set(entity, found);
-          }
-        }
-      } catch {
-        // Names are a courtesy. The entry stands without one.
-      }
-    }),
-  );
-
-  // Holdings are named by their instrument.
-  const holdingIds = new Set<string>();
-  for (const map of holdingOf.values()) for (const id of map.values()) holdingIds.add(id);
-  const instrumentOfHolding = new Map<string, string>();
-  const instrumentName = new Map<string, string>();
-  if (holdingIds.size > 0) {
-    try {
-      const { data } = await client.from('holding').select('id, instrument_id').in('id', [...holdingIds]);
+  const client = supabase();
+  try {
+    // Holdings that are still there say which instrument they are.
+    const holdingIds = [...new Set(holdingOf.values())];
+    const instrumentOfHolding = new Map<string, string>();
+    if (holdingIds.length > 0) {
+      const { data } = await client.from('holding').select('id, instrument_id').in('id', holdingIds);
       for (const row of data ?? []) {
         const record = requireRecord(row, 'holding');
         instrumentOfHolding.set(String(record['id']), String(record['instrument_id']));
       }
-      const instrumentIds = [...new Set(instrumentOfHolding.values())];
-      if (instrumentIds.length > 0) {
-        const { data: instruments } = await client.from('instrument').select('id, name').in('id', instrumentIds);
-        for (const row of instruments ?? []) {
-          const record = requireRecord(row, 'instrument');
-          if (typeof record['name'] === 'string') instrumentName.set(String(record['id']), record['name']);
-        }
-      }
-    } catch {
-      // As above.
     }
-  }
+    for (const [entryId, holding] of holdingOf) {
+      const instrument = instrumentOfHolding.get(holding);
+      if (instrument !== undefined) instrumentOfEntry.set(entryId, instrument);
+    }
 
-  for (const entry of entries) {
-    const own = direct.get(entry.entity)?.get(entry.entityId);
-    if (own !== undefined) {
-      names.set(entry.id, own);
-      continue;
+    const instrumentIds = [...new Set(instrumentOfEntry.values())];
+    if (instrumentIds.length > 0) {
+      const { data } = await client.from('instrument').select('id, name').in('id', instrumentIds);
+      const called = new Map<string, string>();
+      for (const row of data ?? []) {
+        const record = requireRecord(row, 'instrument');
+        if (typeof record['name'] === 'string') called.set(String(record['id']), record['name']);
+      }
+      for (const [entryId, instrument] of instrumentOfEntry) {
+        const label = called.get(instrument);
+        if (label !== undefined) names.set(entryId, label);
+      }
     }
-    const holding = holdingOf.get(entry.entity)?.get(entry.entityId);
-    const instrument = holding === undefined ? undefined : instrumentOfHolding.get(holding);
-    const label = instrument === undefined ? undefined : instrumentName.get(instrument);
-    if (label !== undefined) names.set(entry.id, label);
+  } catch {
+    // Names are a courtesy. Whatever was read from the snapshots stands.
   }
   return names;
 }
 
 export interface PrivateEntries {
-  readonly expenses: readonly { readonly id: string; readonly date: IsoDate; readonly payee: string | null; readonly amount: Money }[];
-  readonly holdings: readonly { readonly id: string; readonly name: string }[];
+  readonly expenses: readonly {
+    readonly id: string;
+    readonly date: IsoDate;
+    readonly payee: string | null;
+    readonly amount: Money;
+    /** A voided entry is still counted as private: the count does not look at it. */
+    readonly isVoided: boolean;
+  }[];
+  readonly holdings: readonly { readonly id: string; readonly name: string; readonly isArchived: boolean }[];
 }
 
 /**
  * The caller's own private entries, so the count on the screen can be checked against the rows it counts.
  *
  * "A privacy control nobody can observe working is indistinguishable from one that does nothing" (section 20):
- * the number says how many, and this is the list. It asks for the caller's member id as well as relying on the
- * policy, so the query says what it means; the policy is what makes it safe.
+ * the number says how many, and this is the list. It is the set the count counts: `my_private_entry_count` counts
+ * every personal expense and holding the caller has, voided or archived or not, so this lists them all and says
+ * which are which. A list that left some out would make the number impossible to check. It asks for the caller's
+ * member id as well as relying on the policy, so the query says what it means; the policy is what makes it safe.
  */
 export async function listMyPrivateEntries(householdId: Uuid, memberId: Uuid): Promise<PrivateEntries> {
   const client = supabase();
@@ -267,21 +255,19 @@ export async function listMyPrivateEntries(householdId: Uuid, memberId: Uuid): P
     client
       .from('expense_txn')
       // amount_minor::text: a bigint over 2^53 would otherwise arrive as a lossy double.
-      .select('id, txn_date, amount_minor::text, currency, payee')
+      .select('id, txn_date, amount_minor::text, currency, payee, voided_at')
       .eq('household_id', householdId)
       .eq('member_id', memberId)
       .eq('visibility', 'personal')
-      .is('voided_at', null)
       .order('txn_date', { ascending: false })
-      .limit(100),
+      .limit(500),
     client
       .from('holding')
-      .select('id, instrument_id')
+      .select('id, instrument_id, status')
       .eq('household_id', householdId)
       .eq('member_id', memberId)
       .eq('visibility', 'personal')
-      .eq('status', 'active')
-      .limit(100),
+      .limit(500),
   ]);
   if (expenseResult.error !== null) throw asRepositoryError(expenseResult.error);
   if (holdingResult.error !== null) throw asRepositoryError(holdingResult.error);
@@ -294,6 +280,7 @@ export async function listMyPrivateEntries(householdId: Uuid, memberId: Uuid): P
       date: requireString(record['txn_date'], 'expense_txn.txn_date'),
       payee: typeof payee === 'string' && payee.trim() !== '' ? payee : null,
       amount: money(BigInt(requireString(record['amount_minor'], 'expense_txn.amount_minor')), requireString(record['currency'], 'expense_txn.currency')),
+      isVoided: record['voided_at'] != null,
     };
   });
 
@@ -309,7 +296,11 @@ export async function listMyPrivateEntries(householdId: Uuid, memberId: Uuid): P
   }
   const holdings = (holdingResult.data ?? []).map((row: unknown) => {
     const record = requireRecord(row, 'holding');
-    return { id: String(record['id']), name: instrumentNames.get(String(record['instrument_id'])) ?? 'A holding' };
+    return {
+      id: String(record['id']),
+      name: instrumentNames.get(String(record['instrument_id'])) ?? 'A holding',
+      isArchived: record['status'] !== 'active',
+    };
   });
 
   return { expenses, holdings };

@@ -2576,6 +2576,15 @@
     gap: 0.875rem;
   }
 
+  .profile-hero {
+    flex-wrap: wrap;
+  }
+
+  /* What the role permits: a line under the card's content, across its full width. */
+  .profile-permits {
+    flex-basis: 100%;
+  }
+
   .profile-avatar {
     cursor: default;
     flex: none;

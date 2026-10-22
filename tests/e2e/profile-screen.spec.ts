@@ -19,6 +19,8 @@ test('who you are: a name, the household, and the role', async ({ page }) => {
   await onProfile(page);
   const hero = page.getByRole('region', { name: 'You', exact: true });
   await expect(hero).toContainText(/owner|partner|contributor|viewer/i);
+  // What the role permits, so nobody has to guess.
+  await expect(hero).toContainText(/^[\s\S]*(Can |Has no role)/);
   await expect(hero.locator('.profile-name')).not.toBeEmpty();
 });
 
@@ -40,8 +42,16 @@ test('changing the password asks for a good one and says what is wrong before se
 
   await page.getByLabel('New password', { exact: true }).fill('short');
   await page.getByLabel('New password again').fill('short');
+  await page.getByLabel('Six-digit code').fill('123456');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(page.getByRole('alert')).toContainText('at least 12 characters');
+
+  // A good password with no code is not sent either: the code is asked for first.
+  await page.getByLabel('New password', { exact: true }).fill('Correct-Horse-9-Battery');
+  await page.getByLabel('New password again').fill('Correct-Horse-9-Battery');
+  await page.getByLabel('Six-digit code').fill('12');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(page.getByRole('alert')).toContainText('six-digit code');
 
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByLabel('New password', { exact: true })).toHaveCount(0);

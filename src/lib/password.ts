@@ -18,7 +18,8 @@ export function passwordProblem(password: string, confirmation: string): string 
     return 'Use both lower case and upper case letters.';
   }
   if (!/[0-9]/.test(password)) return 'Include a digit.';
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Include a symbol, such as ! or #.';
+  // ASCII punctuation, which is the set the server counts. A space, a rupee sign or an accented letter is not one.
+  if (!/[!-/:-@[-`{-~]/.test(password)) return 'Include a symbol, such as ! or #.';
   if (password !== confirmation) return 'The two passwords are not the same.';
   return null;
 }

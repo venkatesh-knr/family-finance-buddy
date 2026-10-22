@@ -18,6 +18,12 @@ describe('a new password, checked where it is typed', () => {
     expect(passwordProblem('NoSymbolsInHere12345', 'NoSymbolsInHere12345')).toBe('Include a symbol, such as ! or #.');
   });
 
+  it('counts only ASCII punctuation as a symbol, as the server does: a space or a rupee sign is not one', () => {
+    expect(passwordProblem('Spaces In Here 12345', 'Spaces In Here 12345')).toBe('Include a symbol, such as ! or #.');
+    expect(passwordProblem('Rupees₹InHere12345', 'Rupees₹InHere12345')).toBe('Include a symbol, such as ! or #.');
+    expect(passwordProblem('Accentéd-Letters-12345', 'Accentéd-Letters-12345')).toBeNull();
+  });
+
   it('says the two are not the same only once the first is good', () => {
     expect(passwordProblem(good, good + 'x')).toBe('The two passwords are not the same.');
     expect(passwordProblem('short', 'different')).toBe('Use at least 12 characters.');
