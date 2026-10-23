@@ -1,82 +1,91 @@
 /**
- * Tax — a working paper for one person's capital gains.
+ * Tax — a working paper for one person's capital gains and the tax they come to.
  *
- * "It fills the schedules, it does not file the return." Everything here is the
- * household's own numbers arranged the way a return asks for them, with the
- * working shown and the sale behind every figure listed underneath it. It is
- * not tax advice, not a filing, and not a substitute for a CA — and it says so
- * on the screen, because a figure on a page called Tax will be read as
- * authoritative whatever the small print says.
+ * "It fills the schedules, it does not file the return." Everything here is the household's own numbers arranged
+ * the way a return asks for them, with the working shown and the sale behind every figure listed underneath it. It
+ * is not tax advice, not a filing, and not a substitute for a CA — and it says so on the screen, because a figure
+ * on a page called Tax will be read as authoritative whatever the small print says.
+ *
+ * The order is the board's (docs/design/vibrant-canvas.html, Tax): whose return and which year on one line, the
+ * answer in the one lifted card with the working behind a fold, the gains and the allowance, the sales that made
+ * them, and one quiet line about what the page is with two buttons for the rest.
  *
  * ── one person, not the household ───────────────────────────────────────
  *
- * Tax is filed per taxpayer, and the ₹1.25 lakh allowance is each person's
- * own. Netting the household once would give two people one allowance between
- * them, or set one person's loss against another's gain. So the screen asks
+ * Tax is filed per taxpayer, and the ₹1.25 lakh allowance is each person's own. Netting the household once would
+ * give two people one allowance between them, or set one person's loss against another's gain. So the screen asks
  * whose return it is, and starts with yours.
  *
  * ── what it nets, and what it lists but will not ────────────────────────
  *
- * Listed equity, equity funds, gold and unlisted shares, netted together under
- * the Act's set-off rules. Foreign shares, debt funds, property, a matured gold
- * bond, and gifts and transfers are listed, each with the specific reason it is
- * not in the figures — never dropped, and never guessed at. Salary, the slabs,
- * surcharge and cess, the regime comparison and losses brought forward are all
- * still to come, and the screen lists them, so a page that computes one head is
- * never read as the whole return.
+ * Listed equity, equity funds, gold and unlisted shares, netted together under the Act's set-off rules. Foreign
+ * shares, debt funds, property, a matured gold bond, and gifts and transfers are listed, each with the specific
+ * reason it is not in the figures — never dropped, and never guessed at. Salary, the slabs, surcharge and cess, the
+ * regime comparison and losses brought forward are all still to come where they are not here, and the screen lists
+ * them (`TaxNotes`), so a page that computes one head is never read as the whole return.
  */
 
 import { useMemo, useState } from 'react';
-import type { ExclusionReason } from '../../domain/capital-gains.ts';
+import { computeIncomeTax, ratesApplied } from '../../domain/income-tax.ts';
 import { taxYearBounds, taxYearOf, taxYearsToOffer } from '../../domain/budget.ts';
+import { freshness, type Regime } from '../../domain/tax-rules.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
-import { formatMoney, money, type Money } from '../../lib/money.ts';
-import { taxClassLabel } from '../../ui/labels.ts';
-import { Absent, Bar, Card, Caveat, Notice, Pill, Problem, Qualifier, Stat } from '../../ui/primitives.tsx';
+import { Notice, Problem } from '../../ui/primitives.tsx';
+import { MutedNote } from './MutedNote.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
-import { IncomeTaxCard } from './IncomeTaxCard.tsx';
+import { GainsCard } from './GainsCard.tsx';
+import { IncomeTaxCard, parseIncome } from './IncomeTaxCard.tsx';
+import { SalesCard } from './SalesCard.tsx';
+import { TaxNotes } from './TaxNotes.tsx';
 import { taxFigures } from './taxFigures.ts';
-import type { TaxLot } from './taxLots.ts';
+import { shortDate } from './saleLine.ts';
 
-/** A gain or loss with its sign written out: the direction is never carried by colour alone. */
-function signed(value: Money, privacy: boolean): string {
-  const sign = value.minor < 0n ? '−' : value.minor > 0n ? '+' : '';
-  const size = money(value.minor < 0n ? -value.minor : value.minor, value.currency);
-  return `${sign}${formatMoney(size, { privacy })}`;
+const yearText = (fy: number): string => `${String(fy)}–${String((fy + 1) % 100).padStart(2, '0')}`;
+
+/** A choice drawn as a pill with a chevron, the device's own picker laid invisibly over it. */
+function PillSelect({
+  label,
+  value,
+  onChange,
+  children,
+  shown,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+  /** What the pill says. */
+  shown: React.ReactNode;
+}) {
+  return (
+    <label className="tax-pill">
+      {shown}
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="tax-pill-chevron"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+      >
+        {children}
+      </select>
+    </label>
+  );
 }
-
-/** A rate as a person reads it: `12.500` is 12.5%, `20.000` is 20%. */
-const rateText = (ratePct: string): string => `${String(Number(ratePct))}%`;
-
-const STILL_TO_COME: readonly string[] = [
-  'Salary and other income saved per person and year — what you type above is held on the page and not stored',
-  'Deductions beyond the standard one: 80C, 80D, home-loan interest, HRA — and so a fair old-against-new comparison',
-  'A surcharge on capital gains above ₹50 lakh, and the rebate’s relief beside a gain',
-  'TDS and advance tax credited, so the balance due and not only the liability',
-  'Foreign shares, at the SBI prescribed exchange rate for the month of sale',
-  'Debt funds, whose treatment depends on when they were bought',
-  'Property, and the choice between 12.5% and 20% with indexation',
-  'Losses brought forward from earlier years, and any carried on',
-  'The foreign tax credit',
-];
-
-/** Why a sale that is listed is not in the figures, in a few words. */
-const WHY: Record<ExclusionReason, (lot: TaxLot) => string> = {
-  'unclassified-asset': () =>
-    'its tax asset class is not set — set it by editing the holding on Holdings',
-  'no-rule-for-date': () => 'no holding-period rule covers this date; earlier regimes are not loaded',
-  'currency-mismatch': (lot) =>
-    `recorded in ${lot.parcel.gain.currency}, which is not rupees — a data problem for an Indian holding`,
-  'needs-prescribed-rate': () =>
-    'a foreign holding needs the SBI prescribed exchange rate for the month of sale, which is not stored yet',
-  'debt-fund-not-modelled': () =>
-    'a debt fund’s treatment depends on when it was bought, which the rules here do not model yet',
-  'property-election': () =>
-    'property carries an election between 12.5% and 20% with indexation, which is not modelled',
-  'possibly-exempt': () =>
-    'gold disposed at maturity — a Sovereign Gold Bond redeemed with the RBI is exempt, so it is left out; check with your CA',
-  'not-a-sale': () => 'recorded as a gift or a transfer, which is not a sale',
-};
 
 export function TaxScreen({
   privacy,
@@ -137,382 +146,178 @@ export function TaxScreen({
   const isMine = memberId === listing.viewer.memberId;
   const window = taxYearBounds(fy);
   const inProgress = fy === currentFy;
-
-  const unplaced = lots.lots.filter((lot) => !lot.placement.placed);
-  const allowance = gains.equityLong.exemption;
   const daysLeft = inProgress ? daysBetween(today, window.end) : null;
-
-  const otherActivity = gains.otherLong.net.minor !== 0n || gains.otherShort.net.minor !== 0n;
-  const lossesSetOff = money(gains.losses.short.setOff.minor + gains.losses.long.setOff.minor, 'INR');
+  const whose = member?.displayName ?? 'this member';
 
   return (
-    <div className="flex flex-col gap-4.5">
-      <Card
-        title="Tax year"
-        aside={
-          <span className="flex flex-wrap items-center gap-2.5">
-            <label className="flex items-center gap-2">
-              <span className="label">Year</span>
-              {years.length === 1 ? (
-                // Nothing to choose between, so nothing to choose with.
-                <span className="tabular-nums">{`${String(fy)}–${String((fy + 1) % 100).padStart(2, '0')}`}</span>
-              ) : (
-                <select
-                  className="field w-[130px]"
-                  value={fy}
-                  onChange={(event) => {
-                    setChosenFy(Number(event.target.value));
-                  }}
-                >
-                  {years.map((year) => (
-                    <option key={year} value={year}>
-                      {`${String(year)}–${String((year + 1) % 100).padStart(2, '0')}`}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="label">
-                Whose return
-                <Caveat tone="info" label="Why this is one person at a time">
-                  Tax is filed per person, and the ₹1.25 lakh equity allowance is each
-                  person&rsquo;s own. Adding two people together would give them one allowance
-                  between them, or set one person&rsquo;s loss against the other&rsquo;s gain.
-                </Caveat>
-              </span>
-              <select
-                className="field w-[150px]"
-                value={memberId}
-                onChange={(event) => {
-                  setChosenMember(event.target.value);
-                }}
-              >
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                    {m.id === listing.viewer.memberId ? ' (you)' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+    <div className="flex flex-col gap-3">
+      {/* Whose return, which year: one line, not a card. */}
+      <div className="tax-head">
+        {years.length === 1 ? (
+          // Nothing to choose between, so nothing to choose with.
+          <span className="tax-pill tabular-nums" aria-label={`Tax year ${yearText(fy)}`}>
+            {yearText(fy)}
           </span>
-        }
-      >
-        <p className="sm">
-          {formatIsoDate(window.start)} to {formatIsoDate(window.end)}, IST
-          {inProgress ? ' · in progress' : ''}.
-        </p>
-        <p className="note mt-2">
-          A working paper, not a filing. It is not tax advice and not a substitute for your CA, who
-          should be the one to check it — every figure below traces to the sales listed under it.
-        </p>
-      </Card>
+        ) : (
+          <PillSelect
+            label="Tax year"
+            value={String(fy)}
+            onChange={(value) => {
+              setChosenFy(Number(value));
+            }}
+            shown={<span className="tabular-nums">{yearText(fy)}</span>}
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {yearText(year)}
+              </option>
+            ))}
+          </PillSelect>
+        )}
+        <PillSelect
+          label="Whose return"
+          value={memberId}
+          onChange={setChosenMember}
+          shown={
+            <span>
+              {whose}
+              {isMine && <span className="note"> (you)</span>}
+            </span>
+          }
+        >
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.displayName}
+              {m.id === listing.viewer.memberId ? ' (you)' : ''}
+            </option>
+          ))}
+        </PillSelect>
+        <span className="flex-1" />
+        <span className="note tabular-nums">
+          {daysLeft === null
+            ? `ended ${formatIsoDate(window.end)}`
+            : `${String(daysLeft)} ${daysLeft === 1 ? 'day' : 'days'} left`}
+        </span>
+      </div>
 
       {taxRulesFailed && (
-        <Notice tone="due">
-          The tax rules could not be loaded, so nothing on this page can be computed — that is a
-          fault, not an answer about the law. Reload the page; if it persists, the rules table may
-          be out of step with this version of the app.
+        <Notice>
+          The tax rules could not be loaded, so nothing on this page can be computed — that is a fault, not an
+          answer about the law. Reload the page; if it persists, the rules table may be out of step with this
+          version of the app.
         </Notice>
       )}
 
       {!isMine && (
-        <Notice>
-          You are reading {member?.displayName ?? 'another member'}&rsquo;s figures. Anything they
-          have marked private is not visible to you, so a sale of theirs that you cannot see is
-          missing from every total here, and nothing on this page can tell you it is.
-        </Notice>
+        <MutedNote>
+          You are reading {member?.displayName ?? 'another member'}&rsquo;s figures. Anything they have marked
+          private is not visible to you, so a sale of theirs that you cannot see is missing from every total here,
+          and nothing on this page can tell you it is.
+        </MutedNote>
       )}
 
-      <Card title="Capital gains" aside={<span className="note">netted across asset classes</span>}>
-        <h3 className="label">Listed shares and equity funds</h3>
-        <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
-          <Stat label="Long term, net">{signed(gains.equityLong.net, privacy)}</Stat>
-          <Stat label="Short term, net">{signed(gains.equityShort.net, privacy)}</Stat>
-          <Stat label="Allowance used">
-            {allowance === null ? (
-              <Absent label="Why the allowance is not shown">
-                No rule for the ₹1.25 lakh equity allowance covers this tax year, so what is
-                taxable cannot be said. Nothing is assumed in its place.
-              </Absent>
-            ) : (
-              <>
-                {formatMoney(allowance.used, { privacy })}{' '}
-                <Qualifier word="of">{formatMoney(allowance.available, { privacy })}</Qualifier>
-              </>
-            )}
-          </Stat>
-          <Stat label="Taxable, long term">
-            {tax.equityLong === null ? (
-              <Absent label="Why long-term tax is not shown">
-                The ₹1.25 lakh equity allowance for this year is not in the rules, so what is
-                taxable long term cannot be said. Nothing is assumed in its place.
-              </Absent>
-            ) : (
-              <>
-                {formatMoney(tax.equityLong.taxable, { privacy })}
-                {tax.equityLong.ratePct !== null && (
-                  <>
-                    {' '}
-                    <Qualifier word="at">{rateText(tax.equityLong.ratePct)}</Qualifier>
-                  </>
-                )}
-              </>
-            )}
-          </Stat>
-          <Stat label="Taxable, short term">
-            {formatMoney(tax.equityShort.taxable, { privacy })}
-            {tax.equityShort.ratePct !== null && (
-              <>
-                {' '}
-                <Qualifier word="at">{rateText(tax.equityShort.ratePct)}</Qualifier>
-              </>
-            )}
-          </Stat>
-        </dl>
-
-        {otherActivity && (
-          <>
-            <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
-            <h3 className="label">
-              Gold and unlisted shares
-              <Caveat tone="info" label="How these differ from equity">
-                Long term is two years, not one, and the gain is taxed at 12.5% with no allowance —
-                the ₹1.25 lakh belongs to equity alone. A short-term gain is taxed at your slab
-                rate, which depends on the rest of your income.
-              </Caveat>
-            </h3>
-            <dl className="mt-2 flex flex-wrap gap-x-9 gap-y-3">
-              <Stat label="Long term, net">{signed(gains.otherLong.net, privacy)}</Stat>
-              <Stat label="Taxable, long term">
-                {formatMoney(tax.otherLong.taxable, { privacy })}
-                {tax.otherLong.ratePct !== null && (
-                  <>
-                    {' '}
-                    <Qualifier word="at">{rateText(tax.otherLong.ratePct)}</Qualifier>
-                  </>
-                )}
-              </Stat>
-              <Stat label="Short term, net">{signed(gains.otherShort.net, privacy)}</Stat>
-              <Stat label="Added to income, at your slab">
-                {formatMoney(tax.otherShortAtSlab, { privacy })}
-                <Caveat tone="warn" label="Why this has no tax figure">
-                  A short-term gain on gold or unlisted shares is added to your income and taxed
-                  at your slab rate. That needs the rest of your income, which is not here yet, so
-                  it is shown as an amount and never as a tax — and it is not in the total below.
-                </Caveat>
-              </Stat>
-            </dl>
-          </>
-        )}
-
-        <hr className="my-3.5" style={{ borderColor: 'var(--line)' }} />
-
-        <dl className="flex flex-wrap gap-x-9 gap-y-3">
-          {lossesSetOff.minor > 0n && (
-            <Stat label="Losses set off">
-              {formatMoney(lossesSetOff, { privacy })}
-              <Caveat tone="info" label="How losses were set off">
-                A long-term loss can only reduce a long-term gain, so it is used first. A
-                short-term loss then goes against what is left — equity short term, then short-term
-                gold and unlisted, then long-term gold and unlisted, then long-term equity, where
-                the allowance may already cover it. The Act lets you choose the order; this is the
-                one used here, and your CA may choose another.
-              </Caveat>
-            </Stat>
-          )}
-          <Stat label="Tax on gains at their own rates">
-            {tax.total === null ? (
-              <Absent label="Why there is no tax figure">
-                A rate or the allowance for this year is missing from the rules, so a total would
-                be short by something that cannot be named. Nothing is assumed in its place.
-              </Absent>
-            ) : (
-              <>
-                {formatMoney(tax.total, { privacy })}
-                <Caveat tone="info" label="What this figure leaves out">
-                  Before surcharge and the 4% health and education cess, which depend on the rest
-                  of your income and are not here yet. It is the tax on the gains that have a rate
-                  of their own, and leaves out any short-term gold or unlisted gain, which is taxed
-                  at your slab.
-                </Caveat>
-              </>
-            )}
-          </Stat>
-        </dl>
-
-        {gains.losses.short.unrelieved !== null && (
-          <div className="mt-3.5">
-            <Notice>
-              {formatMoney(gains.losses.short.unrelieved, { privacy })} of short-term loss is left
-              after set-off. It is not carried forward anywhere in this app yet — note it for next
-              year&rsquo;s return, and file on time, because a late return forfeits it.
-            </Notice>
-          </div>
-        )}
-        {gains.losses.long.unrelieved !== null && (
-          <div className="mt-3.5">
-            <Notice>
-              {formatMoney(gains.losses.long.unrelieved, { privacy })} of long-term loss is left,
-              with no long-term gain to reduce. It is not carried forward anywhere in this app yet
-              — note it for next year&rsquo;s return, and file on time, because a late return
-              forfeits it.
-            </Notice>
-          </div>
-        )}
-      </Card>
-
-      <IncomeTaxCard
+      {/* What is typed is the return's, so a different person or year starts clean. */}
+      <TaxWorkspace
         key={`${memberId}-${String(fy)}`}
         fy={fy}
+        yearLabel={yearText(fy)}
+        inProgress={inProgress}
+        windowText={`${formatIsoDate(window.start)} to ${formatIsoDate(window.end)}`}
+        lastDay={shortDate(window.end)}
         gains={gains}
+        tax={tax}
+        lots={lots.lots}
         rules={taxRules}
         privacy={privacy}
-        whose={member?.displayName ?? 'this member'}
+        whose={whose}
       />
-
-      {inProgress && allowance !== null && (
-        <Card title="Expiring this year" aside={<span className="note">use it or lose it</span>}>
-          <div
-            className="grid items-center gap-x-3"
-            style={{ gridTemplateColumns: 'minmax(90px, 1fr) 3fr 110px' }}
-          >
-            <span className="label">Long-term allowance</span>
-            <Bar
-              value={Number(allowance.used.minor)}
-              target={Number(allowance.available.minor)}
-              label="Long-term equity allowance used"
-            />
-            <span className="tabular-nums text-right">{formatMoney(allowance.used, { privacy })}</span>
-          </div>
-          {/* A div, not a p: the caveat opens a popover, and a div may not sit inside a p. */}
-          <div className="sm mt-2">
-            {formatMoney(money(allowance.available.minor - allowance.used.minor, 'INR'), {
-              privacy,
-            })}{' '}
-            of the {formatMoney(allowance.available, { privacy })} long-term equity allowance is
-            unused
-            {daysLeft !== null && ` · ${String(daysLeft)} days left in the tax year`}.
-            <Caveat tone="info" label="What counts as used">
-              Only gains already realised by a sale. An unrealised gain is not used and does not
-              reduce what is left. It applies to equity alone — gold and unlisted shares do not use
-              it.
-            </Caveat>
-          </div>
-        </Card>
-      )}
-
-      {unplaced.length > 0 && (
-        <Notice
-          tone="due"
-          names={unplaced.flatMap((lot) =>
-            lot.placement.placed
-              ? []
-              : [
-                  `${lot.holdingName} · sold ${formatIsoDate(lot.parcel.disposedOn)} — ${WHY[lot.placement.reason](lot)}`,
-                ],
-          )}
-          namesLabel="Which sales"
-        >
-          {unplaced.length} {unplaced.length === 1 ? 'sale is' : 'sales are'} listed below but not in
-          the figures above. Each says why. Nothing was guessed at.
-        </Notice>
-      )}
-
-      <Card
-        title="Capital gains, by lot"
-        aside={<span className="note">computed from the lots — no gain is ever stored</span>}
-      >
-        {lots.lots.length === 0 ? (
-          <p className="note">
-            Nothing was sold by {member?.displayName ?? 'this member'} in this tax year, so there
-            is nothing to net. A sale recorded on Holdings appears here.
-          </p>
-        ) : (
-          <ul aria-label="Sales in this tax year" className="flex flex-col">
-            {/*
-              A stacked row per sale rather than a table. The prototype's table has
-              six columns, and at phone width a fund named "… (formerly …)" took one
-              word per line while Class and Gain scrolled out of sight — the two
-              columns this page is for. Name and gain share the top line so the
-              figure is never a scroll away, and the rest reads underneath.
-            */}
-            {lots.lots.map((lot, at) => (
-              <li
-                key={`${lot.parcel.lotId}-${lot.parcel.disposalId}`}
-                className={at === 0 ? 'pb-3.5' : 'border-t py-3.5'}
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{lot.holdingName}</span>
-                  <span className="tabular-nums">{signed(lot.parcel.gain, privacy)}</span>
-                </div>
-                <p className="note mt-1">
-                  Sold {formatIsoDate(lot.parcel.disposedOn)} · bought{' '}
-                  {formatIsoDate(lot.parcel.acquiredOn)} · held {lot.parcel.heldDays} days
-                </p>
-                <div className="mt-2">
-                  <ClassPill lot={lot} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="note mt-3">
-          A sale is FIFO-matched to its purchases, and each parcel is held for its own period — a
-          sale that spans two purchases can be part long term and part short. The term is decided
-          by the rule in force on the day of the sale, not today&rsquo;s.
-        </p>
-      </Card>
-
-      <Notice names={STILL_TO_COME} namesLabel="What is still to come">
-        This page computes tax on the salary and other income you type in, and on capital gains on
-        listed equity, equity funds, gold and unlisted shares, with only the standard deduction. It
-        is an estimate of the liability on those figures and not the whole return.
-      </Notice>
     </div>
   );
 }
 
-/** The class of a sale, with its term — worded so no term is claimed where none can be. */
-function ClassPill({ lot }: { lot: TaxLot }) {
-  const label = lot.assetClass === null ? '' : taxClassLabel(lot.assetClass);
-  const term = lot.term === null ? '' : lot.term === 'long' ? 'long term' : 'short term';
+/**
+ * Everything under the head, for one person and one year: the two amounts typed in, the estimate they make with the
+ * year's gains, and the notes under it that name the regime's rates.
+ */
+function TaxWorkspace({
+  fy,
+  yearLabel,
+  inProgress,
+  windowText,
+  lastDay,
+  gains,
+  tax,
+  lots,
+  rules,
+  privacy,
+  whose,
+}: {
+  fy: number;
+  yearLabel: string;
+  inProgress: boolean;
+  windowText: string;
+  lastDay: string;
+  gains: ReturnType<typeof taxFigures>['gains'];
+  tax: ReturnType<typeof taxFigures>['tax'];
+  lots: ReturnType<typeof taxFigures>['lots']['lots'];
+  rules: Parameters<typeof computeIncomeTax>[0]['rules'];
+  privacy: boolean;
+  whose: string;
+}) {
+  const [regime, setRegime] = useState<Regime>('new');
+  const [salaryText, setSalaryText] = useState('');
+  const [otherText, setOtherText] = useState('');
 
-  if (lot.placement.placed) {
-    switch (lot.placement.bucket) {
-      case 'equity-long':
-        return <Pill tone="ok">Long term · equity</Pill>;
-      case 'equity-short':
-        return <Pill tone="warn">Short term · equity</Pill>;
-      case 'other-long':
-        return <Pill tone="ok">{`Long term · ${label}`}</Pill>;
-      case 'other-short':
-        return <Pill tone="warn">{`Short term · ${label} · at your slab`}</Pill>;
-    }
-  }
+  const salary = parseIncome(salaryText);
+  const other = parseIncome(otherText);
 
-  // Not placed. A data problem is `due`; a known limitation is neutral, and says
-  // which — the two ask different things of the person reading.
-  switch (lot.placement.placed ? null : lot.placement.reason) {
-    case 'unclassified-asset':
-      return <Pill tone="due">Class not set</Pill>;
-    case 'no-rule-for-date':
-      return <Pill tone="due">No rule for this date</Pill>;
-    case 'currency-mismatch':
-      return <Pill tone="due">Not in rupees</Pill>;
-    case 'needs-prescribed-rate':
-      return <Pill tone="neutral">{`${label} · ${term} · needs the prescribed rate`}</Pill>;
-    case 'debt-fund-not-modelled':
-      return <Pill tone="neutral">Debt fund · not netted</Pill>;
-    case 'property-election':
-      return <Pill tone="neutral">{`Property · ${term} · election needed`}</Pill>;
-    case 'possibly-exempt':
-      return <Pill tone="neutral">{`${label} · at maturity · left out`}</Pill>;
-    case 'not-a-sale':
-      return <Pill tone="neutral">Gift or transfer · not a sale</Pill>;
-    default:
-      return null;
-  }
+  const result = useMemo(
+    () =>
+      computeIncomeTax({
+        regime,
+        fy,
+        salary: salary.amount,
+        otherIncome: other.amount,
+        gains,
+        rules,
+      }),
+    [regime, fy, salary.amount.minor, other.amount.minor, gains, rules],
+  );
+  const applied = useMemo(() => ratesApplied({ rules, regime, fy }), [rules, regime, fy]);
+
+  // An amount that cannot be read is not an amount of nothing, so no figure is given beside it.
+  const unreadable =
+    salary.error !== null || other.error !== null
+      ? 'An amount typed above is not a number, so there is no estimate until it is. It is not counted as nothing.'
+      : null;
+
+  return (
+    <>
+      <IncomeTaxCard
+        result={result}
+        regime={regime}
+        onRegime={setRegime}
+        salary={{ text: salaryText, error: salary.error, onChange: setSalaryText }}
+        other={{ text: otherText, error: other.error, onChange: setOtherText }}
+        inProgress={inProgress}
+        privacy={privacy}
+        unreadable={unreadable}
+      />
+      <GainsCard gains={gains} tax={tax} inProgress={inProgress} lastDay={lastDay} privacy={privacy} />
+      <SalesCard
+        lots={lots}
+        heading={inProgress ? 'Sales this year' : `Sales in ${yearLabel}`}
+        whose={whose}
+        privacy={privacy}
+      />
+      <TaxNotes
+        fy={fy}
+        windowText={windowText}
+        verifiedOn={result.verifiedOn}
+        checked={freshness(result.verifiedOn, fy)}
+        applied={applied}
+        whose={whose}
+      />
+    </>
+  );
 }

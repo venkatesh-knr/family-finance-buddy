@@ -32,10 +32,14 @@ import type { AssetClass, Term, TaxRule } from '../../domain/tax-rules.ts';
  */
 export interface TaxHolding {
   readonly holding: {
+    /** The holding's id, so a sale can link to the screen of what was sold. */
+    readonly id: string;
     readonly member: { readonly id: string };
     readonly instrument: {
       readonly id: string;
       readonly name: string;
+      /** The instrument kind, for the tile beside a sale. It decides nothing about tax. */
+      readonly kind: string;
       readonly taxAssetClass: AssetClass | null;
     };
   };
@@ -45,6 +49,8 @@ export interface TaxHolding {
 export interface TaxLot {
   readonly parcel: Parcel;
   readonly holdingName: string;
+  readonly holdingId: string;
+  readonly kind: string;
   readonly assetClass: AssetClass | null;
   /** Null exactly where no term can honestly be given. */
   readonly term: Term | null;
@@ -93,6 +99,8 @@ export function taxLotsFor(options: {
       lots.push({
         parcel,
         holdingName: instrument.name,
+        holdingId: row.holding.id,
+        kind: instrument.kind,
         assetClass: instrument.taxAssetClass,
         term: placement.term,
         placement,

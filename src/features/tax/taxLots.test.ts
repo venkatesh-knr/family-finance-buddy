@@ -75,8 +75,9 @@ const holding = (
   parcels: readonly Parcel[],
 ): TaxHolding => ({
   holding: {
+    id: `holding-${instrumentId}`,
     member: { id: memberId },
-    instrument: { id: instrumentId, name, taxAssetClass },
+    instrument: { id: instrumentId, name, kind: 'mutual_fund', taxAssetClass },
   },
   parcels,
 });

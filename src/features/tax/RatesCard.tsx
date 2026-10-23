@@ -1,5 +1,5 @@
 /**
- * The rates a tax year rated the figure with, folded away until asked for.
+ * The rates a tax year rated the figure with, shown when the Rates applied button under the screen is pressed.
  *
  * Read from the same rows the calculation used (`ratesApplied`), so it cannot
  * say one thing while the figure above it did another. It is here for the
@@ -7,7 +7,7 @@
  * check it: the bands, the rebate, the standard deduction, the surcharge and the
  * cess, and where each is meant to come from.
  *
- * Closed by default. Most visits want the figure, not the table behind it.
+ * Not drawn until asked for. Most visits want the figure, not the table behind it.
  */
 
 import { formatIsoDate } from '../../lib/dates.ts';
@@ -26,21 +26,24 @@ function range(band: AppliedBand): string {
   return band.toMinor === null ? `Above ${inr(band.fromMinor)}` : `${inr(band.fromMinor)} to ${inr(band.toMinor)}`;
 }
 
-export function RatesCard({ applied }: { applied: RatesApplied }): React.JSX.Element | null {
+/** Whether there is anything to show: a year no rule covers has no bands. */
+export const hasRates = (applied: RatesApplied): boolean => applied.slabs.length > 0;
+
+export function RatesCard({ applied, id }: { applied: RatesApplied; id?: string }): React.JSX.Element | null {
   // A year no rule covers has nothing to show. The refusal above says so; a card
   // of empty rows would only repeat it.
-  if (applied.slabs.length === 0) return null;
+  if (!hasRates(applied)) return null;
 
   const years = `${String(applied.fy)}–${String((applied.fy + 1) % 100).padStart(2, '0')}`;
   const regime = applied.regime === 'new' ? 'new regime' : 'old regime';
 
   return (
-    <details className="mt-3">
-      <summary className="notice-toggle">
+    <section className="card" id={id} aria-label="Rates applied">
+      <h2 className="card-title font-sans">
         Rates applied for {years}, {regime}
-      </summary>
+      </h2>
 
-      <div className="mt-2.5 flex flex-col gap-3.5">
+      <div className="mt-3.5 flex flex-col gap-3.5">
         <Table label={`Income tax slabs, ${years}, ${regime}`}>
           <thead>
             <tr>
@@ -106,6 +109,6 @@ export function RatesCard({ applied }: { applied: RatesApplied }): React.JSX.Ele
           Rates are set by a reviewed change to the app, never fetched.
         </p>
       </div>
-    </details>
+    </section>
   );
 }

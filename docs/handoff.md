@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #92. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #93. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -288,13 +288,13 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   and step 6 (#81); the canvas rule, the Artboard column, the end-to-end suite in its own household and the
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
-  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92)**.
-- **In flight:** branch `handoff-remote`, pull request #91 (this note, the Working remotely, Cloud environment
-  and Before stepping away sections, and the end-of-session rule in `CLAUDE.md`). Documentation only. Its CI
-  failed for a few hours on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
-  images (CI downloads them on every run and caches nothing); it cleared on its own, and the same check passes
-  now. If it recurs, re-run the job, and consider a retry around `supabase start` in `.github/workflows/deploy.yml`
-  (shown to the maintainer first). Nothing else is unmerged.
+  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93)**.
+- **In flight:** branch `tax-conformance`: the Tax screen rebuilt to its artboard (head row, the estimate in the
+  lifted card with its working in a fold, gains and the allowance in one card, sales as rows, one caveat line with
+  What this assumes and Rates applied). Reviewed by the design-conformance agent; see the pull request. CI has
+  twice failed on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's images (CI
+  downloads them on every run and caches nothing); it clears on its own. If it recurs, re-run the job, and
+  consider a retry around `supabase start` in `.github/workflows/deploy.yml` (shown to the maintainer first).
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
@@ -316,7 +316,10 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   ⓘ, Holdings list chrome); the other `proposed` rows in `docs/design/conformance.md`; bank statements for
   step 7 (below).
 - **Queued, in this order:**
-  1. **Tax** (25–27), then **Insurance** (28–29), then **the holding screens** (13–18).
+  1. **Insurance** (28–29), then **the holding screens** (13–18). Tax is in flight (above). Its follow-ups: the
+     explanatory sentences on Tax still write rule values as literals (₹12 lakh, ₹50 lakh, 4%, ₹1.25 lakh, 12.5%)
+     where `tax_rule` is the source — read them from `ratesApplied` and the exemption and rate rows; and the
+     Estimated tax figure reads ₹0 before anything is typed, which the maintainer may want worded as empty.
   2. **Overview** (1–3), **FIRE** (4–7) and **Holdings list** (8–12), each once the "Your call" items
      it contains are answered.
   3. Follow-ups found on the way: month and year totals on Expenses add up the 50 most recent entries
