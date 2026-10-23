@@ -30,6 +30,8 @@ test('each allocation row has exactly one link, to its class, and the name is no
 test('pressing anywhere on a row opens Holdings filtered to its class, and Back undoes it', async ({ page }) => {
   await onOverview(page);
   const row = page.locator('.alloc-row').first();
+  // A press by coordinates reaches only what is on the screen: bring the row into view first.
+  await row.scrollIntoViewIfNeeded();
   const href = await row.locator('a').first().getAttribute('href');
   const kind = /kind=([a-z_]+)/.exec(href ?? '')?.[1];
   expect(kind).toBeTruthy();

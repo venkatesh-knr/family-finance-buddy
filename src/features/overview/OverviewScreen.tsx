@@ -771,18 +771,17 @@ export function OverviewScreen({
           </div>
         )}
 
-      </div>
-
-      <div className="flex flex-col gap-4.5 empty:hidden lg:col-start-1 lg:row-start-3">
-        {/*
-          One line and not a card (protection-and-flow.md §6): the months of cover, at the stat step,
-          or the reason there are none. It is there whenever a holding is earmarked emergency, even if
-          no amount can be shown, because a line that vanished would read as no emergency fund.
-        */}
-        {scope === 'household' && fire.earmarked.count.emergency > 0 && (
-          <div data-testid="months-of-cover">
-            <dl>
-              <Stat label="Emergency fund">
+        <div className="mt-3">
+          {/*
+            The emergency fund, drawn as the currency cards are (protection-and-flow.md §6, and the owner's call on the
+          mock-vs-build review, item 1): the months of cover at the stat step, and what is set aside under it. It is
+            there whenever a holding is earmarked emergency, even if no amount can be shown, because a card that
+            vanished would read as no emergency fund.
+          */}
+          {scope === 'household' && fire.earmarked.count.emergency > 0 && (
+            <section className="card stat-card" aria-label="Emergency fund" data-testid="months-of-cover">
+              <h3 className="stat-card-label">Emergency fund</h3>
+              <div className="stat-card-value">
                 {fire.earmarked.unvaluedBy.emergency === fire.earmarked.count.emergency ? (
                   <Absent label="Why there is no months of cover">
                     The emergency fund has not been valued yet, so there is nothing to divide.
@@ -800,150 +799,149 @@ export function OverviewScreen({
                         : (cover.why ?? '')}
                   </Absent>
                 )}
-              </Stat>
-            </dl>
-            <p className="note mt-1.5">
-              {emergency !== null && (
-                <>
-                  <Amount value={emergency} privacy={privacy} compact /> set aside
-                  {cover.status === 'ready' && cover.history > 0
-                    ? `, against the household's spending over ${String(cover.history)} whole ${cover.history === 1 ? 'month' : 'months'} with spending recorded.`
-                    : '.'}
-                </>
-              )}
-              {fire.earmarked.unvaluedBy.emergency > 0 &&
-                fire.earmarked.unvaluedBy.emergency < fire.earmarked.count.emergency && (
+              </div>
+              <div className="stat-card-sub">
+                {emergency !== null && (
                   <>
-                    {' '}
-                    {String(fire.earmarked.unvaluedBy.emergency)} emergency{' '}
-                    {fire.earmarked.unvaluedBy.emergency === 1 ? 'holding has' : 'holdings have'} never been
-                    valued, so the cover is short by {fire.earmarked.unvaluedBy.emergency === 1 ? 'it' : 'them'}.
+                    <Amount value={emergency} privacy={privacy} compact /> set aside
+                    {cover.status === 'ready' && cover.history > 0
+                      ? `, against the household's spending over ${String(cover.history)} whole ${cover.history === 1 ? 'month' : 'months'} with spending recorded.`
+                      : '.'}
                   </>
                 )}
-            </p>
-          </div>
-        )}
-        {allocation.length > 0 && (
+                {fire.earmarked.unvaluedBy.emergency > 0 &&
+                  fire.earmarked.unvaluedBy.emergency < fire.earmarked.count.emergency && (
+                    <>
+                      {' '}
+                      {String(fire.earmarked.unvaluedBy.emergency)} emergency{' '}
+                      {fire.earmarked.unvaluedBy.emergency === 1 ? 'holding has' : 'holdings have'} never been
+                      valued, so the cover is short by {fire.earmarked.unvaluedBy.emergency === 1 ? 'it' : 'them'}.
+                    </>
+                  )}
+              </div>
+            </section>
+          )}
+        </div>
+
+      </div>
+
+      <div className="flex flex-col gap-4.5 empty:hidden lg:col-start-1 lg:row-start-3">
+        {/*
+          One card per currency, each as the board draws its one: "Allocation" and the currency with its total,
+          the ring with the total inside it, and a row for each class. A ring cannot add rupees to dollars, so
+          there is a card for each (the owner's call on the mock-vs-build review, item 2).
+        */}
+        {allocation.map((group, groupIndex) => (
           <Card
+            key={group.currency}
             title="Allocation"
             aside={
-              <Caveat tone="info" label="What these shares are of">
-                Shares are of what has been valued, within each currency. A holding nobody has read is
-                not here at all — it would need a value to have a share.
-                {privateLeftOut && (
-                  <>
-                    {' '}
-                    <strong>Other members&rsquo; private holdings are not here either</strong> ({privateSums}
-                    ). A split of them by class would let a member&rsquo;s private figure be worked out,
-                    so they are one sum in net worth and left out of the shares.
-                  </>
+              <span className="note">
+                {group.currency === base ? 'India' : 'Abroad'} ·{' '}
+                <Amount
+                  value={money(group.rows.reduce((sum, row) => sum + row.value.minor, 0n), group.currency)}
+                  privacy={privacy}
+                  compact
+                />
+                {groupIndex === 0 && (
+                  <Caveat tone="info" label="What these shares are of">
+                    Shares are of what has been valued, within each currency. A holding nobody has read is
+                    not here at all — it would need a value to have a share.
+                    {privateLeftOut && (
+                      <>
+                        {' '}
+                        <strong>Other members&rsquo; private holdings are not here either</strong> ({privateSums}
+                        ). A split of them by class would let a member&rsquo;s private figure be worked out,
+                        so they are one sum in net worth and left out of the shares.
+                      </>
+                    )}
+                  </Caveat>
                 )}
-              </Caveat>
+              </span>
             }
           >
-            {/*
-              One card, a section per currency. Two cards both titled
-              "Allocation" made the page look like it was repeating itself, and
-              said nothing about the second being a different currency rather
-              than more of the first.
-            */}
-            <div className="flex flex-col gap-4.5">
-              {allocation.map((group) => (
-                <div key={group.currency}>
-                  <p className="alloc-head">
-                    <span className="label">{group.currency}</span>
-                    <span className="note">
-                      <Amount
-                        value={money(group.rows.reduce((sum, row) => sum + row.value.minor, 0n), group.currency)}
-                        privacy={privacy}
-                        compact
-                      />
-                    </span>
-                  </p>
-                  {/* The ring beside the rows, not instead of them: it shows size, and the rows show what it is of. */}
-                  <div className="alloc-layout mt-1.5">
-                    <AllocationDonut rows={group.rows} currency={group.currency} privacy={privacy} />
-                    <ul className="alloc-rows">
-                      {group.rows.map((row) => (
-                        <li key={row.kind} className="alloc-row">
-                          <AssetTile kind={row.kind} compact />
-                          <span className="min-w-0">
-                            {/*
-                              The whole row is the link (HD-I4): a class here is a total, the holdings
-                              behind it are on the other screen, and somebody pressing "Bonds" is asking
-                              to see them. An ordinary link to the filtered URL, so the back button undoes
-                              it. The anchor is the name, stretched over the row, and the name is plain:
-                              an underlined word on every row is a column of links.
-                            */}
-                            <a
-                              className="alloc-name alloc-link block"
-                              href={hashFor('holdings', { kind: row.kind })}
-                            >
-                              {kindLabel(row.kind)}
-                            </a>
-                            <span className="alloc-share block">{(row.share * 100).toFixed(1)}% of valued</span>
-                          </span>
-                          <span className="alloc-figures">
-                            <span className="alloc-value" title={exactMoney(row.value, privacy) ?? undefined}>
-                              <Amount value={row.value} privacy={privacy} compact />
-                            </span>
-                            {/*
-                              A return only where a cost was recorded. Null is not 0% —
-                              one is silence about a figure nobody entered, the other
-                              is a claim that it has gone nowhere.
-                            */}
-                            {row.returnOnCost !== null && row.gain !== null && (
-                              <Delta
-                                direction={
-                                  row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
-                                }
-                              >
-                                {percentOfCost(row.gain.minor, row.invested.minor)}
-                              </Delta>
+            {/* The ring beside the rows, not instead of them: it shows size, and the rows show what it is of. */}
+            <div className="alloc-layout">
+                <AllocationDonut rows={group.rows} currency={group.currency} privacy={privacy} />
+                <ul className="alloc-rows">
+                  {group.rows.map((row) => (
+                    <li key={row.kind} className="alloc-row">
+                      <AssetTile kind={row.kind} compact />
+                      <span className="min-w-0">
+                        {/*
+                          The whole row is the link (HD-I4): a class here is a total, the holdings
+                          behind it are on the other screen, and somebody pressing "Bonds" is asking
+                          to see them. An ordinary link to the filtered URL, so the back button undoes
+                          it. The anchor is the name, stretched over the row, and the name is plain:
+                          an underlined word on every row is a column of links.
+                        */}
+                        <a
+                          className="alloc-name alloc-link block"
+                          href={hashFor('holdings', { kind: row.kind })}
+                        >
+                          {kindLabel(row.kind)}
+                        </a>
+                        <span className="alloc-share block">{(row.share * 100).toFixed(1)}% of valued</span>
+                      </span>
+                      <span className="alloc-figures">
+                        <span className="alloc-value" title={exactMoney(row.value, privacy) ?? undefined}>
+                          <Amount value={row.value} privacy={privacy} compact />
+                        </span>
+                        {/*
+                          A return only where a cost was recorded. Null is not 0% —
+                          one is silence about a figure nobody entered, the other
+                          is a claim that it has gone nowhere.
+                        */}
+                        {row.returnOnCost !== null && row.gain !== null && (
+                          <Delta
+                            direction={
+                              row.gain.minor > 0n ? 'up' : row.gain.minor < 0n ? 'down' : 'flat'
+                            }
+                          >
+                            {percentOfCost(row.gain.minor, row.invested.minor)}
+                          </Delta>
+                        )}
+                        {/*
+                          A refused return says so. The column is otherwise
+                          silent for a class with no cost recorded, and this is
+                          a different silence: there is a cost, and it is short.
+                        */}
+                        {(row.costShort > 0 || row.costMissing > 0) && (
+                          <Absent label={`Why there is no return for ${kindLabel(row.kind)}`}>
+                            {row.costShort > 0 && (
+                              <>
+                                {shortPositionsPhrase(row.costShort)} a statement that covers only
+                                part of the history. {RETURN_REFUSED_BECAUSE}{' '}
+                              </>
                             )}
-                            {/*
-                              A refused return says so. The column is otherwise
-                              silent for a class with no cost recorded, and this is
-                              a different silence: there is a cost, and it is short.
-                            */}
-                            {(row.costShort > 0 || row.costMissing > 0) && (
-                              <Caveat tone="warn" label={`Why there is no return for ${kindLabel(row.kind)}`}>
-                                {row.costShort > 0 && (
-                                  <>
-                                    {shortPositionsPhrase(row.costShort)} a statement that covers only
-                                    part of the history. {RETURN_REFUSED_BECAUSE}{' '}
-                                  </>
-                                )}
-                                {row.costMissing > 0 && (
-                                  <>
-                                    {costMissingPhrase(row.costMissing)} no cost recorded.{' '}
-                                    {COST_MISSING_REFUSED_BECAUSE}
-                                  </>
-                                )}
+                            {row.costMissing > 0 && (
+                              <>
+                                {costMissingPhrase(row.costMissing)} no cost recorded.{' '}
+                                {COST_MISSING_REFUSED_BECAUSE}
+                              </>
+                            )}
 
-                                {row.costShort > 0 && IMPORT_THE_FULL_STATEMENT}{row.costShort > 0 && row.costMissing > 0 && ' '}{row.costMissing > 0 && RECORD_THE_COST}
-                              </Caveat>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
+                            {row.costShort > 0 && IMPORT_THE_FULL_STATEMENT}{row.costShort > 0 && row.costMissing > 0 && ' '}{row.costMissing > 0 && RECORD_THE_COST}
+                          </Absent>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
             </div>
           </Card>
-        )}
+        ))}
 
         {/*
-          Protection (protection-and-flow.md §6): one line, the term cover in force and the gap if there
+          Protection (protection-and-flow.md §6): the term cover in force and the gap if there
           is one, and a link to the screen that has the arithmetic. Below the allocation and above Needs
-          attention, as the design orders them. Not a card and not a hero: a line.
+          attention, as the design orders them. A card in the style of the currency cards, and not a hero.
         */}
         {protection !== null && (
-          <div data-testid="protection-line">
-            <dl>
-              <Stat label="Protection">
+          <div className="stat-cards">
+            <section className="card stat-card" aria-label="Protection" data-testid="protection-line">
+              <h3 className="stat-card-label">Protection</h3>
+              <div className="stat-card-value">
                 {protection.facts.termCover !== null &&
                 protection.facts.termCount > 0 &&
                 protection.facts.termCoverUnknown === 0 ? (
@@ -962,9 +960,8 @@ export function OverviewScreen({
                     recorded
                   </Unit>
                 )}
-              </Stat>
-            </dl>
-            <p className="note mt-1.5">
+              </div>
+              <div className="stat-card-sub">
               {protection.facts.gap === null ? (
                 <>The cover gap cannot be worked out yet: {protection.facts.gapRefusedBecause}</>
               ) : protection.facts.termCoverUnknown > 0 ? (
@@ -988,7 +985,8 @@ export function OverviewScreen({
               <button type="button" className="note underline" onClick={onOpenInsurance}>
                 Open Insurance
               </button>
-            </p>
+              </div>
+            </section>
           </div>
         )}
 
@@ -997,7 +995,18 @@ export function OverviewScreen({
       <div className="lg:col-start-2 lg:row-start-3">
         <Card
           title="Needs attention"
-          aside={<span className="note">{today.slice(0, 4)}</span>}
+          aside={
+            canClose && (
+              <Caveat tone="info" label="What closing a month does">
+                Closing carries each holding&rsquo;s latest reading in that month to the month end and
+                marks it <Pill tone="warn">backfill</Pill> — a defensible approximation, weaker than a
+                reading taken on the day. A deposit or bond has no reading to carry, so its value is
+                worked out from its terms for the month end and written the same way; a renewal not
+                yet recorded is an estimate and is left unread. Anything else it was not told stays
+                unread. Nothing is overwritten, and running it twice does nothing.
+              </Caveat>
+            )
+          }
         >
           {gaps.peak.missingMonths.length === 0 &&
           gaps.line.missingMonths.length === 0 &&
@@ -1214,43 +1223,64 @@ export function OverviewScreen({
           )}
 
           {canClose && (
-            <div className="mt-3.5 flex flex-col gap-2.5">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  disabled={closing || !fixedIncomeSettled || fixedIncomeFailed}
-                  onClick={() => void close()}
-                >
-                  {closing ? 'Closing…' : `Close ${monthYear(lastMonthEnd)}`}
-                </Button>
-                <Caveat tone="info" label="What closing a month does">
-                  Closing carries each holding&rsquo;s latest reading in that month to the month end and
-                  marks it <Pill tone="warn">backfill</Pill> — a defensible approximation, weaker than a
-                  reading taken on the day. A deposit or bond has no reading to carry, so its value is
-                  worked out from its terms for the month end and written the same way; a renewal not
-                  yet recorded is an estimate and is left unread. Anything else it was not told stays
-                  unread. Nothing is overwritten, and running it twice does nothing.
-                </Caveat>
-                {fixedIncomeFailed && (
-                  <span className="note">
-                    Deposits and bonds could not be read, so the month cannot be closed: it would carry a
-                    stale reading in place of each one&rsquo;s worked-out value, for good. Reload to try again.
+            <div className="mt-2 flex flex-col gap-2">
+              {/*
+                Closing the month is where a deposit reaches net worth (decisions.md), and it has nowhere else to
+                live, so it is a row of the list, drawn as an action (proposed in conformance.md, not yet decided): a calendar
+                mark, a sentence, and a hairline that says it is pressed and does not open. What it does is behind the
+                mark in the card's header.
+              */}
+              <button
+                type="button"
+                className="attention-action text-caption"
+                disabled={closing || !fixedIncomeSettled || fixedIncomeFailed}
+                onClick={() => void close()}
+              >
+                <span className="attention-line">
+                  <span className="attention-action-mark" aria-hidden="true">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M3 10h18" />
+                      <path d="M8 3v4" />
+                      <path d="M16 3v4" />
+                    </svg>
                   </span>
-                )}
-                {closed !== null && (
-                  <span className="note">
-                    {closed.carried === 0
-                      ? closed.worked > 0
-                        ? ''
-                        : 'Nothing to carry.'
-                      : `Carried ${String(closed.carried)} ${closed.carried === 1 ? 'reading' : 'readings'} to the month end.`}
-                    {closed.worked > 0 &&
-                      ` Worked out ${String(closed.worked)} ${closed.worked === 1 ? 'deposit or bond' : 'deposits and bonds'} from ${closed.worked === 1 ? 'its' : 'their'} terms.`}
-                    {notWorkedOut(closed.left) !== '' && ` Not worked out: ${notWorkedOut(closed.left)}.`}
-                    {closed.unread > 0 && ` ${String(closed.unread)} unread in all.`}
+                  <span className="min-w-0">
+                    {closing ? 'Closing…' : `Close ${monthYear(lastMonthEnd)}`}
+                    <span className="attention-sub">
+                      carries each reading to the month end and works out each deposit from its terms
+                    </span>
                   </span>
-                )}
-              </div>
+                </span>
+              </button>
+              {fixedIncomeFailed && (
+                <span className="note">
+                  Deposits and bonds could not be read, so the month cannot be closed: it would carry a
+                  stale reading in place of each one&rsquo;s worked-out value, for good. Reload to try again.
+                </span>
+              )}
+              {closed !== null && (
+                <span className="note">
+                  {closed.carried === 0
+                    ? closed.worked > 0
+                      ? ''
+                      : 'Nothing to carry.'
+                    : `Carried ${String(closed.carried)} ${closed.carried === 1 ? 'reading' : 'readings'} to the month end.`}
+                  {closed.worked > 0 &&
+                    ` Worked out ${String(closed.worked)} ${closed.worked === 1 ? 'deposit or bond' : 'deposits and bonds'} from ${closed.worked === 1 ? 'its' : 'their'} terms.`}
+                  {notWorkedOut(closed.left) !== '' && ` Not worked out: ${notWorkedOut(closed.left)}.`}
+                  {closed.unread > 0 && ` ${String(closed.unread)} unread in all.`}
+                </span>
+              )}
             </div>
           )}
         </Card>

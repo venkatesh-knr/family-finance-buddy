@@ -48,7 +48,6 @@ const AMBER: Record<string, string> = {
   'src/features/overview/OverviewScreen.tsx|"Why these do not add into one figure"': 'record the rate that is missing, or reload',
   'src/features/overview/OverviewScreen.tsx|{`Why this ${total.currency} total is short`}': 'record a value on Holdings',
   'src/features/overview/OverviewScreen.tsx|{`Why this ${total.currency} cost is short`}': 'import the full statement, or record the cost',
-  'src/features/overview/OverviewScreen.tsx|{`Why there is no return for ${kindLabel(row.kind)}`}': 'import the full statement, or record the cost',
   'src/features/holdings/HoldingsList.tsx|"How these totals are put together"': 'amber only when the paid-out read failed: reload',
   'src/features/holdings/HoldingsList.tsx|{`Why this ${lead.currency} total is short`}': 'record a value on the holding',
   'src/features/holdings/HoldingsList.tsx|{`Why this ${mine.currency} cost is short`}': 'import the full statement, or record the cost',

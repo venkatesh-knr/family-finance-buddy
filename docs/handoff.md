@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #96. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #98. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -288,13 +288,12 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   and step 6 (#81); the canvas rule, the Artboard column, the end-to-end suite in its own household and the
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
-  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96)**.
-- **In flight:** nothing. Insurance was merged and deployed as #96 (reviewed by the design-conformance agent).
+  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98)**.
+- **In flight:** nothing. Overview was merged and deployed as #98 (reviewed by the design-conformance agent).
   CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
   images (CI downloads them on every run and caches nothing), and once on `supabase/setup-cli` failing to resolve
-  `latest` ("rate limit exceeded", on the deploy run after #96). Both clear on a re-run. If they recur, consider
-  pinning the CLI version and a retry around `supabase start` in `.github/workflows/deploy.yml` (shown to the
-  maintainer first).
+  `latest` ("rate limit exceeded"). Both clear on a re-run. If they recur, consider pinning the CLI version and a
+  retry around `supabase start` in `.github/workflows/deploy.yml` (shown to the maintainer first).
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
@@ -303,20 +302,24 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   The ones the maintainer confirmed applying: `20261011120000_earmarks_and_schemes.sql`,
   `20261012120000_protection.sql`, `20261013120000_premiums_end.sql`,
   `20261014120000_demo_seed_usable.sql`, `20261015120000_demo_seed_stated_balance.sql`.
-- **Decisions the maintainer gave:** a voided or archived private entry still counts as private (so the Profile
+- **Decisions the maintainer gave:** the mock-vs-build "Your call" items (23 October): **1** the emergency-fund
+  line stays, as a card in the currency cards' style; **2** a ring per currency, each exactly the board's card;
+  **7** FIRE's planning sections stay below the board's content as folded cards until Goals; **10** the Holdings
+  filter is the board's one scrolling row with the earmark chips after the asset classes, past a hairline; a
+  voided or archived private entry still counts as private (so the Profile
   count and its list include them, marked); the screens look like the mocks, with values from `tokens.md` and
   `icons.md`; a ULIP's (any policy's) surrender value is not liquid; the cover figure is said in years
   from two years; an owned home is not in the FIRE corpus; retirement is a kind (EPF, NPS and PPF, which
   means PPF moves out of the deposit schemes with a migration when step 6 builds it). In
   `docs/decisions.md` and `docs/build-plan.md`.
-- **Open for the maintainer:** the four "Your call" items in the mock-vs-build review: **1** the
-  emergency-fund line on Overview, **2** one ring per currency on Overview, **7** where the FIRE planning
-  sections live until Goals, **10** the earmark chips on Holdings; the six older `proposed` Departures (hero
+- **Open for the maintainer:** the six older `proposed` Departures (hero
   weight, allocation at large text, the Add picker, Fetch prices, refused returns amber against the grey
   ⓘ, Holdings list chrome); the other `proposed` rows in `docs/design/conformance.md`; bank statements for
   step 7 (below).
 - **Queued, in this order:**
-  1. **The holding screens** (13–18). Insurance follow-ups: `icons.md` section 4 and IC-R8 say the Stage 5 tiles
+  1. **The holding screens** (13–18), then **Holdings list** (8–12; item 10 is decided: the board's one scrolling
+     row with the earmark chips after the asset classes, past a hairline) and **FIRE** (4–7; item 7 is decided:
+     the planning sections stay below the board's content as folded cards). Insurance follow-ups: `icons.md` section 4 and IC-R8 say the Stage 5 tiles
      are wired to nothing, and the insurance tile now is (`PROTECTION_TILE`), so those need the maintainer's
      wording; `theme.spec.ts` (the maintainer's file) does not list `insurance`, though axe finds nothing there in
      either theme; `insuranceFacts.healthByMember` is computed and no longer read, since Health is a flat list as
@@ -324,8 +327,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      explanatory sentences on Tax still write rule values as literals (₹12 lakh, ₹50 lakh, 4%, ₹1.25 lakh, 12.5%)
      where `tax_rule` is the source — read them from `ratesApplied` and the exemption and rate rows; and the
      Estimated tax figure reads ₹0 before anything is typed, which the maintainer may want worded as empty.
-  2. **Overview** (1–3), **FIRE** (4–7) and **Holdings list** (8–12), each once the "Your call" items
-     it contains are answered.
+  2. Overview Departures still `proposed`: the Protection card, and Close the month drawn as an action.
   3. Follow-ups found on the way: month and year totals on Expenses add up the 50 most recent entries
      the screen reads (the figure now says so; the fix is period-scoped reads in the repository layer);
      the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
