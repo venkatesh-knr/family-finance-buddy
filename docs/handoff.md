@@ -303,14 +303,13 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   The ones the maintainer confirmed applying: `20261011120000_earmarks_and_schemes.sql`,
   `20261012120000_protection.sql`, `20261013120000_premiums_end.sql`,
   `20261014120000_demo_seed_usable.sql`, `20261015120000_demo_seed_stated_balance.sql`.
-- **Decisions the maintainer gave:** the screens look like the mocks, with values from `tokens.md` and
+- **Decisions the maintainer gave:** a voided or archived private entry still counts as private (so the Profile
+  count and its list include them, marked); the screens look like the mocks, with values from `tokens.md` and
   `icons.md`; a ULIP's (any policy's) surrender value is not liquid; the cover figure is said in years
   from two years; an owned home is not in the FIRE corpus; retirement is a kind (EPF, NPS and PPF, which
   means PPF moves out of the deposit schemes with a migration when step 6 builds it). In
   `docs/decisions.md` and `docs/build-plan.md`.
-- **Open for the maintainer:** whether a voided or archived private entry should count as private (the
-  database function behind the Profile count counts them, so the list does and marks them; changing it is a
-  migration); the four "Your call" items in the mock-vs-build review: **1** the
+- **Open for the maintainer:** the four "Your call" items in the mock-vs-build review: **1** the
   emergency-fund line on Overview, **2** one ring per currency on Overview, **7** where the FIRE planning
   sections live until Goals, **10** the earmark chips on Holdings; the six older `proposed` Departures (hero
   weight, allocation at large text, the Add picker, Fetch prices, refused returns amber against the grey

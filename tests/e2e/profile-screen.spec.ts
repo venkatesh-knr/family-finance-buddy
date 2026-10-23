@@ -18,10 +18,16 @@ async function onProfile(page: Page) {
 test('who you are: a name, the household, and the role', async ({ page }) => {
   await onProfile(page);
   const hero = page.getByRole('region', { name: 'You', exact: true });
-  await expect(hero).toContainText(/owner|partner|contributor|viewer/i);
-  // What the role permits, so nobody has to guess.
-  await expect(hero).toContainText(/^[\s\S]*(Can |Has no role)/);
   await expect(hero.locator('.profile-name')).not.toBeEmpty();
+  await expect(hero).toContainText(/owner|partner|contributor|viewer/i);
+  // What the role permits, so nobody has to guess, and for an owner where to do it.
+  await expect(hero).toContainText(/^[\s\S]*(Can |Has no role)/);
+  const where = hero.getByTestId('profile-where');
+  if ((await where.count()) > 0) {
+    await expect(where).toContainText('Invite people and change roles under Members in Settings');
+    await where.getByRole('link', { name: 'Settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible({ timeout: 20_000 });
+  }
 });
 
 test('how you sign in: your email, a password you can change, and two-step sign-in that is on', async ({ page }) => {

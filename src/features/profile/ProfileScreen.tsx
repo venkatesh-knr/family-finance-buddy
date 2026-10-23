@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHouseholdChoice } from '../../app/household.tsx';
+import { hashFor } from '../../app/route.ts';
 import { roleSummary } from '../../domain/access.ts';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
@@ -142,6 +143,13 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
         </span>
         {role !== null && <Pill tone="own">{role}</Pill>}
         <p className="note profile-permits">{roleSummary(role)}</p>
+        {/* Where those things are done, so a sentence about what you can do is never a dead end. */}
+        {role === 'owner' && (
+          <p className="note profile-permits" data-testid="profile-where">
+            Invite people and change roles under Members in <a href={hashFor('settings')}>Settings</a>
+            {current?.household.kind === 'demo' && <>, and reset the demo household under Data</>}.
+          </p>
+        )}
       </section>
 
       {problem !== null && <Problem>{problem}</Problem>}
