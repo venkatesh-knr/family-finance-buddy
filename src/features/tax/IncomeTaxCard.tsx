@@ -1,40 +1,40 @@
 /**
- * Tax on one person's income — the computation, with every step shown.
+ * Estimated tax on one person's income — the answer, and the working behind it.
  *
- * Slabs, then the rebate, then the surcharge, then the cess, on the salary and
- * other income somebody types in, with the year's capital gains added beside
- * them. Each line is a step a CA can check against a return, and a line that
- * cannot be given says so and why, in place — an empty row would read as a tax of
- * nothing.
+ * The figure is first, as docs/design/vibrant-canvas.html draws the Tax board: the total on the salary and other
+ * income somebody types in, with the year's capital gains added beside them. Under it the two inputs, and a fold,
+ * "How it adds up", that holds every step — slabs, then the rebate, then the surcharge, then the cess — so a CA can
+ * check each line against a return. A line that cannot be given says so and why, in place: an empty row would read
+ * as a tax of nothing. And a figure that cannot be given at all says so under the number, always visible, because
+ * a fold that hides the reason a number is missing would hide the news.
  *
  * ── the figures typed here are not saved ────────────────────────────────
  *
- * Deliberately. Salary is the most private figure in the app, and where it lives
- * — whether a member may keep it from the household, who sees its tax effect —
- * is a design of its own that needs a table and its policies reviewed before any
- * screen is built on it. Until then it is held in this page and gone when it is
- * closed, and the card says so beside the fields rather than after somebody has
- * typed a year's salary into a box that forgot it.
+ * Deliberately. Salary is the most private figure in the app, and where it lives — whether a member may keep it
+ * from the household, who sees its tax effect — is a design of its own that needs a table and its policies
+ * reviewed before any screen is built on it. Until then it is held in this page and gone when it is closed, and
+ * the card says so beside the fields ("Typed here, never saved") rather than after somebody has typed a year's
+ * salary into a box that forgot it.
  *
  * ── what it does not claim ──────────────────────────────────────────────
  *
- * It applies the standard deduction and no other. The new regime has almost
- * none, so its figure is close to whole; the old regime's is not, and reads high
- * for anyone who claims 80C, 80D or a home-loan deduction — which is why no
- * "which regime is better" verdict is drawn here. That needs the deductions.
+ * It applies the standard deduction and no other. The new regime has almost none, so its figure is close to
+ * whole; the old regime's is not, and reads high for anyone who claims 80C, 80D or a home-loan deduction — which
+ * is why no "which regime is better" verdict is drawn here. That needs the deductions. The list of what is
+ * assumed is behind the "What this assumes" button under the screen (`TaxNotes`).
+ *
+ * The state — the regime, the two amounts — and the computation are the screen's (`TaxScreen`), so the notes
+ * under it can name the regime's rates without a second copy of the state.
  */
 
-import { useMemo, useState } from 'react';
-import { computeIncomeTax, type Refusal } from '../../domain/income-tax.ts';
-import type { CapitalGains } from '../../domain/capital-gains.ts';
-import { freshness, type Regime, type TaxRule } from '../../domain/tax-rules.ts';
-import { ratesApplied } from '../../domain/income-tax.ts';
-import { RatesCard } from './RatesCard.tsx';
-import { formatIsoDate } from '../../lib/dates.ts';
+import { useState } from 'react';
+import type { IncomeTaxComputation, Refusal } from '../../domain/income-tax.ts';
+import type { Regime } from '../../domain/tax-rules.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
-import { Absent, Card, Field, Notice } from '../../ui/primitives.tsx';
+import { Absent, Problem } from '../../ui/primitives.tsx';
+import { MutedNote } from './MutedNote.tsx';
 
-const REFUSAL_TEXT: Record<Refusal, string> = {
+export const REFUSAL_TEXT: Record<Refusal, string> = {
   'no-rule-for-year':
     'No slab, cess or standard-deduction rule covers this tax year, so nothing is computed. Earlier years are not loaded, and this app will not apply another year’s slabs to one they did not govern.',
   'surcharge-on-capital-gains':
@@ -45,16 +45,8 @@ const REFUSAL_TEXT: Record<Refusal, string> = {
     'A capital gain has no rate in the rules for this year, so the tax on it — and so the total — cannot be given.',
 };
 
-const ASSUMPTIONS: readonly string[] = [
-  'A resident individual under 60. The old regime has a higher basic exemption for seniors, which is not modelled.',
-  'Only the standard deduction. No 80C, 80D, home-loan interest or HRA — so the old regime reads high for anyone who claims them, and no verdict is drawn between the two.',
-  'Tax is not rounded to the nearest ₹10, as a return rounds it.',
-  'Tax already deducted (TDS) and advance tax paid are not credited, so this is the liability and not the balance due.',
-  'Capital gains are the sales listed above, for this person, netted as shown there.',
-];
-
 /** A rupee amount typed in, as money — zero for empty, and an error for what is not an amount. */
-function parseIncome(text: string): { readonly amount: Money; readonly error: string | null } {
+export function parseIncome(text: string): { readonly amount: Money; readonly error: string | null } {
   if (text.trim() === '') return { amount: money(0n, 'INR'), error: null };
   try {
     return { amount: money(parseAmountToMinor(text, 'INR'), 'INR'), error: null };
@@ -66,60 +58,56 @@ function parseIncome(text: string): { readonly amount: Money; readonly error: st
   }
 }
 
+/** One of the two amounts typed in: the text, what it was parsed as, and how to change it. */
+export interface IncomeInput {
+  readonly text: string;
+  readonly error: string | null;
+  readonly onChange: (text: string) => void;
+}
+
 export function IncomeTaxCard({
-  fy,
-  gains,
-  rules,
+  result,
+  regime,
+  onRegime,
+  salary,
+  other,
+  inProgress,
   privacy,
-  whose,
+  unreadable,
 }: {
-  fy: number;
-  gains: CapitalGains;
-  rules: readonly TaxRule[];
+  result: IncomeTaxComputation;
+  regime: Regime;
+  onRegime: (regime: Regime) => void;
+  salary: IncomeInput;
+  other: IncomeInput;
+  inProgress: boolean;
   privacy: boolean;
-  /** Whose return, for the sentence that says nothing here is saved. */
-  whose: string;
+  /**
+   * Why no figure can be given while an amount typed above cannot be read, or null. An amount that is not a number
+   * is not nothing: the total beside it would be the tax on the other amount alone, shown as the answer.
+   */
+  unreadable: string | null;
 }) {
-  const [regime, setRegime] = useState<Regime>('new');
-  const [salaryText, setSalaryText] = useState('');
-  const [otherText, setOtherText] = useState('');
-
-  const salary = parseIncome(salaryText);
-  const other = parseIncome(otherText);
-
-  const result = useMemo(
-    () =>
-      computeIncomeTax({
-        regime,
-        fy,
-        salary: salary.amount,
-        otherIncome: other.amount,
-        gains,
-        rules,
-      }),
-    [regime, fy, salary.amount.minor, other.amount.minor, gains, rules],
-  );
-
-  const applied = useMemo(() => ratesApplied({ rules, regime, fy }), [rules, regime, fy]);
+  const [open, setOpen] = useState(false);
   const show = (value: Money): string => formatMoney(value, { privacy });
-  const checked = freshness(result.verifiedOn, fy);
-
-  /** A figure, or "not shown" with the reason it is not — never a blank. */
-  const figure = (value: Money | null, why: string) =>
-    value === null ? (
-      <Absent label="Why there is no figure here">{why}</Absent>
-    ) : (
-      show(value)
-    );
 
   const anyRefusal = result.refused[0];
   const whyMissing = anyRefusal === undefined ? '' : REFUSAL_TEXT[anyRefusal];
 
+  /** A figure, or "not shown" with the reason it is not — never a blank. */
+  const figure = (value: Money | null, why: string) =>
+    value === null || unreadable !== null ? (
+      <Absent tone="info" label="Why there is no figure here">
+        {unreadable ?? why}
+      </Absent>
+    ) : (
+      show(value)
+    );
+
   return (
-    <Card
-      lift
-      title="Tax on your income"
-      aside={
+    <section className="card card-lift" aria-label="Estimated tax">
+      <div className="tax-estimate-top">
+        <h2 className="label">Estimated tax</h2>
         <span className="segmented" role="group" aria-label="Tax regime">
           {(['new', 'old'] as const).map((option) => (
             <button
@@ -127,149 +115,181 @@ export function IncomeTaxCard({
               type="button"
               aria-pressed={regime === option}
               onClick={() => {
-                setRegime(option);
+                onRegime(option);
               }}
             >
-              {option === 'new' ? 'New regime' : 'Old regime'}
+              {option === 'new' ? 'New regime' : 'Old'}
             </button>
           ))}
         </span>
-      }
-    >
+      </div>
 
+      {/* A div, not a p: the mark beside a missing figure opens a popover, and a div may not sit inside a p. */}
+      <div className="figure-month tax-figure tabular-nums">
+        {unreadable !== null || result.total === null ? (
+          <Absent tone="info" label="Why there is no estimate">
+            {unreadable ?? whyMissing}
+          </Absent>
+        ) : (
+          show(result.total)
+        )}
+      </div>
       <p className="note">
-        What you enter here is not saved. It is held on this page for {whose}&rsquo;s return and
-        gone when you leave it: salary is the most private figure in the app, and where it is kept
-        — and who may see its tax effect — is decided before it is stored, not after.
+        on the income below and {inProgress ? 'this year’s' : 'that year’s'} sales
       </p>
 
-      <div className="mt-3.5 flex flex-col gap-3">
-        <Field
-          label="Salary for the year"
-          hint={
-            salary.error ??
-            'Before the standard deduction, which is taken off automatically. Leave empty if there is none.'
-          }
-          inputMode="decimal"
-          numeric
-          placeholder="0.00"
-          value={salaryText}
-          onChange={(event) => {
-            setSalaryText(event.target.value);
-          }}
-        />
-        <Field
-          label="Other income the slab taxes"
-          hint={other.error ?? 'Interest, rent, dividends — anything that is taxed at your slab rate.'}
-          inputMode="decimal"
-          numeric
-          placeholder="0.00"
-          value={otherText}
-          onChange={(event) => {
-            setOtherText(event.target.value);
-          }}
-        />
+      <div className="tax-inputs">
+        <IncomeRow label="Salary for the year" input={salary} />
+        <IncomeRow label="Other income at slab rates" input={other} />
       </div>
+      <p className="tax-never-saved">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </svg>
+        <span>Typed here, never saved</span>
+      </p>
 
-      <hr className="my-4" style={{ borderColor: 'var(--line)' }} />
-
-      <dl className="flex flex-col">
-        <Row label="Salary" value={show(result.salary)} />
-        <Row
-          label="Standard deduction"
-          note="taken off salary, never more than it"
-          value={`−${show(result.standardDeduction)}`}
-        />
-        <Row label="Other income" value={show(result.otherIncome)} />
-        {result.shortTermAtSlab.minor > 0n && (
-          <Row
-            label="Short-term gold and unlisted gains"
-            note="from the sales above, taxed as income"
-            value={show(result.shortTermAtSlab)}
-          />
-        )}
-        <Row strong label="Taxable income" value={show(result.taxableOrdinary)} />
-
-        <Row
-          label="Tax at the slab rates"
-          value={figure(result.slabTax, whyMissing)}
-        />
-        {result.rebate !== null && result.rebate.minor > 0n && (
-          <Row
-            label="Rebate under section 87A"
-            note="against tax on income, never on a gain"
-            value={`−${show(result.rebate)}`}
-          />
-        )}
-        {result.marginalRelief.minor > 0n && (
-          <Row
-            label="Marginal relief on the rebate"
-            note="the tax cannot exceed the income above ₹12 lakh"
-            value={`−${show(result.marginalRelief)}`}
-          />
-        )}
-        {(result.surcharge === null || result.surcharge.minor > 0n) && (
-          <Row
-            label="Surcharge"
-            note={
-              result.surchargeRelief.minor > 0n
-                ? `after marginal relief of ${show(result.surchargeRelief)}`
-                : 'on tax, once income passes ₹50 lakh'
-            }
-            value={figure(result.surcharge, whyMissing)}
-          />
-        )}
-        <Row
-          label="Tax on capital gains"
-          note={
-            result.basicExemptionAdjustment.minor > 0n
-              ? `at their own rates, after ${show(result.basicExemptionAdjustment)} of unused basic exemption`
-              : 'at their own rates'
-          }
-          value={figure(result.capitalGains.total, REFUSAL_TEXT['capital-gains-tax-unknown'])}
-        />
-        <Row
-          label="Health and education cess"
-          note="4% of the above"
-          value={figure(result.cess, whyMissing)}
-        />
-        <Row strong label="Total tax" value={figure(result.total, whyMissing)} />
-      </dl>
-
-      {result.refused.length > 0 && (
+      {unreadable === null && result.refused.length > 0 && (
         <div className="mt-3.5">
-          <Notice tone="due">
-            {result.refused.map((reason) => REFUSAL_TEXT[reason]).join(' ')}
-          </Notice>
+          <MutedNote>{result.refused.map((reason) => REFUSAL_TEXT[reason]).join(' ')}</MutedNote>
         </div>
       )}
 
-      <p className="note mt-3.5">
-        Rates for tax year {String(fy)}–{String((fy + 1) % 100).padStart(2, '0')}
-        {result.verifiedOn === null
-          ? ', with no record of when they were last checked.'
-          : `, last checked against the law on ${formatIsoDate(result.verifiedOn)}.`}
-      </p>
-
-      <RatesCard applied={applied} />
-
-      {checked !== 'after-budget' && (
-        <div className="mt-3">
-          <Notice>
-            {checked === 'unrecorded'
-              ? 'Nobody has recorded checking these rates against the law. A Budget can change a slab, so treat this as unconfirmed.'
-              : `These rates were last checked before this tax year's Budget. A Budget can change a slab or a rebate, so confirm them before relying on this.`}
-          </Notice>
-        </div>
-      )}
-
-      <div className="mt-3">
-        <Notice names={ASSUMPTIONS} namesLabel="What this assumes">
-          A working paper, computed on the figures above and no more. It is not tax advice, and
-          your CA should check it.
-        </Notice>
+      <div className="tax-fold">
+        <button
+          type="button"
+          className="disclosure"
+          aria-expanded={open}
+          aria-controls="tax-workings"
+          onClick={() => {
+            setOpen((was) => !was);
+          }}
+        >
+          <svg
+            className="disclosure-chevron"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+          How it adds up
+        </button>
       </div>
-    </Card>
+
+      {open && unreadable !== null && (
+        <p id="tax-workings" className="note">
+          The working is shown once the amounts above can be read.
+        </p>
+      )}
+
+      {open && unreadable === null && (
+        <dl id="tax-workings" className="flex flex-col">
+          <Row label="Salary" value={show(result.salary)} />
+          <Row
+            label="Standard deduction"
+            note="taken off salary, never more than it"
+            value={`−${show(result.standardDeduction)}`}
+          />
+          <Row
+            label="Other income"
+            note="interest, rent, dividends — anything taxed at your slab rate"
+            value={show(result.otherIncome)}
+          />
+          {result.shortTermAtSlab.minor > 0n && (
+            <Row
+              label="Short-term gold and unlisted gains"
+              note="from the sales below, taxed as income"
+              value={show(result.shortTermAtSlab)}
+            />
+          )}
+          <Row strong label="Taxable income" value={show(result.taxableOrdinary)} />
+
+          <Row label="Tax at the slab rates" value={figure(result.slabTax, whyMissing)} />
+          {result.rebate !== null && result.rebate.minor > 0n && (
+            <Row
+              label="Rebate under section 87A"
+              note="against tax on income, never on a gain"
+              value={`−${show(result.rebate)}`}
+            />
+          )}
+          {result.marginalRelief.minor > 0n && (
+            <Row
+              label="Marginal relief on the rebate"
+              note="the tax cannot exceed the income above ₹12 lakh"
+              value={`−${show(result.marginalRelief)}`}
+            />
+          )}
+          {(result.surcharge === null || result.surcharge.minor > 0n) && (
+            <Row
+              label="Surcharge"
+              note={
+                result.surchargeRelief.minor > 0n
+                  ? `after marginal relief of ${show(result.surchargeRelief)}`
+                  : 'on tax, once income passes ₹50 lakh'
+              }
+              value={figure(result.surcharge, whyMissing)}
+            />
+          )}
+          <Row
+            label="Tax on capital gains"
+            note={
+              result.basicExemptionAdjustment.minor > 0n
+                ? `at their own rates, after ${show(result.basicExemptionAdjustment)} of unused basic exemption`
+                : 'at their own rates'
+            }
+            value={figure(result.capitalGains.total, REFUSAL_TEXT['capital-gains-tax-unknown'])}
+          />
+          <Row
+            label="Health and education cess"
+            note="4% of the above"
+            value={figure(result.cess, whyMissing)}
+          />
+          <Row strong label="Total tax" value={figure(result.total, whyMissing)} />
+        </dl>
+      )}
+    </section>
+  );
+}
+
+/** An amount typed in, on one line with its name: the board's row, a box with the label at the left. */
+function IncomeRow({ label, input }: { label: string; input: IncomeInput }) {
+  return (
+    <>
+      <label className="tax-input">
+        <span>{label}</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          className="field-num"
+          aria-label={label}
+          aria-invalid={input.error !== null}
+          placeholder="0"
+          value={input.text}
+          onChange={(event) => {
+            input.onChange(event.target.value);
+          }}
+        />
+      </label>
+      {input.error !== null && <Problem>{input.error}</Problem>}
+    </>
   );
 }
 
@@ -291,10 +311,10 @@ function Row({
       style={{ borderColor: 'var(--line)' }}
     >
       <div className="min-w-0">
-        <dt style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 500 }}>{label}</dt>
+        <dt style={{ color: 'var(--ink)', fontWeight: strong ? 600 : 500 }}>{label}</dt>
         {note !== undefined && <span className="note">{note}</span>}
       </div>
-      <dd className="tabular-nums" style={{ color: 'var(--ink)', fontWeight: strong ? 700 : 400 }}>
+      <dd className="tabular-nums" style={{ color: 'var(--ink)', fontWeight: strong ? 600 : 400 }}>
         {value}
       </dd>
     </div>

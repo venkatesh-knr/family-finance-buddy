@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
  * the call whether a caveat deserves amber is made on purpose and not by whichever tone a component reached for.
  */
 
-const DIRS = ['src/features/overview', 'src/features/holdings', 'src/features/plan'];
+const DIRS = ['src/features/overview', 'src/features/holdings', 'src/features/plan', 'src/features/tax'];
 
 /** What a person can do, as the verb the sentence starts with. */
 const ACTION = /\b(Record|Import|Reload|reload|Close)\b|IMPORT_THE_FULL_STATEMENT|RECORD_THE_COST|heroWarnings/;
@@ -65,6 +65,22 @@ const ALWAYS_GREY = [
   'src/features/overview/OverviewScreen.tsx|{privateLeftOut ? \'What these totals leave out\' : \'How these totals are put together\'}',
   'src/features/overview/OverviewScreen.tsx|"What these shares are of"',
 ];
+
+/**
+ * `Absent` is a caveat mark too, and its default tone is amber. On Tax nothing it explains can be put right by the
+ * person (a rule that is not loaded, an allowance with no row, an amount to be corrected is said beside the field),
+ * so every one is grey.
+ */
+describe('every missing figure on Tax is a grey mark', () => {
+  it('names the info tone on each Absent', () => {
+    const source = ['GainsCard', 'IncomeTaxCard']
+      .map((name) => readFileSync(join('src/features/tax', `${name}.tsx`), 'utf8'))
+      .join('\n');
+    const tags = [...source.matchAll(/<Absent\s([^>]*)>/g)];
+    expect(tags.length).toBeGreaterThan(3);
+    for (const tag of tags) expect(tag[1], 'an Absent on Tax with no tone="info"').toContain('tone="info"');
+  });
+});
 
 describe('every amber mark on Overview, Holdings and FIRE says what to do', () => {
   const all = marks();
