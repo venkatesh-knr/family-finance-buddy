@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #95. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #96. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -288,13 +288,13 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   and step 6 (#81); the canvas rule, the Artboard column, the end-to-end suite in its own household and the
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
-  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94)**.
-- **In flight:** branch `insurance-conformance`: the Insurance screen rebuilt to its artboard (the answer in the
-  lifted card with its bar and working; policies grouped, one row each, the row opening the figures, the details
-  and the lapse). Reviewed by the design-conformance agent; see the pull request. CI has twice failed on `ghcr.io`
-  answering `toomanyrequests` while the policy-suite job pulled Supabase's images (CI downloads them on every
-  run and caches nothing); it clears on its own. If it recurs, re-run the job, and consider a retry around
-  `supabase start` in `.github/workflows/deploy.yml` (shown to the maintainer first).
+  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96)**.
+- **In flight:** nothing. Insurance was merged and deployed as #96 (reviewed by the design-conformance agent).
+  CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
+  images (CI downloads them on every run and caches nothing), and once on `supabase/setup-cli` failing to resolve
+  `latest` ("rate limit exceeded", on the deploy run after #96). Both clear on a re-run. If they recur, consider
+  pinning the CLI version and a retry around `supabase start` in `.github/workflows/deploy.yml` (shown to the
+  maintainer first).
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
