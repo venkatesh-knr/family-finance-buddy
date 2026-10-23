@@ -32,7 +32,7 @@ import type { IncomeTaxComputation, Refusal } from '../../domain/income-tax.ts';
 import type { Regime } from '../../domain/tax-rules.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { Absent, Problem } from '../../ui/primitives.tsx';
-import { MutedNote } from './MutedNote.tsx';
+import { MutedNote } from '../../ui/MutedNote.tsx';
 
 export const REFUSAL_TEXT: Record<Refusal, string> = {
   'no-rule-for-year':
@@ -166,7 +166,7 @@ export function IncomeTaxCard({
         </div>
       )}
 
-      <div className="tax-fold">
+      <div className="card-fold">
         <button
           type="button"
           className="disclosure"

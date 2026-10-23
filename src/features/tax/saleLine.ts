@@ -5,18 +5,16 @@
  * of the sale, and is passed in on the lot; nothing here decides what is long and what is short.
  */
 
-import { daysBetween } from '../../lib/dates.ts';
+import { daysBetween, formatShortDate } from '../../lib/dates.ts';
 import { taxClassLabel } from '../../ui/labels.ts';
 import type { TaxLot } from './taxLots.ts';
-
-const SHORT_DATE = new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', day: 'numeric', month: 'short' });
 
 /**
  * A calendar date without its year, as "12 Jun". The tax year is chosen beside it and April to December and January
  * to March fall in different calendar years of it, so the year would say nothing the screen does not already.
  */
 export function shortDate(isoDate: string): string {
-  return SHORT_DATE.format(new Date(`${isoDate}T00:00:00Z`));
+  return formatShortDate(isoDate);
 }
 
 /** How long it was held, in whole months once it is a month or more: "20 days", "8 mo", "2 yr 3 mo". */

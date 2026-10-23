@@ -31,7 +31,7 @@ import { taxYearBounds, taxYearOf, taxYearsToOffer } from '../../domain/budget.t
 import { freshness, type Regime } from '../../domain/tax-rules.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { Notice, Problem } from '../../ui/primitives.tsx';
-import { MutedNote } from './MutedNote.tsx';
+import { MutedNote } from '../../ui/MutedNote.tsx';
 import { useHoldings } from '../holdings/useHoldings.ts';
 import { GainsCard } from './GainsCard.tsx';
 import { IncomeTaxCard, parseIncome } from './IncomeTaxCard.tsx';

@@ -74,7 +74,7 @@ export function TaxNotes({
 
   return (
     <>
-      <div className="tax-note" data-testid="tax-caveat">
+      <div className="muted-note" data-testid="tax-caveat">
         <svg
           width="13"
           height="13"

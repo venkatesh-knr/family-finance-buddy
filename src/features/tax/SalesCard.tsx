@@ -18,7 +18,7 @@ import { taxClassLabel } from '../../ui/labels.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
 import { hashFor } from '../../app/route.ts';
 import { Notice, Pill } from '../../ui/primitives.tsx';
-import { MutedNote } from './MutedNote.tsx';
+import { MutedNote } from '../../ui/MutedNote.tsx';
 import { signed } from './GainsCard.tsx';
 import { heldText, shortDate, termWords } from './saleLine.ts';
 import type { TaxLot } from './taxLots.ts';

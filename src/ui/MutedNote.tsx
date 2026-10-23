@@ -21,7 +21,7 @@ export function MutedNote({
 }) {
   const hasNames = names !== undefined && names.length > 0;
   return (
-    <div className="tax-note">
+    <div className="muted-note">
       <svg
         width="13"
         height="13"

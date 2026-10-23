@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #94. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #95. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -289,11 +289,12 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
   (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94)**.
-- **In flight:** nothing. Tax was merged and deployed as #94 (the screen rebuilt to its artboard, reviewed by the
-  design-conformance agent). CI has twice failed on `ghcr.io` answering `toomanyrequests` while the policy-suite
-  job pulled Supabase's images (CI downloads them on every run and caches nothing); it clears on its own. If it
-  recurs, re-run the job, and consider a retry around `supabase start` in `.github/workflows/deploy.yml` (shown
-  to the maintainer first).
+- **In flight:** branch `insurance-conformance`: the Insurance screen rebuilt to its artboard (the answer in the
+  lifted card with its bar and working; policies grouped, one row each, the row opening the figures, the details
+  and the lapse). Reviewed by the design-conformance agent; see the pull request. CI has twice failed on `ghcr.io`
+  answering `toomanyrequests` while the policy-suite job pulled Supabase's images (CI downloads them on every
+  run and caches nothing); it clears on its own. If it recurs, re-run the job, and consider a retry around
+  `supabase start` in `.github/workflows/deploy.yml` (shown to the maintainer first).
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
@@ -315,7 +316,11 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   ⓘ, Holdings list chrome); the other `proposed` rows in `docs/design/conformance.md`; bank statements for
   step 7 (below).
 - **Queued, in this order:**
-  1. **Insurance** (28–29), then **the holding screens** (13–18). Tax follow-ups: the
+  1. **The holding screens** (13–18). Insurance follow-ups: `icons.md` section 4 and IC-R8 say the Stage 5 tiles
+     are wired to nothing, and the insurance tile now is (`PROTECTION_TILE`), so those need the maintainer's
+     wording; `theme.spec.ts` (the maintainer's file) does not list `insurance`, though axe finds nothing there in
+     either theme; `insuranceFacts.healthByMember` is computed and no longer read, since Health is a flat list as
+     the board draws it (`protection-and-flow.md` section 5 still says per member). Tax follow-ups: the
      explanatory sentences on Tax still write rule values as literals (₹12 lakh, ₹50 lakh, 4%, ₹1.25 lakh, 12.5%)
      where `tax_rule` is the source — read them from `ratesApplied` and the exemption and rate rows; and the
      Estimated tax figure reads ₹0 before anything is typed, which the maintainer may want worded as empty.
