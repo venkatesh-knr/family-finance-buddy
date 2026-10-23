@@ -13,6 +13,8 @@ import { chooseHousehold, householdSwitcher, resetHousehold, testHouseholdName, 
  */
 
 teardown('nothing a spec created survives the run', async ({ page }) => {
+  // A reset and three screens read in each household: 27s to 32s on a good day, so the default 30s fails it by luck.
+  teardown.setTimeout(120_000);
   const dedicated = testHouseholdName();
 
   if (dedicated === null) {
