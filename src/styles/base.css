@@ -359,6 +359,47 @@
     transform: rotate(90deg);
   }
 
+  /*
+   * An action among the list's rows: the same size and the same place, but drawn as a pressed thing and not an
+   * opened one (docs/tokens.md section 5: a hairline for what acts, a chevron for what reveals).
+   */
+  .attention-action {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: block;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .attention-action:hover:not(:disabled) {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+
+  .attention-action-mark {
+    color: var(--muted);
+    display: inline-flex;
+    flex: none;
+    margin-top: 0.125rem;
+  }
+
+  .attention-action:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .attention-sub {
+    color: var(--muted);
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.125rem;
+  }
+
   .attention-body {
     padding: 0 11px 10px 34px;
   }
@@ -1399,8 +1440,7 @@
   }
 
   /*
-   * What is held, one card per currency (docs/design/vibrant-canvas.html): a label with the colour of
-   * its side of the world, the figure at the stat step, what was put in, and what it did. They sit two
+   * What is held, one card per currency (docs/design/vibrant-canvas.html): a label, the figure at the stat step, what was put in, and what it did. They sit two
    * across where they fit and stack where they do not, so the row never forces the page wider.
    */
   .stat-cards {
@@ -1722,7 +1762,6 @@
     flex: none;
     height: auto;
     margin-inline: 0;
-    width: clamp(5.75rem, 27vw, 8rem);
   }
 
   .alloc-rows {
@@ -1730,11 +1769,10 @@
     min-width: 0;
   }
 
-  /* A currency's heading: its code, and what it adds up to. */
-  .alloc-head {
-    align-items: baseline;
-    display: flex;
-    justify-content: space-between;
+  .donut-caption {
+    fill: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 15px;
   }
 
   .donut-total {

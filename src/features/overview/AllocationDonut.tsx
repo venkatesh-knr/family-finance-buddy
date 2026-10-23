@@ -60,7 +60,10 @@ export function AllocationDonut({
           <title>{`${kindLabel(arc.key)} ${((shares.get(arc.key) ?? 0) * 100).toFixed(1)}%`}</title>
         </path>
       ))}
-      <text className="donut-total" x={SIZE / 2} y={SIZE / 2 + 9} textAnchor="middle">
+      <text className="donut-caption" x={SIZE / 2} y={SIZE / 2 - 12} textAnchor="middle">
+        Total
+      </text>
+      <text className="donut-total" x={SIZE / 2} y={SIZE / 2 + 14} textAnchor="middle">
         {formatMoney(money(total, currency), { privacy, compact: true })}
       </text>
     </svg>

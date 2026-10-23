@@ -218,9 +218,12 @@ Proposed Overview order, phone width:
    screen; `theme.spec.ts` already enforces that there is exactly one.
 2. **This month** — a three-up band: in, out, saved. Flat, not lifted. Period
    switcher (month / quarter / FY) belongs here, not at screen level.
-3. **Emergency fund** — months of cover, one line, or the empty state.
+3. **Emergency fund** — months of cover, or the empty state. A card in the currency cards' style (the owner,
+   23 October 2026), not one line.
 4. **Allocation** — unchanged.
-5. **Protection** — one line: total cover in force, and the gap if there is one.
+5. **Protection** — one line: the term cover in force (the gap in §5 is defined against it; health cover has no
+   figure), and the gap if there is one. Built as a card in the same style as the emergency fund, proposed in
+   `conformance.md` and not yet decided.
    Taps through to Insurance.
 6. **Needs attention** — unchanged, and the natural home for a renewal due in
    under 30 days.
