@@ -14,18 +14,20 @@
  */
 
 import type { CSSProperties } from 'react';
-import { GLYPHS, GLYPH_STROKE, assetClass, classColour } from './assetClass.ts';
+import { GLYPHS, GLYPH_STROKE, PROTECTION_TILE, assetClass, classColour } from './assetClass.ts';
 
-export function AssetTile({ kind, compact = false }: { kind: string; compact?: boolean }) {
+export function AssetTile({ kind, compact = false, muted = false }: { kind: string; compact?: boolean; muted?: boolean }) {
   const spec = assetClass(kind);
+  // A policy is not a holding and is not an asset class; its tile is its own (icons.md section 4).
+  const tile = kind === 'insurance' ? PROTECTION_TILE : { glyph: spec.glyph, colour: classColour(spec) };
   return (
     <span
       className={compact ? 'asset-tile asset-tile-compact' : 'asset-tile'}
       aria-hidden="true"
-      style={{ '--tile': classColour(spec) } as CSSProperties}
+      style={{ '--tile': muted ? 'var(--muted)' : tile.colour } as CSSProperties}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={GLYPH_STROKE} strokeLinecap="round" strokeLinejoin="round">
-        {GLYPHS[spec.glyph].map((d) => (
+        {GLYPHS[tile.glyph].map((d) => (
           <path key={d} d={d} />
         ))}
       </svg>

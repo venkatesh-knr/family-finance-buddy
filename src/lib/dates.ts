@@ -36,6 +36,16 @@ export function istCalendarDate(instant: Date): IsoDate {
   return IST_DATE.format(instant);
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', day: 'numeric', month: 'short' });
+
+/**
+ * A calendar date without its year, as "12 Jun", for a place that already says which year (a tax year chosen
+ * beside it, a renewal that is coming up). Anchored at UTC midnight for the reason `formatIsoDate` is.
+ */
+export function formatShortDate(value: IsoDate): string {
+  return SHORT_DATE.format(new Date(`${value}T00:00:00Z`));
+}
+
 export function isIsoDate(value: string): boolean {
   if (!ISO_DATE.test(value)) return false;
   // Reject 2026-13-01 and 2026-02-30: round-tripping catches both.

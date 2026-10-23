@@ -163,6 +163,15 @@ export const UNWIRED_TILES = {
 } as const satisfies Record<string, { glyph: Glyph; colour: string }>;
 
 /**
+ * The tile of an insurance policy, read by `AssetTile` for the kind `insurance` and by nothing else.
+ *
+ * The Insurance screen draws it, as its artboard does, so it is the one of the Stage 5 tiles that is wired. It
+ * is still not an asset class: a policy is not a holding, `assetClass('insurance')` is `other`, and the tile is
+ * reached only by this name, which is in this module.
+ */
+export const PROTECTION_TILE: { readonly glyph: Glyph; readonly colour: string } = UNWIRED_TILES.insurance;
+
+/**
  * Foreign: a MARKER, and not a class (docs/design/icons.md §4).
  *
  * A foreign holding already has a kind: it is an equity or a fund that happens to be held abroad. So
