@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openCard, openRestsOn } from './fire.ts';
 
 /**
  * The FIRE read-out: the target, a projection against it, how far along, and what a year costs.
@@ -20,7 +21,7 @@ test('the FIRE screen opens on the target, a projection, progress and the cost o
   await onFire(page);
 
   await expect(page.getByRole('heading', { name: 'Projection', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'How far along' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'How far along' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What a year costs' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What the projection assumes' })).toBeVisible();
 
@@ -29,7 +30,10 @@ test('the FIRE screen opens on the target, a projection, progress and the cost o
   await expect(page.getByRole('img', { name: /per cent of today's target/ })).toBeVisible();
 
   // It does not pass itself off as a forecast, and it says what it leaves out.
-  await expect(page.getByText(/Not a forecast/)).toBeVisible();
+  await expect(page.getByText(/Not a forecast/).first()).toBeVisible();
+  // The exclusion is on the face (PF-C8); what else the figure does not hold is one press away.
+  await expect(page.getByTestId('fire-left-out')).toBeVisible();
+  await openRestsOn(page);
   await expect(page.getByText(/Property and anything else not yet recorded is not in it/)).toBeVisible();
 });
 
@@ -120,4 +124,34 @@ test('a percentage is typed as a draft: a decimal survives and nothing is saved 
   await field.press('Escape');
   await expect(field).toHaveValue(stored);
   expect(writes).toHaveLength(0);
+});
+
+test('the head is a label, the target and one muted line, with what it rests on behind its mark', async ({ page }) => {
+  await onFire(page);
+  const head = page.getByRole('region', { name: 'Financial independence' });
+  await expect(head).toContainText(/Target at today.s prices, \d+(\.\d+)?% inflation/);
+  await expect(head).toContainText(/reached \d{4}|not reached within \d+ years/);
+  await expect(head.getByRole('button', { name: 'How the target and the date are worked out' })).toBeVisible();
+  // The long sentence is not on the face of the screen any more.
+  await expect(head.getByText(/what the household spends, at today/)).toHaveCount(0);
+});
+
+test('the target is named on its own line, with no legend, and the one note sits under the chart', async ({ page }) => {
+  await onFire(page);
+  const projection = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Projection', exact: true }) });
+  await expect(projection.locator('.chart-target-label')).toContainText(/^Target \d{4}/);
+  await expect(projection.locator('.chart-note')).toContainText('Not a forecast');
+  await expect(page.locator('.fire-legend')).toHaveCount(0);
+  // The old Adjust under the chart moved to the ring's card.
+  await expect(projection.getByRole('button', { name: /^Adjust/ })).toHaveCount(0);
+});
+
+test('the planning cards are folded to a title and a line, and open on a press', async ({ page }) => {
+  await onFire(page);
+  for (const title of ['FIRE target', 'Annual expense', 'Spending plan', 'Loans and policies']) {
+    const toggle = page.getByRole('button', { name: new RegExp(`^${title}`) }).first();
+    await expect(toggle, `${title} is folded`).toHaveAttribute('aria-expanded', 'false');
+  }
+  await openCard(page, 'Spending plan');
+  await expect(page.locator('.edit-row').first()).toBeVisible();
 });

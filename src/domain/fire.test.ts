@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { fireBaseYear, fireLadder, fireProgress, fireProjection, fireTarget } from './fire.ts';
+import { fireBaseYear, fireLadder, fireProgress, fireProjection, fireTarget, fireWhatIf, whatIfExtra } from './fire.ts';
 
 /**
  * The FIRE target, and the ladder of what it becomes as prices rise.
@@ -325,5 +325,51 @@ describe('fireProgress', () => {
 
   it('is null when there is no target to be a share of', () => {
     expect(fireProgress(inr(1), inr(0))).toBeNull();
+  });
+});
+
+describe('whatIfExtra', () => {
+  it('is about a tenth of a month of spending, to the nearest thousand', () => {
+    // 13.68 lakh a year is 1.14 lakh a month; a tenth is 11,400, which rounds to 11,000.
+    expect(whatIfExtra(inr(1_368_000)).minor).toBe(1_100_000n);
+    // 6 lakh a year is 50,000 a month; a tenth is 5,000.
+    expect(whatIfExtra(inr(600_000)).minor).toBe(500_000n);
+  });
+
+  it('is never less than a thousand, so a small household is still shown something to try', () => {
+    expect(whatIfExtra(inr(60_000)).minor).toBe(100_000n);
+    expect(whatIfExtra(inr(0)).minor).toBe(100_000n);
+  });
+
+  it('keeps the currency of what it is given', () => {
+    expect(whatIfExtra(money(120_000_00n, 'USD')).currency).toBe('USD');
+  });
+});
+
+describe('fireWhatIf', () => {
+  const ladder = fireLadder({ annualExpense: inr(108_000), multiplier: 25, inflationPct: 0, fromYear: 2026, years: 20 });
+  const options = {
+    corpus: inr(1_000_000),
+    monthlyContribution: inr(10_000),
+    returnPct: 10,
+    stepUpPct: 0,
+    ladder,
+  };
+
+  it('names the year it would be reached with the extra, worked by hand: 15,000 a month meets 27 lakh in 2031', () => {
+    // 10 lakh at 10% with 1.8 lakh put in a year: 12.8, 15.88, 19.268, 22.9948, 27.09428 lakh.
+    const result = fireWhatIf(options, inr(5_000));
+    expect(result.reachedYear).toBe(2031);
+    expect(result.baseYear).toBe(2033);
+  });
+
+  it('leaves the projection the household set alone: the base year is the one without the extra', () => {
+    expect(fireWhatIf(options, inr(0)).reachedYear).toBe(fireProjection(options).reachedYear);
+  });
+
+  it('says null where even the extra does not reach it inside the ladder', () => {
+    const result = fireWhatIf({ ...options, corpus: inr(0), returnPct: 0, ladder: ladder.slice(0, 4) }, inr(1_000));
+    expect(result.reachedYear).toBeNull();
+    expect(result.baseYear).toBeNull();
   });
 });

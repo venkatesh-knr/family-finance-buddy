@@ -1555,28 +1555,44 @@
     color: var(--coral);
   }
 
-  .fire-legend {
+  /* The one note under the chart, boxed as the board draws it; the assumptions are behind its mark. */
+  .chart-note {
     align-items: center;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+    display: flex;
+    font-size: 0.75rem;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.625rem;
+  }
+
+  /* The target named on its own line (docs/tokens.md section 3: brass for a target, as a text label). */
+  .chart-target-label {
+    fill: var(--brass);
+    font-family: var(--font-ui);
+    font-weight: 600;
+  }
+
+  /* What adding a little each month would do, under the ring's figures, with the way to adjust it. */
+  .fire-whatif {
+    align-items: center;
+    border-top: 1px solid var(--line);
     color: var(--ink-2);
     display: flex;
     flex-wrap: wrap;
-    font-size: 0.75rem;
-    gap: 0.4rem 1.25rem;
-    margin-top: 0.5rem;
+    font-size: 0.78125rem;
+    gap: 0.25rem 0.75rem;
+    justify-content: space-between;
+    margin-top: 0.9rem;
+    padding-top: 0.8rem;
   }
 
-  .fire-legend li {
-    align-items: center;
-    display: flex;
-    gap: 0.4rem;
-  }
-
-  .fire-assumes {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
-    margin-top: 0.6rem;
+  .fire-whatif-figure {
+    color: var(--ink);
+    font-weight: 600;
   }
 
   .fire-adjust {
@@ -1586,6 +1602,14 @@
     display: inline-flex;
     font-weight: 600;
     gap: 0.2rem;
+    min-height: 2.125rem;
+  }
+
+  /* A thumb is the unit on a touch screen, as for the other quiet controls. */
+  @media (pointer: coarse) {
+    .fire-adjust {
+      min-height: 2.75rem;
+    }
   }
 
   .fire-cost-total {
