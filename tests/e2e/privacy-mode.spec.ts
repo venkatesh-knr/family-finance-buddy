@@ -131,7 +131,9 @@ test('no figure from the Holdings list or a holding\u2019s screen is left in the
   await page.locator('.holding-row').filter({ hasText: 'units' }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
   const onHolding = await figuresOf();
-  expect(onHolding.length, 'currency figures on a holding\u2019s screen to look for').toBeGreaterThan(2);
+  // The value, the cost and the peak (the peak is the value on this holding): two distinct figures, since the
+  // screen no longer shows a worked-out or a realised one here.
+  expect(onHolding.length, 'currency figures on a holding\u2019s screen to look for').toBeGreaterThanOrEqual(2);
 
   await page.getByRole('button', { name: /Amounts shown/ }).click();
   await expect(page.getByRole('button', { name: /Amounts hidden/ })).toBeVisible();

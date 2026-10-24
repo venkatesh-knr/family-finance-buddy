@@ -1,52 +1,62 @@
 import { useState } from 'react';
 import { EARMARK_LABELS } from '../../domain/earmark.ts';
+import { DemoBadge } from '../../app/household.tsx';
 import { hashFor } from '../../app/route.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
-import { formatMoney, money } from '../../lib/money.ts';
-import { formatQuantity, quantityToNumeric } from '../../lib/quantity.ts';
+import { formatMoney, money, type Money } from '../../lib/money.ts';
+import { quantityToNumeric } from '../../lib/quantity.ts';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
+import type { HouseholdKind } from '../../repo/types.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
-import { kindLabel } from '../../ui/labels.ts';
-import { Amount, Caveat, Card, Pill, RowAction, Unit } from '../../ui/primitives.tsx';
+import { Amount, Button, Caveat, Card, EyeIcon, Pill, RowAction, Unit } from '../../ui/primitives.tsx';
 import { CostAndGains } from './CostAndGains.tsx';
 import { EditHolding } from './EditHolding.tsx';
 import { FixedIncome } from './FixedIncome.tsx';
 import { splitFundName } from './fundName.ts';
-import { currentTerm } from './rowFact.ts';
-import { ArchiveHolding, CurrencyOptions, MissingMonths, QuotedValue, RecordReading } from './holdingParts.tsx';
-import type { FixedIncomeFacts } from './useFixedIncomeFacts.ts';
+import { daysPhrase } from './fixedIncomeRows.ts';
+import { barTerm } from './rowFact.ts';
+import { kindColour } from '../../ui/labels.ts';
+import { ArchiveHolding, CurrencyOptions, FetchPrice, MissingMonths, QuotedValue, RecordReading } from './holdingParts.tsx';
+import type { FixedFacts, FixedIncomeFacts } from './useFixedIncomeFacts.ts';
 import type { useHoldings } from './useHoldings.ts';
 
 type Hook = ReturnType<typeof useHoldings>;
 
 /**
- * One holding, on its own screen, in the shape of its kind (docs/design/holdings.md, HD-I6).
+ * One holding, on its own screen, in the shape of its kind (docs/design/holdings.md, HD-I6;
+ * docs/design/vibrant-canvas.html, the deposit and the fund boards).
  *
  * A deposit or a bond shows its terms: principal, rate, when it began and ends and how far through it is, what
  * the term pays and the interest so far, and for a bond the next coupon. It shows no units, no purchases or sales
  * and no realised figure: "1 units" and "0 purchases, 0 sales" on an FD were the bug this fixes. A fund or a share
  * shows units, cost, return, realised, the peak and its transactions.
  *
- * Edit is an icon in the top bar. Archive is a visible button, named for the holding, and not behind an overflow:
- * that keeps it one tap from the holding and in the accessibility tree, which was the reason the old cards had no
- * overflow.
+ * On a phone the screen opens with its own bar, "‹ Holdings", the privacy switch and Edit, in place of the app's
+ * header; a wide screen keeps the header and has the back link and Edit above the identity. Archive is a visible
+ * button, named for the holding, and not behind an overflow: that keeps it one tap from the holding and in the
+ * accessibility tree, which was the reason the old cards had no overflow.
  */
 export function HoldingDetail({
   hook,
   holdingId,
   privacy,
+  onTogglePrivacy,
+  householdKind,
   canWrite,
   fixed,
 }: {
   hook: Hook;
   holdingId: string;
   privacy: boolean;
+  onTogglePrivacy: () => void;
+  householdKind: HouseholdKind | null;
   canWrite: boolean;
   fixed: FixedIncomeFacts;
 }) {
   const { listing, rows, today, record, recordLot, recordSale, reload, taxRules, year, setYear } = hook;
   const [editing, setEditing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const row = rows.find((r) => r.holding.id === holdingId);
   if (listing === null) return null;
@@ -74,20 +84,106 @@ export function HoldingDetail({
   // Paid out, or sold out: left out of the totals from the day it was, as net worth leaves it out.
   const ended = hook.paidOut.has(holdingId) || row.unitsHeld === 0n;
 
+  const editAction = canWrite && (
+    <RowAction
+      icon="edit"
+      label={editing ? `Cancel editing ${holding.instrument.name}` : `Edit ${holding.instrument.name}`}
+      expanded={editing}
+      onClick={() => {
+        setEditing((was) => !was);
+      }}
+    />
+  );
+
+  const archive = canWrite && (
+    <ArchiveHolding
+      row={row}
+      button
+      confirming={archiving}
+      onConfirmingChange={setArchiving}
+      onDone={async () => {
+        await reload();
+        window.location.hash = hashFor('holdings');
+      }}
+    />
+  );
+
+  /** What the money is for: the earmark, with what it does to the FIRE corpus. */
+  const purpose = (
+    <section className="card" aria-label="Purpose">
+      <div className="purpose-row">
+        <span className="min-w-0">
+          <span className="label block">Earmarked for</span>
+          <span className="purpose-value">
+            {holding.earmark === 'none' ? (
+              <span className="note">Nothing in particular.</span>
+            ) : (
+              EARMARK_LABELS[holding.earmark]
+            )}
+          </span>
+        </span>
+        {canWrite && (
+          <button
+            type="button"
+            className="quiet-button"
+            onClick={() => {
+              setEditing(true);
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+      {holding.earmark !== 'none' && (
+        <p className="note mt-2">
+          {holding.earmark === 'retirement'
+            ? 'Counted toward the FIRE corpus.'
+            : holding.earmark === 'emergency'
+              ? 'Counts toward emergency cover. Left out of the FIRE corpus.'
+              : 'Left out of the FIRE corpus.'}
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <div className="flex flex-col gap-4.5">
-      <BackBar>
-        {canWrite && (
-          <RowAction
-            icon="edit"
-            label={editing ? `Cancel editing ${holding.instrument.name}` : `Edit ${holding.instrument.name}`}
-            expanded={editing}
-            onClick={() => {
-              setEditing((was) => !was);
-            }}
-          />
-        )}
-      </BackBar>
+      {/* A phone's bar, in place of the app's header; a wide screen has the back link and Edit below it. */}
+      <header className="screen-bar hide-wide inset-safe-top inset-safe-x">
+        <a className="screen-bar-back" href={hashFor('holdings')}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          <span>Holdings</span>
+        </a>
+        <span className="screen-bar-end holding-bar-end">
+          {householdKind !== null && <DemoBadge kind={householdKind} />}
+          <button
+            type="button"
+            className="iconbtn"
+            aria-pressed={privacy}
+            aria-label={privacy ? 'Amounts hidden. Show them.' : 'Amounts shown. Hide them.'}
+            onClick={onTogglePrivacy}
+          >
+            <EyeIcon crossed={privacy} />
+          </button>
+          {editAction}
+        </span>
+      </header>
+      <div className="hide-narrow-flex">
+        <BackBar>{editAction}</BackBar>
+      </div>
 
       <section className="flex items-center gap-3" aria-label="Identity">
         <AssetTile kind={kind} />
@@ -97,13 +193,14 @@ export function HoldingDetail({
           </h2>
           {name.detail !== null && <span className="note block">{name.detail}</span>}
           <span className="note block">
-            {holding.member.displayName} · {kindLabel(kind)}
-            {facts?.institution != null && ` · ${facts.institution}`}
+            {isFixed && facts?.institution != null && <>{facts.institution} · </>}
+            <span className="detail-member">{holding.member.displayName}</span>
             {facts?.last4 != null && ` · …${facts.last4}`}
           </span>
         </span>
       </section>
       <div className="flex flex-wrap items-center gap-2">
+        {isFixed && <Pill tone="neutral">{kind === 'deposit' ? 'Fixed deposit' : 'Bond'}</Pill>}
         {holding.earmark !== 'none' && <Pill tone="neutral">{EARMARK_LABELS[holding.earmark]}</Pill>}
         {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
         {holding.visibility === 'personal' && <Pill tone="own">Private</Pill>}
@@ -130,17 +227,18 @@ export function HoldingDetail({
         />
       )}
 
-      {/* The value card: the latest recorded reading, the figure net worth counts (HD-I1). */}
-      <Card lift title={ended ? 'Last reading' : 'In net worth'} aside={<span className="note">latest reading</span>}>
+      {/* The value card: the latest recorded reading, the figure net worth counts (HD-I1), in full. */}
+      <section className="card card-lift" aria-label="Value">
+        <h2 className="label">{ended ? 'Last reading' : 'In net worth'}</h2>
         <div
-          className="figure"
+          className="figure mt-1"
           data-testid="detail-value"
           title={latest === null ? undefined : (exactTitle(latest.amountMinor, currency, privacy) ?? undefined)}
         >
           {latest === null ? (
             <Unit>none yet</Unit>
           ) : (
-            <Amount value={money(latest.amountMinor, currency)} privacy={privacy} compact />
+            <Amount value={money(latest.amountMinor, currency)} privacy={privacy} />
           )}
         </div>
         {latest !== null && <p className="note mt-1">reading · {formatIsoDate(latest.date)}</p>}
@@ -151,6 +249,28 @@ export function HoldingDetail({
               ? 'It has paid out, so it is no longer counted in net worth or in the totals.'
               : 'No units are left, so it is no longer counted in net worth or in the totals.'}
           </p>
+        )}
+
+        {isFixed && facts !== undefined && !ended && (
+          <WorkedOut
+            facts={facts}
+            latest={latest === null ? null : { date: latest.date, amount: money(latest.amountMinor, currency) }}
+            today={today}
+            privacy={privacy}
+            canWrite={canWrite}
+            onRecord={async (amount) => {
+              await record({
+                householdId: listing.household.id,
+                holdingId: holding.id,
+                date: today,
+                quantity: '1',
+                amount,
+                source: 'manual',
+                note: 'Worked out from the terms',
+              });
+              fixed.reload();
+            }}
+          />
         )}
 
         {row.quoted !== null && (
@@ -165,7 +285,7 @@ export function HoldingDetail({
         )}
 
         {canWrite && !isFixed && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="value-actions">
             <button
               type="button"
               className="quiet-button"
@@ -176,6 +296,9 @@ export function HoldingDetail({
             >
               {recording ? 'Cancel this reading' : 'Record a value'}
             </button>
+            {holding.instrument.priceExternalId !== null && (
+              <FetchPrice externalId={holding.instrument.priceExternalId} onFetch={hook.refreshOne} />
+            )}
           </div>
         )}
         {canWrite && recording && (
@@ -191,37 +314,73 @@ export function HoldingDetail({
             }}
           />
         )}
-      </Card>
+      </section>
 
       {isFixed ? (
-        <Card title="Term" aside={facts === undefined ? undefined : <span className="note">worked out from the terms</span>}>
-          {facts !== undefined && (
-            <TermProgress
-              start={currentTerm(facts.position, today).start}
-              end={facts.view.ok && facts.view.kind === 'deposit' && facts.view.nextMaturity !== null ? facts.view.nextMaturity : currentTerm(facts.position, today).end}
-              today={today}
-            />
+        <FixedIncome
+          listing={listing}
+          privacy={privacy}
+          canWrite={canWrite}
+          only={holdingId}
+          layout={({ term, buttons, forms }) => (
+            <>
+              <Card
+                title="Term"
+                aside={facts === undefined ? undefined : <DaysToGo facts={facts} />}
+              >
+                {facts !== undefined && (
+                  <TermProgress
+                    start={barTerm(facts.position, facts.view, today).start}
+                    end={barTerm(facts.position, facts.view, today).end}
+                    today={today}
+                    colour={kindColour(kind)}
+                  />
+                )}
+                {term}
+              </Card>
+              {purpose}
+              {/* What else a deposit can do, with Archive beside it, as the board draws the pair. */}
+              <div className="flex flex-wrap items-center gap-2">
+                {buttons}
+                {archive}
+              </div>
+              {forms}
+            </>
           )}
-          <FixedIncome
-            listing={listing}
-            privacy={privacy}
-            canWrite={canWrite}
-            only={holdingId}
-            onChanged={() => {
-              fixed.reload();
-              void reload();
-            }}
-          />
-        </Card>
+          onChanged={() => {
+            fixed.reload();
+            void reload();
+          }}
+        />
       ) : (
-        <Card title="Position" aside={<span className="note tabular-nums">{formatQuantity(row.unitsHeld)} units</span>}>
-          <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
-            <div>
-              <dt className="label">
+        <>
+          <Card title="Position">
+            <CostAndGains
+              part="position"
+              taxRules={taxRules}
+              row={row}
+              listing={listing}
+              privacy={privacy}
+              today={today}
+              canWrite={canWrite}
+              onLot={recordLot}
+              onSale={recordSale}
+              onEditLot={async (id, patch) => {
+                await updateLot(id, patch);
+                await reload();
+              }}
+              onEditSale={async (id, patch) => {
+                await updateDisposal(id, patch);
+                await reload();
+              }}
+            />
+            {/* The peak is last, as the board draws it: a fact about the year, after the figures about the position. */}
+            <div className="peak-row">
+              <span className="label">
                 Peak {peak.year}
-                {peak.isProvisional && peak.peak !== null && ' (provisional)'}
-              </dt>
-              <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
+                {peak.isProvisional && peak.peak !== null && <span className="note"> · provisional</span>}
+              </span>
+              <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
                 {peak.peak === null ? (
                   <Unit>not known</Unit>
                 ) : (
@@ -236,82 +395,49 @@ export function HoldingDetail({
                     )}
                   </>
                 )}
-              </dd>
+              </span>
+              <label className="peak-for">
+                <span className="label">Peak for</span>
+                <select
+                  className="field w-[92px]"
+                  value={year}
+                  onChange={(event) => {
+                    setYear(Number(event.target.value));
+                  }}
+                >
+                  {yearsAround(today).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <label className="flex items-center gap-2">
-              <span className="label">Peak for</span>
-              <select
-                className="field w-[92px]"
-                value={year}
-                onChange={(event) => {
-                  setYear(Number(event.target.value));
-                }}
-              >
-                {yearsAround(today).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </dl>
-          <CostAndGains
-            taxRules={taxRules}
-            row={row}
-            listing={listing}
-            privacy={privacy}
-            today={today}
-            canWrite={canWrite}
-            onLot={recordLot}
-            onSale={recordSale}
-            onEditLot={async (id, patch) => {
-              await updateLot(id, patch);
-              await reload();
-            }}
-            onEditSale={async (id, patch) => {
-              await updateDisposal(id, patch);
-              await reload();
-            }}
-          />
-        </Card>
-      )}
-
-      {/* What the money is for: the earmark, with what it does to the FIRE corpus. */}
-      <Card title="Earmarked for">
-        <p>{holding.earmark === 'none' ? <span className="note">Nothing in particular.</span> : EARMARK_LABELS[holding.earmark]}</p>
-        {holding.earmark !== 'none' && (
-          <p className="note mt-1">
-            {holding.earmark === 'retirement'
-              ? 'Counted toward the FIRE corpus.'
-              : holding.earmark === 'emergency'
-                ? 'Counts toward emergency cover. Left out of the FIRE corpus.'
-                : 'Left out of the FIRE corpus.'}
-          </p>
-        )}
-        {canWrite && (
-          <button
-            type="button"
-            className="quiet-button mt-2.5"
-            onClick={() => {
-              setEditing(true);
-              window.scrollTo({ top: 0 });
-            }}
-          >
-            Change
-          </button>
-        )}
-      </Card>
-
-      {/* A visible button, named for the holding: one tap from the holding and in the accessibility tree. */}
-      {canWrite && (
-        <ArchiveHolding
-          row={row}
-          button
-          onDone={async () => {
-            await reload();
-            window.location.hash = hashFor('holdings');
-          }}
-        />
+          </Card>
+          <section className="card transactions-card" aria-label="Transactions">
+            <CostAndGains
+              part="transactions"
+              taxRules={taxRules}
+              row={row}
+              listing={listing}
+              privacy={privacy}
+              today={today}
+              canWrite={canWrite}
+              onLot={recordLot}
+              onSale={recordSale}
+              onEditLot={async (id, patch) => {
+                await updateLot(id, patch);
+                await reload();
+              }}
+              onEditSale={async (id, patch) => {
+                await updateDisposal(id, patch);
+                await reload();
+              }}
+            />
+          </section>
+          {purpose}
+          <div>{archive}</div>
+        </>
       )}
     </div>
   );
@@ -319,7 +445,7 @@ export function HoldingDetail({
 
 function BackBar({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex w-full items-center justify-between gap-3">
       <a className="back-link" href={hashFor('holdings')}>
         <span aria-hidden="true">←</span> Holdings
       </a>
@@ -328,17 +454,123 @@ function BackBar({ children }: { children?: React.ReactNode }) {
   );
 }
 
-/** How far through its term a deposit or bond is: a bar and the dates under it. */
-function TermProgress({ start, end, today }: { start: string; end: string; today: string }) {
+/** How many days a deposit or bond has to go, at the right of the Term title. */
+function DaysToGo({ facts }: { facts: FixedFacts }) {
+  const { view } = facts;
+  // Days to go while there are some; once it has paid out, or if it cannot be valued, the figures are still the terms'.
+  if (!view.ok || view.matured || view.daysToMaturity === null) return <span className="note">worked out from the terms</span>;
+  return <span className="note tabular-nums">{daysPhrase(view.daysToMaturity)}</span>;
+}
+
+/**
+ * What a deposit or bond is worth today, worked out from its terms, and how to make that the reading.
+ *
+ * It is not in net worth until it is recorded: the figure above is the latest reading, and this is the day's value
+ * from the terms, with what the two differ by. "Record as today's reading" writes the day's value as an ordinary
+ * reading, which is how a deposit comes to be in net worth, the line over time and the month close without any of
+ * them learning about terms. A projected renewal is an estimate and is not offered as a reading.
+ */
+function WorkedOut({
+  facts,
+  latest,
+  today,
+  privacy,
+  canWrite,
+  onRecord,
+}: {
+  facts: FixedFacts;
+  latest: { date: string; amount: Money } | null;
+  today: string;
+  privacy: boolean;
+  canWrite: boolean;
+  onRecord: (amount: Money) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [recorded, setRecorded] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const { view } = facts;
+
+  if (!view.ok || view.matured) return null;
+  const projected = view.kind === 'deposit' && view.projected;
+  const same = latest !== null && latest.date === today && latest.amount.minor === view.value.minor;
+  const change = latest === null ? view.value.minor : view.value.minor - latest.amount.minor;
+  const label = view.kind === 'bond' && view.repay === 'payout' ? 'Value at par' : 'Worked out today';
+
+  return (
+    <div className="worked-out">
+      <p className="worked-out-line">
+        <span>{label}</span>
+        <span className="tabular-nums">{formatMoney(view.value, { privacy })}</span>
+      </p>
+      {!same && (
+        <p className="worked-out-line worked-out-sub">
+          <span>
+            not in net worth until recorded
+            <Caveat tone="info" label="Why this is not in net worth yet">
+              Net worth counts the latest reading, not the figure worked out from the terms. Record it as
+              today&rsquo;s reading and it is counted from today.
+            </Caveat>
+          </span>
+          {latest !== null && (
+            <span className="tabular-nums">
+              {change < 0n ? '−' : change > 0n ? '+' : ''}
+              {formatMoney(money(change < 0n ? -change : change, view.value.currency), { privacy })}
+            </span>
+          )}
+        </p>
+      )}
+      {canWrite &&
+        (projected ? (
+          <p className="note">A projection is not offered as a reading.</p>
+        ) : recorded || same ? (
+          // The confirmation is a statement and not a greyed-out control: at the opacity of a disabled button it
+          // measured under 3:1, on the one line that says the save worked.
+          <p className="note" role="status">
+            Recorded as today’s reading
+          </p>
+        ) : (
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setProblem(null);
+              onRecord(view.value)
+                .then(() => {
+                  setRecorded(true);
+                })
+                .catch((error: unknown) => {
+                  setProblem(error instanceof Error ? error.message : 'Could not record that.');
+                })
+                .finally(() => {
+                  setBusy(false);
+                });
+            }}
+          >
+            Record as today’s reading
+          </Button>
+        ))}
+      {problem !== null && (
+        <p className="note" role="alert">
+          {problem}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** How far through its term a deposit or bond is: a bar with a tick for today, and the dates under it. */
+function TermProgress({ start, end, today, colour }: { start: string; end: string; today: string; colour: string }) {
   const total = Math.max(daysBetween(start, end), 1);
   const done = Math.min(Math.max(daysBetween(start, today), 0), total);
   const percent = Math.round((done / total) * 100);
   return (
-    <div className="mb-3" data-testid="term-progress">
-      <div className="track" role="img" aria-label={`${String(percent)} per cent of the term has passed`}>
-        <i style={{ width: `${String(percent)}%`, background: 'var(--teal)' }} />
+    <div className="mb-3.5" data-testid="term-progress">
+      <div className="track term-track" role="img" aria-label={`${String(percent)} per cent of the term has passed`}>
+        <i style={{ width: `${String(percent)}%`, background: colour }} />
+        <b className="term-tick" style={{ left: `${String(percent)}%` }} />
       </div>
-      <p className="note mt-1 flex justify-between gap-2">
+      <p className="note mt-1 flex justify-between gap-2 tabular-nums">
         <span>{formatIsoDate(start)}</span>
         <span>today</span>
         <span>{formatIsoDate(end)}</span>

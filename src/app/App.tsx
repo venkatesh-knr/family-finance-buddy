@@ -250,7 +250,7 @@ function SignedIn({
         />
       )}
       <header
-        className={`inset-safe-top inset-safe-x mb-4.5 ${subTitle === null ? 'flex' : 'hide-narrow-flex'} flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5`}
+        className={`inset-safe-top inset-safe-x mb-4.5 ${subTitle === null && screen !== 'holding' ? 'flex' : 'hide-narrow-flex'} flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5`}
         style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
       >
         {/*
@@ -321,7 +321,7 @@ function SignedIn({
         the ones they want.
       */}
       <nav
-        className={`inset-safe-x mx-auto mb-4.5 ${subTitle === null ? 'flex' : 'hide-narrow-flex'} ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} items-center justify-between gap-3 scroll-x`}
+        className={`inset-safe-x mx-auto mb-4.5 ${subTitle === null && screen !== 'holding' ? 'flex' : 'hide-narrow-flex'} ${screen === 'overview' ? 'max-w-wide' : 'max-w-app'} items-center justify-between gap-3 scroll-x`}
       >
         {/*
           Hidden on a phone, where the bar at the bottom does this job under
@@ -399,6 +399,9 @@ function SignedIn({
         {(screen === 'holdings' || screen === 'holding') && (
           <HoldingsScreen
             privacy={privacy}
+            onTogglePrivacy={() => {
+              setPrivacy((on) => !on);
+            }}
             householdId={householdId}
             filter={holdingsFilter}
             holdingId={screen === 'holding' ? (params.get('id') ?? '') : null}

@@ -427,13 +427,23 @@ export function ArchiveHolding({
   row,
   onDone,
   button = false,
+  confirming: confirmingProp,
+  onConfirmingChange,
 }: {
   row: HoldingRow;
   onDone: ReturnType<typeof useHoldings>['reload'];
   /** A visible button named for the holding, as on a holding's own screen, in place of the icon on a card. */
   button?: boolean;
+  /**
+   * Whether the question is being asked, held by the screen when the screen can rebuild what this sits in (a deposit's
+   * own screen swaps its placeholder for its terms when they arrive, and a question asked in between must survive).
+   */
+  confirming?: boolean;
+  onConfirmingChange?: (confirming: boolean) => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  const [ownConfirming, setOwnConfirming] = useState(false);
+  const confirming = confirmingProp ?? ownConfirming;
+  const setConfirming = onConfirmingChange ?? setOwnConfirming;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -441,17 +451,32 @@ export function ArchiveHolding({
     return (
       <>
         {button ? (
-          <div>
-            <button
-              type="button"
-              className="quiet-button archive-button"
-              onClick={() => {
-                setConfirming(true);
-              }}
+          // "Archive" and its icon, as the board draws it; the holding's whole name is what a screen reader hears.
+          <button
+            type="button"
+            className="quiet-button archive-button"
+            aria-label={`Archive ${row.holding.instrument.name}`}
+            onClick={() => {
+              setConfirming(true);
+            }}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
             >
-              Archive {row.holding.instrument.name}
-            </button>
-          </div>
+              <rect x="3" y="4" width="18" height="4" rx="1" />
+              <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+              <path d="M10 12h4" />
+            </svg>
+            Archive
+          </button>
         ) : (
           <RowAction
             icon="archive"
@@ -556,18 +581,21 @@ export function QuotedValue({
   const already = row.latest !== null && row.latest.date >= quoted.price.asOf;
 
   return (
-    <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-      <span className="label">Quoted</span>
-      <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
-        {formatMoney(quoted.value, { privacy })}
-      </span>
-      <span className="note">
-        {quoted.price.value} on {formatIsoDate(quoted.price.asOf)}
-      </span>
+    <div className="worked-out">
+      <p className="worked-out-line">
+        <span>Quoted</span>
+        <span className="tabular-nums">{formatMoney(quoted.value, { privacy })}</span>
+      </p>
+      <p className="worked-out-line worked-out-sub">
+        {/* A net asset value is a fund's: a gold or a currency quote is a price. */}
+        <span className="tabular-nums">
+          {row.holding.instrument.priceSource === 'amfi' ? 'NAV' : 'Price'} {quoted.price.value} on{' '}
+          {formatIsoDate(quoted.price.asOf)}
+        </span>
+        {already ? <span>already recorded</span> : null}
+      </p>
 
-      {already ? (
-        <span className="note">already recorded</span>
-      ) : (
+      {already ? null : (
         canWrite && (
           <button
             type="button"
@@ -661,6 +689,74 @@ export function RefreshPrices({
         {busy ? 'Fetching…' : 'Fetch prices'}
       </button>
       {said !== null && <span className="note">{said}</span>}
+    </>
+  );
+}
+
+/**
+ * One holding's price, fetched on its own screen beside Record a value (docs/design/vibrant-canvas.html, the fund).
+ *
+ * The same call as the list's Fetch prices, for the one feed this holding is linked to, and a button for the same
+ * reason: a screen that quietly reaches a vendor is harder to trust than one that says what it is about to do. It
+ * says what happened, because nothing new and an unreachable vendor look the same from outside.
+ */
+export function FetchPrice({
+  externalId,
+  onFetch,
+}: {
+  externalId: string;
+  onFetch: ReturnType<typeof useHoldings>['refreshOne'];
+}) {
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<string | null>(null);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="quiet-button"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setSaid(null);
+          onFetch(externalId)
+            .then((result) => {
+              setSaid(
+                result.note ??
+                  (result.written === 0
+                    ? 'Nothing new to record.'
+                    : `${String(result.written)} price${result.written === 1 ? '' : 's'} recorded.`),
+              );
+            })
+            .catch((error: unknown) => {
+              setSaid(error instanceof Error ? error.message : 'Could not fetch the price.');
+            })
+            .finally(() => {
+              setBusy(false);
+            });
+        }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M21 12a9 9 0 1 1-3-6.7" />
+          <path d="M21 4v5h-5" />
+        </svg>
+        {busy ? 'Fetching…' : 'Fetch price'}
+      </button>
+      {said !== null && (
+        <span className="note w-full" role="status">
+          {said}
+        </span>
+      )}
     </>
   );
 }

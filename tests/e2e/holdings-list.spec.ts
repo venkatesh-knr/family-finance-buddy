@@ -52,8 +52,17 @@ test('HD-I1 — a row shows the latest recorded reading, and the holding opens o
   await row.locator('a.holding-link').click();
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
   const detail = (await page.getByTestId('detail-value').innerText()).replace(/\s+/g, '');
-  // Compact in both places, so the same text: two views, one answer to "what is this worth".
-  expect(detail).toBe(rowText);
+  // The list is compact and the holding's screen is the figure in full (the board draws it so): two views, one answer
+  // to "what is this worth", so the compact figure is the full one rounded to its three significant digits.
+  const units: Record<string, number> = { Cr: 1e7, L: 1e5, K: 1e3, M: 1e6, B: 1e9, '': 1 };
+  const asNumber = (text: string): number => {
+    const m = /^[₹$]([\d,]+(?:\.\d+)?)(Cr|L|K|M|B)?$/.exec(text);
+    if (m === null) throw new Error(`not a figure: ${text}`);
+    return Number((m[1] ?? '0').replace(/,/g, '')) * (units[m[2] ?? ''] ?? 1);
+  };
+  const compact = asNumber(rowText);
+  const full = asNumber(detail);
+  expect(Math.abs(full - compact) / Math.max(full, 1), `the list says ${rowText} and the holding ${detail}`).toBeLessThan(0.006);
 });
 
 test('HD-I6 — a deposit opens on its terms, with no units, purchases or realised figure', async ({ page }) => {
