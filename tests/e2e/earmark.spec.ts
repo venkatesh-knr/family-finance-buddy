@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { rowOf, setEarmark } from './earmark.ts';
 
 /**
@@ -29,7 +29,7 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
 
     await page.goto('/#fire');
     await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-    const leftOut = page.getByTestId('fire-left-out');
+      const leftOut = page.getByTestId('fire-left-out');
     await expect(leftOut).toBeVisible({ timeout: 20_000 });
     // The standing line states the exclusion by name (PF-C8), and says why the figure fell the first time.
     await expect(leftOut).toContainText(/Left out because it is set aside/);

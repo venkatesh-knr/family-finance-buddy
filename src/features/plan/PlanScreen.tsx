@@ -119,7 +119,7 @@ export function FireScreen({
         displayCurrency={displayCurrency}
         rates={rates}
       />
-      <AnnualSummary plan={plan} privacy={privacy} startOpen />
+      <AnnualSummary plan={plan} privacy={privacy} />
       <Categories plan={plan} privacy={privacy} editable={editable} />
       <Commitments plan={plan} privacy={privacy} editable={editable} />
 
@@ -138,12 +138,9 @@ export function FireScreen({
 function AnnualSummary({
   plan,
   privacy,
-  startOpen = false,
 }: {
   plan: ReturnType<typeof usePlan>;
   privacy: boolean;
-  /** Open on FIRE, where it is the workings; folded anywhere it is an aside. */
-  startOpen?: boolean;
 }) {
   const { annual, fy } = plan;
 
@@ -166,7 +163,7 @@ function AnnualSummary({
       // still says the total in its summary, which is the part anybody
       // scrolling past actually wanted.
       collapsible
-      defaultOpen={startOpen}
+      defaultOpen={false}
       summary={`${formatMoney(annual.total, { privacy, compact: true })} planned this year.`}
       aside={
         <span className="flex flex-wrap items-center gap-2.5">
@@ -280,7 +277,13 @@ function FireCard({
 
   return (
     <Card
-      lift
+      collapsible
+      defaultOpen={false}
+      summary={
+        target === undefined
+          ? 'Not set up yet.'
+          : `${formatMoney(read(target.target), { privacy, compact: true })} in ${String(target.year)}, at ${String(multiplier)}× the year's spending.`
+      }
       title="FIRE target"
       aside={
         <span className="flex flex-wrap items-center gap-2.5">
@@ -478,10 +481,9 @@ function Categories({
     <Card
       title="Spending plan"
       collapsible
-      // Folded to begin with once the list is long enough to push everything
-      // else off the screen. Three dozen rows above the loans card means the
-      // loans card is never seen.
-      defaultOpen={rows.length <= 12}
+      // Folded, like the other planning cards (the owner's call on the mock-vs-build review, item 7): the board ends
+      // at what a year costs, and the planning that sets it waits below, one press away, until Goals is built.
+      defaultOpen={false}
       summary={
         rows.length === 0
           ? 'None yet.'
@@ -914,9 +916,9 @@ function Commitments({
         </Caveat>
       }
       collapsible
-      // Closed unless there is nothing to see. These are set once a year and
-      // read rarely, and open they pushed the ledger below three screens.
-      defaultOpen={count === 0}
+      // Folded, like the other planning cards (item 7 of the mock-vs-build review). These are set once a year and
+      // read rarely.
+      defaultOpen={false}
       summary={count === 0 ? 'None yet.' : `${String(count)} recorded.`}
     >
 

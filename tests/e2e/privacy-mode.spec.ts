@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { openCard } from './fire.ts';
 import { ledgerEntry } from './ledger.ts';
 import { setEarmark } from './earmark.ts';
 
@@ -84,6 +85,7 @@ test('a stored figure in an editable field is not left in the document', async (
   await page.goto('/#fire');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByText('Spending plan', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await openCard(page, 'Spending plan');
 
   // Whatever is stored, read from the page: three digits or more, so a multiple or an inflation rate is not
   // a figure to look for. Shown first, or the test proves nothing.

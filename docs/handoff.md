@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #98. Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #99. Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -288,8 +288,8 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   and step 6 (#81); the canvas rule, the Artboard column, the end-to-end suite in its own household and the
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
-  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98)**.
-- **In flight:** nothing. Overview was merged and deployed as #98 (reviewed by the design-conformance agent).
+  (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98), FIRE (#99)**.
+- **In flight:** nothing. FIRE was merged and deployed as #99 (reviewed by the design-conformance agent).
   CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
   images (CI downloads them on every run and caches nothing), and once on `supabase/setup-cli` failing to resolve
   `latest` ("rate limit exceeded"). Both clear on a re-run. If they recur, consider pinning the CLI version and a
@@ -318,8 +318,10 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   step 7 (below).
 - **Queued, in this order:**
   1. **The holding screens** (13–18), then **Holdings list** (8–12; item 10 is decided: the board's one scrolling
-     row with the earmark chips after the asset classes, past a hairline) and **FIRE** (4–7; item 7 is decided:
-     the planning sections stay below the board's content as folded cards). Insurance follow-ups: `icons.md` section 4 and IC-R8 say the Stage 5 tiles
+     row with the earmark chips after the asset classes, past a hairline). FIRE is done, its planning cards folded
+     as chosen (item 7); the three figures all called "Target" there wait for the maintainer to say whether the
+     head shows today's target or the one in the year it is reached (`conformance.md`: the FIRE head, chart and
+     read-out rows). Insurance follow-ups: `icons.md` section 4 and IC-R8 say the Stage 5 tiles
      are wired to nothing, and the insurance tile now is (`PROTECTION_TILE`), so those need the maintainer's
      wording; `theme.spec.ts` (the maintainer's file) does not list `insurance`, though axe finds nothing there in
      either theme; `insuranceFacts.healthByMember` is computed and no longer read, since Health is a flat list as

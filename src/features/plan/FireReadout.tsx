@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { fireProgress, fireProjection } from '../../domain/fire.ts';
+import { fireProgress, fireProjection, fireWhatIf, whatIfExtra } from '../../domain/fire.ts';
 import {
   exactMoney,
   formatMoney,
@@ -13,7 +13,7 @@ import { useMeasure } from '../overview/AssetsOverTime.tsx';
 import { useOverviewData } from '../overview/useOverviewData.ts';
 import { useDevicePreference } from '../../app/preferences.ts';
 import { EARMARK_LABELS } from '../../domain/earmark.ts';
-import { Absent, Amount, Button, Card, Caveat, Chevron, Problem } from '../../ui/primitives.tsx';
+import { Absent, Amount, Button, Card, Caveat, Problem } from '../../ui/primitives.tsx';
 import { DraftNumber } from './DraftNumber.tsx';
 import type { usePlan } from './usePlan.ts';
 
@@ -52,6 +52,7 @@ export function FireReadout({
   const household = plan.listing?.household;
   const data = useOverviewData({ householdId: household?.id ?? null, displayCurrency: '', scope: 'household' });
   const assumptions = useRef<HTMLDivElement | null>(null);
+  const [leftOutOpen, setLeftOutOpen] = useState(false);
 
   const { annual, projectionLadder, multiplier, inflationPct, returnPct, stepUpPct, monthlyContributionMinor } = plan;
   const first = projectionLadder[0];
@@ -113,6 +114,27 @@ export function FireReadout({
     });
   }, [corpus, first, monthlyContributionMinor, returnPct, stepUpPct, projectionLadder]);
 
+  // "Adding X a month brings it to year Y": the household's own projection with a round extra put in each month, shown
+  // only when it moves the date earlier. A what-if on its own assumptions, and no advice about what to put in.
+  const whatIf = useMemo(() => {
+    if (projection === null || corpus === null || first === undefined || annual === null) return null;
+    const extra = whatIfExtra(annual.total);
+    if (extra.currency !== corpus.currency) return null;
+    const result = fireWhatIf(
+      {
+        corpus,
+        monthlyContribution: money(monthlyContributionMinor, corpus.currency),
+        returnPct,
+        stepUpPct,
+        ladder: projectionLadder,
+      },
+      extra,
+    );
+    if (result.reachedYear === null) return null;
+    if (result.baseYear !== null && result.reachedYear >= result.baseYear) return null;
+    return { extra, year: result.reachedYear };
+  }, [projection, corpus, first, annual, monthlyContributionMinor, returnPct, stepUpPct, projectionLadder]);
+
   if (annual === null || first === undefined || household === undefined) return null;
   if (annual.total.minor <= 0n) return null;
 
@@ -169,7 +191,9 @@ export function FireReadout({
 
   const goAdjust = (): void => {
     assumptions.current?.scrollIntoView({ block: 'center' });
-    assumptions.current?.querySelector('input')?.focus();
+    // The monthly amount the line is about; with amounts hidden it is text, and the first field is the return.
+    const field = assumptions.current?.querySelector<HTMLInputElement>('#fire-contribution');
+    (field ?? assumptions.current?.querySelector('input'))?.focus();
   };
 
   return (
@@ -179,13 +203,25 @@ export function FireReadout({
         <div className="figure mt-1" title={exactMoney(first.target, privacy) ?? undefined}>
           <Amount value={first.target} privacy={privacy} compact />
         </div>
+        {/* One muted line, as the board draws it; what the target and the date rest on is behind its mark. */}
         <p className="note mt-1">
-          {multiplier}× what the household spends, at today&rsquo;s prices
+          Target at today&rsquo;s prices, {String(inflationPct)}% inflation
           {reachedYear === null
             ? projection === null
               ? ''
-              : ` · not reached within ${String(projectionLadder.length - 1)} years, assuming ${assumed}. Set a return and what is put in each month below to see where it would be`
-            : ` · projected to be reached in ${String(reachedYear)}, assuming ${assumed} and ${String(inflationPct)}% inflation`}
+              : ` · not reached within ${String(projectionLadder.length - 1)} years`
+            : ` · reached ${String(reachedYear)}`}
+          <Caveat tone="info" label="How the target and the date are worked out">
+            {multiplier}× what the household spends in a year, at today&rsquo;s prices.
+            {projection !== null && (
+              <>
+                {' '}
+                {reachedYear === null
+                  ? `With ${assumed}, the corpus does not meet the target as prices rise within ${String(projectionLadder.length - 1)} years. Set a return and what is put in each month below to see where it would be.`
+                  : `The date is when the corpus, growing ${assumed}, meets the target as prices rise ${String(inflationPct)}% a year.`}
+              </>
+            )}
+          </Caveat>
         </p>
         {displayCurrency !== '' && displayCurrency !== base && (
           <p className="note mt-1">
@@ -201,10 +237,9 @@ export function FireReadout({
         reachedYear={reachedYear}
         noCorpus={noCorpus}
         warnings={warnings}
-        onAdjust={goAdjust}
       />
 
-      <Card title="How far along">
+      <section className="card" aria-label="How far along">
         {progress === null || corpus === null ? (
           <div className="note">
             <Absent label="Why there is no progress yet">{noCorpus}</Absent>
@@ -242,23 +277,41 @@ export function FireReadout({
             </dl>
           </div>
         )}
+        {whatIf !== null && (
+          <div className="fire-whatif">
+            <span>
+              Adding{' '}
+              <span className="num fire-whatif-figure">
+                <Amount value={whatIf.extra} privacy={privacy} compact />
+              </span>{' '}
+              a month brings it to {String(whatIf.year)}
+            </span>
+            <button type="button" className="fire-adjust" onClick={goAdjust}>
+              Adjust
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h13" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/*
+          What is left out of the corpus, stated on the face (PF-C8): the earmarked parts and their total, and that a
+          member's private holdings count in full, so the corpus may be high. What else the figure does not hold is one
+          press away.
+        */}
         <p className="note mt-3" data-testid="fire-left-out">
           {!leftOut.anyEarmarked ? (
-            <>
-              Against today&rsquo;s target, from net worth as it stands. Nothing is earmarked, so nothing
-              is left out. Mark a holding as an emergency fund, a child&rsquo;s savings or a house deposit
-              on Holdings and it leaves this figure.
-            </>
+            <>Nothing is earmarked, so nothing is left out of the corpus.</>
           ) : leftOut.total === null ? (
             <>
-              Against today&rsquo;s target. Holdings earmarked as an emergency fund, a child&rsquo;s
-              savings or a house deposit are left out, but there is no amount to show for them:{' '}
-              {leftOut.shortBy ?? 'they have no value recorded.'}
+              Holdings earmarked as an emergency fund, a child&rsquo;s savings or a house deposit are left out, but there
+              is no amount to show for them: {leftOut.shortBy ?? 'they have no value recorded.'}
             </>
           ) : (
             <>
-              Against today&rsquo;s target. Left out because it is set aside for something other than
-              retirement:{' '}
+              Left out because it is set aside for something other than retirement:{' '}
               {leftOut.parts.map((part, index) => (
                 <span key={part.earmark}>
                   {index > 0 && ', '}
@@ -273,9 +326,7 @@ export function FireReadout({
               )}
               .{leftOut.shortBy !== null && <> {leftOut.shortBy.charAt(0).toUpperCase() + leftOut.shortBy.slice(1)}</>}
             </>
-          )}{' '}
-          Property and anything else not yet recorded is not in it, so the figure is short by what those
-          are worth.
+          )}
           {data.fire.privateMembers > 0 && (
             <>
               {' '}
@@ -285,19 +336,36 @@ export function FireReadout({
             </>
           )}
         </p>
+
+        <button
+          type="button"
+          className="disclosure"
+          aria-expanded={leftOutOpen}
+          aria-controls="fire-rests-on"
+          onClick={() => {
+            setLeftOutOpen((was) => !was);
+          }}
+        >
+          <DisclosureChevron />
+          What else it leaves out
+        </button>
+        {leftOutOpen && (
+          <p id="fire-rests-on" className="note" data-testid="fire-rests-on">
+            Against today&rsquo;s target, from net worth as it stands. Property and anything else not yet recorded is
+            not in it, so the figure is short by what those are worth.
+          </p>
+        )}
         {leftOut.anyEarmarked && !noticeSeen && (
           <div className="note mt-3 flex flex-wrap items-center gap-3" role="status">
             <span>
-              Money earmarked as an emergency fund, a child&rsquo;s savings or a house deposit is not
-              counted as retirement money, so this is lower than net worth. This screen used to count it;
-              if the figure has fallen since you last looked, that is why.
+              Earmarked money is not counted, so this is lower than net worth, and lower than this screen used to say.
             </span>
             <Button type="button" onClick={() => setNoticeSeen(true)}>
               Got it
             </Button>
           </div>
         )}
-      </Card>
+      </section>
 
       <CostBar annual={annual} privacy={privacy} />
 
@@ -305,6 +373,26 @@ export function FireReadout({
         <Assumptions plan={plan} editable={editable} privacy={privacy} currency={annual.total.currency} />
       </div>
     </div>
+  );
+}
+
+/** The turning chevron of a disclosure, as `.disclosure` draws it. */
+function DisclosureChevron() {
+  return (
+    <svg
+      className="disclosure-chevron"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
 
@@ -326,7 +414,7 @@ function Ring({ percent }: { percent: number }) {
         cy={RING.size / 2}
         r={r}
         fill="none"
-        stroke="var(--teal)"
+        stroke="var(--ink-2)"
         strokeWidth={RING.stroke}
         strokeLinecap="round"
         strokeDasharray={`${String(filled)} ${String(c)}`}
@@ -346,7 +434,6 @@ function ProjectionCard({
   reachedYear,
   noCorpus,
   warnings,
-  onAdjust,
 }: {
   plan: Plan;
   privacy: boolean;
@@ -354,7 +441,6 @@ function ProjectionCard({
   reachedYear: number | null;
   noCorpus: string | null;
   warnings: React.ReactNode;
-  onAdjust: () => void;
 }) {
   const { ref, width, rem } = useMeasure(projection !== null);
 
@@ -394,17 +480,12 @@ function ProjectionCard({
 
   return (
     <Card
+      lift
       title="Projection"
       aside={
         <span className="flex items-center gap-2.5">
           {lastStep !== undefined && <span className="note">to {lastStep.year}</span>}
           {warnings}
-          <Caveat tone="info" label="What this projection assumes">
-            The corpus grows at {plan.returnPct}% a year and has {formatMoney(money(plan.monthlyContributionMinor, plan.annual?.total.currency ?? 'INR'), { privacy })} a
-            month put in, raised by {plan.stepUpPct}% each year. The line is measured against the target as
-            prices rise {plan.inflationPct}% a year. These are the household&rsquo;s own assumptions, set
-            below. It is arithmetic on them and not a forecast: nothing here knows what markets will do.
-          </Caveat>
         </span>
       }
     >
@@ -436,6 +517,25 @@ function ProjectionCard({
                 <path d={drawn.chart.target.line} fill="none" stroke="var(--brass)" strokeWidth="2" strokeDasharray="6 5" />
                 <path d={drawn.chart.corpus.line} fill="none" stroke="var(--ink-2)" strokeWidth="2.4" />
                 <circle cx={drawn.chart.corpus.end.x} cy={drawn.chart.corpus.end.y} r="4" fill="var(--ink-2)" />
+                {/* The target named on its own line, as the board draws it, so there is no legend to read across to. */}
+                {(() => {
+                  // At the crossing when there is one, so the head and the chart name the same year; else at the end.
+                  const at = reachedYear === null ? -1 : shown.findIndex((step) => step.year === reachedYear);
+                  const index = at >= 0 ? at : shown.length - 1;
+                  const step = shown[index];
+                  const point = drawn.chart.target.points[index];
+                  if (step === undefined || point === undefined) return null;
+                  return (
+                    <text
+                      className="chart-tick chart-target-label"
+                      x={Math.min(point.x, drawn.chart.plot.right)}
+                      y={point.y - 0.55 * rem}
+                      textAnchor={index === shown.length - 1 ? 'end' : 'middle'}
+                    >
+                      Target {String(step.year)} · {amount(Number(step.target.minor), step.target.currency)}
+                    </text>
+                  );
+                })()}
                 {reachedYear !== null &&
                   (() => {
                     const index = shown.findIndex((s) => s.year === reachedYear);
@@ -462,35 +562,17 @@ function ProjectionCard({
               </svg>
             )}
           </div>
-          {/* The two lines told apart by shape and by word, not by colour alone. */}
-          <ul className="fire-legend">
-            <li>
-              <svg width="26" height="8" aria-hidden="true">
-                <line x1="0" y1="4" x2="26" y2="4" stroke="var(--ink-2)" strokeWidth="2.4" />
-              </svg>
-              Corpus
-            </li>
-            <li>
-              <svg width="26" height="8" aria-hidden="true">
-                <line x1="0" y1="4" x2="26" y2="4" stroke="var(--brass)" strokeWidth="2" strokeDasharray="6 5" />
-              </svg>
-              Target, as prices rise
-            </li>
-            {reachedYear !== null && (
-              <li>
-                <svg width="12" height="12" aria-hidden="true">
-                  <circle cx="6" cy="6" r="4.5" fill="var(--surface)" stroke="var(--ink-2)" strokeWidth="2" />
-                </svg>
-                Reached in {reachedYear}
-              </li>
-            )}
-          </ul>
-          <p className="note fire-assumes">
-            Assumes contributions continue at the rate set below. Not a forecast.{' '}
-            <button type="button" className="fire-adjust" onClick={onAdjust}>
-              Adjust <Chevron />
-            </button>
-          </p>
+          {/* One note, with the assumptions behind its mark. A line and not a forecast, and the lines are told apart by shape and by word. */}
+          <div className="chart-note">
+            <Caveat tone="info" label="What this projection assumes">
+              The corpus grows at {plan.returnPct}% a year and has{' '}
+              {formatMoney(money(plan.monthlyContributionMinor, plan.annual?.total.currency ?? 'INR'), { privacy })} a
+              month put in, raised by {plan.stepUpPct}% each year. The line is measured against the target as prices
+              rise {plan.inflationPct}% a year. These are the household&rsquo;s own assumptions, set below. It is
+              arithmetic on them and not a forecast: nothing here knows what markets will do.
+            </Caveat>
+            <span>Assumes contributions continue at the rate set below. Not a forecast.</span>
+          </div>
         </>
       )}
     </Card>
@@ -586,6 +668,7 @@ function Assumptions({
               <>
                 <span className="note">{currency}</span>
                 <input
+                  id="fire-contribution"
                   className="field field-num w-[110px]"
                   inputMode="decimal"
                   value={draft ?? stored}

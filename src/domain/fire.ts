@@ -17,7 +17,7 @@
  */
 
 import type { IsoDate } from '../lib/dates.ts';
-import { money, type Money } from '../lib/money.ts';
+import { minorUnitExponent, money, type Money } from '../lib/money.ts';
 
 /**
  * Where a ladder starts: the calendar year of the given IST date.
@@ -207,4 +207,41 @@ export function fireProgress(corpus: Money, target: Money): Progress | null {
     percent: Number((corpus.minor * 100n) / target.minor),
     shortfall: money(left > 0n ? left : 0n, target.currency),
   };
+}
+
+/**
+ * A round amount to try adding each month: about a tenth of a month's spending, to the nearest thousand of the
+ * currency, and never less than a thousand.
+ *
+ * It is a what-if and not a recommendation: how much a household should put in is its own decision, and
+ * the figure only has to be round and big enough to move the date. A tenth of a month's spending keeps it in
+ * proportion to the household, so a small household is not shown a sum it could never find.
+ */
+export function whatIfExtra(annualExpense: Money): Money {
+  const thousand = 1000n * 10n ** BigInt(minorUnitExponent(annualExpense.currency));
+  const tenth = annualExpense.minor / 12n / 10n;
+  const rounded = ((tenth + thousand / 2n) / thousand) * thousand;
+  return money(rounded > 0n ? rounded : thousand, annualExpense.currency);
+}
+
+export interface WhatIf {
+  /** The first year the corpus meets the target if `extra` more is put in each month. */
+  readonly reachedYear: number | null;
+  /** The first year without it: the household's own projection, for comparison. */
+  readonly baseYear: number | null;
+}
+
+/**
+ * When the target would be reached if a further amount were put in each month, beside when it is without it.
+ *
+ * The same projection with the contribution raised by `extra` and nothing else changed: the corpus, the return,
+ * the step-up and the ladder are the household's own. Arithmetic on its assumptions, not a forecast.
+ */
+export function fireWhatIf(options: ProjectionOptions, extra: Money): WhatIf {
+  const base = fireProjection(options);
+  const raised = fireProjection({
+    ...options,
+    monthlyContribution: money(options.monthlyContribution.minor + extra.minor, options.monthlyContribution.currency),
+  });
+  return { reachedYear: raised.reachedYear, baseYear: base.reachedYear };
 }
