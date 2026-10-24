@@ -884,7 +884,7 @@ function NewCategory({
         </select>
       </label>
       <Button type="submit" disabled={busy || name.trim() === ''}>
-        Add a loan
+        Add a category
       </Button>
     </form>
   );
@@ -1102,7 +1102,7 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
       </label>
 
       <Button type="submit" disabled={busy || name.trim() === '' || amount.trim() === ''}>
-        Add
+        Add a loan
       </Button>
 
       {problem !== null && (
