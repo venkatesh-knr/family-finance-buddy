@@ -14,7 +14,7 @@
  * terms. A projected renewal is an estimate, and is not offered for recording.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   fixedIncomeView,
   MATURITY_NOTICE_DAYS,
@@ -49,6 +49,13 @@ const REFUSAL: Record<FixedIncomeRefusal, string> = {
   'invalid-terms': 'Its terms cannot be read, so it is not valued.',
 };
 
+/** What a deposit or bond's own screen is made of, so the screen can place each part. */
+export interface RowParts {
+  readonly term: ReactNode;
+  readonly buttons: ReactNode;
+  readonly forms: ReactNode;
+}
+
 interface Row {
   readonly holdingId: string;
   readonly holding: Holding;
@@ -76,12 +83,19 @@ export function FixedIncome({
   canWrite,
   onChanged,
   only,
+  layout,
 }: {
   listing: HoldingListing;
   privacy: boolean;
   canWrite: boolean;
   /** Called after a write that changes holdings or readings, so the screen above reloads. */
   onChanged: () => void;
+  /**
+   * How a deposit's own screen lays out what it is made of (docs/design/vibrant-canvas.html, the deposit board): the
+   * term (the stats and the notes about it), the buttons, and the forms that open under them. Given, the holding's
+   * screen places each where the board does, in cards of its own. Without it they are one column, as on the list.
+   */
+  layout?: (parts: RowParts) => ReactNode;
   /**
    * One holding's terms and actions and nothing around them: the body of a deposit's or a bond's own screen
    * (docs/design/holdings.md). Without it this is the card of every deposit and bond, which the Holdings list
@@ -201,7 +215,18 @@ export function FixedIncome({
   }, [rows]);
 
   if (only !== undefined) {
-    if (loading) return <p className="note">Loading…</p>;
+    /** Without a layout the parts are one column; with one the screen places them. */
+    const place = (parts: RowParts): ReactNode =>
+      layout === undefined ? (
+        <div className="flex flex-col gap-2.5">
+          {parts.term}
+          {parts.buttons}
+          {parts.forms}
+        </div>
+      ) : (
+        layout(parts)
+      );
+    if (loading) return place({ term: <p className="note">Loading…</p>, buttons: null, forms: null });
     const mine = rows.find((r) => r.holdingId === only);
     if (mine !== undefined) {
       return (
@@ -213,6 +238,7 @@ export function FixedIncome({
           canWrite={canWrite}
           householdId={householdId}
           named={false}
+          {...(layout === undefined ? {} : { layout })}
           onChanged={() => {
             void load();
             onChanged();
@@ -222,24 +248,29 @@ export function FixedIncome({
     }
     // A deposit or bond entered before there were terms: it is offered its terms, and not a second holding.
     const bare = withoutTerms.find((h) => h.id === only);
-    if (bare === undefined) return problem === null ? null : <Problem>{problem}</Problem>;
-    return (
-      <div className="flex flex-col gap-2.5">
-        <p className="note">The terms of this {bare.instrument.kind} are not recorded, so there is nothing to work a value out from.</p>
-        {canWrite && giving === null && (
-          <div>
-            <Button
-              type="button"
-              variant="quiet"
-              onClick={() => {
-                setGiving(bare);
-              }}
-            >
-              Give the terms
-            </Button>
-          </div>
-        )}
-        {canWrite && giving !== null && (
+    if (bare === undefined) {
+      return problem === null ? null : place({ term: <Problem>{problem}</Problem>, buttons: null, forms: null });
+    }
+    return place({
+      term: (
+        <p className="note">
+          The terms of this {bare.instrument.kind} are not recorded, so there is nothing to work a value out from.
+        </p>
+      ),
+      buttons:
+        canWrite && giving === null ? (
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => {
+              setGiving(bare);
+            }}
+          >
+            Give the terms
+          </Button>
+        ) : null,
+      forms:
+        canWrite && giving !== null ? (
           <TermsForm
             key={giving.id}
             listing={listing}
@@ -253,9 +284,8 @@ export function FixedIncome({
               onChanged();
             }}
           />
-        )}
-      </div>
-    );
+        ) : null,
+    });
   }
 
   if (loading) {
@@ -463,9 +493,12 @@ function PositionRow({
   householdId,
   onChanged,
   named = true,
+  layout,
 }: {
   /** False on the holding's own screen, which has already said whose it is and what it is called. */
   named?: boolean;
+  /** Given on the holding's own screen, which places the parts as the board draws them. */
+  layout?: (parts: RowParts) => ReactNode;
   row: Row;
   listing: HoldingListing;
   today: IsoDate;
@@ -475,6 +508,9 @@ function PositionRow({
   onChanged: () => void;
 }) {
   const { position, view } = row;
+  // The holding's own screen draws the board: the term in four figures, the reading recorded from the value card, the
+  // renewal beside Archive. The list's row keeps its own shape.
+  const board = layout !== undefined;
   const [renewing, setRenewing] = useState(false);
   const [editingTerms, setEditingTerms] = useState(false);
   const [editingRenewal, setEditingRenewal] = useState<DepositRenewal | null>(null);
@@ -512,8 +548,30 @@ function PositionRow({
     }
   };
 
-  return (
-    <div className="flex flex-col gap-2">
+  const rateUnit =
+    position.kind === 'deposit'
+      ? COMPOUNDING_LABEL[position.compounding ?? 'yearly'].toLowerCase()
+      : position.repayMode === 'cumulative'
+        ? `cumulative, credited ${FREQUENCY_LABEL[position.couponFrequency ?? 'yearly'].toLowerCase()}`
+        : `coupon, ${FREQUENCY_LABEL[position.couponFrequency ?? 'yearly'].toLowerCase()}`;
+
+  const term = (
+    <>
+      {board && (
+        <div className="flex flex-wrap items-center gap-2">
+          {row.rating !== null && <Pill tone="neutral">{row.rating}</Pill>}
+          {row.watch?.kind === 'downgrade' && <Pill tone="due">▼ Downgraded</Pill>}
+          {row.watch?.kind === 'unclear' && <Pill tone="warn">Rating changed</Pill>}
+          {row.watch?.kind === 'withdrawn' && <Pill tone="warn">Rating removed</Pill>}
+          {position.autoRenew && <Pill tone="neutral">Renews itself</Pill>}
+          {position.autoRenew && position.renewals.length > 0 && (
+            <span className="note">renewed {String(position.renewals.length)}×</span>
+          )}
+          {view.ok && view.matured && <Pill tone="neutral">Matured</Pill>}
+          {view.ok && view.kind === 'deposit' && view.projected && <Pill tone="warn">Projected renewal</Pill>}
+        </div>
+      )}
+      {!board && (
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <span className="min-w-0">
           {named && <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{row.name}</span>}{' '}
@@ -548,11 +606,14 @@ function PositionRow({
         </span>
       </div>
 
-      <p className="note">
-        {terms} · {position.autoRenew ? 'first term ' : ''}
-        {formatIsoDate(position.start)} to {formatIsoDate(position.maturity)}
-        {position.autoRenew && position.renewals.length > 0 && ` · renewed ${String(position.renewals.length)}×`}
-      </p>
+      )}
+      {!board && (
+        <p className="note">
+          {terms} · {position.autoRenew ? 'first term ' : ''}
+          {formatIsoDate(position.start)} to {formatIsoDate(position.maturity)}
+          {position.autoRenew && position.renewals.length > 0 && ` · renewed ${String(position.renewals.length)}×`}
+        </p>
+      )}
 
       {!view.ok ? (
         <p className="note" style={{ color: 'var(--ink-2)' }}>
@@ -585,6 +646,38 @@ function PositionRow({
             the money went, then archive this.
           </p>
         </>
+      ) : board ? (
+        <dl className="term-stats">
+          {/* What was lent, which the terms begin with (HD-I6): the latest renewal's, for a deposit that has been renewed. */}
+          <Stat label={position.kind === 'bond' ? 'Face value' : 'Principal'}>
+            {formatMoney(currentTerm(position, today).principal, { privacy })}
+          </Stat>
+          <Stat label="Rate">
+            {trimRate(position.ratePct)}% <span className="note">{rateUnit}</span>
+          </Stat>
+          {view.kind === 'deposit' ? (
+            <>
+              <Stat label="Interest so far">{formatMoney(view.interestToDate, { privacy })}</Stat>
+              <Stat label="This term pays">{formatMoney(view.maturityValue, { privacy })}</Stat>
+            </>
+          ) : (
+            <>
+              <Stat label={view.repay === 'cumulative' ? 'Interest so far' : 'Accrued'}>
+                {formatMoney(view.accrued, { privacy })}
+              </Stat>
+              {view.repay === 'cumulative' ? (
+                <Stat label="Pays at maturity">{formatMoney(view.maturityValue, { privacy })}</Stat>
+              ) : (
+                view.nextCoupon !== null &&
+                view.couponAmount !== null && (
+                  <Stat label="Next coupon">
+                    {formatIsoDate(view.nextCoupon)} <span className="note">{formatMoney(view.couponAmount, { privacy })}</span>
+                  </Stat>
+                )
+              )}
+            </>
+          )}
+        </dl>
       ) : (
         <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
           {/* What was lent, which the terms begin with (HD-I6): the latest renewal's, for a deposit that has been renewed. */}
@@ -742,41 +835,62 @@ function PositionRow({
         </details>
       )}
 
-      {canWrite && (
-        <div className="flex flex-wrap items-center gap-2">
-          {view.ok && !view.matured && !(view.kind === 'deposit' && view.projected) && (
-            recorded ? (
-              // The confirmation is a statement and not a greyed-out control: at the opacity of a disabled
-              // button it measured under 3:1, on the one line that says the save worked.
-              <span className="note" role="status">
-                Recorded as today’s reading
-              </span>
-            ) : (
-              <button type="button" className="quiet-button" disabled={busy} onClick={() => void record()}>
-                Record as today’s reading
-              </button>
-            )
-          )}
-          {view.ok && view.kind === 'deposit' && view.projected && (
-            <span className="note">A projection is not offered as a reading.</span>
-          )}
-          {position.kind === 'deposit' && (
-            <button
-              type="button"
-              className="quiet-button"
-              aria-expanded={renewing}
-              onClick={() => {
-                setRenewing((was) => !was);
-                setEditingTerms(false);
-                setEditingRenewal(null);
-              }}
-            >
-              {renewing ? 'Cancel the renewal' : 'Record a renewal'}
-            </button>
-          )}
-        </div>
-      )}
+    </>
+  );
 
+  const buttons = canWrite ? (
+    <>
+      {/* The reading is recorded from the value card on a deposit's own screen, where the worked-out value is. */}
+      {!board && view.ok && !view.matured && !(view.kind === 'deposit' && view.projected) && (
+        recorded ? (
+          // The confirmation is a statement and not a greyed-out control: at the opacity of a disabled
+          // button it measured under 3:1, on the one line that says the save worked.
+          <span className="note" role="status">
+            Recorded as today’s reading
+          </span>
+        ) : (
+          <button type="button" className="quiet-button" disabled={busy} onClick={() => void record()}>
+            Record as today’s reading
+          </button>
+        )
+      )}
+      {!board && view.ok && view.kind === 'deposit' && view.projected && (
+        <span className="note">A projection is not offered as a reading.</span>
+      )}
+      {position.kind === 'deposit' && (
+        <button
+          type="button"
+          className="quiet-button"
+          aria-expanded={renewing}
+          onClick={() => {
+            setRenewing((was) => !was);
+            setEditingTerms(false);
+            setEditingRenewal(null);
+          }}
+        >
+          {renewing ? 'Cancel the renewal' : 'Record a renewal'}
+        </button>
+      )}
+      {board && (
+        <button
+          type="button"
+          className="quiet-button"
+          aria-expanded={editingTerms}
+          aria-label={`Correct the terms of ${row.name}`}
+          onClick={() => {
+            setEditingTerms((was) => !was);
+            setRenewing(false);
+            setEditingRenewal(null);
+          }}
+        >
+          Correct the terms
+        </button>
+      )}
+    </>
+  ) : null;
+
+  const forms = (
+    <>
       {editingTerms && (
         <TermsForm
           key={row.holdingId}
@@ -812,6 +926,15 @@ function PositionRow({
           }}
         />
       )}
+    </>
+  );
+
+  if (layout !== undefined) return <>{layout({ term, buttons, forms })}</>;
+  return (
+    <div className="flex flex-col gap-2">
+      {term}
+      {buttons !== null && <div className="flex flex-wrap items-center gap-2">{buttons}</div>}
+      {forms}
     </div>
   );
 }

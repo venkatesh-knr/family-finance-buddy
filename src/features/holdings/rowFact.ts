@@ -59,3 +59,23 @@ export function currentTerm(
     ? { start: position.start, end: position.maturity, principal: position.principal }
     : { start: latest.start, end: latest.maturity, principal: latest.principal };
 }
+
+/**
+ * The term the progress bar is drawn over, with its dates.
+ *
+ * The term the deposit is in: the recorded one, or, where a deposit that renews itself has run past its last recorded
+ * term and the bank's advice has not been entered, the projected one, which begins where the recorded one ended. The
+ * bar, the maturity and the days to go are then one term and not two, which a bar from the first start to a projected
+ * end would not be.
+ */
+export function barTerm(
+  position: FixedIncomePosition,
+  view: FixedIncomeView | null,
+  today: string,
+): { readonly start: string; readonly end: string } {
+  const current = currentTerm(position, today);
+  if (view !== null && view.ok && view.kind === 'deposit' && view.nextMaturity !== null) {
+    return view.projected ? { start: current.end, end: view.nextMaturity } : { start: current.start, end: view.nextMaturity };
+  }
+  return { start: current.start, end: current.end };
+}

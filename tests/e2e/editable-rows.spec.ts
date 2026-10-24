@@ -138,35 +138,43 @@ test.describe('A holding\u2019s own screen', () => {
     expect(editBox.width).toBeGreaterThanOrEqual(43.5);
     expect(editBox.height).toBeGreaterThanOrEqual(43.5);
 
-    // Archive is a visible button named for the holding, not behind an overflow and not an icon (HD-I6).
+    // Archive is a visible button named for the holding, not behind an overflow (HD-I6): the word and its icon,
+    // with the holding's name for a screen reader.
     const archive = page.getByRole('button', { name: /^Archive / }).first();
     await expect(archive).toHaveClass(/quiet-button/);
-    expect((await box(archive)).height).toBeGreaterThanOrEqual(43.5);
+    // The height of the other quiet buttons beside it (34px, and 44px on a touch screen: docs/tokens.md section 5),
+    // and not taller than them on a mouse.
+    const archiveHeight = (await box(archive)).height;
+    const addHeight = (await box(page.getByRole('button', { name: 'Add a purchase or sale' }).first())).height;
+    expect(archiveHeight).toBeGreaterThanOrEqual(33);
+    expect(Math.abs(archiveHeight - addHeight), 'Archive is one of the quiet buttons, at their height').toBeLessThan(2);
 
     const purchase = page.getByRole('button', { name: 'Add a purchase or sale' }).first();
     await expect(purchase).toHaveClass(/quiet-button/);
 
-    const workings = page.getByRole('button', { name: /^Show the workings/ }).first();
-    await expect(workings).toHaveClass(/disclosure/);
-    await expect(workings).toHaveAttribute('aria-expanded', 'false');
+    // The transactions are a row of their own, folded, with a chevron that says it opens.
+    const transactions = page.getByRole('button', { name: /^Transactions/ }).first();
+    await expect(transactions).toHaveClass(/transactions-toggle/);
+    await expect(transactions).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('the workings open and close from a disclosure, and its chevron turns', async ({ page }) => {
+  test('the transactions open and close from their row, and its chevron turns', async ({ page }) => {
     await fundScreen(page);
     const chevron = (l: Locator) => l.locator('.disclosure-chevron').evaluate((el) => getComputedStyle(el).transform);
 
-    const workings = page.getByRole('button', { name: /^Show the workings/ }).first();
-    const closed = await chevron(workings);
-    await workings.click();
+    const transactions = page.getByRole('button', { name: /^Transactions/ }).first();
+    const closed = await chevron(transactions);
+    await transactions.click();
 
-    const open = page.getByRole('button', { name: 'Hide the workings' }).first();
-    await expect(open).toHaveAttribute('aria-expanded', 'true');
+    await expect(transactions).toHaveAttribute('aria-expanded', 'true');
     // Transitions: let it finish before reading it.
     await page.waitForTimeout(250);
-    expect(await chevron(open), 'the chevron turned a quarter').not.toBe(closed);
+    expect(await chevron(transactions), 'the chevron turned a quarter').not.toBe(closed);
+    // What was recorded, and what the matcher made of it, is under the row.
+    await expect(page.getByText('Purchases', { exact: true }).first()).toBeVisible();
 
-    await open.click();
-    await expect(page.getByRole('button', { name: /^Show the workings/ }).first()).toHaveAttribute('aria-expanded', 'false');
+    await transactions.click();
+    await expect(transactions).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('carries no underlined text buttons for its actions', async ({ page }) => {

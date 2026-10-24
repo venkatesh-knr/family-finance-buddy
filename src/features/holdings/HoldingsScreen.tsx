@@ -38,11 +38,14 @@ const A: Record<string, string> = {
 
 export function HoldingsScreen({
   privacy,
+  onTogglePrivacy,
   householdId,
   filter,
   holdingId,
 }: {
   privacy: boolean;
+  /** For the privacy switch in a holding's own bar on a phone. */
+  onTogglePrivacy: () => void;
   householdId: string | null;
   /** The class, earmark and currency the URL asks for; empty is All. */
   filter: Filter;
@@ -183,7 +186,15 @@ export function HoldingsScreen({
   // A holding's own screen.
   if (holdingId !== null) {
     return (
-      <HoldingDetail hook={hook} holdingId={holdingId} privacy={privacy} canWrite={canWrite} fixed={fixed} />
+      <HoldingDetail
+        hook={hook}
+        holdingId={holdingId}
+        privacy={privacy}
+        onTogglePrivacy={onTogglePrivacy}
+        householdKind={listing.household.kind}
+        canWrite={canWrite}
+        fixed={fixed}
+      />
     );
   }
 

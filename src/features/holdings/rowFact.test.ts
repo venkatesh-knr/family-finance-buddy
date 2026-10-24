@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FixedIncomePosition, FixedIncomeView } from '../../domain/fixed-income.ts';
 import { money } from '../../lib/money.ts';
-import { currentTerm, rowFact } from './rowFact.ts';
+import { barTerm, currentTerm, rowFact } from './rowFact.ts';
 
 const inr = (rupees: number) => money(BigInt(Math.round(rupees * 100)), 'INR');
 
@@ -159,5 +159,27 @@ describe('currentTerm — what a deposit is partway through, and what it was len
   it('is the whole life of a bond, at its face value', () => {
     const bond = deposit({ kind: 'bond', principal: inr(100000), start: '2024-01-01', maturity: '2028-11-30' });
     expect(currentTerm(bond, '2026-10-12')).toEqual({ start: '2024-01-01', end: '2028-11-30', principal: inr(100000) });
+  });
+});
+
+describe('barTerm — the term the progress bar is drawn over', () => {
+  it('is the recorded term, from its start to its maturity', () => {
+    const term = barTerm(deposit(), depositView('2027-07-31'), '2026-10-24');
+    expect(term).toEqual({ start: '2026-02-01', end: '2027-07-31' });
+  });
+
+  it('is the projected term when the recorded one has run out, so the bar, the days to go and the maturity are one term', () => {
+    // A one-year FD begun 1 Jan 2025 that renews itself, with no renewal recorded: the recorded term ended on
+    // 1 Jan 2026 and the term it is in is the projected one, to 1 Jan 2027.
+    const position = deposit({ start: '2025-01-01', maturity: '2026-01-01', autoRenew: true });
+    const view = { ...depositView('2027-01-01'), projected: true, term: 2, daysToMaturity: 69 } as FixedIncomeView;
+    expect(barTerm(position, view, '2026-10-24')).toEqual({ start: '2026-01-01', end: '2027-01-01' });
+  });
+
+  it('is the recorded renewal that has begun, as before', () => {
+    const position = deposit({
+      renewals: [{ start: '2026-08-01', maturity: '2027-08-01', ratePct: '7.000', principal: inr(105000), compounding: 'quarterly' }] as never,
+    });
+    expect(barTerm(position, depositView('2027-08-01'), '2026-10-24')).toEqual({ start: '2026-08-01', end: '2027-08-01' });
   });
 });

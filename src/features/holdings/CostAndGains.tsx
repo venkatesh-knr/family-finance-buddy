@@ -33,13 +33,22 @@ import {
 } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Caveat, Disclosure, EditButton, Field, Pill, Problem, Unit } from '../../ui/primitives.tsx';
+import { Chevron } from '../../ui/primitives.tsx';
+import { Absent, Button, Caveat, EditButton, Field, Notice, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
-import { historySentence, RETURN_REFUSED_BECAUSE } from './history.ts';
+import {
+  COST_MISSING_REFUSED_BECAUSE,
+  historySentence,
+  IMPORT_THE_FULL_STATEMENT,
+  RECORD_THE_COST,
+  RETURN_REFUSED_BECAUSE,
+} from './history.ts';
+import { isQualified } from '../../domain/position.ts';
 import type { HoldingRow } from './useHoldings.ts';
 import { classify, type AssetClass, type TaxRule } from '../../domain/tax-rules.ts';
 
 export function CostAndGains({
+  part,
   row,
   listing,
   privacy,
@@ -51,6 +60,11 @@ export function CostAndGains({
   onEditSale,
   taxRules,
 }: {
+  /**
+   * The position (units, cost, return, realised) is the Position card's figures; the transactions are a card of their
+   * own, folded, with the one button that adds a purchase or a sale (docs/design/vibrant-canvas.html, the fund).
+   */
+  part: 'position' | 'transactions';
   row: HoldingRow;
   listing: HoldingListing;
   privacy: boolean;
@@ -80,12 +94,21 @@ export function CostAndGains({
   const lots = listing.lots.filter((lot) => lot.holdingId === holding.id);
   const sales = listing.disposals.filter((sale) => sale.holdingId === holding.id);
 
-  return (
-    <div className="mt-3.5 border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
-      <dl className="flex flex-wrap gap-x-9 gap-y-2.5">
-        <div>
+  // What the position returned: the value against the cost, where the cost is whole. A cost that is partial, or not
+  // recorded, is refused with its reason, because a return on part of the cost reads as a gain nobody made.
+  const returnRefusal = isQualified(row.history) ? 'short' : cost.amount === null ? 'missing' : null;
+  const returned =
+    row.latest === null || cost.amount === null || returnRefusal !== null
+      ? null
+      : money(row.latest.amountMinor - cost.amount.minor, currency);
+
+  const position = (
+    <>
+      <dl className="term-stats">
+        <Stat label="Units">{formatQuantity(row.unitsHeld)}</Stat>
+        <div className="stat">
           <dt className="label">Cost of units held</dt>
-          <dd className="tabular-nums" style={{ color: 'var(--ink)' }}>
+          <dd className="v">
             {cost.amount === null ? (
               <Unit>not recorded</Unit>
             ) : (
@@ -105,27 +128,46 @@ export function CostAndGains({
             {cost.source === 'holding' && cost.amount !== null && (
               <Caveat tone="info" label="Where this cost figure came from">
                 This is the single cost figure entered for the whole position, not a cost derived
-                from purchases. A gain cannot be computed from it, because it does not say which
-                units cost what. Record the purchases and this figure is replaced by their
-                arithmetic.
+                from purchases. It gives the return above, but not a gain on a sale or anything for
+                tax, because it does not say which units cost what. Record the purchases and this
+                figure is replaced by their arithmetic.
               </Caveat>
             )}
           </dd>
         </div>
 
-        <div>
+        <div className="stat">
+          <dt className="label">Return</dt>
+          <dd className={returned === null || returned.minor === 0n ? 'v' : returned.minor > 0n ? 'v pos' : 'v neg'}>
+            {row.latest === null ? (
+              <Unit>no value yet</Unit>
+            ) : returnRefusal !== null ? (
+              <Absent label="Why there is no return for this holding">
+                {returnRefusal === 'short' ? (
+                  <>
+                    The cost rests on a statement that covers only part of the history. {RETURN_REFUSED_BECAUSE}{' '}
+                    {IMPORT_THE_FULL_STATEMENT}
+                  </>
+                ) : (
+                  <>
+                    No cost is recorded. {COST_MISSING_REFUSED_BECAUSE} {RECORD_THE_COST}
+                  </>
+                )}
+              </Absent>
+            ) : returned !== null && cost.amount !== null ? (
+              <>
+                {/* The sign carries it, never the colour alone. */}
+                {returned.minor < 0n ? '−' : returned.minor > 0n ? '+' : ''}
+                {formatMoney(money(returned.minor < 0n ? -returned.minor : returned.minor, currency), { privacy })}{' '}
+                <span className="note">{percentOfCost(returned.minor, cost.amount.minor)} on cost</span>
+              </>
+            ) : null}
+          </dd>
+        </div>
+
+        <div className="stat">
           <dt className="label">Realised</dt>
-          <dd
-            className="tabular-nums"
-            style={{
-              color:
-                realisedGain === null
-                  ? 'var(--ink)'
-                  : realisedGain.minor < 0n
-                    ? 'var(--coral)'
-                    : 'var(--ink)',
-            }}
-          >
+          <dd className={realisedGain === null || realisedGain.minor === 0n ? 'v' : realisedGain.minor > 0n ? 'v pos' : 'v neg'}>
             {realisedGain === null ? (
               <Unit>nothing sold</Unit>
             ) : (
@@ -165,25 +207,44 @@ export function CostAndGains({
         </div>
       </dl>
 
-      {/*
-        Both toggles on one line, with whatever they open below it. As two
-        separate blocks they were inline elements with nothing between them,
-        so "Show the workings (0 purchases, 0 sales)" and "Add a purchase or
-        sale" ran together into one sentence.
-      */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <Disclosure
-          open={open}
-          onToggle={() => {
-            setOpen((was) => !was);
-          }}
-        >
-          {open
-            ? 'Hide the workings'
-            : `Show the workings (${plural(lots.length, 'purchase')}, ${plural(sales.length, 'sale')})`}
-        </Disclosure>
+      {/* Said where the figures are: a return on part of the cost is not shown, and what to do about it. */}
+      {returnRefusal === 'short' && (
+        <div className="mt-3">
+          <Notice>
+            The cost rests on a partial statement, so no return is shown. Import the full statement to complete it.
+          </Notice>
+        </div>
+      )}
+    </>
+  );
 
-        {canWrite && (
+  const transactions = (
+    <>
+      {/*
+        One row that opens the workings, with the count of what was recorded, and under it the one button that adds a
+        purchase or a sale. The derivation is where somebody goes the moment a number looks wrong, and not before.
+      */}
+      <button
+        type="button"
+        className="transactions-toggle"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((was) => !was);
+        }}
+      >
+        <span className="min-w-0">
+          <span className="transactions-title">Transactions</span>
+          <span className="note block">
+            {plural(lots.length, 'purchase')}, {plural(sales.length, 'sale')}
+          </span>
+        </span>
+        <span className="disclosure-chevron" aria-hidden="true">
+          <Chevron />
+        </span>
+      </button>
+
+      {canWrite && (
+        <div className="transactions-add">
           <button
             type="button"
             className="quiet-button"
@@ -194,8 +255,8 @@ export function CostAndGains({
           >
             {entering ? 'Hide these forms' : 'Add a purchase or sale'}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {open && (
         <Workings
@@ -246,8 +307,10 @@ export function CostAndGains({
           />
         </div>
       )}
-    </div>
+    </>
   );
+
+  return part === 'position' ? position : transactions;
 }
 
 /**

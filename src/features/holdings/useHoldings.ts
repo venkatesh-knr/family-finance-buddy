@@ -131,6 +131,8 @@ export function useHoldings(householdId: string | null): {
   paidOutFailed: boolean;
   /** Ask the driver to fetch. The client never calls the vendor itself. */
   refresh: () => Promise<{ written: number; note?: string }>;
+  /** The same call for one feed, from a holding's own screen. */
+  refreshOne: (externalId: string) => Promise<{ written: number; note?: string }>;
 } {
   const [listing, setListing] = useState<HoldingListing | null>(null);
   /**
@@ -324,6 +326,12 @@ export function useHoldings(householdId: string | null): {
     paidOut,
     // Null after a load is a failed read; before one, it is not yet read and nothing is shown.
     paidOutFailed: !loading && listing !== null && fixedIncome === null,
+    /** One holding's price: the same driver call as `refresh`, for the one feed. */
+    refreshOne: async (externalId: string) => {
+      const result = await refreshPrices([externalId]);
+      await load();
+      return result;
+    },
     refresh: async () => {
       const result = await refreshPrices(
         (listing?.holdings ?? [])
