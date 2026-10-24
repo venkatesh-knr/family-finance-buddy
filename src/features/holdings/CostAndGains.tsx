@@ -31,7 +31,7 @@ import {
   parseAmountToMinor,
   percentOfCost,
 } from '../../lib/money.ts';
-import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
+import { formatQuantity, formatQuantityGrouped, parseQuantity } from '../../lib/quantity.ts';
 import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Chevron } from '../../ui/primitives.tsx';
 import { Absent, Button, Caveat, EditButton, Field, Notice, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
@@ -105,7 +105,7 @@ export function CostAndGains({
   const position = (
     <>
       <dl className="term-stats">
-        <Stat label="Units">{formatQuantity(row.unitsHeld)}</Stat>
+        <Stat label="Units">{formatQuantityGrouped(row.unitsHeld)}</Stat>
         <div className="stat">
           <dt className="label">Cost of units held</dt>
           <dd className="v">

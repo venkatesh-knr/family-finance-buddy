@@ -12,6 +12,8 @@ import type { Earmark } from '../../domain/earmark.ts';
 
 export interface ListHolding {
   readonly id: string;
+  /** The instrument's name, for sorting by it. */
+  readonly name?: string;
   readonly kind: string;
   /** The currency it is priced in. Totals are kept per currency. */
   readonly currency: string;
@@ -23,6 +25,9 @@ export interface ListHolding {
   /** The day a deposit or bond paid out, if it has. */
   readonly paidOutOn: string | null;
 }
+
+/** How the list is ordered: the largest first (the default), or by name. */
+export type Sort = 'largest' | 'name';
 
 export interface Filter {
   readonly kind?: string;
@@ -82,8 +87,9 @@ export function groupHoldings(options: {
   /** The household's own currency, which orders the groups. */
   readonly base: string;
   readonly filter: Filter;
+  readonly sort?: Sort;
 }): GroupedHoldings {
-  const { holdings, base, filter } = options;
+  const { holdings, base, filter, sort = 'largest' } = options;
 
   const live = holdings.filter((h) => !isEnded(h));
   const shown = holdings.filter((h) => matchesFilter(h, filter));
@@ -109,11 +115,25 @@ export function groupHoldings(options: {
     if (h.latest !== null) portfolioByCurrency.set(h.currency, (portfolioByCurrency.get(h.currency) ?? 0n) + h.latest.minor);
   }
 
+  /** The rows inside a group: the largest reading first with none last, or A to Z by name. */
+  const ordered = (rows: readonly ListHolding[]): readonly ListHolding[] =>
+    [...rows].sort((a, b) => {
+      if (sort === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
+      if (a.latest === null || b.latest === null) return a.latest === b.latest ? 0 : a.latest === null ? 1 : -1;
+      // Paise are not cents: the household's own currency first, then each currency's rows by amount.
+      if (a.latest.currency !== b.latest.currency) {
+        if (a.latest.currency === base) return -1;
+        if (b.latest.currency === base) return 1;
+        return a.latest.currency.localeCompare(b.latest.currency);
+      }
+      return b.latest.minor > a.latest.minor ? 1 : b.latest.minor < a.latest.minor ? -1 : 0;
+    });
+
   const groups: Group[] = [...byKind.entries()].map(([kind, rows]) => {
     const subtotals = subtotalsOf(rows);
     return {
       kind,
-      holdings: rows,
+      holdings: ordered(rows),
       subtotals,
       shares: subtotals.map((s) => {
         const total = portfolioByCurrency.get(s.currency) ?? 0n;

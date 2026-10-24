@@ -11,16 +11,16 @@ import { useMemo, useState } from 'react';
 import { isQualified } from '../../domain/position.ts';
 import type { Earmark } from '../../domain/earmark.ts';
 import { money, percentOfCost } from '../../lib/money.ts';
-import { formatQuantity } from '../../lib/quantity.ts';
+import { formatQuantityGrouped } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
-import { Button, Card, Problem } from '../../ui/primitives.tsx';
+import { Problem } from '../../ui/primitives.tsx';
 import { kindLabel } from '../../ui/labels.ts';
 import { splitFundName } from './fundName.ts';
-import { groupHoldings, matchesFilter, type Filter, type ListHolding } from './holdingGroups.ts';
+import { groupHoldings, matchesFilter, type Filter, type ListHolding, type Sort } from './holdingGroups.ts';
 import { AddHolding, RefreshPrices } from './holdingParts.tsx';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
-import { Chips, FixedExtras, GroupSection, Summary, type RowModel } from './HoldingsList.tsx';
+import { Chips, EmergencyCard, FixedExtras, GroupSection, ListHeader, Summary, type RowModel } from './HoldingsList.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
 import { rowFact } from './rowFact.ts';
 import { useFixedIncomeFacts } from './useFixedIncomeFacts.ts';
@@ -56,6 +56,8 @@ export function HoldingsScreen({
   const { listing, rows, loading, problem, today, paidOut, paidOutFailed } = hook;
   const fixed = useFixedIncomeFacts(listing, today);
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
+  const [sort, setSort] = useState<Sort>('largest');
+  const [fetchSaid, setFetchSaid] = useState<string | null>(null);
 
   const base = listing?.household.baseCurrency ?? 'INR';
   const filterKind = filter.kind;
@@ -112,6 +114,7 @@ export function HoldingsScreen({
     () =>
       rows.map((row) => ({
         id: row.holding.id,
+        name: row.holding.instrument.name,
         kind: row.holding.instrument.kind,
         currency: row.holding.instrument.currency,
         earmark: row.holding.earmark,
@@ -122,7 +125,22 @@ export function HoldingsScreen({
     [rows, paidOut],
   );
 
-  const grouped = useMemo(() => groupHoldings({ holdings: listHoldings, base, filter }), [listHoldings, base, filter]);
+  const grouped = useMemo(
+    () => groupHoldings({ holdings: listHoldings, base, filter, sort }),
+    [listHoldings, base, filter, sort],
+  );
+
+  /** What is earmarked as an emergency fund and still held, per currency, for the card under a list of deposits. */
+  const emergency = useMemo(() => {
+    const live = listHoldings.filter((h) => h.earmark === 'emergency' && h.paidOutOn === null && h.unitsHeld !== 0n);
+    const by = new Map<string, bigint>();
+    for (const h of live) if (h.latest !== null) by.set(h.latest.currency, (by.get(h.latest.currency) ?? 0n) + h.latest.minor);
+    return {
+      count: live.length,
+      unvalued: live.filter((h) => h.latest === null).length,
+      held: [...by.entries()].map(([currency, minor]) => money(minor, currency)),
+    };
+  }, [listHoldings]);
 
   const modelOf = useMemo(() => {
     const byId = new Map<string, HoldingRow>(rows.map((row) => [row.holding.id, row]));
@@ -157,7 +175,7 @@ export function HoldingsScreen({
         fact: rowFact({
           kind: holding.instrument.kind,
           symbol: holding.instrument.symbol,
-          unitsText: formatQuantity(row.unitsHeld),
+          unitsText: formatQuantityGrouped(row.unitsHeld),
           position: facts?.position ?? null,
           view: facts?.view ?? null,
           institution: facts?.institution ?? null,
@@ -201,124 +219,126 @@ export function HoldingsScreen({
   const filtered = (filter.kind ?? '') !== '' || (filter.earmark ?? '') !== '';
   const addLabel = (filter.kind ?? '') !== '' ? `Add ${A[filter.kind ?? ''] ?? 'a holding'}` : 'Add';
   const count = grouped.groups.reduce((sum, g) => sum + g.holdings.length, 0);
+  const title = filtered
+    ? (filter.kind ?? '') !== ''
+      ? kindLabel(filter.kind ?? '')
+      : 'Holdings'
+    : 'Holdings';
+
+  const chips = listHoldings.length > 0 ? <Chips chips={grouped.chips} filter={filter} /> : null;
+  const summary = (
+    <Summary
+      grouped={grouped}
+      base={base}
+      filter={filter}
+      privacy={privacy}
+      totals={totals}
+      paidOutFailed={paidOutFailed}
+      action={canWrite ? <RefreshPrices onRefresh={hook.refresh} onSaid={setFetchSaid} /> : null}
+      status={fetchSaid}
+      extra={
+        (filter.kind ?? '') === 'deposit' ? (
+          <FixedExtras
+            privacy={privacy}
+            held={grouped.groups.filter((g) => g.kind === 'deposit').reduce((n, g) => n + g.holdings.length, 0)}
+            rows={grouped.groups.flatMap((g) =>
+              g.holdings.flatMap((h) => {
+                const f = fixed.get(h.id);
+                const row = rows.find((x) => x.holding.id === h.id);
+                return f === undefined || row === undefined ? [] : [{ name: row.holding.instrument.name, view: f.view }];
+              }),
+            )}
+          />
+        ) : null
+      }
+    />
+  );
 
   return (
-    <div className="flex flex-col gap-4.5">
-      <Summary
-        grouped={grouped}
-        base={base}
-        filter={filter}
-        privacy={privacy}
-        totals={totals}
-        paidOutFailed={paidOutFailed}
-        extra={
-          (filter.kind ?? '') === 'deposit' ? (
-            <FixedExtras
-              privacy={privacy}
-              rows={grouped.groups.flatMap((g) =>
-                g.holdings.flatMap((h) => {
-                  const f = fixed.get(h.id);
-                  const row = rows.find((x) => x.holding.id === h.id);
-                  return f === undefined || row === undefined ? [] : [{ name: row.holding.instrument.name, view: f.view }];
-                }),
-              )}
-            />
-          ) : null
-        }
+    <div className="flex flex-col gap-3">
+      {/* On a class the filter is the context for everything below, so the chips come first. */}
+      {filtered && chips}
+      {summary}
+
+      {/* One Add on the screen (HD-I5), naming the class when the list is filtered to one, and one Import. */}
+      <ListHeader
+        title={title}
+        count={count}
+        sort={sort}
+        onSort={setSort}
+        canWrite={canWrite}
+        addLabel={addLabel}
+        panel={panel}
+        onPanel={setPanel}
+        forClass={(filter.kind ?? '') !== ''}
       />
+      {!filtered && chips}
+      {(filter.kind ?? '') === 'deposit' && (
+        <p className="note list-helper">FD, RD, PPF, SSY, NSC, KVP, SCSS and post office deposits all live here.</p>
+      )}
 
-      <Card
-        title={filtered ? `${filter.kind !== undefined && filter.kind !== '' ? kindLabel(filter.kind) : 'Holdings'}` : 'Holdings'}
-        aside={<span className="note">{count}</span>}
-      >
-        {/* One Add on the screen (HD-I5), naming the class when the list is filtered to one, and one Import. */}
-        {canWrite && (
-          <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="quiet"
-              type="button"
-              aria-expanded={panel === 'add'}
-              onClick={() => {
-                setPanel((was) => (was === 'add' ? null : 'add'));
-              }}
-            >
-              {addLabel}
-            </Button>
-            <Button
-              variant="quiet"
-              type="button"
-              aria-expanded={panel === 'import'}
-              onClick={() => {
-                setPanel((was) => (was === 'import' ? null : 'import'));
-              }}
-            >
-              Import a statement
-            </Button>
-            <RefreshPrices onRefresh={hook.refresh} />
-          </div>
-        )}
-        {canWrite && panel === 'add' && (
-          <AddPanel
-            listing={listing}
-            initialKind={filter.kind ?? ''}
-            onAdd={hook.add}
-            onDone={() => {
-              fixed.reload();
-              void hook.reload();
-              setPanel(null);
-            }}
-          />
-        )}
-        {canWrite && panel === 'import' && (
-          <div className="mb-3.5">
-            <ImportStatement
-              listing={listing}
-              onImported={() => {
-                void hook.reload();
-              }}
+      {canWrite && panel === 'add' && (
+        <AddPanel
+          listing={listing}
+          initialKind={filter.kind ?? ''}
+          onAdd={hook.add}
+          onDone={() => {
+            fixed.reload();
+            void hook.reload();
+            setPanel(null);
+          }}
+        />
+      )}
+      {canWrite && panel === 'import' && (
+        <ImportStatement
+          listing={listing}
+          onImported={() => {
+            void hook.reload();
+          }}
+        />
+      )}
+
+      {listHoldings.length === 0 ? (
+        <p className="note">
+          Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is the only
+          way the year&rsquo;s peak can ever be known.
+        </p>
+      ) : (
+        <>
+          {grouped.groups.length === 0 && grouped.ended.length === 0 && (
+            <p className="note">Nothing here matches that filter.</p>
+          )}
+          {grouped.groups.map((group) => (
+            <GroupSection
+              key={group.kind}
+              kind={group.kind}
+              count={group.holdings.length}
+              subtotals={group.subtotals}
+              shares={group.shares}
+              rows={group.holdings.flatMap((h) => modelOf(h.id) ?? [])}
+              privacy={privacy}
+              base={base}
+              bare={(filter.kind ?? '') !== '' && grouped.groups.length === 1}
             />
-          </div>
-        )}
-
-        {listHoldings.length === 0 ? (
-          <p className="note">
-            Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is
-            the only way the year&rsquo;s peak can ever be known.
-          </p>
-        ) : (
-          <>
-            <Chips chips={grouped.chips} filter={filter} />
-            <div className="mt-3.5">
-              {grouped.groups.length === 0 && grouped.ended.length === 0 && (
-                <p className="note">Nothing here matches that filter.</p>
-              )}
-              {grouped.groups.map((group) => (
-                <GroupSection
-                  key={group.kind}
-                  kind={group.kind}
-                  count={group.holdings.length}
-                  subtotals={group.subtotals}
-                  shares={group.shares}
-                  rows={group.holdings.flatMap((h) => modelOf(h.id) ?? [])}
-                  privacy={privacy}
-                />
-              ))}
-              {grouped.ended.length > 0 && (
-                <GroupSection
-                  kind="ended"
-                  label="Ended"
-                  count={grouped.ended.length}
-                  subtotals={[]}
-                  shares={[]}
-                  rows={grouped.ended.flatMap((h) => modelOf(h.id) ?? [])}
-                  privacy={privacy}
-                  open={false}
-                />
-              )}
-            </div>
-          </>
-        )}
-      </Card>
+          ))}
+          {grouped.ended.length > 0 && (
+            <GroupSection
+              kind="ended"
+              label="Ended"
+              count={grouped.ended.length}
+              subtotals={[]}
+              shares={[]}
+              rows={grouped.ended.flatMap((h) => modelOf(h.id) ?? [])}
+              privacy={privacy}
+              base={base}
+              open={false}
+            />
+          )}
+          {((filter.kind ?? '') === 'deposit' || filter.earmark === 'emergency') && (
+            <EmergencyCard held={emergency.held} count={emergency.count} unvalued={emergency.unvalued} privacy={privacy} />
+          )}
+        </>
+      )}
     </div>
   );
 }

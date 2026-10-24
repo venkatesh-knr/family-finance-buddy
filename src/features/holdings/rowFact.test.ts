@@ -44,6 +44,10 @@ describe('rowFact — the one class-specific fact a row carries', () => {
     );
   });
 
+  it('says one unit and not "1 units"', () => {
+    expect(rowFact({ kind: 'other', symbol: null, unitsText: '1', position: null, view: null, institution: null })).toBe('1 unit');
+  });
+
   it('is the institution, the rate and the maturity, for a deposit', () => {
     expect(
       rowFact({

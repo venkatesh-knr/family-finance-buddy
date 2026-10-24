@@ -25,7 +25,8 @@ test('PF-C7 PF-C8 — an earmark leaves the FIRE corpus and the screen says so, 
 
   try {
     await setEarmark(page, name, "Child's savings");
-    await expect((await rowOf(page, name)).getByText("Child's savings", { exact: true })).toBeVisible();
+    // The pill beside the name says it in a word: "Child’s", with the whole label as its title.
+    await expect((await rowOf(page, name)).getByText('Child’s', { exact: true })).toBeVisible();
 
     await page.goto('/#fire');
     await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });

@@ -654,17 +654,22 @@ export function QuotedValue({
  */
 export function RefreshPrices({
   onRefresh,
+  onSaid,
 }: {
   onRefresh: ReturnType<typeof useHoldings>['refresh'];
+  /** Told what happened, so the screen can put it on a line of its own. */
+  onSaid: (said: string | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [said, setSaid] = useState<string | null>(null);
+  const setSaid = onSaid;
 
   return (
     <>
       <button
         type="button"
-        className="note underline"
+        className="iconbtn list-icon"
+        aria-label="Fetch prices"
+        aria-busy={busy}
         disabled={busy}
         onClick={() => {
           setBusy(true);
@@ -686,9 +691,22 @@ export function RefreshPrices({
             });
         }}
       >
-        {busy ? 'Fetching…' : 'Fetch prices'}
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M21 12a9 9 0 1 1-3-6.7" />
+          <path d="M21 4v5h-5" />
+        </svg>
       </button>
-      {said !== null && <span className="note">{said}</span>}
+
     </>
   );
 }

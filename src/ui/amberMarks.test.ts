@@ -51,6 +51,8 @@ const AMBER: Record<string, string> = {
   'src/features/holdings/HoldingsList.tsx|"How these totals are put together"': 'amber only when the paid-out read failed: reload',
   'src/features/holdings/HoldingsList.tsx|{`Why this ${lead.currency} total is short`}': 'record a value on the holding',
   'src/features/holdings/HoldingsList.tsx|{`Why this ${mine.currency} cost is short`}': 'import the full statement, or record the cost',
+  'src/features/holdings/HoldingsList.tsx|"Which deposits these figures cover"': 'record the terms on the deposits that have none',
+  'src/features/holdings/HoldingsList.tsx|"Why this emergency fund total is short"': 'record a value on the holding',
   "src/features/holdings/HoldingsList.tsx|{gain.short ? 'Why there is no return for this holding' : 'Why there is no cost for this holding'}": 'import the full statement, or record the cost',
   'src/features/holdings/HoldingDetail.tsx|{`Why this ${String(peak.year)} peak is a lower bound`}': 'record a reading for each missing month',
   'src/features/holdings/CostAndGains.tsx|"Why this cost covers only part of the units"': 'import the full statement',
