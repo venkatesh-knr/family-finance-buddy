@@ -38,7 +38,7 @@ export function rowFact(options: {
     return `${rate} · matures ${formatIsoDate(position.maturity)}`;
   }
 
-  return [symbol, `${unitsText} units`].filter((p): p is string => p !== null && p !== '').join(' · ');
+  return [symbol, `${unitsText} ${unitsText === '1' ? 'unit' : 'units'}`].filter((p): p is string => p !== null && p !== '').join(' · ');
 }
 
 /**

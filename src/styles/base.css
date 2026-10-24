@@ -1962,14 +1962,25 @@
    * gain or the reason there is none. About 64px at the default text size, and it grows with the text because
    * nothing here has a fixed height.
    */
+  /* One row that scrolls inside itself, with a fade at the right edge; the page never scrolls sideways. */
   .chips {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 0.5rem;
+    gap: 0.5rem;
+    margin-inline: -0.75rem;
+    mask-image: linear-gradient(90deg, #000 92%, transparent);
+    overflow-x: auto;
+    padding: 0.125rem 1.5rem 0.25rem 0.75rem;
+    scrollbar-width: none;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
   }
 
   .chip {
+    flex: none;
+    white-space: nowrap;
     background: var(--surface-2);
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-pill);
@@ -2013,15 +2024,15 @@
     width: 1px;
   }
 
-  .holding-group + .holding-group {
-    margin-top: 0.9rem;
+  /* A class is a card of its own: its header, then its rows. */
+  .holding-group {
+    padding: 0;
   }
 
   .group-head {
     align-items: baseline;
     background: none;
     border: 0;
-    border-bottom: 1px solid var(--line);
     color: var(--ink);
     cursor: pointer;
     display: flex;
@@ -2030,9 +2041,28 @@
     gap: 0.15rem 0.75rem;
     justify-content: space-between;
     min-height: 2.75rem;
-    padding: 0.55rem 0;
+    padding: 0.75rem 1rem;
     text-align: left;
     width: 100%;
+  }
+
+  .group-head[aria-expanded='true'] {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .group-head .group-name {
+    flex: 1;
+  }
+
+  .group-chevron {
+    align-self: center;
+    color: var(--muted);
+    flex: none;
+    transition: transform 120ms;
+  }
+
+  .group-head[aria-expanded='false'] .group-chevron {
+    transform: rotate(-90deg);
   }
 
   .group-name {
@@ -2050,7 +2080,27 @@
   .holding-rows {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 0 1rem;
+  }
+
+  /* The name and, beside it, what the money is for: the name ends in an ellipsis before the pill wraps. */
+  .holding-title {
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .holding-title > .holding-link {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .holding-sub svg {
+    color: var(--muted);
+    display: inline-block;
+    margin-right: 0.25rem;
+    vertical-align: -2px;
   }
 
   .holding-row {
@@ -2096,12 +2146,9 @@
   }
 
   .holding-sub {
-    align-items: center;
     color: var(--muted);
-    display: flex;
-    flex-wrap: wrap;
+    display: block;
     font-size: 0.75rem;
-    gap: 0.15rem 0.4rem;
     margin-top: 1px;
   }
 
@@ -3394,5 +3441,154 @@
   .transactions-card > .inset-form,
   .transactions-card > div:not(.transactions-add) {
     margin: 0 1rem 1rem;
+  }
+
+  /*
+   * The Holdings list (docs/design/vibrant-canvas.html): the summary with its bar of classes, the list's own header,
+   * and, for a class, the helper and the emergency fund under it.
+   */
+  .summary-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    justify-content: space-between;
+  }
+
+  .summary-aside {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.5rem;
+  }
+
+  .summary-said {
+    margin-top: 0.375rem;
+    text-align: right;
+  }
+
+  /* The two icons on the list, a thumb's size on a touch screen and visibly busy while a request is out. */
+  .list-icon {
+    justify-content: center;
+    min-height: 2.125rem;
+    min-width: 2.125rem;
+  }
+
+  @media (pointer: coarse) {
+    .list-icon {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+  }
+
+  .list-icon[aria-busy='true'] svg {
+    animation: list-spin 900ms linear infinite;
+  }
+
+  @keyframes list-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .list-icon[aria-busy='true'] svg {
+      animation: none;
+      opacity: 0.45;
+    }
+  }
+
+  /* The two figures of a class's summary share a top, whatever each carries beneath it. */
+  .term-stats > .stat {
+    align-content: start;
+  }
+
+  .summary-line {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+  }
+
+  .class-bar {
+    border-radius: 3px;
+    display: flex;
+    gap: 2px;
+    height: 0.5rem;
+    margin-top: 0.875rem;
+    overflow: hidden;
+  }
+
+  .class-legend {
+    color: var(--ink-2);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.375rem 1rem;
+    margin-top: 0.625rem;
+  }
+
+  .class-swatch {
+    border-radius: 2px;
+    display: inline-block;
+    height: 0.5rem;
+    margin-right: 0.375rem;
+    width: 0.5rem;
+  }
+
+  .list-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .list-title {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .list-count {
+    background: var(--surface-2);
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+  }
+
+  .add-button {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+  }
+
+  .list-helper {
+    margin: -0.25rem 0.25rem 0;
+  }
+
+  .emergency-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .emergency-title {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.375rem;
+  }
+
+  .emergency-head {
+    align-items: baseline;
+    display: flex;
+    font-size: 0.875rem;
+    font-weight: 600;
+    gap: 0.75rem;
+    justify-content: space-between;
   }
 }

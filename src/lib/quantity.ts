@@ -78,6 +78,20 @@ export function formatQuantity(scaled: bigint): string {
 }
 
 /**
+ * The same, with the whole part grouped as the household reads numbers (1,500.5; 6,992.23; 12,34,567).
+ *
+ * For a row and a figure on a screen. Built from the digits and not through a double, which cannot hold eight places;
+ * the fraction is left as `formatQuantity` gives it, trimmed, so a quantity is never shown with a precision it does
+ * not have.
+ */
+export function formatQuantityGrouped(scaled: bigint): string {
+  const [whole = '0', fraction] = formatQuantity(scaled).split('.');
+  const negative = whole.startsWith('-');
+  const grouped = new Intl.NumberFormat('en-IN').format(BigInt(negative ? whole.slice(1) : whole));
+  return `${negative ? '-' : ''}${grouped}${fraction === undefined ? '' : `.${fraction}`}`;
+}
+
+/**
  * The form Postgres takes, with all eight places written out.
  *
  * A `numeric(28, 8)` column stores the scale it declared whatever it is given,

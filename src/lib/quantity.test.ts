@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import {
   QUANTITY_SCALE,
   formatQuantity,
+  formatQuantityGrouped,
   parseQuantity,
   quantityToNumeric,
 } from './quantity.ts';
@@ -84,5 +85,23 @@ describe('quantityToNumeric', () => {
     expect(quantityToNumeric(100000000n)).toBe('1.00000000');
     expect(quantityToNumeric(1n)).toBe('0.00000001');
     expect(quantityToNumeric(0n)).toBe('0.00000000');
+  });
+});
+
+describe('formatQuantityGrouped', () => {
+  it('groups the whole part as the household reads numbers, and keeps the fraction as it is', () => {
+    expect(formatQuantityGrouped(parseQuantity('6992.23'))).toBe('6,992.23');
+    expect(formatQuantityGrouped(parseQuantity('1500.5'))).toBe('1,500.5');
+    expect(formatQuantityGrouped(parseQuantity('1234567'))).toBe('12,34,567');
+  });
+
+  it('leaves a small quantity as it is, and a fraction of a unit with its leading zero', () => {
+    expect(formatQuantityGrouped(parseQuantity('12.5'))).toBe('12.5');
+    expect(formatQuantityGrouped(parseQuantity('0.734'))).toBe('0.734');
+    expect(formatQuantityGrouped(parseQuantity('0'))).toBe('0');
+  });
+
+  it('keeps all eight places the column holds, built from the digits and not a double', () => {
+    expect(formatQuantityGrouped(parseQuantity('123456.00000001'))).toBe('1,23,456.00000001');
   });
 });

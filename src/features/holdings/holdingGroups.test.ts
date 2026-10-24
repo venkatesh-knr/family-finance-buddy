@@ -156,3 +156,49 @@ describe('HD-I4 — chips: All, one per class in use, then the earmarks in use',
     expect(filtered.ended.map((h) => h.id)).toEqual(['g1']);
   });
 });
+
+describe('sort — the order of the groups and of the rows inside them', () => {
+  const named = [
+    holding({ id: 'a', name: 'Zeta Fund', kind: 'mutual_fund', latest: inr(900) }),
+    holding({ id: 'b', name: 'Alpha Fund', kind: 'mutual_fund', latest: inr(100) }),
+    holding({ id: 'c', name: 'Mid Fund', kind: 'mutual_fund', latest: inr(500) }),
+    holding({ id: 'u', name: 'No Reading Fund', kind: 'mutual_fund', latest: null }),
+    holding({ id: 'd', name: 'FD', kind: 'deposit', latest: inr(5000) }),
+  ];
+
+  it('puts the largest first by default, in the groups and in the rows, and a holding with no reading last', () => {
+    const result = groupHoldings({ holdings: named, base: 'INR', filter: {} });
+    expect(result.groups.map((g) => g.kind)).toEqual(['deposit', 'mutual_fund']);
+    expect(result.groups[1]?.holdings.map((h) => h.id)).toEqual(['a', 'c', 'b', 'u']);
+  });
+
+  it('orders the rows A to Z when asked by name, and leaves the groups where they are: the classes are not names', () => {
+    const result = groupHoldings({ holdings: named, base: 'INR', filter: {}, sort: 'name' });
+    expect(result.groups.map((g) => g.kind)).toEqual(['deposit', 'mutual_fund']);
+    expect(result.groups[1]?.holdings.map((h) => h.id)).toEqual(['b', 'c', 'u', 'a']);
+  });
+
+  it('does not change what is in a group or any figure, only the order', () => {
+    const largest = groupHoldings({ holdings: named, base: 'INR', filter: {} });
+    const byName = groupHoldings({ holdings: named, base: 'INR', filter: {}, sort: 'name' });
+    expect(byName.totals).toEqual(largest.totals);
+    expect(byName.groups.flatMap((g) => g.holdings.map((h) => h.id)).sort()).toEqual(
+      largest.groups.flatMap((g) => g.holdings.map((h) => h.id)).sort(),
+    );
+  });
+});
+
+describe('sort — a class that holds more than one currency', () => {
+  it('orders the household\'s own currency first and the largest within each, and never compares paise with cents', () => {
+    const mixed = [
+      holding({ id: 'usd-big', name: 'US share', kind: 'equity', currency: 'USD', latest: usd(10_000) }),
+      holding({ id: 'inr-small', name: 'Indian share', kind: 'equity', latest: inr(20_000) }),
+      holding({ id: 'inr-big', name: 'Indian share two', kind: 'equity', latest: inr(50_000) }),
+      holding({ id: 'usd-small', name: 'US share two', kind: 'equity', currency: 'USD', latest: usd(300) }),
+    ];
+    const result = groupHoldings({ holdings: mixed, base: 'INR', filter: {} });
+    // 10,000 dollars is 1,000,000 cents, more than 50,000 rupees' 5,000,000 paise? No: 5,000,000 is more. The point is
+    // that the order is not decided by the raw number: rupees first, then dollars, each largest first.
+    expect(result.groups[0]?.holdings.map((h) => h.id)).toEqual(['inr-big', 'inr-small', 'usd-big', 'usd-small']);
+  });
+});

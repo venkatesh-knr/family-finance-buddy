@@ -67,7 +67,8 @@ test('HD-I1 — a row shows the latest recorded reading, and the holding opens o
 
 test('HD-I6 — a deposit opens on its terms, with no units, purchases or realised figure', async ({ page }) => {
   await onHoldings(page, '#/holdings?kind=deposit');
-  await page.locator('.holding-row').first().locator('a.holding-link').click();
+  // The largest is first, and a deposit entered before there were terms has none to show: open one that has.
+  await page.locator('.holding-row').filter({ hasText: /matures/ }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('term-progress')).toBeVisible({ timeout: 20_000 });
   const text = await page.locator('main').innerText();
   expect(text).not.toMatch(/\bunits?\b/i);
@@ -103,8 +104,9 @@ test('a filtered summary describes the filter: its share of the portfolio, and n
   page,
 }) => {
   await onHoldings(page, '#/holdings?kind=deposit');
-  const summary = page.locator('.card').first();
-  await expect(page.getByTestId('filter-share')).toContainText(/\d+\.\d% of the INR portfolio/);
+  const summary = page.locator('section.card-lift');
+  // Its share, and of what: "70.2% of ₹15.98L", the portfolio the class is a part of.
+  await expect(page.getByTestId('filter-share')).toContainText(/\d+\.\d% of [₹$]/);
   // The partial-statement positions are mutual funds: they are not the deposits' to carry.
   await expect(summary).not.toContainText('return not shown');
   const share = Number(/(\d+\.\d)%/.exec(await page.getByTestId('filter-share').innerText())?.[1] ?? '100');
@@ -113,11 +115,144 @@ test('a filtered summary describes the filter: its share of the portfolio, and n
 
 test('HD-I6 — a deposit shows what was lent, and a bond filter opens Add as a bond', async ({ page }) => {
   await onHoldings(page, '#/holdings?kind=deposit');
-  await page.locator('.holding-row').first().locator('a.holding-link').click();
+  // The largest is first, and a deposit entered before there were terms has none to show: open one that has.
+  await page.locator('.holding-row').filter({ hasText: /matures/ }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('term-progress')).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('main').getByText('Principal', { exact: true })).toBeVisible();
 
   await onHoldings(page, '#/holdings?kind=bond');
   await page.getByRole('button', { name: 'Add a bond' }).click();
   await expect(page.getByLabel('Face value')).toBeVisible();
+});
+
+test('the chips are one row that scrolls sideways: All, the classes, then past a hairline the earmarks', async ({ page }) => {
+  await onHoldings(page);
+  const chips = page.locator('nav.chips');
+  const box = await chips.evaluate((el) => ({ scrolls: el.scrollWidth > el.clientWidth, wraps: getComputedStyle(el).flexWrap }));
+  expect(box.wraps, 'one row, not several').toBe('nowrap');
+  // The first is All, the classes follow, and the earmarks come after the divider.
+  await expect(chips.locator('a.chip').first()).toHaveText('All');
+  const order = await chips.locator('a.chip, .chip-divider').evaluateAll((els) =>
+    els.map((el) => (el.classList.contains('chip-divider') ? '|' : (el.textContent ?? '').trim())),
+  );
+  const divider = order.indexOf('|');
+  if (divider >= 0) {
+    expect(order.slice(divider + 1).join(' ')).toMatch(/Emergency fund|Child.s savings|House deposit|Retirement/);
+    expect(order.slice(0, divider).join(' ')).not.toMatch(/Emergency fund/);
+  }
+  // The page does not scroll sideways because of it.
+  const page_ = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
+  expect(page_).toBe(true);
+  void box.scrolls;
+});
+
+test('a class is its own card with a chevron, and the sort puts the largest first or goes A to Z', async ({ page }) => {
+  await onHoldings(page);
+  const groups = page.locator('section.holding-group');
+  expect(await groups.count()).toBeGreaterThan(1);
+  await expect(groups.first().locator('.group-chevron')).toBeVisible();
+
+  const sort = page.getByRole('button', { name: /Sorted largest first/ });
+  await expect(sort).toBeVisible();
+  const names = async () => page.locator('.holding-row .holding-name').allInnerTexts();
+  const largest = await names();
+  await sort.click();
+  await expect(page.getByRole('button', { name: /Sorted by name/ })).toBeVisible();
+  const byName = await names();
+  expect(new Set(byName)).toEqual(new Set(largest));
+  // Within a class, A to Z: compare each group's rows to their own sorted copy.
+  const eachGroupSorted = await page.locator('section.holding-group').evaluateAll((all) =>
+    all.every((g) => {
+      const rows = [...g.querySelectorAll('.holding-name')].map((n) => (n.textContent ?? '').trim());
+      return rows.every((name, i) => i === 0 || (rows[i - 1] ?? '').localeCompare(name) <= 0);
+    }),
+  );
+  expect(eachGroupSorted, 'rows A to Z inside each class').toBe(true);
+});
+
+test('a row has what the money is for beside its name, a figure in full, and units with separators', async ({ page }) => {
+  await onHoldings(page);
+  const earmarked = page.locator('.holding-row').filter({ has: page.locator('.holding-title .pill') }).first();
+  if ((await earmarked.count()) > 0) {
+    // On the name's own line, not under the row.
+    const name = await earmarked.locator('.holding-name').boundingBox();
+    const pill = await earmarked.locator('.holding-title .pill').boundingBox();
+    expect(Math.abs((name?.y ?? 0) - (pill?.y ?? 999)), 'the pill is on the name\'s line').toBeLessThan(12);
+  }
+  // Figures are whole (₹3,00,000), not compact (₹3 L), and a quantity of a thousand or more has its separator.
+  const values = await page.locator('.holding-value').allInnerTexts();
+  for (const v of values) expect(v.replace(/\s+/g, ''), `a row's figure is in full: ${v}`).toMatch(/\d,\d|\d{1,3}$|none|not/i);
+  const units = (await page.locator('.holding-sub').allInnerTexts()).join(' ');
+  expect(units).not.toMatch(/\b\d{4,},?\d* units/);
+});
+
+test('the price fetch is an icon on the summary, and the one Add and the import icon are in the list header', async ({ page }) => {
+  await onHoldings(page);
+  await expect(page.getByRole('button', { name: 'Fetch prices' })).toBeVisible();
+  const header = page.locator('.list-head');
+  await expect(header.getByRole('button', { name: /Sorted/ })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Import a statement' })).toBeVisible();
+  await expect(header.getByRole('button', { name: /^Add\b/ })).toHaveCount(1);
+});
+
+test('filtered to deposits: the chips come first, the summary has the interest and what matures, and the emergency fund is under the list', async ({
+  page,
+}) => {
+  await onHoldings(page, '#/holdings?kind=deposit');
+  const order = await page.evaluate(() => {
+    const chips = document.querySelector('nav.chips')?.getBoundingClientRect().top ?? 0;
+    const summary = document.querySelector('section.card-lift')?.getBoundingClientRect().top ?? 0;
+    return { chips, summary };
+  });
+  expect(order.chips, 'the chips are above the summary').toBeLessThan(order.summary);
+
+  const summary = page.locator('section.card-lift');
+  await expect(summary.getByText('Interest so far')).toBeVisible();
+  await expect(summary.getByText('Next to mature')).toBeVisible();
+  await expect(page.getByTestId('worked-out-note')).toContainText(/Worked out today.*Not in net worth until it is recorded/);
+  await expect(page.getByText('FD, RD, PPF, SSY, NSC, KVP, SCSS and post office deposits all live here.')).toBeVisible();
+  const card = page.getByTestId('emergency-card');
+  if ((await card.count()) > 0) await expect(card).toContainText(/earmarked/);
+});
+
+test('on deposits, the worked-out figures say which deposits they cover, and the summary keeps its caveat about the totals', async ({
+  page,
+}) => {
+  await onHoldings(page, '#/holdings?kind=deposit');
+  const summary = page.locator('section.card-lift');
+  // The warning about how the totals are put together does not go quiet on a narrower view of the same figure.
+  await expect(summary.getByRole('button', { name: 'How these totals are put together' })).toBeVisible();
+
+  // A deposit entered before there were terms has none to work out, so the figures say how many they cover.
+  const withoutTerms = await page.locator('.holding-row').filter({ hasText: 'terms not recorded' }).count();
+  if (withoutTerms > 0) {
+    await expect(summary.getByRole('button', { name: 'Which deposits these figures cover' })).toBeVisible();
+    await expect(page.getByTestId('worked-out-note')).toContainText(/for the \d+ with terms/);
+  }
+});
+
+test('on All the header comes before the chips, and a class\'s header is only its title, its count and its Add', async ({ page }) => {
+  await onHoldings(page);
+  const all = await page.evaluate(() => ({
+    header: document.querySelector('.list-head')?.getBoundingClientRect().top ?? 0,
+    chips: document.querySelector('nav.chips')?.getBoundingClientRect().top ?? 0,
+  }));
+  expect(all.header, 'the list header is above the chips').toBeLessThan(all.chips);
+
+  await onHoldings(page, '#/holdings?kind=deposit');
+  const header = page.locator('.list-head');
+  await expect(header.getByRole('button', { name: /^Add\b/ })).toBeVisible();
+  await expect(header.getByRole('button', { name: /Sorted/ })).toHaveCount(0);
+  await expect(header.getByRole('button', { name: 'Import a statement' })).toHaveCount(0);
+});
+
+test('the icons on the list are a thumb\'s size on a touch screen', async ({ page }, testInfo) => {
+  await onHoldings(page);
+  const phone = (page.viewportSize()?.width ?? 1000) < 640;
+  test.skip(!phone, `a touch screen's rule; ${testInfo.project.name} uses a mouse`);
+  for (const name of ['Fetch prices', 'Import a statement']) {
+    const box = await page.getByRole('button', { name }).boundingBox();
+    expect(box?.width, `${name} width`).toBeGreaterThanOrEqual(43.5);
+    expect(box?.height, `${name} height`).toBeGreaterThanOrEqual(43.5);
+  }
 });
