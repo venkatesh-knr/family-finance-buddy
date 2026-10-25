@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react';
 import { isQualified } from '../../domain/position.ts';
 import type { Earmark } from '../../domain/earmark.ts';
+import type { IsoDate } from '../../lib/dates.ts';
 import { money, percentOfCost } from '../../lib/money.ts';
 import { formatQuantityGrouped } from '../../lib/quantity.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
@@ -282,6 +283,7 @@ export function HoldingsScreen({
           listing={listing}
           initialKind={filter.kind ?? ''}
           onAdd={hook.add}
+          today={today}
           onDone={() => {
             fixed.reload();
             void hook.reload();
@@ -351,11 +353,13 @@ function AddPanel({
   listing,
   initialKind,
   onAdd,
+  today,
   onDone,
 }: {
   listing: HoldingListing;
   initialKind: string;
   onAdd: React.ComponentProps<typeof AddHolding>['onAdd'];
+  today: IsoDate;
   onDone: () => void;
 }) {
   const [what, setWhat] = useState<'holding' | 'fixed'>(initialKind === 'deposit' || initialKind === 'bond' ? 'fixed' : 'holding');
@@ -384,6 +388,7 @@ function AddPanel({
         <TermsForm
           listing={listing}
           mode={{ kind: 'new' }}
+          today={today}
           {...(initialKind === 'bond' ? { initialKind: 'bond' as const } : {})}
           onCancel={onDone}
           onDone={onDone}

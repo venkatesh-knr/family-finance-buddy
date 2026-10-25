@@ -98,7 +98,12 @@ export function useHoldings(householdId: string | null): {
   today: string;
   loading: boolean;
   problem: string | null;
-  add: (holding: NewHolding) => Promise<void>;
+  /**
+   * Add a holding, and, when `worth` is given, record it as today's reading so it is valued from the first
+   * moment. The two are separate writes: when the second fails the holding exists, and what came back says so
+   * rather than throwing, so the form does not offer to add it a second time.
+   */
+  add: (holding: NewHolding, worth?: Money | null) => Promise<{ valueProblem: string | null }>;
   record: (valuation: NewValuation) => Promise<void>;
   recordLot: (lot: NewLot) => Promise<void>;
   recordSale: (disposal: NewDisposal) => Promise<void>;
@@ -277,11 +282,27 @@ export function useHoldings(householdId: string | null): {
   }, [listing, year, today, prices]);
 
   const add = useCallback(
-    async (holding: NewHolding) => {
-      await addHolding(holding);
+    async (holding: NewHolding, worth?: Money | null) => {
+      const { holdingId } = await addHolding(holding);
+      let valueProblem: string | null = null;
+      if (worth !== null && worth !== undefined) {
+        try {
+          await recordValuation({
+            householdId: holding.householdId,
+            holdingId,
+            date: today,
+            quantity: holding.quantity,
+            amount: worth,
+            source: 'manual',
+          });
+        } catch (error) {
+          valueProblem = error instanceof Error ? error.message : 'Could not record that.';
+        }
+      }
       await load();
+      return { valueProblem };
     },
-    [load],
+    [load, today],
   );
 
   const record = useCallback(

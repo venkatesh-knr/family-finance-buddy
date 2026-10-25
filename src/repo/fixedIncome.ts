@@ -76,7 +76,7 @@ export async function listFixedIncome(householdId: string): Promise<FixedIncomeL
  * soft delete, as everywhere, and it leaves no value on any screen. The instrument is left,
  * as `addHolding` leaves one, since it values nothing and the next attempt can use it.
  */
-export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
+export async function addFixedIncome(input: NewFixedIncome): Promise<{ readonly holdingId: string }> {
   const client = supabase();
   checkTerms(input);
 
@@ -105,6 +105,7 @@ export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
       quantity: '1',
       cost_minor: input.principal.minor.toString(),
       opened_on: input.start,
+      ...(input.earmark === undefined ? {} : { earmark: input.earmark }),
     })
     .select('id')
     .single();
@@ -117,6 +118,7 @@ export async function addFixedIncome(input: NewFixedIncome): Promise<void> {
     await archiveHolding(holdingId).catch(() => undefined);
     throw asRepositoryError(terms.error);
   }
+  return { holdingId };
 }
 
 /**
