@@ -128,7 +128,14 @@ here to push what was left. The next session may be a cloud one that sees only w
   artboard. Where a build would differ from its artboard, do not decide it: add a `proposed` row to the
   Departures table in `docs/design/conformance.md` and list it in your report. Every screen's row in that
   file names its artboard in the Artboard column (`none` only where the canvas has no board).
-- **A finished vertical slice gets a design-conformance review before I see it.** Invoke the
+- **Run the tests in tiers, so the cost matches the change.** On every change: typecheck and the unit tests.
+  While working on a screen: only the e2e specs for the screen touched, run alone and never alongside the unit
+  tests (that produces false failures), with the output captured to a file and the failures read from it. The
+  full e2e suite runs once, before the pull request is opened. CI is the final gate on everything and is not
+  repeated locally.
+- **A finished vertical slice gets a design-conformance review before I see it** — meaning a screen built or
+  rebuilt to its artboard, or a change to a layout, a figure a person reads or a rule in the design documents.
+  Copy fixes, label changes, refactors and test-only changes do not get one. Invoke the
   `design-conformance` subagent, read what it says, and tell me which findings you agree with and
   which you reject and why — do not silently act on all of them, and do not silently discard one.
   Invoke it by naming the slice and the documents, never the conclusion. Good: "Review the

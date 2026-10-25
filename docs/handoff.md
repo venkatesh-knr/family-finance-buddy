@@ -346,4 +346,6 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   repository: HDFC (delimited), ICICI credit card (PDF), ICICI savings (XLS or PDF).
 - **Tools:** `npm run test:e2e` (Playwright, needs `.env.e2e` and a saved session, both ignored) and
   `npm run test:screens` (screenshots into the ignored `screenshots/`). The design-conformance agent is in
-  `.claude/agents/`; invoke it by naming the slice and the documents, never the conclusion.
+  `.claude/agents/`; invoke it by naming the slice and the documents, never the conclusion. How often each
+  runs is in `CLAUDE.md` (tests in tiers; the review for built or rebuilt screens and layout or figure changes,
+  not for copy fixes).
