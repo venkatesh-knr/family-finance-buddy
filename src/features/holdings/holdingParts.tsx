@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, isKnownCurrency, knownCurrencyCodes, money, parseAmountToMinor } from '../../lib/money.ts';
 import { quantityToNumeric } from '../../lib/quantity.ts';
+import { EARMARKS, EARMARK_LABELS, isEarmark, type Earmark } from '../../domain/earmark.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
 import { Button, Card, Caveat, Field, Problem, RowAction } from '../../ui/primitives.tsx';
@@ -143,7 +144,7 @@ export function AddHolding({
   initialKind = 'etf',
 }: {
   listing: HoldingListing;
-  onAdd: (holding: Parameters<ReturnType<typeof useHoldings>['add']>[0]) => Promise<void>;
+  onAdd: ReturnType<typeof useHoldings>['add'];
   /** The class the list was filtered to, so Add starts where the person already is. */
   initialKind?: InstrumentKind;
 }) {
@@ -164,6 +165,10 @@ export function AddHolding({
   const [exposure, setExposure] = useState('USD');
   const [isForeign, setIsForeign] = useState(true);
   const [quantity, setQuantity] = useState('');
+  // What it is worth in all, today, so it is valued from the moment it is added and not "not valued" until somebody
+  // goes back to record it. Optional: a holding with a price feed is quoted without one.
+  const [worth, setWorth] = useState('');
+  const [earmark, setEarmark] = useState<Earmark>('none');
   const [memberId, setMemberId] = useState(listing.viewer.memberId);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -185,31 +190,51 @@ export function AddHolding({
         return;
       }
 
+      let worthToday = null;
+      if (worth.trim() !== '') {
+        try {
+          worthToday = money(parseAmountToMinor(worth, currency), currency);
+        } catch (error) {
+          setProblem(error instanceof Error ? error.message : 'That is not an amount.');
+          return;
+        }
+      }
+
       setBusy(true);
       try {
-        await onAdd({
-          householdId: listing.household.id,
-          memberId,
-          instrument: {
-            name: name.trim(),
-            kind,
-            symbol: symbol.trim() === '' ? null : symbol.trim().toUpperCase(),
-            currency: currency.trim().toUpperCase(),
-            exposureCurrency: exposure.trim().toUpperCase(),
-            isForeignAsset: isForeign,
+        const { valueProblem } = await onAdd(
+          {
+            householdId: listing.household.id,
+            memberId,
+            instrument: {
+              name: name.trim(),
+              kind,
+              symbol: symbol.trim() === '' ? null : symbol.trim().toUpperCase(),
+              currency: currency.trim().toUpperCase(),
+              exposureCurrency: exposure.trim().toUpperCase(),
+              isForeignAsset: isForeign,
+            },
+            quantity: quantity.trim(),
+            ...(earmark === 'none' ? {} : { earmark }),
           },
-          quantity: quantity.trim(),
-        });
+          worthToday,
+        );
         setName('');
         setSymbol('');
         setQuantity('');
+        setWorth('');
+        setEarmark('none');
+        // It is added, so the form is clear; only the value is missing, and the holding is where to record it.
+        if (valueProblem !== null) {
+          setProblem(`Added, but its value could not be recorded: ${valueProblem} Record it on the holding.`);
+        }
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not add that.');
       } finally {
         setBusy(false);
       }
     },
-    [currency, exposure, isForeign, kind, listing.household.id, memberId, name, onAdd, quantity, symbol],
+    [currency, earmark, exposure, isForeign, kind, listing.household.id, memberId, name, onAdd, quantity, symbol, worth],
   );
 
   return (
@@ -320,6 +345,37 @@ export function AddHolding({
             }}
           />
         </div>
+
+        <div className="w-full sm:w-[150px] sm:shrink-0">
+          <Field
+            label="Worth today"
+            numeric
+            inputMode="decimal"
+            placeholder="optional"
+            hint={`all units, in ${currency}`}
+            value={worth}
+            onChange={(event) => {
+              setWorth(event.target.value);
+            }}
+          />
+        </div>
+
+        <label className="flex w-full sm:w-[190px] sm:shrink-0 flex-col gap-1.5">
+          <span className="label">Set aside for</span>
+          <select
+            className="field"
+            value={earmark}
+            onChange={(event) => {
+              if (isEarmark(event.target.value)) setEarmark(event.target.value);
+            }}
+          >
+            {EARMARKS.map((option) => (
+              <option key={option} value={option}>
+                {EARMARK_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="flex w-full sm:w-[9.375rem] sm:shrink-0 flex-col gap-1.5">
           <span className="label">Member</span>

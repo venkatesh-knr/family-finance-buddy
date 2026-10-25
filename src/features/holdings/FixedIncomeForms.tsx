@@ -9,8 +9,9 @@
  */
 
 import { useMemo, useState } from 'react';
-import { trimRate } from '../../domain/fixed-income.ts';
-import { minorUnitExponent, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
+import { EARMARKS, EARMARK_LABELS, isEarmark, type Earmark } from '../../domain/earmark.ts';
+import { fixedIncomeView, trimRate } from '../../domain/fixed-income.ts';
+import { formatMoney, minorUnitExponent, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import type { IsoDate } from '../../lib/dates.ts';
 import {
   addDepositRenewal,
@@ -19,7 +20,7 @@ import {
   updateDepositRenewal,
   updateTerms,
 } from '../../repo/fixedIncome.ts';
-import { updateHolding } from '../../repo/holdings.ts';
+import { recordValuation, updateHolding } from '../../repo/holdings.ts';
 import {
   COMPOUNDINGS,
   COUPON_FREQUENCIES,
@@ -81,11 +82,14 @@ export function TermsForm({
   onDone,
   onCancel,
   initialKind,
+  today,
 }: {
   listing: HoldingListing;
   mode: TermsMode;
   onDone: () => void;
   onCancel?: () => void;
+  /** Today in IST. Given to a new one, which can then offer to record what it is worth as its first reading. */
+  today?: IsoDate;
   /** A new one starts as a bond when the list was filtered to bonds, so Add preselects what the filter is. */
   initialKind?: 'deposit' | 'bond';
 }) {
@@ -123,6 +127,45 @@ export function TermsForm({
   const [last4, setLast4] = useState(old?.accountLast4 ?? '');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Said when it is added, as on the holding's own screen later: what the money is for, and whether to value it now.
+  const [earmark, setEarmark] = useState<Earmark>('none');
+  const [recordFirst, setRecordFirst] = useState(true);
+  // Added, but its first reading could not be recorded: the holding exists, so the form must not add it twice.
+  const [added, setAdded] = useState(false);
+
+  /**
+   * What the terms say it is worth today, worked out the way its own screen does, for a new one only. Nothing when
+   * the terms are not complete, when it has not started, or when it has already paid out (that is money in an
+   * account, not a holding).
+   */
+  const firstReading = useMemo(() => {
+    if (mode.kind !== 'new' || today === undefined) return null;
+    if (!RATE.test(rate.trim()) || start === '' || maturity === '') return null;
+    let minor: bigint;
+    try {
+      minor = parseAmountToMinor(amount, currency);
+    } catch {
+      return null;
+    }
+    const view = fixedIncomeView(
+      {
+        holdingId: '',
+        kind,
+        principal: money(minor, currency),
+        ratePct: rate.trim(),
+        start,
+        maturity,
+        compounding: kind === 'deposit' ? compounding : null,
+        couponFrequency: kind === 'bond' ? frequency : null,
+        repayMode: kind === 'bond' ? repayMode : null,
+        autoRenew: kind === 'deposit' && autoRenew,
+        renewalRatePct: kind === 'deposit' && autoRenew && renewalRate.trim() !== '' ? renewalRate.trim() : null,
+        renewals: [],
+      },
+      today,
+    );
+    return view.ok && !view.matured ? view.value : null;
+  }, [amount, autoRenew, compounding, currency, frequency, kind, maturity, mode.kind, rate, renewalRate, repayMode, start, today]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -165,7 +208,31 @@ export function TermsForm({
       } as const;
 
       if (mode.kind === 'new') {
-        await addFixedIncome({ ...terms, memberId, name: name.trim() });
+        const { holdingId } = await addFixedIncome({
+          ...terms,
+          memberId,
+          name: name.trim(),
+          ...(earmark === 'none' ? {} : { earmark }),
+        });
+        if (recordFirst && firstReading !== null && today !== undefined) {
+          try {
+            await recordValuation({
+              householdId: listing.household.id,
+              holdingId,
+              date: today,
+              quantity: '1',
+              amount: firstReading,
+              source: 'manual',
+              note: 'Worked out from the terms',
+            });
+          } catch (error) {
+            setAdded(true);
+            setProblem(
+              `Added, but its value could not be recorded: ${error instanceof Error ? error.message : 'unknown error'} Record it on the holding.`,
+            );
+            return;
+          }
+        }
       } else if (mode.kind === 'existing') {
         await addTermsToHolding({ ...terms, holdingId: mode.holding.id });
       } else {
@@ -435,6 +502,25 @@ export function TermsForm({
         </>
       )}
 
+      {mode.kind === 'new' && (
+        <label className="flex min-w-0 flex-col gap-1.5">
+          <span className="label">Set aside for</span>
+          <select
+            className="field"
+            value={earmark}
+            onChange={(event) => {
+              if (isEarmark(event.target.value)) setEarmark(event.target.value);
+            }}
+          >
+            {EARMARKS.map((option) => (
+              <option key={option} value={option}>
+                {EARMARK_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <div className="min-w-0 sm:col-span-2">
         <Field
           label="Bank or issuer"
@@ -457,11 +543,30 @@ export function TermsForm({
         />
       </div>
 
+      {firstReading !== null && (
+        <label className="col-span-full flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={recordFirst}
+            onChange={(event) => {
+              setRecordFirst(event.target.checked);
+            }}
+          />
+          <span className="note">
+            Record today&rsquo;s value, <strong>{formatMoney(firstReading)}</strong>, as its first reading, so it is
+            counted from the start. Worked out from these terms.
+          </span>
+        </label>
+      )}
+
       <div className="col-span-full flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy || added}>
           {busy
             ? 'Saving…'
-            : mode.kind === 'new'
+            : added
+              ? 'Added'
+              : mode.kind === 'new'
               ? `Add the ${kind}`
               : mode.kind === 'existing'
                 ? 'Save the terms'

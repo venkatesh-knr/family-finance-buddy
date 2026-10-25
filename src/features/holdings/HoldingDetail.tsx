@@ -217,9 +217,11 @@ export function HoldingDetail({
           }
           hasLots={listing.lots.some((lot) => lot.holdingId === holding.id)}
           currencyOptions={<CurrencyOptions />}
+          // Reloaded first and closed after, so the form stays on "Saving…" until the screen has what was saved.
+          // Closing it first left the old earmark and terms showing for as long as the read took.
           onDone={async () => {
-            setEditing(false);
             await reload();
+            setEditing(false);
           }}
           onCancel={() => {
             setEditing(false);

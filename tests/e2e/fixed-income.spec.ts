@@ -224,6 +224,8 @@ test('closing the month writes a deposit its month-end reading from the terms', 
   await form.getByLabel('Rate %', { exact: true }).fill('7.5');
   await form.getByLabel('Starts').fill(start);
   await form.getByLabel('Matures').fill(maturity);
+  // This is the path with no reading, which the close is for, so the offer to record one when it is added is declined.
+  await form.getByLabel(/Record today.s value/).uncheck();
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   // Nobody has recorded a reading: it is worked out on its own screen and nowhere else.

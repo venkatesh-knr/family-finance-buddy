@@ -421,10 +421,12 @@ export interface NewFixedIncome {
   readonly renewalRatePct?: string | null;
   readonly institution?: string | null;
   readonly accountLast4?: string | null;
+  /** What the money is for, said when it is added. None when left out. */
+  readonly earmark?: Earmark;
 }
 
 /** The terms of a deposit or bond that is already a holding. */
-export type NewTermsForHolding = Omit<NewFixedIncome, 'memberId' | 'name'> & { readonly holdingId: Uuid };
+export type NewTermsForHolding = Omit<NewFixedIncome, 'memberId' | 'name' | 'earmark'> & { readonly holdingId: Uuid };
 
 export interface NewDepositRenewal {
   readonly householdId: Uuid;
@@ -465,6 +467,8 @@ export interface NewHolding {
   readonly quantity: Quantity;
   readonly cost?: Money | null;
   readonly openedOn?: IsoDate | null;
+  /** What the money is for, said when it is added. None when left out. */
+  readonly earmark?: Earmark;
 }
 
 /**

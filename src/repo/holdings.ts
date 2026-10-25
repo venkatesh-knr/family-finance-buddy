@@ -210,7 +210,7 @@ export async function listHoldings(
  * values nothing and can be reused by the next attempt. Worth revisiting if
  * instrument creation ever gains side effects.
  */
-export async function addHolding(input: NewHolding): Promise<void> {
+export async function addHolding(input: NewHolding): Promise<{ readonly holdingId: string }> {
   const client = supabase();
 
   const instrumentResult = await client
@@ -229,18 +229,24 @@ export async function addHolding(input: NewHolding): Promise<void> {
 
   if (instrumentResult.error !== null) throw asRepositoryError(instrumentResult.error);
 
-  const holdingResult = await client.from('holding').insert({
-    household_id: input.householdId,
-    member_id: input.memberId,
-    instrument_id: String(instrumentResult.data.id),
-    // A decimal string, never a number: a fractional share must not pass
-    // through a double on its way to a numeric column.
-    quantity: input.quantity,
-    cost_minor: input.cost === null || input.cost === undefined ? null : input.cost.minor.toString(),
-    opened_on: input.openedOn ?? null,
-  });
+  const holdingResult = await client
+    .from('holding')
+    .insert({
+      household_id: input.householdId,
+      member_id: input.memberId,
+      instrument_id: String(instrumentResult.data.id),
+      // A decimal string, never a number: a fractional share must not pass
+      // through a double on its way to a numeric column.
+      quantity: input.quantity,
+      cost_minor: input.cost === null || input.cost === undefined ? null : input.cost.minor.toString(),
+      opened_on: input.openedOn ?? null,
+      ...(input.earmark === undefined ? {} : { earmark: input.earmark }),
+    })
+    .select('id')
+    .single();
 
   if (holdingResult.error !== null) throw asRepositoryError(holdingResult.error);
+  return { holdingId: String(holdingResult.data.id) };
 }
 
 /**

@@ -17,6 +17,9 @@ export async function setEarmark(page: Page, name: RegExp, label: string) {
   await select.selectOption({ label });
   await page.getByRole('button', { name: /^Save$/ }).click();
   await expect(select).toHaveCount(0, { timeout: 20_000 });
+  // The form closes only once the screen has what was saved, so this is read at once and not retried: a form that
+  // closed first would show the old earmark here for as long as the read took.
+  if (label !== 'No earmark') expect(await page.locator('.purpose-value').innerText()).toBe(label);
 }
 
 /** The holding's row on the list, where the earmark is a pill beside its member. */
