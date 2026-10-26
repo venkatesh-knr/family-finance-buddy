@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #104 (#102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added). Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #108 (#102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -335,8 +335,10 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   3. Follow-ups found on the way: the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
      Insurance (the maintainer's file); other screens may share the stale-read race fixed in the members
      list on Settings.
-  4. **Step 6**: `property` and `property_improvement` with a pure cost-basis function (fixtures first,
-     migration shown for review before any screen), then the retirement kind (PPF, EPF, NPS).
+  4. **Step 6**: the cost-basis function and its fixtures are built (`src/domain/property.ts`). The schema
+     (`property`, `property_improvement`, dated `property_valuation`) is proposed in
+     `docs/reviews/2026-10-26-property/proposal.md` and **waits on five answers from the maintainer** before the
+     migration is written; no screen before it is reviewed. Then the retirement kind (PPF, EPF, NPS).
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.
