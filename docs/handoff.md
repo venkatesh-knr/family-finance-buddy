@@ -332,9 +332,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      where `tax_rule` is the source — read them from `ratesApplied` and the exemption and rate rows; and the
      Estimated tax figure reads ₹0 before anything is typed, which the maintainer may want worded as empty.
   2. Overview Departures still `proposed`: the Protection card, and Close the month drawn as an action.
-  3. Follow-ups found on the way: month and year totals on Expenses add up the 50 most recent entries
-     the screen reads (the figure now says so; the fix is period-scoped reads in the repository layer);
-     the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
+  3. Follow-ups found on the way: the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
      Insurance (the maintainer's file); other screens may share the stale-read race fixed in the members
      list on Settings.
   4. **Step 6**: `property` and `property_improvement` with a pure cost-basis function (fixtures first,

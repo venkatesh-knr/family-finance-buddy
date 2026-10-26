@@ -41,6 +41,11 @@ export interface BudgetInputs {
    * that is right and one that is short.
    */
   personalSpend: PersonalSpendPeriods | null;
+  /**
+   * Whether `expenses` is every entry of the period, and not only the most recent the list holds. When it is not,
+   * the figures are short by the older entries and say so.
+   */
+  complete: boolean;
   today: string;
   fy: number;
   /** What these figures are read in: the household's currency, or this device's choice. */
@@ -50,7 +55,7 @@ export interface BudgetInputs {
 }
 
 export function useBudgetComparison(inputs: BudgetInputs) {
-  const { categories, budgets, expenses, members, personalSpend, today, fy, currency, rates } = inputs;
+  const { categories, budgets, expenses, members, personalSpend, complete, today, fy, currency, rates } = inputs;
 
   const [period, setPeriod] = useState<Period>('month');
 
@@ -250,8 +255,8 @@ export function useBudgetComparison(inputs: BudgetInputs) {
   // is being added up from part of itself, and its total is short by what is not here.
   const partial = useMemo(() => {
     const oldest = expenses[expenses.length - 1];
-    return expenses.length >= EXPENSE_LISTING_LIMIT && oldest !== undefined && oldest.date >= bounds.start;
-  }, [expenses, bounds]);
+    return !complete && expenses.length >= EXPENSE_LISTING_LIMIT && oldest !== undefined && oldest.date >= bounds.start;
+  }, [complete, expenses, bounds]);
 
   const summary = useMemo(
     () => periodSummary({ planned: totals.planned, spent: totals.spent, daysElapsed, daysInPeriod }),
