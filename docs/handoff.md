@@ -338,17 +338,21 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   4. **Step 6, property:** the migration `20261026120000_property.sql` is **applied to live** (the maintainer, 26 October).
      Built: the cost-basis function and the share, latest-valuation, staleness and equity functions
      (`src/domain/property.ts`), the repository layer (`src/repo/property.ts`) and the Property screen behind More
-     (`src/features/property`). **Owed, in this order:** (a) the net-worth slice: the Overview's net worth, allocation and
-     history read the latest valuation's share and take the linked loan's balance off, and the screen's
-     "not yet counted in net worth" note comes out; (b) before any screen offers a property as personal: it joins
+     (`src/features/property`). **Owed, in this order:** (a) done: property is in net worth, the allocation and the history at the household's share (`propertyAssets.ts`);
+     (b) before any screen offers a property as personal: it joins
      `my_private_entry_count`, the Profile's private list and its activity names, and a sums function for the
      household total (`docs/decisions.md`); (c) a way for a contributor to reach the screen (they have no More); (d)
      `icons.md` section 4 and IC-R8 still say the property tile is wired to nothing, and it now is (`PROPERTY_TILE`),
      which needs the maintainer's wording; (e) whether a property that is not lived in is in the FIRE corpus, a rule of
-     that calculation; (f) latent: a loan can be linked to two properties and would be taken off twice in the total, and a
+     that calculation; (f) latent: a loan linked to two properties is taken once, at the first one's share, with nothing on the screen saying so, and a
      loan the reader cannot see makes a property look unencumbered, which matters the day a contributor reaches the screen;
      (g) the bottom bar's `role="group"` on a `nav` fails axe's `aria-allowed-role` on a phone, a shell fault found by the
-     Property review. Then the retirement kind (PPF, EPF, NPS).
+     Property review (done in #112). (h) the Overview's "nothing has been valued" refusal now follows the as-at date, which takes a
+     property's valuation into account; nothing end to end covers a personal view for a member who owns only a house. (i) `tokens.md`
+     section 6 still calls `--c5` the crypto slot while the proposed Departure calls it coral and reserved for liabilities: one of the two
+     is out of date. (j) one full-suite run (27 October) failed `property-net-worth.spec.ts` at the second valuation on both projects, for a
+     cause not found; it passed before and after, and the spec no longer works out a date of its own. Watch for it. Then the retirement kind
+     (PPF, EPF, NPS).
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.

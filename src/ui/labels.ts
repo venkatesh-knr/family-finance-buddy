@@ -1,4 +1,4 @@
-import { ASSET_CLASSES, assetClass, classColour } from './assetClass.ts';
+import { ASSET_CLASSES, PROPERTY_TILE, assetClass, classColour } from './assetClass.ts';
 
 /**
  * What an asset class is called on screen.
@@ -20,6 +20,9 @@ export const INSTRUMENT_KIND_LABEL: Record<string, string> = Object.fromEntries(
 
 /** The label for one kind, falling back to the stored value rather than to nothing. */
 export function kindLabel(kind: string): string {
+  // Property is not an instrument kind: it is drawn in the allocation as a class of what the household owns, and is
+  // named here and not in `ASSET_CLASSES`, which a test holds to the instrument kinds.
+  if (kind === 'property') return 'Property';
   return INSTRUMENT_KIND_LABEL[kind] ?? kind.replace('_', ' ');
 }
 
@@ -65,5 +68,8 @@ export const INSTRUMENT_KIND_COLOUR: Record<string, string> = Object.fromEntries
 
 /** The colour for one kind; an unknown kind is drawn as `other`, not as nothing. */
 export function kindColour(kind: string): string {
+  // The property tile's own hue, `--c8` (rose): the ramp had no unreserved slot left, and a class sharing Equity's emerald is
+  // what the one-colour-per-class rule forbids (tokens.md section 6; the owner's call).
+  if (kind === 'property') return PROPERTY_TILE.colour;
   return classColour(assetClass(kind));
 }

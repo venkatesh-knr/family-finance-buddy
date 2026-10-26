@@ -59,8 +59,8 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
             </div>
           </div>
           <p className="note">
-            The household’s share of each property, and per currency. Not yet counted in net worth or in the allocation on
-            the Overview.
+            The household’s share of each property, and per currency. Counted in net worth, the allocation and the history on
+            the Overview, with a loan linked to a property taken at the property’s share.
           </p>
         </>
       )}

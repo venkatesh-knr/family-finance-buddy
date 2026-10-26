@@ -49,6 +49,7 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
   --c5:#BB3D2D;  /* coral      */
   --c6:#0E7490;  /* cyan       */
   --c7:#B45309;  /* amber      */
+  --c8:#C2477F;  /* rose       */
 
   /* depth */
   --surface-lift:radial-gradient(120% 140% at 8% 0%, #FFFFFF 0%, #F7F9FD 48%, #FFFFFF 100%);
@@ -74,7 +75,7 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
     --coral:#FF6F61; --coral-soft:#33130F;
     --indigo:#7B9CFF; --indigo-soft:#182448;
     --c1:#7B9CFF; --c2:#2ED3A8; --c3:#F0B429; --c4:#B07CF0;
-    --c5:#FF6F61; --c6:#46C5E8; --c7:#FF9D4D;
+    --c5:#FF6F61; --c6:#46C5E8; --c7:#FF9D4D; --c8:#FF8FC7;
     --surface-lift:radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
     --lift-edge:linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
@@ -334,12 +335,13 @@ room inside the card does not.
 
 ## 6. Charts
 
-- Colours come from `--c1…--c7`, never literals, and **a class has one colour, fixed, on every
+- Colours come from `--c1…--c8`, never literals, and **a class has one colour, fixed, on every
   screen** — chosen by the class and not by its rank or position. Coloured by position,
   Bonds is one colour when it is third largest and another when it is second. The map is
   `kindColour` in `src/ui/labels.ts`, following the prototype's own (funds `c1`, equity
-  `c2`, bonds `c3`, ETFs `c4`, deposits `c6`; `other` is the neutral `--muted` and takes no slot, because it is a stored value and not a sixth class); `c5` is the prototype's
-  crypto slot and stays unused until a class needs it. A series that is not a class — the
+  `c2`, bonds `c3`, ETFs `c4`, deposits `c6`, property `c8`; `other` is the neutral `--muted` and takes no slot, because it is a stored value and not a sixth class); `c5` is the prototype's
+  crypto slot, which is coral and is spent on liabilities and on what is wrong, and `c7` is amber and is for attention. `c8` is rose, added for property (the owner's call, 27 October 2026) because the ramp had no
+  unreserved hue left and a second class in an existing hue is what this rule forbids; it is a pink, between coral and plum, and is told apart by its name, its share and its tile's glyph beside it, as every class is. A series that is not a class — the
   since-inception total — takes a neutral token (`--ink-2`), never a class's colour.
 - Chart text uses `--muted` for axes and `--ink` for value callouts — always tokens, never
   literals, or the chart breaks in one theme.
@@ -353,7 +355,7 @@ room inside the card does not.
 ---
 
 - The ramp is **stepped in lightness as well as hue**, so neighbouring classes stay
-  apart for someone who cannot separate red from green. `--c1`…`--c7` are ordered, and
+  apart for someone who cannot separate red from green. `--c1`…`--c8` are ordered, and
   an asset class keeps its index across every screen — the donut, the allocation rows
   and the annual-expense bar must agree, or the same class is three colours.
 - Saturated accents make an unlabelled chart more tempting, not less. Every series still

@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 const DIRS = ['src/features/overview', 'src/features/holdings', 'src/features/plan', 'src/features/tax'];
 
 /** What a person can do, as the verb the sentence starts with. */
-const ACTION = /\b(Record|Import|Reload|reload|Close)\b|IMPORT_THE_FULL_STATEMENT|RECORD_THE_COST|heroWarnings/;
+const ACTION = /\b(Record|Import|Reload|reload|Close)\b|IMPORT_THE_FULL_STATEMENT|RECORD_THE_COST|heroWarnings|corpusWarnings/;
 
 interface Mark {
   readonly file: string;
@@ -112,6 +112,6 @@ describe("the hero's reasons: the amber mark is earned by a reason that names so
   const settings = [...hook.matchAll(/heroActionable = true; \/\/ ([a-z ]+)/g)].map((m) => m[1]);
 
   it("sets it only for reasons that name a reload or a record, and not for the ones that are somebody else's to act on", () => {
-    expect(settings).toEqual(['reload', 'record a value', 'record the balance', 'reload']);
+    expect(settings).toEqual(['reload', 'record a value', 'record a valuation', 'record the balance', 'reload', 'reload']);
   });
 });

@@ -622,6 +622,7 @@ describe('property rows', () => {
     linked_liability_id: null,
     visibility: 'household',
     status: 'active',
+    archived_at: null,
     note: null,
   };
 
@@ -648,8 +649,11 @@ describe('property rows', () => {
     expect(() => toProperty({ ...row, purchase_cost_minor: 'lots' }, members)).toThrow(MalformedRowError);
   });
 
-  it('reads archived from the status', () => {
+  it('reads archived from the status, and the day it was archived in IST', () => {
     expect(toProperty({ ...row, status: 'archived' }, members).isArchived).toBe(true);
+    // 20:00 UTC on the 31st is 01:30 IST on 1 November.
+    expect(toProperty({ ...row, status: 'archived', archived_at: '2026-10-31T20:00:00Z' }, members).archivedOn).toBe('2026-11-01');
+    expect(toProperty(row, members).archivedOn).toBeNull();
   });
 
   const work = {

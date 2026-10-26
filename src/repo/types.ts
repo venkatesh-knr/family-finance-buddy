@@ -730,6 +730,8 @@ export interface Property {
   readonly linkedLiabilityId: Uuid | null;
   readonly visibility: Visibility;
   readonly isArchived: boolean;
+  /** The IST day it was archived. Its months before this still count in the history. */
+  readonly archivedOn: IsoDate | null;
   readonly note: string | null;
 }
 
