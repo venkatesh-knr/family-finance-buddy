@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { archiveByName, openFixedForm, openList, rowFor } from './holdings.ts';
+import { archiveByName, openFixedForm, openHolding, openList, rowFor } from './holdings.ts';
 
 /**
  * A holding is valued, and says what it is for, when it is added, not only after a second visit to its own screen.
@@ -97,4 +97,32 @@ test('a deposit that has already paid out is not offered a first reading', async
 
   // What it would be worth is a payout, money in an account and not a holding, so it is not recorded as one.
   await expect(form.getByLabel(/Record today.s value/)).toHaveCount(0);
+});
+
+test('a deposit is given its scheme when it is added, and a bond is not offered one', async ({ page }) => {
+  test.setTimeout(90_000);
+  const name = `e2e-add-ppf-${Date.now()}`;
+
+  const form = await openFixedForm(page);
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Principal').fill('100000');
+  await form.getByLabel('Rate %', { exact: true }).fill('7.1');
+  await form.getByLabel('Starts').fill('2026-01-01');
+  await form.getByLabel('Matures').fill('2041-01-01');
+  await form.getByLabel('Scheme').selectOption({ label: 'PPF' });
+  await form.getByRole('button', { name: 'Add the deposit' }).click();
+
+  try {
+    // It is the holding's own, so editing it shows what was said when it was added.
+    await openHolding(page, name);
+    await page.getByRole('button', { name: /^Edit / }).first().click();
+    await expect(page.getByLabel('Scheme')).toHaveValue('ppf');
+  } finally {
+    await archiveByName(page, name);
+  }
+
+  // A scheme says what a deposit is, so a bond's form has none.
+  await openFixedForm(page);
+  await page.getByRole('button', { name: 'Bond', exact: true }).click();
+  await expect(page.getByLabel('Scheme')).toHaveCount(0);
 });
