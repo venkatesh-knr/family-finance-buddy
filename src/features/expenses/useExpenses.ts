@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addExpense,
   listExpenses,
+  listExpensesBetween,
   listPersonalSpend,
   subscribeToExpenses,
   updateExpense,
@@ -23,6 +24,7 @@ import { istCalendarDate } from '../../lib/dates.ts';
 import {
   NoHouseholdError,
   type Budget,
+  type Expense,
   type ExpenseListing,
   type NewExpense,
   type PersonalSpendPeriods,
@@ -53,6 +55,12 @@ export interface ExpensesState {
    * total built on the first when the truth is the second is quietly wrong.
    */
   readonly personalSpend: PersonalSpendPeriods | null;
+  /**
+   * Every entry in this tax year, which the month and the year are both added up from. Null when it could not be
+   * read, and then the totals are made from the most recent entries alone and say so: not the same as a year with
+   * nothing in it.
+   */
+  readonly periodExpenses: readonly Expense[] | null;
   readonly fy: number;
   readonly today: string;
 }
@@ -73,6 +81,7 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     month: [],
     year: [],
   });
+  const [periodExpenses, setPeriodExpenses] = useState<readonly Expense[] | null>(null);
   const [live, setLive] = useState<LiveStatus>('connecting');
 
   // Read once at the edge; every calculation below takes it as an argument.
@@ -106,6 +115,22 @@ export function useExpenses(householdId: string | null): ExpensesState & {
         if (mine === generation.current) setBudgets(plan.budgets);
       } catch {
         if (mine === generation.current) setBudgets([]);
+      }
+
+      // The whole tax year, for the totals. The list above is the most recent entries, which is right to read and
+      // wrong to add up. The month is inside the year, so one read serves both periods the card can show. Allowed to
+      // fail on its own: the card then adds up what the list holds and says its figure may be short.
+      try {
+        const year = taxYearBounds(fy);
+        const rows = await listExpensesBetween({
+          householdId: next.household.id,
+          from: year.start,
+          to: year.end,
+          members: next.members,
+        });
+        if (mine === generation.current) setPeriodExpenses(rows);
+      } catch {
+        if (mine === generation.current) setPeriodExpenses(null);
       }
 
       // The private sums, for BOTH periods the card can show.
@@ -216,6 +241,7 @@ export function useExpenses(householdId: string | null): ExpensesState & {
     noHousehold,
     budgets,
     personalSpend,
+    periodExpenses,
     fy,
     today,
     add,

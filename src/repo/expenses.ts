@@ -164,6 +164,47 @@ export async function listExpenses(
 }
 
 /**
+ * Every spend the caller can read between two dates, voided ones included, for the totals.
+ *
+ * `listExpenses` holds the most recent entries and no more, which is right for a list to read and wrong for a figure
+ * to add up: a month or a year can hold more, and the total came out short by the older ones. This reads the whole
+ * period. Row-level security decides what comes back, exactly as it does for the list: the household's shared
+ * spending and the caller's own private entries, and nobody else's.
+ *
+ * Counted, not trusted: a page that comes back shorter than the number of rows there are is an error and not a
+ * smaller total, the same refusal as `listOwnPrivateSpend`.
+ */
+export async function listExpensesBetween(options: {
+  householdId: Uuid;
+  from: IsoDate;
+  to: IsoDate;
+  members: readonly Member[];
+}): Promise<readonly Expense[]> {
+  const { data, error, count } = await supabase()
+    .from('expense_txn')
+    .select(
+      'id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility',
+      { count: 'exact' },
+    )
+    .eq('household_id', options.householdId)
+    .gte('txn_date', options.from)
+    .lte('txn_date', options.to)
+    .order('txn_date', { ascending: false })
+    .limit(PERIOD_READ_LIMIT);
+
+  if (error !== null) throw asRepositoryError(error);
+  const rows = data ?? [];
+  if (count !== null && rows.length < count) {
+    throw new MalformedRowError('expense_txn', `returned ${String(rows.length)} of ${String(count)} entries`);
+  }
+  const membersById = new Map(options.members.map((member) => [member.id, member] as const));
+  return rows.map((row: unknown) => toExpense(row, membersById));
+}
+
+/** The most entries one period is read with. A period with more is an error, not a quietly smaller total. */
+const PERIOD_READ_LIMIT = 5000;
+
+/**
  * File one spend.
  *
  * `created_by` is deliberately not sent: the column defaults to the caller's

@@ -67,6 +67,7 @@ export function ExpensesScreen({
     noHousehold,
     budgets,
     personalSpend,
+    periodExpenses,
     edit,
     discard,
     fy,
@@ -128,7 +129,10 @@ export function ExpensesScreen({
           quickAdd={quickAdd}
           categories={listing.categories}
           budgets={budgets}
-          expenses={listing.expenses}
+          // The whole year when it could be read, so a busy month is added up in full; the list's most recent
+          // entries otherwise, and then the figure says it may be short.
+          expenses={periodExpenses ?? listing.expenses}
+          complete={periodExpenses !== null}
           members={listing.members}
           // Null means the sums could not be read, which is not the same as nobody having any. The plan says which
           // it is rather than showing a total that might be short by an unknown amount.
