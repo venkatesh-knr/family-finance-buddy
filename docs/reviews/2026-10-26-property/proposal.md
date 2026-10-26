@@ -1,8 +1,10 @@
 # Property (build plan step 6): the cost basis and a proposed schema, for review
 
-Nothing here is built except the pure cost-basis function (`src/domain/property.ts`, 26 known-answer tests). The
-schema below is a **proposal**: no migration exists yet, as the plan asks ("migration shown for review before any
-screen"). It becomes `docs/design/property.md` and a migration once the five questions at the end are answered.
+**Status: all five recommendations were accepted (26 October 2026).** The schema below is now the migration
+`supabase/migrations/20261026120000_property.sql`, with its policy tests in `supabase/tests/property.test.sql`, for review
+before any screen. The decisions are in `docs/decisions.md`. The text below is the proposal as it was put.
+
+The pure cost-basis function is `src/domain/property.ts` (26 known-answer tests).
 
 ## What is built
 

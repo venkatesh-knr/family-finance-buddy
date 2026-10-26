@@ -335,10 +335,13 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   3. Follow-ups found on the way: the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
      Insurance (the maintainer's file); other screens may share the stale-read race fixed in the members
      list on Settings.
-  4. **Step 6**: the cost-basis function and its fixtures are built (`src/domain/property.ts`). The schema
-     (`property`, `property_improvement`, dated `property_valuation`) is proposed in
-     `docs/reviews/2026-10-26-property/proposal.md` and **waits on five answers from the maintainer** before the
-     migration is written; no screen before it is reviewed. Then the retirement kind (PPF, EPF, NPS).
+  4. **Step 6**: the cost-basis function is built (`src/domain/property.ts`). The maintainer accepted all five
+     recommendations; the migration `20261026120000_property.sql` (property, improvements, dated valuations, the
+     audit rule, the reset, a stale-months setting) and `supabase/tests/property.test.sql` are written for review.
+     **It has not been applied to live** and no screen is built: CI is the first place the SQL has run (Docker is
+     blocked here). After review: the repository layer, then the screen. A personal property must join
+     `my_private_entry_count`, the Profile's private list and its activity names before a screen offers it
+     (`docs/decisions.md`). Then the retirement kind (PPF, EPF, NPS).
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.

@@ -339,3 +339,21 @@ The maintainer's decision, on the open question above: a deposit reaches net wor
 - **An owned home is not in the FIRE corpus.** Not built yet: property is step 6, and the corpus function says so when it arrives.
 - **Retirement is a kind (EPF, NPS and PPF).** Not built yet: it is step 6. PPF moving out of the deposit schemes is a migration that
   step makes.
+
+## Property (October 2026, the maintainer took the recommendations on all five questions)
+
+Proposal and reasons: `docs/reviews/2026-10-26-property/proposal.md`. Schema: `supabase/migrations/20261026120000_property.sql`.
+
+- **A property's value is dated rows, not a column.** `property_valuation` is one estimate a day with the basis it was arrived at (own
+  estimate, circle rate, broker, registered); net worth reads the latest at or before the day asked, so an earlier day's figure never moves.
+  The blueprint's single `current_value_minor` and `valued_on` are replaced. Staleness is computed from the date and never stored.
+- **The household's share is what counts.** `co_owner_share_pct` is the share the household holds; net worth and the cost basis use the share and
+  never the whole. Co-owners outside the household are not modelled.
+- **A property can be personal,** as a holding or an expense can: returned to its member and nobody else, with the same contributor and viewer
+  narrowing as every other table. Owed before a screen offers it: a personal property joins `my_private_entry_count`, the Profile's list of
+  private entries and the activity names (`src/features/profile/`), and a function returning sums for the household total, as holdings have.
+- **A property that is not lived in** is not decided by the schema; a rule of the corpus calculation, to be written with the net-worth slice.
+  The recommendation stands: out for now, with the option to include a let property when rent is built.
+- **A valuation is stale after twelve months,** a household setting (`household.property_valuation_stale_months`). The figure still counts and
+  carries the mark.
+- **Not in the first migration:** rent, tenant, annual property tax and the sale (disposal, the indexation election, reinvestment clocks, TDS).
