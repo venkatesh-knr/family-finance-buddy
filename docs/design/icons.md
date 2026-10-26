@@ -120,7 +120,7 @@ picker, a legend or a filter until its stage ships.
 
 | kind | hue | glyph |
 | --- | --- | --- |
-| property | emerald | a house |
+| property | rose | a house |
 | gold | gold | a stack of coins seen in section |
 | retirement (PF · PPF · NPS) | periwinkle | a shield |
 | insurance | violet | an umbrella |

@@ -357,3 +357,19 @@ Proposal and reasons: `docs/reviews/2026-10-26-property/proposal.md`. Schema: `s
 - **A valuation is stale after twelve months,** a household setting (`household.property_valuation_stale_months`). The figure still counts and
   carries the mark.
 - **Not in the first migration:** rent, tenant, annual property tax and the sale (disposal, the indexation election, reinvestment clocks, TDS).
+- **Property is in net worth, the allocation and the history, at the household's share (October 2026).** Each property is read as a
+  holding of the kind `property` by the existing calculations (`src/features/overview/propertyAssets.ts`): its valuations are its readings,
+  its cost basis is its cost, so the Overview shows a return on it. A loan linked to a part-owned property is taken at that share, not
+  whole. The reading-gaps card and the staleness of readings leave property out (it is valued when somebody values it, and its age has its
+  own rule). The FIRE corpus leaves property out, and a loan linked to a property out with it: the owner's rule that an owned home is not in
+  the corpus, applied to its loan too. Whether a property that is not lived in is in the corpus is still not decided, and nothing here says
+  it is. Net worth reads a valuation dated at or before the day, as the history does.
+  The day a total is as at takes the newest valuation into account, so a property valued after the funds' last reading is not counted in a
+  figure labelled with an earlier day, and the history is not withdrawn over it. A valuation older than the household's months is counted and
+  marked on the Overview, with the property named and what to do. The share a loan is taken at belongs to the loan: it is the same in a
+  personal view as in the household's. The FIRE screen says a property is left out, with the amount, and its own warnings leave out what is
+  only about property.
+- **The owner's three answers on the net-worth slice (27 October 2026).** (1) Property **is** in the allocation ring. (2) The FIRE corpus leaves
+  out only a home the family **lives in** (`property.is_self_occupied`), with the loan linked to it; a property that is not lived in is in the
+  corpus at the household's share and its loan is subtracted. (3) Property takes **its own new hue**, `--c8` rose, so it no longer shares Equity's
+  emerald: `docs/tokens.md` section 6, `src/styles/tokens.css`.

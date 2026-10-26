@@ -507,6 +507,7 @@ export function toProperty(raw: unknown, membersById: ReadonlyMap<string, Member
     linkedLiabilityId: optionalString(row['linked_liability_id'], 'property.linked_liability_id'),
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'property.visibility'),
     isArchived: requireOneOf(row['status'], ['active', 'archived'] as const, 'property.status') === 'archived',
+    archivedOn: istDayOf(row['archived_at']),
     note: optionalString(row['note'], 'property.note'),
   };
 }

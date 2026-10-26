@@ -28,7 +28,7 @@ import {
 } from './types.ts';
 
 const PROPERTY_COLUMNS =
-  'id, member_id, kind, label, currency, purchase_date, purchase_cost_minor::text, stamp_duty_minor::text, registration_minor::text, co_owner_share_pct::text, is_self_occupied, linked_liability_id, visibility, status, note';
+  'id, member_id, kind, label, currency, purchase_date, purchase_cost_minor::text, stamp_duty_minor::text, registration_minor::text, co_owner_share_pct::text, is_self_occupied, linked_liability_id, visibility, status, archived_at, note';
 const IMPROVEMENT_COLUMNS = 'id, property_id, currency, work_date, description, amount_minor::text, is_capital, voided_at';
 const VALUATION_COLUMNS = 'id, property_id, currency, as_of_date, value_minor::text, basis, note';
 const LOAN_COLUMNS = 'id, name, status, currency, outstanding_minor::text, outstanding_as_of';

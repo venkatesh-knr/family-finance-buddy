@@ -37,6 +37,7 @@ const property = (over: Partial<Property> & { id: string }): Property => ({
   linkedLiabilityId: null,
   visibility: 'household',
   isArchived: false,
+  archivedOn: null,
   note: null,
   ...over,
 });

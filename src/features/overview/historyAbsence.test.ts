@@ -41,6 +41,17 @@ describe('historyAbsence — one line for why the card is not there', () => {
     expect(historyAbsence({ ok: false, reason: 'unread', holdingIds: ['a', 'b'] }, 'INR')).toMatch(/2 holdings have not been read/);
   });
 
+  it('names what stopped the line when it is given the names, a property as well as a holding', () => {
+    const names: Record<string, string> = { fund: 'Index fund · Meera', house: 'House · Venkat' };
+    const nameOf = (id: string) => names[id] ?? 'A holding';
+    expect(
+      historyAbsence({ ok: false, reason: 'stopped', limit: { reason: 'unread', at: '2026-07-31', holdingIds: ['house'] } }, 'INR', nameOf),
+    ).toMatch(/House · Venkat had no reading on 31 Jul 2026/);
+    expect(historyAbsence({ ok: false, reason: 'unread', holdingIds: ['fund', 'house'] }, 'INR', nameOf)).toMatch(
+      /Index fund · Meera, House · Venkat have not been read yet/,
+    );
+  });
+
   it('names the rate that is missing and the currency it was wanted in', () => {
     const line = historyAbsence(
       { ok: false, reason: 'rate', missing: [{ base: 'USD', quote: 'INR' }] },

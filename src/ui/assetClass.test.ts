@@ -188,7 +188,7 @@ describe('the Stage 5 tiles: drawn, and not wired', () => {
   });
 
   it('carry the colours the design gives them', () => {
-    expect(UNWIRED_TILES.property.colour).toBe('var(--c2)'); // emerald, a house
+    expect(UNWIRED_TILES.property.colour).toBe('var(--c8)'); // rose, a house: its own hue, not Equity's emerald
     expect(UNWIRED_TILES.gold.colour).toBe('var(--c3)'); // gold, a coin stack
     expect(UNWIRED_TILES.retirement.colour).toBe('var(--c1)'); // periwinkle, a shield
     expect(UNWIRED_TILES.insurance.colour).toBe('var(--c4)'); // violet, an umbrella

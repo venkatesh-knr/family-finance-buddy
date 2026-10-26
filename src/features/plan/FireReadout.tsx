@@ -25,11 +25,12 @@ import type { usePlan } from './usePlan.ts';
  * far along is it, and what is a year of living costing. The projection is `fireProjection`
  * (blueprint §06) over the household's own assumptions, and starts from the corpus: the Overview's net
  * worth, from the same hook, less what is earmarked as an emergency fund, a child's savings or a house
- * deposit. The two screens cannot disagree about anything but those earmarks.
+ * deposit, and less a home the family lives in, which is left out on purpose, with the loan linked to it. The two
+ * screens can differ by those, and by nothing else.
  *
  * It says what it is not. A projection is not a forecast, and this one starts from what has been
- * recorded: property and the rest of the balance sheet arrive in later stages, and until they do the
- * corpus is short by whatever they are worth. That is said on the figure, where it applies.
+ * recorded: what is not yet recorded is not in the corpus, and the figure says so where it applies. A home
+ * lived in is recorded and left out: it is not money that can be spent in retirement.
  */
 
 type Plan = ReturnType<typeof usePlan>;
@@ -173,13 +174,13 @@ export function FireReadout({
 
   /** What is wrong with the corpus, said where it is used: the same list as on the Overview's hero. */
   const warnings =
-    data.heroWarnings.length === 0 ? null : (
+    data.corpusWarnings.length === 0 ? null : (
       <Caveat tone={data.heroActionable ? 'warn' : 'info'} label="Why this figure may be wrong">
-        {data.heroWarnings.length === 1 ? (
-          data.heroWarnings[0]
+        {data.corpusWarnings.length === 1 ? (
+          data.corpusWarnings[0]
         ) : (
           <ul className="list-disc pl-4.5">
-            {data.heroWarnings.map((warning) => (
+            {data.corpusWarnings.map((warning) => (
               <li key={warning} className="mt-1.5 first:mt-0">
                 {warning}
               </li>
@@ -303,7 +304,7 @@ export function FireReadout({
         */}
         <p className="note mt-3" data-testid="fire-left-out">
           {!leftOut.anyEarmarked ? (
-            <>Nothing is earmarked, so nothing is left out of the corpus.</>
+            <>Nothing is earmarked, so no holding is left out of the corpus.</>
           ) : leftOut.total === null ? (
             <>
               Holdings earmarked as an emergency fund, a child&rsquo;s savings or a house deposit are left out, but there
@@ -326,6 +327,21 @@ export function FireReadout({
               )}
               .{leftOut.shortBy !== null && <> {leftOut.shortBy.charAt(0).toUpperCase() + leftOut.shortBy.slice(1)}</>}
             </>
+          )}
+          {data.fire.propertyCount > 0 && (
+            <span data-testid="fire-property-left-out">
+              {' '}
+              {data.fire.propertyCount === 1 ? 'A home you live in is' : `${String(data.fire.propertyCount)} homes you live in are`} left out, and the
+              loan linked to {data.fire.propertyCount === 1 ? 'it' : 'them'}: a home is not money that can be spent in
+              retirement
+              {data.fire.propertyLeftOut.ok && data.fire.propertyLeftOut.amount.minor > 0n && (
+                <>
+                  {' '}
+                  (<Amount value={data.fire.propertyLeftOut.amount} privacy={privacy} compact />)
+                </>
+              )}
+              .
+            </span>
           )}
           {data.fire.privateMembers > 0 && (
             <>
@@ -351,8 +367,9 @@ export function FireReadout({
         </button>
         {leftOutOpen && (
           <p id="fire-rests-on" className="note" data-testid="fire-rests-on">
-            Against today&rsquo;s target, from net worth as it stands. Property and anything else not yet recorded is
-            not in it, so the figure is short by what those are worth.
+            Against today&rsquo;s target, from net worth as it stands. Anything not yet recorded is not in it, so the
+            figure is short by what that is worth. A home you live in is recorded and left out on purpose, as the line above
+            says; a property that is not lived in counts, at the household&rsquo;s share, with its loan.
           </p>
         )}
         {leftOut.anyEarmarked && !noticeSeen && (

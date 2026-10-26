@@ -155,7 +155,7 @@ export function classColour(spec: AssetClassSpec): string {
  * list can no longer read coral as "this one subtracts". A test holds it to that.
  */
 export const UNWIRED_TILES = {
-  property: { glyph: 'house', colour: 'var(--c2)' },
+  property: { glyph: 'house', colour: 'var(--c8)' },
   gold: { glyph: 'coins', colour: 'var(--c3)' },
   retirement: { glyph: 'shield', colour: 'var(--c1)' },
   insurance: { glyph: 'umbrella', colour: 'var(--c4)' },

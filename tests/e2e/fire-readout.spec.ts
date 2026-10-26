@@ -34,7 +34,7 @@ test('the FIRE screen opens on the target, a projection, progress and the cost o
   // The exclusion is on the face (PF-C8); what else the figure does not hold is one press away.
   await expect(page.getByTestId('fire-left-out')).toBeVisible();
   await openRestsOn(page);
-  await expect(page.getByText(/Property and anything else not yet recorded is not in it/)).toBeVisible();
+  await expect(page.getByText(/Anything not yet recorded is not in it/)).toBeVisible();
 });
 
 /** A compact rupee or dollar figure as a number: "₹1.25 Cr", "₹82.5 L", "$4.2K", "₹90,000". Approximate by design. */

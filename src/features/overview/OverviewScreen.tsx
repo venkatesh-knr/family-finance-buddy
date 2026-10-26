@@ -49,7 +49,8 @@ import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { insuranceFacts } from '../insurance/insuranceFacts.ts';
 import { annualFromListing } from '../plan/annualFromListing.ts';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
-import { historyAbsence } from './historyAbsence.ts';
+import { historyAbsence, namesFor } from './historyAbsence.ts';
+import { unvaluedPhrase } from './unvaluedPhrase.ts';
 import { Field } from '../../ui/primitives.tsx';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { exactMoney, formatMoney, money, percentOfCost, type Money } from '../../lib/money.ts';
@@ -84,12 +85,6 @@ function notWorkedOut(left: { projected: number; notStarted: number; unvaluable:
 function signed(value: Money, privacy: boolean): string {
   const text = formatMoney(value, { privacy });
   return privacy || value.minor <= 0n ? text : `+${text}`;
-}
-
-/** Up to three holdings by name, then a count of the rest. */
-function namesFor(ids: readonly string[], nameOf: (id: string) => string): string {
-  const shown = ids.slice(0, 3).map(nameOf).join(', ');
-  return ids.length > 3 ? `${shown} and ${String(ids.length - 3)} more` : shown;
 }
 
 export function OverviewScreen({
@@ -187,6 +182,7 @@ export function OverviewScreen({
     hiddenAssets,
     heroWarnings,
     heroActionable,
+    propertyUnvaluedByCurrency,
     worth,
     fire,
     planListing,
@@ -402,7 +398,7 @@ export function OverviewScreen({
 
   // Why there is no "Assets over time" card: one muted line under the net worth, since an empty card said it in
   // the second place on the screen. An absence of data, so it stays visible as that (DL-I4).
-  const absence = historyAbsence(history, display);
+  const absence = historyAbsence(history, display, holdingName);
 
   return (
     /*
@@ -701,10 +697,15 @@ export function OverviewScreen({
                   <Amount value={total.value} privacy={privacy} compact />
                   {total.unvalued > 0 && (
                     <Caveat tone="warn" label={`Why this ${total.currency} total is short`}>
-                      {total.unvalued} {total.unvalued === 1 ? 'holding has' : 'holdings have'} never been
-                      valued, so this total is short by whatever they are worth. The gain is measured
-                      only against what was valued, not against everything bought. Record a value on
-                      Holdings and it is counted.
+                      {unvaluedPhrase(total.unvalued, propertyUnvaluedByCurrency.get(total.currency) ?? 0)} never been
+                      valued, so this total is short by whatever {total.unvalued === 1 ? 'it is' : 'they are'} worth. The gain is
+                      measured only against what was valued, not against everything bought. Record a value on{' '}
+                      {total.unvalued > (propertyUnvaluedByCurrency.get(total.currency) ?? 0)
+                        ? (propertyUnvaluedByCurrency.get(total.currency) ?? 0) > 0
+                          ? 'Holdings, or on Property for a property,'
+                          : 'Holdings'
+                        : 'Property'}{' '}
+                      and it is counted.
                     </Caveat>
                   )}
                 </div>
@@ -877,7 +878,7 @@ export function OverviewScreen({
                         */}
                         <a
                           className="alloc-name alloc-link block"
-                          href={hashFor('holdings', { kind: row.kind })}
+                          href={row.kind === 'property' ? hashFor('property') : hashFor('holdings', { kind: row.kind })}
                         >
                           {kindLabel(row.kind)}
                         </a>
