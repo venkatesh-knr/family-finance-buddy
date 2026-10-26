@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { propertyCostBasis, type PropertyImprovement } from './property.ts';
+import {
+  latestValuationOn,
+  propertyCostBasis,
+  propertyEquity,
+  shareOfMoney,
+  valuationAge,
+  type PropertyImprovement,
+  type PropertyValuationPoint,
+} from './property.ts';
 
 /**
  * What a property cost, for the day it is sold.
@@ -188,5 +196,107 @@ describe('what it refuses', () => {
 
   it.each(['1', '0.01', '99.99', '100', '100.00', '12.5'])('accepts a share of %j', (sharePct) => {
     expect(propertyCostBasis({ ...parts, sharePct })).toMatchObject({ ok: true });
+  });
+});
+
+// ─── the rest of what a property screen works out ─────────────────────────────────────────────────────────────────
+
+describe("the household's share of a value", () => {
+  it('is the value when the share is the whole of it', () => {
+    expect(shareOfMoney(inr(11_000_000), '100')).toEqual({ ok: true, amount: inr(11_000_000) });
+  });
+
+  it('is half for a half share, and takes two decimal places', () => {
+    expect(shareOfMoney(inr(11_000_000), '50')).toEqual({ ok: true, amount: inr(5_500_000) });
+    // 1,10,00,000 rupees is 1,100,000,000 paise; 33.33% of that is 366,630,000 paise, exactly.
+    expect(shareOfMoney(inr(11_000_000), '33.33')).toEqual({ ok: true, amount: money(366_630_000n, 'INR') });
+  });
+
+  it('rounds half a paisa up, the same rule as the cost', () => {
+    expect(shareOfMoney(money(5n, 'INR'), '50')).toEqual({ ok: true, amount: money(3n, 'INR') });
+  });
+
+  it.each(['0', '100.01', 'half', ''])('refuses a share of %j', (sharePct) => {
+    expect(shareOfMoney(inr(100), sharePct)).toEqual({ ok: false, reason: 'invalid-share' });
+  });
+
+  it('refuses a negative value', () => {
+    expect(shareOfMoney(inr(-1), '50')).toEqual({ ok: false, reason: 'negative-amount' });
+  });
+});
+
+describe('the latest valuation on a day', () => {
+  const v = (asOf: string, rupees: number): PropertyValuationPoint => ({ asOf, value: inr(rupees) });
+  const valuations = [v('2024-04-01', 5_000_000), v('2026-04-01', 6_400_000), v('2025-04-01', 5_600_000)];
+
+  it('is the newest at or before the day, whatever order they come in', () => {
+    expect(latestValuationOn(valuations, '2026-12-31')).toEqual(v('2026-04-01', 6_400_000));
+    expect(latestValuationOn(valuations, '2026-03-31')).toEqual(v('2025-04-01', 5_600_000));
+  });
+
+  it('includes the day itself, so a figure recorded for a day counts that day', () => {
+    expect(latestValuationOn(valuations, '2025-04-01')).toEqual(v('2025-04-01', 5_600_000));
+  });
+
+  it('does not move an earlier day when a later one is recorded: yesterday stays yesterday', () => {
+    const before = latestValuationOn(valuations, '2025-06-30');
+    const after = latestValuationOn([...valuations, v('2026-09-01', 7_000_000)], '2025-06-30');
+    expect(after).toEqual(before);
+  });
+
+  it('is nothing before the first, and nothing when there are none', () => {
+    expect(latestValuationOn(valuations, '2024-03-31')).toBeNull();
+    expect(latestValuationOn([], '2026-01-01')).toBeNull();
+  });
+});
+
+describe('how old a valuation is, and when it is stale', () => {
+  it('is twelve months old on its anniversary and not yet stale: stale is past the setting, not at it', () => {
+    expect(valuationAge('2025-10-26', '2026-10-26', 12)).toEqual({ months: 12, stale: false });
+  });
+
+  it('is stale the day after', () => {
+    expect(valuationAge('2025-10-26', '2026-10-27', 12)).toEqual({ months: 12, stale: true });
+  });
+
+  it('counts whole months: 3 April to 1 September is four', () => {
+    expect(valuationAge('2026-04-03', '2026-09-01', 12)).toEqual({ months: 4, stale: false });
+  });
+
+  it('is stale at seventeen months, as the prototype shows one', () => {
+    expect(valuationAge('2025-04-03', '2026-09-10', 12)).toEqual({ months: 17, stale: true });
+  });
+
+  it('ends a month on its last day when the day does not exist: 31 January plus one month is 28 February', () => {
+    expect(valuationAge('2025-01-31', '2025-02-28', 1).stale).toBe(false);
+    expect(valuationAge('2025-01-31', '2025-03-01', 1).stale).toBe(true);
+  });
+
+  it('is nought months and not stale for a valuation dated after today', () => {
+    expect(valuationAge('2026-12-01', '2026-10-26', 12)).toEqual({ months: 0, stale: false });
+  });
+
+  it('follows the household setting', () => {
+    expect(valuationAge('2026-01-01', '2026-08-01', 6)).toEqual({ months: 7, stale: true });
+    expect(valuationAge('2026-01-01', '2026-08-01', 12)).toEqual({ months: 7, stale: false });
+  });
+});
+
+describe('equity after the loan', () => {
+  it('is the value less what is outstanding', () => {
+    // 55,00,000 less 20,00,000.
+    expect(propertyEquity(inr(5_500_000), inr(2_000_000))).toEqual({ ok: true, equity: inr(3_500_000) });
+  });
+
+  it('is the value when there is no loan', () => {
+    expect(propertyEquity(inr(5_500_000), null)).toEqual({ ok: true, equity: inr(5_500_000) });
+  });
+
+  it('can be negative: a loan larger than the property is said, not floored at nothing', () => {
+    expect(propertyEquity(inr(1_000_000), inr(1_500_000))).toEqual({ ok: true, equity: inr(-500_000) });
+  });
+
+  it('refuses a loan in another currency rather than subtracting across them', () => {
+    expect(propertyEquity(inr(5_500_000), usd(10_000))).toEqual({ ok: false, reason: 'mixed-currency' });
   });
 });
