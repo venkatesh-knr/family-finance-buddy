@@ -1,5 +1,10 @@
 # Retirement (build plan step 6): the PPF calculation and a proposed schema, for review
 
+**Status: all eight recommendations were accepted (27 October 2026).** The schema below is now the migration
+`supabase/migrations/20261027120000_retirement.sql`, with its policy tests in `supabase/tests/retirement.test.sql`, for review before any
+repository code or screen. One departure from the text below: a converted PPF deposit's terms and renewals are **deleted** and not left
+unused, for the reason in `docs/decisions.md`. The text below is the proposal as it was put.
+
 Nothing here is built except the pure PPF calculation (`src/domain/ppf.ts`, 20 hand-worked fixtures in
 `src/domain/ppf.test.ts`). The schema below is a **proposal**: no migration exists yet, as the plan asks. It becomes
 `docs/design/retirement.md` and a migration once the questions at the end are answered.

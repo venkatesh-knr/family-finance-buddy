@@ -352,9 +352,13 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      section 6 still calls `--c5` the crypto slot while the proposed Departure calls it coral and reserved for liabilities: one of the two
      is out of date. (j) one full-suite run (27 October) failed `property-net-worth.spec.ts` at the second valuation on both projects, for a
      cause not found; it passed before and after, and the spec no longer works out a date of its own. Watch for it. Then the retirement kind
-     (PPF, EPF, NPS): the PPF balance is built and tested (`src/domain/ppf.ts`, 20 hand-worked fixtures); the schema is
-     proposed in `docs/reviews/2026-10-27-retirement/proposal.md` and **waits on eight answers from the maintainer**, among them a
-     check of the seeded 7.1% rate against a real PPF statement; no migration and no screen yet.
+     (PPF, EPF, NPS): the maintainer accepted all eight recommendations. Built: the PPF balance (`src/domain/ppf.ts`) and the
+     migration `20261027120000_retirement.sql` (a `retirement` kind with a type, a PPF account and entries, a public `scheme_rate`
+     table seeded with 7.1% from 1 April 2020, the conversion of any PPF deposit, the reset) with `supabase/tests/retirement.test.sql`,
+     **written for review and not yet applied to live.** The seeded rate is NOT VERIFIED: check it against a real PPF statement. CI is
+     the first place the SQL runs, and the conversion block cannot be exercised there (the test database has no PPF deposit). Next, after
+     review: the repository layer, then the Add form and a holding screen for each type, the `--c9` lime hue (measured against the tile
+     test), `retirement` in `ASSET_CLASSES`, and a retirement holding left out of the liquid corpus.
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.
