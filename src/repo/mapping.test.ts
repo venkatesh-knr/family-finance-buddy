@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
+import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange } from './mapping.ts';
 import { MalformedRowError } from '../lib/guards.ts';
 import type { Member } from './types.ts';
 
@@ -601,5 +601,96 @@ describe('earmark and scheme', () => {
     expect(() =>
       toHolding({ ...holdingRow, earmark: 'holiday' }, new Map([[ravi.id, ravi]]), instruments),
     ).toThrow(MalformedRowError);
+  });
+});
+
+describe('property rows', () => {
+  const meera: Member = { id: 'm-9', displayName: 'Meera', colour: 'c2', isArchived: false, role: null };
+  const members = new Map([[meera.id, meera]]);
+  const row = {
+    id: 'p-1',
+    member_id: 'm-9',
+    kind: 'apartment',
+    label: 'House',
+    currency: 'INR',
+    purchase_date: '2019-03-01',
+    purchase_cost_minor: '420000000',
+    stamp_duty_minor: '29400000',
+    registration_minor: '0',
+    co_owner_share_pct: '50.00',
+    is_self_occupied: true,
+    linked_liability_id: null,
+    visibility: 'household',
+    status: 'active',
+    note: null,
+  };
+
+  it('reads a property with its three amounts in its own currency', () => {
+    const property = toProperty(row, members);
+    expect(property.purchaseCost).toEqual({ minor: 420_000_000n, currency: 'INR' });
+    expect(property.stampDuty).toEqual({ minor: 29_400_000n, currency: 'INR' });
+    expect(property.registration).toEqual({ minor: 0n, currency: 'INR' });
+    expect(property.member).toBe(meera);
+    expect(property.isSelfOccupied).toBe(true);
+    expect(property.isArchived).toBe(false);
+  });
+
+  it('says a share as a person does: 50.00 is 50, 100.00 is 100, 33.30 is 33.3', () => {
+    expect(toProperty(row, members).sharePct).toBe('50');
+    expect(toProperty({ ...row, co_owner_share_pct: '100.00' }, members).sharePct).toBe('100');
+    expect(toProperty({ ...row, co_owner_share_pct: '33.30' }, members).sharePct).toBe('33.3');
+    expect(toProperty({ ...row, co_owner_share_pct: '33.33' }, members).sharePct).toBe('33.33');
+  });
+
+  it('refuses a kind it does not know, a member that is not here, and an amount that is not a number', () => {
+    expect(() => toProperty({ ...row, kind: 'castle' }, members)).toThrow(MalformedRowError);
+    expect(() => toProperty({ ...row, member_id: 'elsewhere' }, members)).toThrow(MalformedRowError);
+    expect(() => toProperty({ ...row, purchase_cost_minor: 'lots' }, members)).toThrow(MalformedRowError);
+  });
+
+  it('reads archived from the status', () => {
+    expect(toProperty({ ...row, status: 'archived' }, members).isArchived).toBe(true);
+  });
+
+  const work = {
+    id: 'w-1',
+    property_id: 'p-1',
+    currency: 'INR',
+    work_date: '2022-11-10',
+    description: 'Modular kitchen',
+    amount_minor: '28000000',
+    is_capital: true,
+    voided_at: null,
+  };
+
+  it('reads work, capital or a repair, and whether it was voided', () => {
+    expect(toPropertyImprovement(work)).toMatchObject({
+      date: '2022-11-10',
+      amount: { minor: 28_000_000n, currency: 'INR' },
+      isCapital: true,
+      isVoided: false,
+    });
+    expect(toPropertyImprovement({ ...work, is_capital: false, voided_at: '2026-01-01T00:00:00Z' })).toMatchObject({
+      isCapital: false,
+      isVoided: true,
+    });
+  });
+
+  it('reads a valuation and the basis it came from, and refuses a basis it does not know', () => {
+    const valuation = {
+      id: 'v-1',
+      property_id: 'p-1',
+      currency: 'INR',
+      as_of_date: '2026-08-12',
+      value_minor: '640000000',
+      basis: 'broker',
+      note: null,
+    };
+    expect(toPropertyValuation(valuation)).toMatchObject({
+      asOf: '2026-08-12',
+      value: { minor: 640_000_000n, currency: 'INR' },
+      basis: 'broker',
+    });
+    expect(() => toPropertyValuation({ ...valuation, basis: 'guess' })).toThrow(MalformedRowError);
   });
 });
