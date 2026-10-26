@@ -17,6 +17,26 @@ async function open(page: Page, kind: 'deposit' | 'mutual_fund') {
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
 }
 
+/**
+ * A deposit that is still running, the first one the list has. The first row is the largest, and a seeded deposit
+ * matures with time: a matured one has paid out and shows no worked-out line, so the card this reads is not there.
+ */
+async function openRunningDeposit(page: Page) {
+  await page.goto('/#/holdings?kind=deposit');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  const count = await page.locator('.holding-row').count();
+  for (let i = 0; i < count; i++) {
+    await page.locator('.holding-row').nth(i).locator('a.holding-link').click();
+    await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
+    const worked = page.getByRole('region', { name: 'Value' }).getByText(/Worked out today|Value at par/);
+    if ((await worked.count()) > 0) return;
+    await page.goBack();
+    await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  }
+  throw new Error('No deposit in the household is still running: seed one, or this spec has nothing to read.');
+}
+
 test('on a phone the screen has its own bar: back to Holdings, the privacy switch and Edit', async ({ page }, testInfo) => {
   await open(page, 'deposit');
   const phone = (page.viewportSize()?.width ?? 1000) < 640;
@@ -33,7 +53,7 @@ test('on a phone the screen has its own bar: back to Holdings, the privacy switc
 test('a deposit: kind pill, the value card with what is worked out, the term in four figures with a tick, and the pair of buttons', async ({
   page,
 }) => {
-  await open(page, 'deposit');
+  await openRunningDeposit(page);
   await expect(page.getByText('Fixed deposit', { exact: true })).toBeVisible();
 
   const value = page.getByRole('region', { name: 'Value' });

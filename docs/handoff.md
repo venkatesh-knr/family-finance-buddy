@@ -289,7 +289,6 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
   (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98), FIRE (#99), the holding screens (#100), the Holdings list (#101)**.
-- **Known failing spec:** `holding-screen.spec.ts` "a deposit: kind pill, the value card…" fails on `main` since 25 October: its first deposit row is a seed deposit that has matured, and a matured deposit shows no worked-out line. A date-driven spec, not a regression; pick a running deposit or seed one.
 - **In flight:** nothing. The Holdings list was merged and deployed as #101, and the holding screens as #100 (each
   reviewed by the design-conformance agent). Every artboard is now built to, apart from Goals (step 9). The Quoted panel and Fetch price on a fund are not covered by any test, because no fund in the test
   household is linked to a price feed: try them once on a real linked fund.
