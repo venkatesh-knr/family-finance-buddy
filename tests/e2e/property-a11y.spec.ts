@@ -29,8 +29,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await v.getByLabel('Worth').fill('6400000');
     await v.getByRole('button', { name: 'Record valuation' }).click();
     await expect(card).toContainText('Valued at');
-    // The screen's own content: the bottom bar's role is the shell's, found by this and fixed in its own change.
-    const result = await new AxeBuilder({ page }).include('main').analyze();
+    const result = await new AxeBuilder({ page }).analyze();
     const summary = result.violations.map((x) => `${x.id}: ${x.nodes.length} · ${x.nodes[0]?.html.slice(0, 110)}`);
     await card.getByRole('button', { name: 'Archive', exact: true }).click();
     await card.getByRole('button', { name: 'Archive it' }).click();

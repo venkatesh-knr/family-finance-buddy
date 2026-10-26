@@ -435,31 +435,38 @@ function SignedIn({
         also lets the strip above it disappear on narrow screens, which is
         where the two rows of chrome came from in the first place.
         
-        role="group" with aria-pressed rather than a tablist, for the same
+        A group of buttons with aria-pressed rather than a tablist, for the same
         reason the top strip is: an incomplete ARIA tab pattern announces a
-        promise it does not keep. Profile and Settings stay in the account
-        menu; five destinations in a bar is one more than a thumb can aim at.
+        promise it does not keep. The nav is the landmark and the group inside
+        it is the control, because a nav may not carry the role of group
+        (axe: aria-allowed-role): the role had been put on the landmark itself,
+        which replaced the landmark and left a phone with no navigation region.
+        The group is `contents`, so its buttons stay flex items of the bar and
+        the layout is as it was. Profile and Settings stay in the account menu;
+        five destinations in a bar is one more than a thumb can aim at.
       */}
-      <nav className="bottom-nav hide-wide" role="group" aria-label="Screen">
-        {SCREENS.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={isPressed(id)}
-            onClick={() => {
-              setScreen(id);
-              // Back to the top: arriving halfway down a screen you have not
-              // seen before is disorienting, and the bar is most used to
-              // start something rather than to resume it.
-              window.scrollTo({ top: 0 });
-            }}
-          >
-            <span aria-hidden="true" className="bottom-nav-glyph">
-              {id in NAV_GLYPHS && <NavGlyph screen={id as keyof typeof NAV_GLYPHS} />}
-            </span>
-            <span>{label}</span>
-          </button>
-        ))}
+      <nav className="bottom-nav hide-wide" aria-label="Screens">
+        <div className="contents" role="group" aria-label="Screen">
+          {SCREENS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={isPressed(id)}
+              onClick={() => {
+                setScreen(id);
+                // Back to the top: arriving halfway down a screen you have not
+                // seen before is disorienting, and the bar is most used to
+                // start something rather than to resume it.
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              <span aria-hidden="true" className="bottom-nav-glyph">
+                {id in NAV_GLYPHS && <NavGlyph screen={id as keyof typeof NAV_GLYPHS} />}
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </nav>
     </div>
   );
