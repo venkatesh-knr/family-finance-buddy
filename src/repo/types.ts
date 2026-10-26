@@ -423,10 +423,12 @@ export interface NewFixedIncome {
   readonly accountLast4?: string | null;
   /** What the money is for, said when it is added. None when left out. */
   readonly earmark?: Earmark;
+  /** What a deposit is: a PPF, an SSY, an FD. Only a deposit has one (PF-C5). */
+  readonly scheme?: Scheme;
 }
 
 /** The terms of a deposit or bond that is already a holding. */
-export type NewTermsForHolding = Omit<NewFixedIncome, 'memberId' | 'name' | 'earmark'> & { readonly holdingId: Uuid };
+export type NewTermsForHolding = Omit<NewFixedIncome, 'memberId' | 'name' | 'earmark' | 'scheme'> & { readonly holdingId: Uuid };
 
 export interface NewDepositRenewal {
   readonly householdId: Uuid;
@@ -463,6 +465,8 @@ export interface NewHolding {
     readonly currency: string;
     readonly exposureCurrency: string;
     readonly isForeignAsset: boolean;
+    /** What a deposit is. Only a deposit has one (PF-C5). */
+    readonly scheme?: Scheme;
   };
   readonly quantity: Quantity;
   readonly cost?: Money | null;

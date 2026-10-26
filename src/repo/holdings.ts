@@ -223,6 +223,7 @@ export async function addHolding(input: NewHolding): Promise<{ readonly holdingI
       currency: input.instrument.currency,
       exposure_currency: input.instrument.exposureCurrency,
       is_foreign_asset: input.instrument.isForeignAsset,
+      ...(input.instrument.scheme === undefined ? {} : { scheme: input.instrument.scheme }),
     })
     .select('id')
     .single();

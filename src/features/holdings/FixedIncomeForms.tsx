@@ -9,7 +9,16 @@
  */
 
 import { useMemo, useState } from 'react';
-import { EARMARKS, EARMARK_LABELS, isEarmark, type Earmark } from '../../domain/earmark.ts';
+import {
+  EARMARKS,
+  EARMARK_LABELS,
+  SCHEMES,
+  SCHEME_LABELS,
+  isEarmark,
+  isScheme,
+  type Earmark,
+  type Scheme,
+} from '../../domain/earmark.ts';
 import { fixedIncomeView, trimRate } from '../../domain/fixed-income.ts';
 import { formatMoney, minorUnitExponent, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import type { IsoDate } from '../../lib/dates.ts';
@@ -129,6 +138,8 @@ export function TermsForm({
   const [busy, setBusy] = useState(false);
   // Said when it is added, as on the holding's own screen later: what the money is for, and whether to value it now.
   const [earmark, setEarmark] = useState<Earmark>('none');
+  // What a deposit is (PF-C5): a bond has none.
+  const [scheme, setScheme] = useState<Scheme | ''>('');
   const [recordFirst, setRecordFirst] = useState(true);
   // Added, but its first reading could not be recorded: the holding exists, so the form must not add it twice.
   const [added, setAdded] = useState(false);
@@ -213,6 +224,7 @@ export function TermsForm({
           memberId,
           name: name.trim(),
           ...(earmark === 'none' ? {} : { earmark }),
+          ...(kind === 'deposit' && scheme !== '' ? { scheme } : {}),
         });
         if (recordFirst && firstReading !== null && today !== undefined) {
           try {
@@ -515,6 +527,26 @@ export function TermsForm({
             {EARMARKS.map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {mode.kind === 'new' && kind === 'deposit' && (
+        <label className="flex min-w-0 flex-col gap-1.5">
+          <span className="label">Scheme</span>
+          <select
+            className="field"
+            value={scheme}
+            onChange={(event) => {
+              setScheme(isScheme(event.target.value) ? event.target.value : '');
+            }}
+          >
+            <option value="">Not set</option>
+            {SCHEMES.map((option) => (
+              <option key={option} value={option}>
+                {SCHEME_LABELS[option]}
               </option>
             ))}
           </select>

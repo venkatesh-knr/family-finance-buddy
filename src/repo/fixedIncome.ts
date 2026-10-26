@@ -89,6 +89,7 @@ export async function addFixedIncome(input: NewFixedIncome): Promise<{ readonly 
       currency: input.principal.currency,
       exposure_currency: input.principal.currency,
       is_foreign_asset: false,
+      ...(input.scheme === undefined || input.kind !== 'deposit' ? {} : { scheme: input.scheme }),
     })
     .select('id')
     .single();
