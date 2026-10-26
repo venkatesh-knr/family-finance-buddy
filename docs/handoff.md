@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #108 (#102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #110 (#109 the property cost basis, #110 the property migration; before them #102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -335,13 +335,20 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   3. Follow-ups found on the way: the screens suite photographs More before its Tax line loads; `theme.spec.ts` does not cover More or
      Insurance (the maintainer's file); other screens may share the stale-read race fixed in the members
      list on Settings.
-  4. **Step 6**: the cost-basis function is built (`src/domain/property.ts`). The maintainer accepted all five
-     recommendations; the migration `20261026120000_property.sql` (property, improvements, dated valuations, the
-     audit rule, the reset, a stale-months setting) and `supabase/tests/property.test.sql` are written for review.
-     **It has not been applied to live** and no screen is built: CI is the first place the SQL has run (Docker is
-     blocked here). After review: the repository layer, then the screen. A personal property must join
-     `my_private_entry_count`, the Profile's private list and its activity names before a screen offers it
-     (`docs/decisions.md`). Then the retirement kind (PPF, EPF, NPS).
+  4. **Step 6, property:** the migration `20261026120000_property.sql` is **applied to live** (the maintainer, 26 October).
+     Built: the cost-basis function and the share, latest-valuation, staleness and equity functions
+     (`src/domain/property.ts`), the repository layer (`src/repo/property.ts`) and the Property screen behind More
+     (`src/features/property`). **Owed, in this order:** (a) the net-worth slice: the Overview's net worth, allocation and
+     history read the latest valuation's share and take the linked loan's balance off, and the screen's
+     "not yet counted in net worth" note comes out; (b) before any screen offers a property as personal: it joins
+     `my_private_entry_count`, the Profile's private list and its activity names, and a sums function for the
+     household total (`docs/decisions.md`); (c) a way for a contributor to reach the screen (they have no More); (d)
+     `icons.md` section 4 and IC-R8 still say the property tile is wired to nothing, and it now is (`PROPERTY_TILE`),
+     which needs the maintainer's wording; (e) whether a property that is not lived in is in the FIRE corpus, a rule of
+     that calculation; (f) latent: a loan can be linked to two properties and would be taken off twice in the total, and a
+     loan the reader cannot see makes a property look unencumbered, which matters the day a contributor reaches the screen;
+     (g) the bottom bar's `role="group"` on a `nav` fails axe's `aria-allowed-role` on a phone, a shell fault found by the
+     Property review. Then the retirement kind (PPF, EPF, NPS).
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.

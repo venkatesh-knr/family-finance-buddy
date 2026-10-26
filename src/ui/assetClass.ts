@@ -172,6 +172,13 @@ export const UNWIRED_TILES = {
 export const PROTECTION_TILE: { readonly glyph: Glyph; readonly colour: string } = UNWIRED_TILES.insurance;
 
 /**
+ * The tile of a property, read by `AssetTile` for the kind `property` and by nothing else. The Property screen draws it, so
+ * it is wired as the insurance tile is: a property is not a holding and not an asset class, and `assetClass('property')` is
+ * `other`.
+ */
+export const PROPERTY_TILE: { readonly glyph: Glyph; readonly colour: string } = UNWIRED_TILES.property;
+
+/**
  * Foreign: a MARKER, and not a class (docs/design/icons.md §4).
  *
  * A foreign holding already has a kind: it is an equity or a fund that happens to be held abroad. So

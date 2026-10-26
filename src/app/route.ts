@@ -18,6 +18,7 @@ const SCREEN_NAMES: readonly AppScreen[] = [
   'tax',
   'fire',
   'insurance',
+  'property',
   'more',
   'holding',
   'profile',

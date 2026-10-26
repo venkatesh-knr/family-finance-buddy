@@ -702,3 +702,111 @@ export class NoHouseholdError extends Error {
     this.name = 'NoHouseholdError';
   }
 }
+
+// ─── property ──────────────────────────────────────────────────────────────
+
+export type PropertyKind = 'land' | 'plot' | 'apartment' | 'house' | 'commercial';
+export const PROPERTY_KINDS: readonly PropertyKind[] = ['land', 'plot', 'apartment', 'house', 'commercial'];
+
+/** How a valuation was arrived at. The app never pretends a property is worth a precise number. */
+export type ValuationBasis = 'own_estimate' | 'circle_rate' | 'broker' | 'registered';
+export const VALUATION_BASES: readonly ValuationBasis[] = ['own_estimate', 'circle_rate', 'broker', 'registered'];
+
+export interface Property {
+  readonly id: Uuid;
+  readonly member: Member;
+  readonly kind: PropertyKind;
+  readonly label: string;
+  /** Every amount of this property is in it. */
+  readonly currency: string;
+  readonly purchaseDate: IsoDate;
+  readonly purchaseCost: Money;
+  readonly stampDuty: Money;
+  readonly registration: Money;
+  /** The household's share, a percentage with up to two decimal places: "100", "50", "33.33". */
+  readonly sharePct: string;
+  readonly isSelfOccupied: boolean;
+  /** The home loan, if there is one. */
+  readonly linkedLiabilityId: Uuid | null;
+  readonly visibility: Visibility;
+  readonly isArchived: boolean;
+  readonly note: string | null;
+}
+
+export interface PropertyImprovement {
+  readonly id: Uuid;
+  readonly propertyId: Uuid;
+  readonly date: IsoDate;
+  readonly description: string;
+  readonly amount: Money;
+  /** Capital work adds to the cost basis; a repair is recorded and does not. */
+  readonly isCapital: boolean;
+  readonly isVoided: boolean;
+}
+
+export interface PropertyValuation {
+  readonly id: Uuid;
+  readonly propertyId: Uuid;
+  readonly asOf: IsoDate;
+  /** The whole property's estimated value: the household's share is applied when it is read. */
+  readonly value: Money;
+  readonly basis: ValuationBasis;
+  readonly note: string | null;
+}
+
+/** A loan a property can be linked to, with what is still owed on it. */
+export interface PropertyLoan {
+  readonly id: Uuid;
+  readonly name: string;
+  readonly isClosed: boolean;
+  readonly outstanding: Money | null;
+  readonly outstandingAsOf: IsoDate | null;
+}
+
+export interface PropertyListing {
+  readonly household: Household;
+  /** How long a valuation may be before it is marked stale. A household setting. */
+  readonly staleMonths: number;
+  readonly viewer: Viewer;
+  readonly members: readonly Member[];
+  readonly properties: readonly Property[];
+  /** Every improvement, oldest first. */
+  readonly improvements: readonly PropertyImprovement[];
+  /** Every valuation, newest first. */
+  readonly valuations: readonly PropertyValuation[];
+  readonly loans: readonly PropertyLoan[];
+}
+
+export interface NewProperty {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly kind: PropertyKind;
+  readonly label: string;
+  readonly currency: string;
+  readonly purchaseDate: IsoDate;
+  readonly purchaseCost: Money;
+  readonly stampDuty: Money;
+  readonly registration: Money;
+  readonly sharePct: string;
+  readonly isSelfOccupied: boolean;
+  readonly linkedLiabilityId?: Uuid | null;
+  readonly note?: string | null;
+}
+
+export interface NewPropertyImprovement {
+  readonly householdId: Uuid;
+  readonly propertyId: Uuid;
+  readonly date: IsoDate;
+  readonly description: string;
+  readonly amount: Money;
+  readonly isCapital: boolean;
+}
+
+export interface NewPropertyValuation {
+  readonly householdId: Uuid;
+  readonly propertyId: Uuid;
+  readonly asOf: IsoDate;
+  readonly value: Money;
+  readonly basis: ValuationBasis;
+  readonly note?: string | null;
+}

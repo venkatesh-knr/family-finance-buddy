@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AppScreen } from '../domain/access.ts';
 import { formatMoney } from '../lib/money.ts';
+import { GLYPHS as GLYPH_PATHS } from '../ui/assetClass.ts';
 import { hashFor } from './route.ts';
 import { policiesPhrase, profileLine, renewalPill, taxLine, taxYearLabel } from './moreGlance.ts';
 import { useMoreGlance } from './useMoreGlance.ts';
@@ -28,6 +29,14 @@ const GLYPHS: Partial<Record<AppScreen, ReactNode>> = {
       <path d="M12 12v6a2.5 2.5 0 0 0 5 0" />
     </>
   ),
+  // The tile's own house, so the two are one drawing (icons.md section 4).
+  property: (
+    <>
+      {GLYPH_PATHS.house.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </>
+  ),
   profile: (
     <>
       <circle cx="12" cy="8" r="4" />
@@ -52,6 +61,7 @@ const GLYPHS: Partial<Record<AppScreen, ReactNode>> = {
 const TITLES: Partial<Record<AppScreen, string>> = {
   tax: 'Tax',
   insurance: 'Insurance',
+  property: 'Property',
   profile: 'Profile',
   settings: 'Settings',
 };
@@ -60,6 +70,7 @@ const TITLES: Partial<Record<AppScreen, string>> = {
 const PURPOSE: Partial<Record<AppScreen, string>> = {
   tax: 'What the year’s gains and income come to, on the rules that applied.',
   insurance: 'Policies, what they cover and when they renew.',
+  property: 'What each cost, what it is thought to be worth, and how old that is.',
   settings: 'Theme, how amounts show, members',
 };
 

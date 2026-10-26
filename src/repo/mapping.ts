@@ -30,6 +30,8 @@ import {
   LOT_KINDS,
   MEMBER_COLOURS,
   PAYMENT_METHODS,
+  PROPERTY_KINDS,
+  VALUATION_BASES,
   VALUATION_SOURCES,
   VISIBILITIES,
   type DepositRenewal,
@@ -45,6 +47,9 @@ import {
   type Instrument,
   type Member,
   type PaymentMethod,
+  type Property,
+  type PropertyImprovement,
+  type PropertyValuation,
   type ExpenseCategory,
   type Quantity,
   type Valuation,
@@ -466,5 +471,69 @@ export function toRatingChange(raw: unknown): RatingChange {
     from: optionalString(row['from_rating'], 'bond_rating_change.from_rating'),
     to: optionalString(row['to_rating'], 'bond_rating_change.to_rating'),
     changedOn: requireIsoDate(row['changed_on'], 'bond_rating_change.changed_on'),
+  };
+}
+
+// ─── property ──────────────────────────────────────────────────────────────
+
+/** A numeric(5,2) share arrives as text ("50.00", "100.00"); it is said as a person says it: "50", "100", "33.33". */
+function trimShare(raw: string): string {
+  return raw.includes('.') ? raw.replace(/0+$/, '').replace(/\.$/, '') : raw;
+}
+
+export function toProperty(raw: unknown, membersById: ReadonlyMap<string, Member>): Property {
+  const row = requireRecord(raw, 'property');
+  const currency = requireString(row['currency'], 'property.currency');
+  const memberId = requireString(row['member_id'], 'property.member_id');
+  const member = membersById.get(memberId);
+  if (member === undefined) {
+    throw new MalformedRowError('property.member_id', `${memberId} is not a member of this household`);
+  }
+  const share = row['co_owner_share_pct'];
+  const sharePct = trimShare(typeof share === 'number' ? String(share) : requireString(share, 'property.co_owner_share_pct'));
+
+  return {
+    id: requireString(row['id'], 'property.id'),
+    member,
+    kind: requireOneOf(row['kind'], PROPERTY_KINDS, 'property.kind'),
+    label: requireString(row['label'], 'property.label'),
+    currency,
+    purchaseDate: requireIsoDate(row['purchase_date'], 'property.purchase_date'),
+    purchaseCost: money(toBigIntExact(row['purchase_cost_minor'], 'property.purchase_cost_minor'), currency),
+    stampDuty: money(toBigIntExact(row['stamp_duty_minor'], 'property.stamp_duty_minor'), currency),
+    registration: money(toBigIntExact(row['registration_minor'], 'property.registration_minor'), currency),
+    sharePct,
+    isSelfOccupied: requireBoolean(row['is_self_occupied'], 'property.is_self_occupied'),
+    linkedLiabilityId: optionalString(row['linked_liability_id'], 'property.linked_liability_id'),
+    visibility: requireOneOf(row['visibility'], VISIBILITIES, 'property.visibility'),
+    isArchived: requireOneOf(row['status'], ['active', 'archived'] as const, 'property.status') === 'archived',
+    note: optionalString(row['note'], 'property.note'),
+  };
+}
+
+export function toPropertyImprovement(raw: unknown): PropertyImprovement {
+  const row = requireRecord(raw, 'property_improvement');
+  const currency = requireString(row['currency'], 'property_improvement.currency');
+  return {
+    id: requireString(row['id'], 'property_improvement.id'),
+    propertyId: requireString(row['property_id'], 'property_improvement.property_id'),
+    date: requireIsoDate(row['work_date'], 'property_improvement.work_date'),
+    description: requireString(row['description'], 'property_improvement.description'),
+    amount: money(toBigIntExact(row['amount_minor'], 'property_improvement.amount_minor'), currency),
+    isCapital: requireBoolean(row['is_capital'], 'property_improvement.is_capital'),
+    isVoided: row['voided_at'] !== null && row['voided_at'] !== undefined,
+  };
+}
+
+export function toPropertyValuation(raw: unknown): PropertyValuation {
+  const row = requireRecord(raw, 'property_valuation');
+  const currency = requireString(row['currency'], 'property_valuation.currency');
+  return {
+    id: requireString(row['id'], 'property_valuation.id'),
+    propertyId: requireString(row['property_id'], 'property_valuation.property_id'),
+    asOf: requireIsoDate(row['as_of_date'], 'property_valuation.as_of_date'),
+    value: money(toBigIntExact(row['value_minor'], 'property_valuation.value_minor'), currency),
+    basis: requireOneOf(row['basis'], VALUATION_BASES, 'property_valuation.basis'),
+    note: optionalString(row['note'], 'property_valuation.note'),
   };
 }

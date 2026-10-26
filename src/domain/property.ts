@@ -110,3 +110,96 @@ export function propertyCostBasis(input: PropertyCostInput): PropertyCostBasis {
     sharePct,
   };
 }
+
+// ─── the rest of what a property screen works out ─────────────────────────────────────────────────────────────────
+
+/**
+ * The household's share of an amount: a value, or a loan. The same integer arithmetic and the same rounding as the
+ * cost, so a share of the cost and a share of the value cannot disagree about what a share is.
+ */
+export function shareOfMoney(
+  value: Money,
+  sharePct: string,
+): { readonly ok: true; readonly amount: Money } | { readonly ok: false; readonly reason: 'invalid-share' | 'negative-amount' } {
+  const scaled = scaledShare(sharePct);
+  if (scaled === null) return { ok: false, reason: 'invalid-share' };
+  if (value.minor < 0n) return { ok: false, reason: 'negative-amount' };
+  return { ok: true, amount: money((value.minor * scaled + 5_000n) / 10_000n, value.currency) };
+}
+
+/** A dated estimate of the whole property. */
+export interface PropertyValuationPoint {
+  readonly asOf: IsoDate;
+  readonly value: Money;
+}
+
+/**
+ * The newest valuation at or before a day, from valuations in any order; null when there is none yet. A later
+ * valuation never changes the answer for an earlier day, which is what keeps yesterday's net worth where it was.
+ */
+export function latestValuationOn<T extends { readonly asOf: IsoDate }>(
+  valuations: readonly T[],
+  on: IsoDate,
+): T | null {
+  let best: T | null = null;
+  for (const valuation of valuations) {
+    if (valuation.asOf > on) continue;
+    if (best === null || valuation.asOf > best.asOf) best = valuation;
+  }
+  return best;
+}
+
+const dateParts = (iso: IsoDate): [number, number, number] => [
+  Number(iso.slice(0, 4)),
+  Number(iso.slice(5, 7)),
+  Number(iso.slice(8, 10)),
+];
+
+const pad = (n: number, width: number): string => String(n).padStart(width, '0');
+
+/** A date some months on, ending the month on its last day when the day does not exist in it. */
+function addMonths(iso: IsoDate, months: number): IsoDate {
+  const [year, month, day] = dateParts(iso);
+  const index = year * 12 + (month - 1) + months;
+  const y = Math.floor(index / 12);
+  const m = (index % 12) + 1;
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${pad(y, 4)}-${pad(m, 2)}-${pad(Math.min(day, last), 2)}`;
+}
+
+/** Whole months from one day to a later one; none when the later day is not later. */
+function wholeMonths(from: IsoDate, to: IsoDate): number {
+  if (to <= from) return 0;
+  const [fy, fm] = dateParts(from);
+  const [ty, tm] = dateParts(to);
+  let months = (ty - fy) * 12 + (tm - fm);
+  if (addMonths(from, months) > to) months -= 1;
+  return Math.max(months, 0);
+}
+
+/**
+ * How old a valuation is, in whole months, and whether it is stale: more than `staleMonths` months old, so a
+ * valuation is not stale on the day its setting is reached and is the day after. Stale is computed from the date
+ * and never stored (docs/decisions.md, Property). A valuation dated after today is not old.
+ */
+export function valuationAge(
+  asOf: IsoDate,
+  today: IsoDate,
+  staleMonths: number,
+): { readonly months: number; readonly stale: boolean } {
+  return { months: wholeMonths(asOf, today), stale: today > addMonths(asOf, staleMonths) };
+}
+
+/**
+ * Equity: the household's share of the value less what is outstanding on the loan, or the value when there is no
+ * loan. It can be negative, and is: a loan larger than the property is said and not floored at nothing. A loan in
+ * another currency is refused rather than subtracted across.
+ */
+export function propertyEquity(
+  valueShare: Money,
+  outstanding: Money | null,
+): { readonly ok: true; readonly equity: Money } | { readonly ok: false; readonly reason: 'mixed-currency' } {
+  if (outstanding === null) return { ok: true, equity: valueShare };
+  if (outstanding.currency !== valueShare.currency) return { ok: false, reason: 'mixed-currency' };
+  return { ok: true, equity: money(valueShare.minor - outstanding.minor, valueShare.currency) };
+}
