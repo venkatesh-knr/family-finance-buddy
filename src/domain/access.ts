@@ -27,6 +27,7 @@ export type AppScreen =
   | 'tax'
   | 'fire'
   | 'insurance'
+  | 'property'
   | 'more'
   | 'holding'
   | 'profile'
@@ -56,7 +57,7 @@ export function moreFor(role: HouseholdRole | null): readonly AppScreen[] {
   switch (role) {
     case 'owner':
     case 'partner':
-      return ['tax', 'insurance'];
+      return ['tax', 'insurance', 'property'];
     case 'contributor':
     case 'viewer':
     case null:

@@ -9,7 +9,7 @@ describe('screensFor', () => {
   });
 
   it('keeps Tax and Insurance behind More for the roles that can read the household, and offers nobody else a More', () => {
-    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'insurance']);
+    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'insurance', 'property']);
     for (const role of ['contributor', 'viewer', null] as const) {
       expect(moreFor(role)).toEqual([]);
       expect(screensFor(role)).not.toContain('more');
@@ -35,6 +35,7 @@ describe('allowedScreen', () => {
   it('keeps the screen a role may see, including the ones behind More', () => {
     expect(allowedScreen('owner', 'tax')).toBe('tax');
     expect(allowedScreen('partner', 'insurance')).toBe('insurance');
+    expect(allowedScreen('partner', 'property')).toBe('property');
     expect(allowedScreen('owner', 'more')).toBe('more');
     expect(allowedScreen('contributor', 'expenses')).toBe('expenses');
   });
@@ -47,6 +48,8 @@ describe('allowedScreen', () => {
     // to a contributor, and a hash somebody typed is a request and not a grant.
     expect(allowedScreen('contributor', 'insurance')).toBe('summary');
     expect(allowedScreen('viewer', 'insurance')).toBe('summary');
+    expect(allowedScreen('contributor', 'property')).toBe('summary');
+    expect(allowedScreen('viewer', 'property')).toBe('summary');
     expect(allowedScreen('contributor', 'more')).toBe('summary');
   });
 
