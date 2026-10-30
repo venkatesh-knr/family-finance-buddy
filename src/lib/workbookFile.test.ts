@@ -18,7 +18,8 @@ describe('the workbook as an .xlsx file', { timeout: 30_000 }, () => {
 
     const back = readWorkbook(await readWorkbookFile(bytes));
     expect(back.problems).toEqual([]);
-    for (const entity of ENTITIES) {
+    const inFile = ENTITIES.filter((entity) => entity.sheet !== null || ENTITIES.some((other) => other.joins?.entity === entity.key));
+    for (const entity of inFile) {
       const written = (tables[entity.key] ?? []).map((row) => canonicalRow(entity, row));
       expect(back.tables[entity.key] ?? [], entity.key).toEqual(written);
     }

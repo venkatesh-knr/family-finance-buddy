@@ -26,7 +26,7 @@ import {
   type Cell,
 } from './cells.ts';
 import { minorUnitExponent } from '../../lib/money.ts';
-import { ENTITIES, ENTITY_BY_KEY, TEMPLATE_VERSION, headerOf, type Column, type Entity, type Lookup, type Row } from './entities.ts';
+import { ENTITIES, ENTITY_BY_KEY, SHEETED, TEMPLATE_VERSION, headerOf, sheetColumns, type Column, type Entity, type Lookup, type Row } from './entities.ts';
 
 export interface ExportMeta {
   /** An instant, as UTC. */
@@ -163,26 +163,36 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
   };
 
   const sheets: SheetModel[] = [about];
-  for (const entity of ENTITIES) {
+  for (const entity of SHEETED) {
+    const sheetName = entity.sheet ?? entity.key;
+    const columns = sheetColumns(entity);
+    const joinedRef = entity.joins?.entity;
     const headers: string[] = [];
     const formats: (string | null)[] = [];
     const writers: ((row: Row, rowNumber: number) => Cell)[] = [];
 
-    for (const column of entity.columns) {
+    // A holding's sheet also carries what its instrument is, so each row is read as the two together.
+    const merged = (tables[entity.key] ?? []).map((row): Row => {
+      const joined = entity.joins === undefined ? undefined : lookup(entity.joins.entity, row[entity.joins.via]);
+      return joined === undefined ? row : { ...joined, ...row };
+    });
+
+    for (const column of columns) {
       const header = headerOf(column);
       headers.push(header);
-      formats.push(column.kind === 'money' ? moneyFormat(column, tables[entity.key] ?? [], lookup) : null);
+      formats.push(column.kind === 'money' ? moneyFormat(column, merged, lookup) : null);
       writers.push((row, rowNumber) => {
         try {
           return toCell(column, row[column.key] ?? null, row, lookup);
         } catch (error) {
           if (!(error instanceof CellError)) throw error;
-          problems.push({ sheet: entity.sheet, row: rowNumber, column: header, message: error.message });
+          problems.push({ sheet: sheetName, row: rowNumber, column: header, message: error.message });
           return null;
         }
       });
 
-      const nameHeader = nameHeaderOf(column);
+      // The name of the instrument is a column of the sheet already, so it is not written a second time beside its id.
+      const nameHeader = column.ref === joinedRef ? null : nameHeaderOf(column);
       if (nameHeader !== null && column.ref !== undefined) {
         const target = ENTITY_BY_KEY.get(column.ref);
         headers.push(nameHeader);
@@ -190,16 +200,10 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
         writers.push((row) => target?.label?.(lookup(column.ref as string, row[column.key]) ?? {}, lookup) ?? null);
       }
 
-      for (const derived of entity.derived ?? []) {
-        if (derived.after !== column.key) continue;
-        headers.push(derived.header);
-        formats.push(null);
-        writers.push((row) => derived.value(row, lookup));
-      }
     }
 
-    const rows = (tables[entity.key] ?? []).map((row, index) => writers.map((write) => write(row, index + 2)));
-    sheets.push({ name: entity.sheet, entity: entity.key, headers, formats, rows, readOnly: entity.upload === 'none' });
+    const rows = merged.map((row, index) => writers.map((write) => write(row, index + 2)));
+    sheets.push({ name: sheetName, entity: entity.key, headers, formats, rows, readOnly: entity.upload === 'none' });
   }
 
   return { workbook: { sheets }, problems };
@@ -298,10 +302,11 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
   const pending: PendingRow[] = [];
   const tables: Record<string, Row[]> = {};
 
-  for (const entity of ENTITIES) {
-    const sheet = sheetNamed(sheets, entity.sheet);
+  for (const entity of SHEETED) {
+    const sheet = sheetNamed(sheets, entity.sheet ?? entity.key);
     if (sheet === undefined) continue;
     tables[entity.key] = [];
+    if (entity.joins !== undefined) tables[entity.joins.entity] = [];
 
     const header = sheet.rows[0] ?? [];
     const indexOf = new Map<string, number>();
@@ -316,7 +321,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
       }
       indexOf.set(name, index);
     });
-    for (const column of entity.columns) {
+    for (const column of sheetColumns(entity)) {
       if (!indexOf.has(headerOf(column))) {
         problems.push({ sheet: sheet.name, row: 1, column: headerOf(column), message: `The sheet has no column "${headerOf(column)}". It is read by its headers, never by position.` });
         structural = true;
@@ -328,7 +333,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
       if (cells.every(blank)) return;
       const values: Record<string, string | null> = {};
       const rowNumber = offset + 2;
-      for (const column of entity.columns) {
+      for (const column of sheetColumns(entity)) {
         const header = headerOf(column);
         if (column.kind === 'money') continue;
         try {
@@ -350,7 +355,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
     ),
   );
   for (const row of pending) {
-    for (const column of row.entity.columns) {
+    for (const column of sheetColumns(row.entity)) {
       if (column.kind !== 'money') continue;
       const header = headerOf(column);
       const cell = row.cells[row.indexOf.get(header) ?? -1] ?? null;
@@ -368,10 +373,27 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
         row.values[column.key] = null;
       }
     }
-    tables[row.entity.key]?.push(row.values);
+    tables[row.entity.key]?.push(pick(row.entity.columns, row.values));
+    // The instrument written beside a holding is one row of its own, however many holdings name it.
+    const joins = row.entity.joins;
+    const joined = joins === undefined ? undefined : ENTITY_BY_KEY.get(joins.entity);
+    if (joins !== undefined && joined !== undefined) {
+      const instrumentId = row.values[joins.via] ?? null;
+      const known = tables[joined.key] ?? [];
+      if (instrumentId === null || !known.some((existing) => existing['id'] === instrumentId)) {
+        known.push({ id: instrumentId, ...pick(joined.columns.filter((column) => column.key !== 'id'), row.values) });
+        tables[joined.key] = known;
+      }
+    }
   }
 
   return { tables, problems };
+}
+
+function pick(columns: readonly Column[], values: Readonly<Record<string, string | null>>): Row {
+  const out: Record<string, string | null> = {};
+  for (const column of columns) out[column.key] = values[column.key] ?? null;
+  return out;
 }
 
 /** A row in the one form it can be compared in: numbers without trailing zeros, instants in UTC, amounts as integers. */

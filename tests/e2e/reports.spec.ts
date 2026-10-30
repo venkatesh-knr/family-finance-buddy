@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TOTP } from 'otpauth';
 import { readFileSync } from 'node:fs';
-import { ENTITIES } from '../../src/domain/export/entities.ts';
+import { SHEETED } from '../../src/domain/export/entities.ts';
 import { readWorkbook } from '../../src/domain/export/workbook.ts';
 import { readWorkbookFile } from '../../src/lib/workbookFile.ts';
 
@@ -56,22 +56,18 @@ test('Export everything asks for a fresh code, then saves a workbook that reads 
   const sheets = await readWorkbookFile(new Uint8Array(readFileSync(path)));
   const names = sheets.map((sheet) => sheet.name);
   expect(names[0]).toBe('About');
-  for (const entity of ENTITIES) expect(names, entity.sheet).toContain(entity.sheet);
+  for (const entity of SHEETED) expect(names, String(entity.sheet)).toContain(entity.sheet);
+  // Only what a person adds or changes: not settings, members, instruments as a sheet, or reference data the app keeps.
+  for (const absent of ['Household', 'Members', 'Instruments', 'Prices', 'Scheme rates', 'Tax rules', 'FX rates', 'Imports']) expect(names).not.toContain(absent);
 
   const back = readWorkbook(sheets);
   expect(back.problems).toEqual([]);
-  // The demo household has members, holdings and expenses, and the household row is the one that was open.
-  expect(back.tables['household']).toHaveLength(1);
-  expect((back.tables['member'] ?? []).length).toBeGreaterThan(0);
+  // The demo household has holdings, each with what it is written beside it, and expenses.
+  const holdingSheet = sheets.find((sheet) => sheet.name === 'Holdings');
+  expect(holdingSheet?.rows[0]).toEqual(expect.arrayContaining(['name', 'kind', 'quantity', 'cost', 'currency']));
   expect((back.tables['holding'] ?? []).length).toBeGreaterThan(0);
+  expect((back.tables['instrument'] ?? []).length).toBeGreaterThan(0);
   expect((back.tables['expense_txn'] ?? []).length).toBeGreaterThan(0);
-
-  // The household is the one this session is in, and nothing in the file belongs to another.
-  const householdId = back.tables['household']?.[0]?.['id'];
-  for (const entity of ENTITIES) {
-    if (entity.scope !== 'household' || entity.key === 'household') continue;
-    for (const row of back.tables[entity.key] ?? []) expect(row['household_id'], entity.key).toBe(householdId);
-  }
 
   // No credential, account id or raw statement payload in any sheet.
   const text = sheets.flatMap((sheet) => sheet.rows.flat()).filter((cell): cell is string => typeof cell === 'string').join('\n');

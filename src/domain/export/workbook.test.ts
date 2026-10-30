@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENTITIES, NOT_EXPORTED, TEMPLATE_VERSION, headerOf, type Row } from './entities.ts';
+import { ENTITIES, NOT_EXPORTED, SHEETED, TEMPLATE_VERSION, headerOf, sheetColumns, type Row } from './entities.ts';
 import { exportFixture as fixture } from './fixture.ts';
 import { buildWorkbook, canonicalRow, readWorkbook, type ExportMeta, type SheetModel } from './workbook.ts';
 
@@ -18,7 +18,9 @@ describe('the shape of the file', () => {
     expect(workbook.sheets[0]?.name).toBe('About');
     const names = workbook.sheets.map((sheet) => sheet.name);
     expect(new Set(names).size).toBe(names.length);
-    for (const entity of ENTITIES) expect(names).toContain(entity.sheet);
+    for (const entity of SHEETED) expect(names).toContain(entity.sheet);
+    // Setup that is not the person's to edit here is not a sheet: settings, members, and the instrument a holding is.
+    for (const absent of ['Household', 'Members', 'Instruments']) expect(names).not.toContain(absent);
     for (const name of names) expect(name.length).toBeLessThanOrEqual(31);
   });
 
@@ -57,7 +59,7 @@ describe('the shape of the file', () => {
     expect(holdings?.rows[0]?.[holdings.headers.indexOf('quantity')]).toBe(1234.5678);
     // A holding’s cost is in its instrument’s currency, which is written beside it for the person reading.
     expect(holdings?.rows[0]?.[holdings.headers.indexOf('cost')]).toBe(150000);
-    expect(holdings?.rows[0]?.[holdings.headers.indexOf('cost_currency')]).toBe('INR');
+    expect(holdings?.rows[0]?.[holdings.headers.indexOf('currency')]).toBe('INR');
   });
 
   it('writes a name beside every column that points at another record, so a person need not read an id', () => {
@@ -68,7 +70,10 @@ describe('the shape of the file', () => {
     expect(expenses?.rows[0]?.[expenses.headers.indexOf('member_name')]).toBe('Venkatesh');
     expect(expenses?.rows[0]?.[expenses.headers.indexOf('category_name')]).toBe('Groceries');
     const holdings = workbook.sheets.find((sheet) => sheet.name === 'Holdings');
-    expect(holdings?.rows[0]?.[holdings.headers.indexOf('instrument_name')]).toBe('Nippon Nifty 50');
+    // What the holding is, written beside it: its name and kind, from the instrument, not a sheet of their own.
+    expect(holdings?.rows[0]?.[holdings.headers.indexOf('name')]).toBe('Nippon Nifty 50');
+    expect(holdings?.rows[0]?.[holdings.headers.indexOf('kind')]).toBe('fund');
+    expect(holdings?.headers).not.toContain('instrument_name');
   });
 
   it('shows an amount with the places its currency has, and never fewer than its rows carry', () => {
@@ -95,10 +100,10 @@ describe('the shape of the file', () => {
 
   it('marks the sheets the upload will not accept as read-only', () => {
     const { workbook } = buildWorkbook(fixture(), META);
-    expect(workbook.sheets.find((sheet) => sheet.name === 'Household')?.readOnly).toBe(true);
+    expect(workbook.sheets.find((sheet) => sheet.name === 'Bond ratings')?.readOnly).toBe(true);
     // Reference data the app keeps is not in the file at all.
     const names = workbook.sheets.map((sheet) => sheet.name);
-    for (const absent of ['Prices', 'Scheme rates', 'Tax rules', 'FX rates', 'Imports']) expect(names).not.toContain(absent);
+    for (const absent of ['Prices', 'Scheme rates', 'Tax rules', 'FX rates', 'Imports', 'Household']) expect(names).not.toContain(absent);
     expect(workbook.sheets.find((sheet) => sheet.name === 'Expenses')?.readOnly).toBe(false);
   });
 
@@ -118,7 +123,9 @@ describe('the round trip', () => {
     const { workbook } = buildWorkbook(tables, META);
     const back = readWorkbook(sheetsFor(workbook));
     expect(back.problems).toEqual([]);
-    for (const entity of ENTITIES) {
+    // The entities with a sheet, and the instrument that is written inside the Holdings sheet.
+    const inFile = ENTITIES.filter((entity) => entity.sheet !== null || ENTITIES.some((other) => other.joins?.entity === entity.key));
+    for (const entity of inFile) {
       const written = (tables[entity.key] ?? []).map((row) => canonicalRow(entity, row));
       expect(back.tables[entity.key] ?? [], entity.key).toEqual(written);
     }
@@ -155,6 +162,18 @@ describe('the round trip', () => {
     expect(back.tables['expense_txn']?.[0]).toMatchObject({ amount_minor: '25000050', txn_date: '2026-10-28' });
   });
 
+  it('reads one instrument for the holdings that name it, and one for each holding that has its own', () => {
+    const tables = fixture();
+    const first = tables['holding']?.[0] as Row;
+    // A second member's holding of the same fund: two holdings, one instrument.
+    tables['holding'] = [...(tables['holding'] ?? []), { ...first, id: '00000000-0000-4000-8000-0000000000e9', folio_last4: '9999' }];
+    const { workbook } = buildWorkbook(tables, META);
+    const back = readWorkbook(sheetsFor(workbook));
+    expect(back.problems).toEqual([]);
+    expect(back.tables['holding']).toHaveLength(3);
+    expect(back.tables['instrument']).toHaveLength(2);
+  });
+
   it('reads a holding’s cost in the currency of its instrument', () => {
     const { workbook } = buildWorkbook(fixture(), META);
     const back = readWorkbook(sheetsFor(workbook));
@@ -174,7 +193,7 @@ describe('what the reader refuses, and says where', () => {
     expect(back.problems).toHaveLength(2);
     expect(back.problems.map((problem) => `${problem.sheet}!${String(problem.row)}!${problem.column}`).sort()).toEqual(['Expenses!2!amount', 'Expenses!2!txn_date']);
     expect(back.problems[0]?.message).toMatch(/not an amount|YYYY-MM-DD/);
-    expect(back.tables['member']).toHaveLength(1);
+    expect(back.tables['holding']).toHaveLength(2);
   });
 
   it('refuses an amount with no currency to read it in', () => {
@@ -211,22 +230,23 @@ describe('what the reader refuses, and says where', () => {
   it('skips a row that is empty throughout and refuses a duplicated header', () => {
     const { workbook } = buildWorkbook(fixture(), META);
     const sheets = sheetsFor(workbook);
-    const members = sheets.find((sheet) => sheet.name === 'Members');
-    members!.rows.push((members!.rows[0] ?? []).map(() => null));
-    expect(readWorkbook(sheets).tables['member']).toHaveLength(1);
-    members!.rows[0] = [...(members!.rows[0] ?? []), 'display_name'];
+    const categories = sheets.find((sheet) => sheet.name === 'Categories');
+    categories!.rows.push((categories!.rows[0] ?? []).map(() => null));
+    expect(readWorkbook(sheets).tables['expense_category']).toHaveLength(1);
+    categories!.rows[0] = [...(categories!.rows[0] ?? []), 'name'];
     expect(readWorkbook(sheets).problems.some((problem) => /twice/i.test(problem.message))).toBe(true);
   });
 });
 
 describe('the entity list', () => {
   it('names each column once, in a sheet whose headers are unique, and a money column’s currency exists', () => {
-    for (const entity of ENTITIES) {
-      const keys = entity.columns.map((column) => column.key);
+    for (const entity of SHEETED) {
+      const columns = sheetColumns(entity);
+      const keys = columns.map((column) => column.key);
       expect(new Set(keys).size, entity.key).toBe(keys.length);
-      const headers = entity.columns.map(headerOf);
+      const headers = columns.map(headerOf);
       expect(new Set(headers).size, entity.key).toBe(headers.length);
-      for (const column of entity.columns) {
+      for (const column of columns) {
         if (column.kind !== 'money') continue;
         const source = column.currency;
         expect(source, `${entity.key}.${column.key}`).toBeDefined();
