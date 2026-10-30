@@ -71,6 +71,22 @@ describe('the shape of the file', () => {
     expect(holdings?.rows[0]?.[holdings.headers.indexOf('instrument_name')]).toBe('Nippon Nifty 50');
   });
 
+  it('shows an amount with the places its currency has, and never fewer than its rows carry', () => {
+    const tables = fixture();
+    const format = (name: string, header: string) => {
+      const { workbook } = buildWorkbook(tables, META);
+      const sheet = workbook.sheets.find((s) => s.name === name);
+      return sheet?.formats[sheet.headers.indexOf(header)];
+    };
+    expect(format('Expenses', 'amount')).toBe('#,##0.00');
+    tables['expense_txn'] = [{ ...(tables['expense_txn']?.[0] as Row), currency: 'JPY', amount_minor: '150000' }];
+    expect(format('Expenses', 'amount')).toBe('#,##0');
+    tables['expense_txn'] = [{ ...(tables['expense_txn']?.[0] as Row), currency: 'BHD', amount_minor: '1234' }];
+    expect(format('Expenses', 'amount')).toBe('#,##0.000');
+    tables['expense_txn'] = [];
+    expect(format('Expenses', 'amount')).toBe('#,##0.00');
+  });
+
   it('keeps text that looks like a formula as text, whole', () => {
     const { workbook } = buildWorkbook(fixture(), META);
     const expenses = workbook.sheets.find((sheet) => sheet.name === 'Expenses');

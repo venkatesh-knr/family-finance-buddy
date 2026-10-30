@@ -25,6 +25,7 @@ import {
   moneyToCell,
   type Cell,
 } from './cells.ts';
+import { minorUnitExponent } from '../../lib/money.ts';
 import { ENTITIES, ENTITY_BY_KEY, TEMPLATE_VERSION, headerOf, type Column, type Entity, type Lookup, type Row } from './entities.ts';
 
 export interface ExportMeta {
@@ -98,6 +99,25 @@ function currencyOf(column: Column, row: Row, lookup: Lookup): string | null {
   return row[source.column] ?? null;
 }
 
+/** The places an amount is shown with in Excel: the most any of the sheet's currencies carries, so no amount is shown rounded. */
+function moneyFormat(column: Column, rows: readonly Row[], lookup: Lookup): string {
+  let places = 0;
+  let any = false;
+  for (const row of rows) {
+    if (row[column.key] === null || row[column.key] === undefined) continue;
+    const currency = currencyOf(column, row, lookup);
+    if (currency === null) continue;
+    try {
+      places = Math.max(places, minorUnitExponent(currency));
+      any = true;
+    } catch {
+      // A code that is not a currency is a problem when the cell is written; the format is left at two places.
+    }
+  }
+  const decimals = any ? places : 2;
+  return decimals === 0 ? '#,##0' : `#,##0.${'0'.repeat(decimals)}`;
+}
+
 function toCell(column: Column, value: string | null, row: Row, lookup: Lookup): Cell {
   if (value === null) return null;
   switch (column.kind) {
@@ -151,7 +171,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
     for (const column of entity.columns) {
       const header = headerOf(column);
       headers.push(header);
-      formats.push(column.kind === 'money' ? '#,##0.00' : null);
+      formats.push(column.kind === 'money' ? moneyFormat(column, tables[entity.key] ?? [], lookup) : null);
       writers.push((row, rowNumber) => {
         try {
           return toCell(column, row[column.key] ?? null, row, lookup);

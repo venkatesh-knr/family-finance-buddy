@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
-import { Button, Field, Problem } from '../../ui/primitives.tsx';
+import { Button, Field, Problem, SampleBar } from '../../ui/primitives.tsx';
 import { readLastExport } from './exportFile.ts';
 import { ExportBlocked, runFullExport } from './runExport.ts';
 
@@ -14,7 +14,7 @@ import { ExportBlocked, runFullExport } from './runExport.ts';
  * The file is made on this device from what the signed-in person can already read; nothing is uploaded. A fresh authenticator
  * code is asked for first, since an export takes the whole record out of the app; the board draws the button alone.
  */
-export function ReportsScreen({ householdId }: { householdId: string | null }) {
+export function ReportsScreen({ householdId, isDemo }: { householdId: string | null; isDemo: boolean }) {
   const [asking, setAsking] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,9 +51,15 @@ export function ReportsScreen({ householdId }: { householdId: string | null }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {isDemo && (
+        <SampleBar title="Sample figures">
+          This is the demo household. Its export is marked as a sample in the file&rsquo;s name and on its first sheet, so it cannot be
+          taken for a real household&rsquo;s.
+        </SampleBar>
+      )}
       <section className="card card-lift" aria-label="Export everything">
         <div className="label">Export everything</div>
-        <h2 className="mt-1.5 text-[19px] font-semibold leading-snug">Your whole household, as one workbook</h2>
+        <h2 className="card-title mt-1.5 text-[1.1875rem] leading-snug">Your whole household, as one workbook</h2>
         <p className="note mt-1.5">
           A sheet for each kind of record, in the same shape as the upload template, so you can edit it in Excel and bring it back.
         </p>
@@ -98,8 +104,13 @@ export function ReportsScreen({ householdId }: { householdId: string | null }) {
             />
             <p className="note">An export takes the whole record out of the app, so it asks for a fresh code first.</p>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={busy}>
-                {busy ? 'Making the workbook…' : 'Export everything · Excel'}
+              <Button type="submit" disabled={busy} className="btn btn-primary export-action">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                </svg>
+                <span>{busy ? 'Making the workbook…' : 'Export everything · Excel'}</span>
               </Button>
               <Button
                 type="button"
@@ -119,12 +130,18 @@ export function ReportsScreen({ householdId }: { householdId: string | null }) {
           <div className="mt-3.5">
             <Button
               type="button"
+              className="btn btn-primary export-action"
               onClick={() => {
                 setAsking(true);
                 setSaved(null);
               }}
             >
-              Export everything · Excel
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                </svg>
+              <span>Export everything · Excel</span>
             </Button>
           </div>
         )}
@@ -144,6 +161,9 @@ export function ReportsScreen({ householdId }: { householdId: string | null }) {
                 </li>
               ))}
             </ul>
+            {blocked.problems.length > 8 && (
+              <p className="note mt-1">and {blocked.problems.length - 8} more. Fix these, and the export will list what is left.</p>
+            )}
           </div>
         )}
         {saved !== null && (

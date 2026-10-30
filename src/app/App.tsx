@@ -413,7 +413,7 @@ function SignedIn({
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
         {screen === 'insurance' && <InsuranceScreen privacy={privacy} householdId={householdId} />}
         {screen === 'property' && <PropertyScreen privacy={privacy} householdId={householdId} />}
-        {screen === 'reports' && <ReportsScreen householdId={householdId} />}
+        {screen === 'reports' && <ReportsScreen key={householdId ?? 'none'} householdId={householdId} isDemo={current?.household.kind === 'demo'} />}
         {screen === 'more' && (
           <MoreScreen
             screens={behindMore}

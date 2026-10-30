@@ -399,3 +399,16 @@ Proposal and reasons: `docs/reviews/2026-10-27-retirement/proposal.md`. Schema: 
   tile test's 3:1), the repository layer, the Add form for each type, a holding screen in the shape of each, a PPF worked out from its account,
   payments and the notified rate and recorded as a reading by the person, and Close month writing each PPF's month-end value. A retirement
   holding is in the FIRE corpus and never liquid.
+
+## Export (October 2026, the maintainer took the recommendations on all six questions)
+
+The first half of step 5 is built: Export everything, behind More, for an owner and a partner. The answers, with the reason for each:
+
+1. **Which tables.** The household's own records are sheets that the upload will take back (members, categories, expenses, budgets, instruments, holdings, readings, lots, disposals, deposit terms and renewals, bond ratings, liabilities, insurance, properties with their work and valuations, PPF accounts and payments). The household row, the import log and the FX rates are sheets the upload will not take, and prices (only those of the household's own instruments), scheme rates and tax rules are reference sheets, marked read-only, so a backup can reproduce its own figures without the app. Not in the file, and said so in `NOT_EXPORTED`: the audit log, sign-in identities, memberships and invitations.
+2. **Sensitive fields.** Insurance cover, insurer, premium and the last four characters of a policy number are in the file; a nominee is not stored and so is not in it; account identifiers are the last four characters the database already holds. The account that created or voided a row (`created_by`, `voided_by`) is out of every sheet. A statement's raw payload is a column of no table.
+3. **Library.** ExcelJS 4.4.0, pinned, loaded only when a file is made or read. `npm audit` reports a moderate advisory on `uuid` below 11.1.1, which ExcelJS uses without a caller-supplied buffer, the case the advisory is about.
+4. **A fresh authenticator code first**, as before a password change (blueprint section 15, layer 04: "a re-authentication prompt stands before destructive or sensitive actions", exporting the full dataset among them).
+5. **Reports** is behind More and holds Export everything only; the rest of its board is drawn and arrives with the thing behind it.
+6. **Quantities and rates are numbers in the cell**, written only if the cell reads back to the same digits, and refused with the sheet, row and column where it cannot, never rounded.
+
+Also decided on the way: "Last exported" is remembered by the device alone (the browser's storage), because the audit log can be written only by triggers and a household-wide record would need a table, a migration and a test. Reads are not yet recorded in the audit log anywhere (`src/repo/profile.ts`), the full export included; that is the known gap and becomes more pressing now it ships.

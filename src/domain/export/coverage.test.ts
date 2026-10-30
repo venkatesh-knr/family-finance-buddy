@@ -125,7 +125,7 @@ describe('the export does not depend on how much detail a person has chosen to s
   it('reads no detail level and no privacy switch', () => {
     for (const parts of files) {
       const source = readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-      expect(source, parts.join('/')).not.toMatch(/detailLevel|detail_level|essentialMode|bprivacyb/i);
+      expect(source, parts.join('/')).not.toMatch(/detailLevel|detail_level|essentialMode|privacy/i);
     }
   });
 });
