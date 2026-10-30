@@ -186,12 +186,21 @@ export function ppfMonthEndReadings(
   monthEnd: IsoDate,
 ): {
   readonly readings: readonly { readonly holdingId: string; readonly value: Money }[];
-  readonly skipped: readonly { readonly holdingId: string; readonly why: 'not-started' | 'no-rate' | 'unworkable' }[];
+  readonly skipped: readonly {
+    readonly holdingId: string;
+    readonly why: 'not-started' | 'no-account' | 'no-rate' | 'unworkable';
+  }[];
 } {
   const readings: { holdingId: string; value: Money }[] = [];
-  const skipped: { holdingId: string; why: 'not-started' | 'no-rate' | 'unworkable' }[] = [];
+  const skipped: { holdingId: string; why: 'not-started' | 'no-account' | 'no-rate' | 'unworkable' }[] = [];
 
   for (const account of accounts) {
+    // Nothing recorded at all is a PPF that needs an account, which is what a converted one with no reading is left as: not the same
+    // as one whose account opens after the month end.
+    if (account.opening === undefined && account.entries.length === 0) {
+      skipped.push({ holdingId: account.holdingId, why: 'no-account' });
+      continue;
+    }
     const begun =
       (account.opening !== undefined && account.opening.date <= monthEnd) ||
       account.entries.some((entry) => entry.date <= monthEnd);

@@ -256,6 +256,16 @@ describe('the PPF readings Close month writes', () => {
     expect(skipped).toEqual([{ holdingId: 'late', why: 'not-started' }]);
   });
 
+  it('says a PPF with no account at all needs one, which is not the same as one that had not begun', () => {
+    const { readings, skipped } = ppfMonthEndReadings(
+      [{ holdingId: 'bare', entries: [] }],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(readings).toEqual([]);
+    expect(skipped).toEqual([{ holdingId: 'bare', why: 'no-account' }]);
+  });
+
   it('skips one it cannot work out and names why, rather than writing a figure it made up: no rate in force', () => {
     const { readings, skipped } = ppfMonthEndReadings([account('a'), account('b')], [rate('2025-10-01', '7.100')], '2025-12-31');
     expect(readings).toEqual([]);

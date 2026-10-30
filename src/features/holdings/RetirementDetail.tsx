@@ -13,7 +13,7 @@ import { npsValue } from '../../domain/nps.ts';
 import { ppfBalance, type PpfView } from '../../domain/ppf.ts';
 import { formatIsoDate, isIsoDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
-import { formatQuantity } from '../../lib/quantity.ts';
+import { formatQuantity, formatQuantityGrouped } from '../../lib/quantity.ts';
 import { addPpfEntry, updatePpfAccount, addPpfAccount, voidPpfEntry } from '../../repo/retirement.ts';
 import type { HoldingListing, NewValuation, PpfAccount, PpfEntryRow, PpfListing } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
@@ -38,19 +38,27 @@ function useWorkedPpf(
   holdingId: string,
   ppf: PpfListing | null,
   today: IsoDate,
-): { account: PpfAccount | null; entries: readonly PpfEntryRow[]; counted: readonly PpfEntryRow[]; view: PpfView | null } {
+): {
+  account: PpfAccount | null;
+  entries: readonly PpfEntryRow[];
+  counted: readonly PpfEntryRow[];
+  view: PpfView | null;
+  /** The same account worked out as at another day: what the passbook should have said then. */
+  at: (on: IsoDate) => PpfView | null;
+} {
   return useMemo(() => {
-    if (ppf === null) return { account: null, entries: [], counted: [], view: null };
+    if (ppf === null) return { account: null, entries: [], counted: [], view: null, at: () => null };
     const account = ppf.accounts.find((entry) => entry.holdingId === holdingId) ?? null;
     const entries = ppf.entries.filter((entry) => entry.holdingId === holdingId);
     const counted = entries.filter((entry) => !entry.isVoided);
-    const view = ppfBalance({
-      ...(account === null ? {} : { opening: { date: account.openingDate, balance: account.openingBalance } }),
-      entries: counted.map((entry) => ({ date: entry.date, amount: entry.amount })),
-      rates: ppf.rates.map((rate) => ({ from: rate.effectiveFrom, ratePct: rate.ratePct })),
-      on: today,
-    });
-    return { account, entries, counted, view };
+    const at = (on: IsoDate): PpfView =>
+      ppfBalance({
+        ...(account === null ? {} : { opening: { date: account.openingDate, balance: account.openingBalance } }),
+        entries: counted.map((entry) => ({ date: entry.date, amount: entry.amount })),
+        rates: ppf.rates.map((rate) => ({ from: rate.effectiveFrom, ratePct: rate.ratePct })),
+        on,
+      });
+    return { account, entries, counted, view: at(today), at };
   }, [holdingId, ppf, today]);
 }
 
@@ -108,6 +116,7 @@ export function RetirementValue(props: Shared) {
             householdId={listing.household.id}
             row={row}
             today={today}
+            privacy={props.privacy}
             onRecord={async (valuation) => {
               await record(valuation);
               setRecording(false);
@@ -146,11 +155,13 @@ function NavForm({
   householdId,
   row,
   today,
+  privacy,
   onRecord,
 }: {
   householdId: string;
   row: HoldingRow;
   today: IsoDate;
+  privacy: boolean;
   onRecord: (valuation: NewValuation) => Promise<void>;
 }) {
   const units = formatQuantity(row.unitsHeld);
@@ -226,7 +237,8 @@ function NavForm({
         {busy ? 'Saving…' : 'Record'}
       </Button>
       <p className="note w-full">
-        {units} units{nav.trim() !== '' && worked.ok ? <> at {nav.trim()} is <strong>{formatMoney(worked.value)}</strong>.</> : '.'}
+        {formatQuantityGrouped(row.unitsHeld)} units
+        {nav.trim() !== '' && worked.ok ? <> at {nav.trim()} is <strong>{formatMoney(worked.value, { privacy })}</strong>.</> : '.'}
       </p>
       {problem !== null && (
         <div className="w-full">
@@ -242,7 +254,7 @@ function NavForm({
  * The value is the passbook's, which steps on 31 March; what has accrued since is said beside it and is not in it.
  */
 function PpfWorked({ row, ppf, today, privacy, canWrite, record, listing, onChanged }: Shared) {
-  const { account, view } = useWorkedPpf(row.holding.id, ppf.ppf, today);
+  const { account, view, at } = useWorkedPpf(row.holding.id, ppf.ppf, today);
   const [busy, setBusy] = useState(false);
   const [recorded, setRecorded] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -272,6 +284,18 @@ function PpfWorked({ row, ppf, today, privacy, canWrite, record, listing, onChan
       </p>
     );
   }
+
+  // A passbook balance somebody typed (a reading with no note) that the account does not work out for that day. The bank's figure
+  // is not overwritten with the app's: the difference says the opening balance or a payment is wrong, and the way to put it right is
+  // to correct those, after which the two agree.
+  const typed = listing.valuations
+    .filter((reading) => reading.holdingId === row.holding.id && reading.note === null)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0];
+  const thatDay = typed === undefined ? null : at(typed.date);
+  const discrepancy =
+    typed !== undefined && thatDay !== null && thatDay.ok && thatDay.value.minor !== typed.amount.minor
+      ? { typed, worked: thatDay.value }
+      : null;
 
   const latest = row.latest;
   const same = latest !== null && latest.date === today && latest.amountMinor === view.value.minor;
@@ -310,7 +334,17 @@ function PpfWorked({ row, ppf, today, privacy, canWrite, record, listing, onChan
         </span>
         <span className="tabular-nums">{formatMoney(view.accrued, { privacy })}</span>
       </p>
+      {discrepancy !== null && (
+        <p className="note" role="status" data-testid="ppf-discrepancy">
+          Your passbook said <strong>{formatMoney(discrepancy.typed.amount, { privacy })}</strong> on{' '}
+          {formatIsoDate(discrepancy.typed.date)}; the account works out{' '}
+          <strong>{formatMoney(discrepancy.worked, { privacy })}</strong> for that day. The difference means the opening balance or a
+          payment is not right: correct the account or the payments below, and the two will agree. The passbook&rsquo;s figure is
+          not replaced by the worked-out one.
+        </p>
+      )}
       {canWrite &&
+        discrepancy === null &&
         (recorded || same ? (
           <p className="note" role="status">
             Recorded as today’s reading
@@ -373,7 +407,7 @@ export function RetirementCards(props: Shared & { readonly children?: React.Reac
         <section className="card" aria-label="Position">
           <h2 className="label">Position</h2>
           <dl className="term-stats mt-1.5">
-            <Stat label="Units">{formatQuantity(row.unitsHeld)}</Stat>
+            <Stat label="Units">{formatQuantityGrouped(row.unitsHeld)}</Stat>
             <Stat label="Latest reading">
               {row.latest === null ? <span className="note">none yet</span> : formatIsoDate(row.latest.date)}
             </Stat>
@@ -425,6 +459,27 @@ function PpfCards(props: Shared) {
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // A PPF that could not be read, or has not been yet, is not a PPF with no account and no payments, and must not be offered an
+  // account it already has.
+  if (ppf.failed) {
+    return (
+      <section className="card" aria-label="Account">
+        <h2 className="label">Account</h2>
+        <div className="mt-1.5">
+          <Problem>The account and its payments could not be read, so nothing is said of them here. Reload to try again.</Problem>
+        </div>
+      </section>
+    );
+  }
+  if (ppf.ppf === null) {
+    return (
+      <section className="card" aria-label="Account">
+        <h2 className="label">Account</h2>
+        <p className="note mt-1.5">Reading the account…</p>
+      </section>
+    );
+  }
 
   const rateInForce = view !== null && view.ok ? view.rateInForce : null;
   const rate = ppf.ppf?.rates.filter((entry) => entry.effectiveFrom <= today).sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : -1))[0];
@@ -486,13 +541,13 @@ function PpfCards(props: Shared) {
       </section>
 
       {view !== null && view.ok && view.credits.length > 0 && (
-        <section className="card" aria-label="Interest credited">
-          <h2 className="label">Interest credited</h2>
+        <section className="card" aria-label="Interest, as worked out">
+          <h2 className="label">Interest, as worked out</h2>
           <ul className="row-separated mt-1">
             {[...view.credits].reverse().map((credit) => (
               <li key={credit.on} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                 <span>
-                  {formatIsoDate(credit.on)} <span className="note">· credited, to the nearest rupee</span>
+                  {formatIsoDate(credit.on)} <span className="note">· due on 31 March, to the nearest rupee</span>
                 </span>
                 <span className="tabular-nums">{formatMoney(credit.interest, { privacy })}</span>
               </li>

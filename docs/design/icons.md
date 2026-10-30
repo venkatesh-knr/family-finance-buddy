@@ -115,12 +115,12 @@ nothing that could be mistaken for the caveat marker at 14px.
 ## 4. Drawn but not wired
 
 Stage 5 kinds. The glyphs exist in the canvas so the set reads as one family when
-they land; none of them is a valid `kind` today and none should appear in a
+they land; of the rows below, property and retirement have landed and are wired, and none of the others is a valid `kind` today and none should appear in a
 picker, a legend or a filter until its stage ships.
 
 | kind | hue | glyph |
 | --- | --- | --- |
-| property | rose | a house |
+| property | rose (`--c8`; wired) | a house |
 | gold | gold | a stack of coins seen in section |
 | retirement (EPF · NPS · PPF) | lime (`--c9`; wired, a class of its own) | a shield |
 | insurance | violet | an umbrella |

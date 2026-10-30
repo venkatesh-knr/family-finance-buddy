@@ -674,3 +674,39 @@ describe('readingStaleness', () => {
     expect(result.stale).toEqual([]);
   });
 });
+
+describe('a retirement holding has no cost, and says nothing of a gain', () => {
+  // An EPF is a passbook balance and an NPS units at a NAV: nobody has "what it cost", and a figure that is not there is not
+  // missing. It is in the value, and out of the comparison of value with cost, so the rest of the household's gain stands.
+  const fund = holding({ id: 'fund', cost: inr(1_000) });
+  const epf = holding({ id: 'epf', kind: 'retirement' });
+  const valuations = [reading('fund', '2026-09-30', inr(1_200)), reading('epf', '2026-09-30', inr(5_000))];
+
+  it('counts it in the value and leaves it out of the gain: 200 on a fund that cost 1,000, whatever the EPF holds', () => {
+    const [total] = assetTotals({ holdings: [fund, epf], valuations });
+    expect(total?.value).toEqual(inr(6_200));
+    expect(total?.invested).toEqual(inr(1_000));
+    expect(total?.gain).toEqual(inr(200));
+    expect(total?.costMissing).toBe(0);
+    expect(total?.costShort).toBe(0);
+  });
+
+  it('is the same with the EPF alone: a value, no cost, and no gain claimed or refused', () => {
+    const [total] = assetTotals({ holdings: [epf], valuations: [reading('epf', '2026-09-30', inr(5_000))] });
+    expect(total?.value).toEqual(inr(5_000));
+    expect(total?.gain).toEqual(inr(0));
+    expect(total?.costMissing).toBe(0);
+  });
+
+  it('is a row of the allocation with no return and no refusal', () => {
+    const rows = allocationByKind({ holdings: [fund, epf], valuations, currency: 'INR' });
+    const row = rows.find((r) => r.kind === 'retirement');
+    expect(row?.value).toEqual(inr(5_000));
+    expect(row?.gain).toBeNull();
+    expect(row?.returnOnCost).toBeNull();
+    expect(row?.costMissing).toBe(0);
+    expect(row?.costShort).toBe(0);
+    // And the fund's row is as it was.
+    expect(rows.find((r) => r.kind === 'mutual_fund')?.gain).toEqual(inr(200));
+  });
+});

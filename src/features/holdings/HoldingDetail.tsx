@@ -15,6 +15,7 @@ import { FixedIncome } from './FixedIncome.tsx';
 import { splitFundName } from './fundName.ts';
 import { daysPhrase } from './fixedIncomeRows.ts';
 import { barTerm } from './rowFact.ts';
+import { RETIREMENT_LABEL } from './AddRetirement.tsx';
 import { RetirementCards, RetirementValue } from './RetirementDetail.tsx';
 import { usePpf } from './usePpf.ts';
 import { kindColour } from '../../ui/labels.ts';
@@ -209,6 +210,9 @@ export function HoldingDetail({
       </section>
       <div className="flex flex-wrap items-center gap-2">
         {isFixed && <Pill tone="neutral">{kind === 'deposit' ? 'Fixed deposit' : 'Bond'}</Pill>}
+        {isRetirement && holding.instrument.retirementType !== null && (
+          <Pill tone="neutral">{RETIREMENT_LABEL[holding.instrument.retirementType]}</Pill>
+        )}
         {holding.earmark !== 'none' && <Pill tone="neutral">{EARMARK_LABELS[holding.earmark]}</Pill>}
         {holding.instrument.isForeignAsset && <Pill tone="own">Foreign asset</Pill>}
         {holding.visibility === 'personal' && <Pill tone="own">Private</Pill>}

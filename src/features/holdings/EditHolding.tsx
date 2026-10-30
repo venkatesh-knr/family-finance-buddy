@@ -228,30 +228,38 @@ export function EditHolding({
           </p>
         ) : (
           <>
-            <div className="w-full sm:w-[110px] sm:shrink-0">
-              <Field
-                label="Units"
-                numeric
-                inputMode="decimal"
-                value={quantity}
-                onChange={(event) => {
-                  setQuantity(event.target.value);
-                }}
-              />
-            </div>
+            {/*
+              An EPF and a PPF are one balance and not units, and nothing a retirement holding is has a cost to have: "Units 1" and "Cost
+              not recorded" would be asking for figures nobody has. An NPS is held in units, so it keeps them.
+            */}
+            {!(holding.instrument.kind === 'retirement' && holding.instrument.retirementType !== 'nps') && (
+              <div className="w-full sm:w-[110px] sm:shrink-0">
+                <Field
+                  label="Units"
+                  numeric
+                  inputMode="decimal"
+                  value={quantity}
+                  onChange={(event) => {
+                    setQuantity(event.target.value);
+                  }}
+                />
+              </div>
+            )}
 
-            <div className="w-full sm:w-[130px] sm:shrink-0">
-              <Field
-                label={`Cost (${currency})`}
-                numeric
-                inputMode="decimal"
-                placeholder="not recorded"
-                value={cost}
-                onChange={(event) => {
-                  setCost(event.target.value);
-                }}
-              />
-            </div>
+            {holding.instrument.kind !== 'retirement' && (
+              <div className="w-full sm:w-[130px] sm:shrink-0">
+                <Field
+                  label={`Cost (${currency})`}
+                  numeric
+                  inputMode="decimal"
+                  placeholder="not recorded"
+                  value={cost}
+                  onChange={(event) => {
+                    setCost(event.target.value);
+                  }}
+                />
+              </div>
+            )}
           </>
         )}
 
@@ -366,7 +374,8 @@ export function EditHolding({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {EARMARKS.map((option) => (
+            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}
+            {EARMARKS.filter((option) => !(holding.instrument.kind === 'retirement' && option === 'emergency')).map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>

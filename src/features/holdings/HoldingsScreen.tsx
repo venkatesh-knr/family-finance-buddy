@@ -69,7 +69,7 @@ export function HoldingsScreen({
 
   /** Per currency, on the Overview's terms: never summed across currencies; a holding nobody has read is absent. */
   const totals = useMemo(() => {
-    const byCurrency = new Map<string, { value: bigint; invested: bigint; unread: number; short: number; missing: number }>();
+    const byCurrency = new Map<string, { value: bigint; comparable: bigint; invested: bigint; unread: number; short: number; missing: number }>();
     for (const row of rows) {
       // Paid out: the money is back in an account, so it is not part of what is held. The same rule as the
       // Overview's net worth, or the two screens would disagree about one household.
@@ -97,14 +97,19 @@ export function HoldingsScreen({
         continue;
       }
       const currency = row.holding.instrument.currency;
-      const bucket = byCurrency.get(currency) ?? { value: 0n, invested: 0n, unread: 0, short: 0, missing: 0 };
+      const bucket = byCurrency.get(currency) ?? { value: 0n, comparable: 0n, invested: 0n, unread: 0, short: 0, missing: 0 };
       if (row.latest === null) {
         // Unread on both sides of the comparison, or neither: an unvalued holding's cost set against no value
         // once turned a portfolio into a 61% loss.
         bucket.unread += 1;
+      } else if (row.holding.instrument.kind === 'retirement') {
+        // In the value and out of the comparison with cost: an EPF or an NPS has no cost to have, and neither claims a return nor
+        // refuses everybody else's.
+        bucket.value += row.latest.amountMinor;
       } else {
         bucket.invested += row.cost.amount?.minor ?? 0n;
         bucket.value += row.latest.amountMinor;
+        bucket.comparable += row.latest.amountMinor;
         if (isQualified(row.history)) bucket.short += 1;
         if (row.cost.amount === null) bucket.missing += 1;
       }
@@ -153,7 +158,10 @@ export function HoldingsScreen({
       const { holding } = row;
       const currency = holding.instrument.currency;
       const facts = fixed.get(id);
-      const isFixed = holding.instrument.kind === 'deposit' || holding.instrument.kind === 'bond';
+      // A deposit's row says when its reading was taken, and so does a retirement holding's: an EPF is a passbook balance and an
+      // NPS units at a NAV, neither has a cost to have, and "no cost recorded" on it would be asking for a figure nobody has.
+      const isFixed =
+        holding.instrument.kind === 'deposit' || holding.instrument.kind === 'bond' || holding.instrument.kind === 'retirement';
       const value = row.latest === null ? null : money(row.latest.amountMinor, currency);
 
       let gain: RowModel['gain'] = { kind: 'none' };

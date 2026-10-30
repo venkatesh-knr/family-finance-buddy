@@ -302,7 +302,8 @@ export function AddRetirement({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {EARMARKS.map((option) => (
+            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}
+            {EARMARKS.filter((option) => option !== 'emergency').map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>
