@@ -168,8 +168,13 @@ letter: 2a, 2b, 6a.
 | 4 | Global | **Unchanged.** `peak.ts` is already capturing the one thing that cannot be reconstructed. |
 | 5 | Reports, export first | **Unchanged in position**, and the reason stands: the gate is a round trip and cannot be tested from the far end. It gets one new rule: the export is generated from a list of entities, and every new entity (2a, 2b, 6a) registers itself in that list as part of being done. |
 | 6 | Property and the rest of the balance sheet | **Unchanged**, minus "protection", which is 2b. Gains one rule for PPF, SSY, NSC and KVP (credited interest steps the value at credit) and one question owed to the FIRE corpus (is an owned home in it?). |
+| **6b** | **Gold (`docs/design/gold.md`)** | **New, its own step, straight after 6.** Gold is a first-class class in the blueprint (section 01) and nothing can hold it. It is a kind with a form (`gold_form`) and a table for the jeweller's savings scheme, so it follows the balance sheet it extends, and it goes **before the invested view of 7b**, which needs a Gold class to put gold instalments in. It needs nothing from 6a. |
+| **6c** | **Spending capture, S1 and S2 (`docs/design/spending-capture.md` section 8)** | **New. Recurring rules with auto-post (S1) and the share target with Paste (S2).** Both need nothing new, so they can go at any time; they cut typing now and are listed here only so they are not forgotten. S1 is already in blueprint Stage 6. |
 | **6a** | **Flow (slice A)** | **New, immediately before step 7.** The design's transfer rule needs an `account` to move money between, and bank import needs the same `account` for its per-bank profiles, so the rule and the registry must exist first. A is also the largest slice and the one most entangled with Reports, import and the Tax card, so it goes last of the three. |
-| 7 | Bank and card import | **Unchanged in position, wider in scope**: transfer detection is part of it, not a follow-up (see the note under 7). |
+| **6d** | **Spending capture, S3: the month close** | **New, straight after 6a.** It needs `account` and income from 6a, and the new `account_balance` that 6a now carries. It is what makes the month's spending figure right (spending-capture.md section 2). |
+| 7 | Bank and card import | **Unchanged in position, wider in scope**: transfer detection is part of it, not a follow-up (see the note under 7). Its duplicate guard is now the witness model of spending-capture.md section 4, not a line hash alone. |
+| **7a** | **Spending capture, S4: UPI app statements and witnesses** | **New, with or after 7.** Google Pay, Paytm and PhonePe statements are more witnesses to payments that import already knows, so they need the bank import that exists first. |
+| **7b** | **Spending capture, S5: where the month's money went** | **New.** The *invested* half needs nothing new but **a Gold class (6b)**, and can go at any time after that; the cash-reserve half waits for the close (6d). |
 | 8 | Calendar | **Unchanged.** It was already placed after property, protection and the tax engine because it is a view over what they create, and now it has its inputs: deposit maturities (existing), policy renewals (2b), advance tax (3). |
 | 9 | FIRE with the live projection | **Unchanged and still last of the computed steps.** What changes is what it starts from (2a) and the fact that part of it is already live. |
 | 10 | Narrow what a contributor and a viewer can read | **Built, and now a standing rule** for every new table (see 2b and 6a). |
@@ -561,6 +566,18 @@ Three things are owed before it is built:
   being saved, not a house lived in. Property arrives here, and the corpus
   function (2a) needs to say what it does with it. The conservative answer is
   that a home you live in is excluded.
+**6b. Gold (`docs/design/gold.md`).**
+
+*Where it sits.* Straight after 6, before 6a, and before 7b. The authority is `gold.md`; the picture is the `GoldScheme` board in `docs/design/vibrant-canvas.html`.
+
+*What it builds.* `instrument.kind` gains `gold` and `instrument.gold_form` (`jeweller_scheme` or `physical`, null unless the kind is gold: a schema check, tested in pgTAP); `gold_scheme_terms` for the jeweller's savings scheme (holding, variant, jeweller, instalment, count, start date, due day, bonus, purity, the last four of the scheme number); instalments as lots on the holding; and a dated gold rate per purity in `price` (until the blueprint's gold job exists, the manual override). An amount-based scheme is worth the instalments paid, a weight-based one and physical gold are worth grams times the dated rate, a scheme is in net worth and never in the liquid corpus or the emergency goal, and redemption converts the scheme into physical gold rather than selling it (gold.md sections 3 to 5). **The tile is wired here and not before** (`docs/design/icons.md` section 4): until this step gold appears in no picker, legend or filter. Same rules as every new table: audit trigger, RLS enabled, explicit grants, the second-factor policy, cleared by `reset_demo_household` and filled by the seed (an amount-based scheme with five of eleven instalments paid), the export list and the template version, all in the same migration.
+
+*Open before it is built* (`docs/decisions.md`, Open): the cost basis of physical gold after redemption, which the Tax screen refuses to sell until it is decided, and the demo's seed values.
+
+**6c. Spending capture, S1 and S2.**
+
+*S1, recurring rules and auto-post:* blueprint section 04's `recurring_rule`, with a unique (rule, due date) on what it posts so a rule can never post twice. *S2, the share target and Paste:* text a person hands the app (a payment alert, a bank message) is parsed on the device, one message at a time; the app reads no inbox and asks no permission. Both are `docs/design/spending-capture.md` section 3; neither depends on anything unbuilt, and S2 needs only the manifest. S2 raises the `CLAUDE.md` question about SMS (spending-capture.md section 9, item 1), which is open and is not decided here.
+
 **6a. Flow — design slice A.**
 
 *Where it sits, and why.* Immediately before bank and card import. The design's
@@ -616,6 +633,8 @@ the Overview's stock region. 6a fixes its structure (names, order, accessible
 regions) with today's content, and 6 then puts property into it. Doing both in the
 other order reworks the region twice.
 
+*`account_balance`, with the registry.* Spending capture's month close (6d) needs balances, so 6a builds `account_balance` beside `account` (spending-capture.md section 7): the account, an `as_at` date, `balance_minor` (for a card, the amount due, positive), a `source` (`typed` or `statement`) and a `source_batch_id`, unique per account, date and source. It carries the same obligations as every table here: audit trigger, RLS enabled, explicit grants, the second-factor policy, `reset_demo_household` and the seed, and the export list and template version, in the same migration.
+
 *Done when:* the design's tests pass (a transfer is in neither total; privacy mode
 removes income by absence from the DOM); every new table has its audit trigger,
 its `enable row level security`, its explicit grants, and a denying test per verb
@@ -636,6 +655,10 @@ fixed-income tables went uncleared for two migrations and it was found by readin
 not by a test. Each new table in 2a, 2b and 6a is another chance. A pgTAP test
 that reads every public table with a `household_id` and fails if the function body
 does not name it costs a few lines and ends the problem.
+**6d. Spending capture, S3: the month close.**
+
+*Where it sits.* Straight after 6a. A closed month's *spent* is derived from balances and never stored (spending-capture.md section 2, SC-I1): it needs the `account` registry and income from 6a, and the `account_balance` table that 6a now carries. The screens are the `ExpensesClosed`, `MonthClose` and `QuickAddShared` boards. Who may close a month is open (spending-capture.md section 9, item 5).
+
 **7. Bank and card statement import.**
 
 *Sources, as the household has them:* an HDFC savings account (PDF, Excel, delimited and text), an ICICI savings
@@ -669,11 +692,7 @@ about how this family spends.
 the preview-before-commit flow is for; the category edit that already exists on
 an expense is the same control afterwards.
 
-**Never import the same line twice.** A statement re-uploaded, or two statements
-overlapping at a month boundary, must not double a month's spending. Needs a
-stable identity per line — date, amount, and the raw description, hashed —
-recorded against the row so a re-import recognises what it has already seen.
-`import_batch` already does this for eCAS lines; the same mechanism carries.
+**Never import the same payment twice, and never as many entries as there are statements that show it.** A statement re-uploaded, or two statements overlapping at a month boundary, must not double a month's spending, and the same payment can arrive as a shared alert, a UPI app's line and a bank line. The duplicate guard is the **witness model** of `docs/design/spending-capture.md` section 4, not a line hash alone: a payment is one entry with up to three witnesses. Matching runs strongest first: the UPI reference (an exact match merges), then a line hash per source (date, amount, raw description) that recognises a re-imported statement as `lot.source_hash` does for eCAS, then a near match (same amount and account, within two days) that is only a suggestion and waits for a person. Merging fills empty fields and adds a witness and never overwrites what a person typed. The witnesses live in `expense_witness`, unique per household and line hash, so the second statement to witness a payment is recognised on re-import too; the reference is kept as its last four and a hash, and a payee's VPA is never stored. `import_batch` already does the line-hash part for eCAS and carries.
 
 A card statement is the more valuable of the two *for spending*, because it is
 where the discretionary money goes. It also settles a question the category
@@ -696,6 +715,10 @@ preview is a different object from what it writes, and it keeps provenance. Its
 proposal to retain the unmapped source row is **not adopted by this plan until
 the maintainer decides it**: the row can carry folio numbers, account numbers and
 PANs, and `CLAUDE.md` keeps account identifiers to the last four digits.
+**7a. Spending capture, S4: UPI app statements and witnesses.** With or after 7. Google Pay (PDF), Paytm (Excel and PDF) and PhonePe (PDF) statements each witness payments import already knows (spending-capture.md sections 3 and 4). Paytm's Excel file needs a spreadsheet library, which step 7 already owes a decision for bank XLS (spending-capture.md section 9, item 4). `import_batch.kind` gains `gpay_pdf`, `paytm_xlsx`, `paytm_pdf` and `phonepe_pdf`.
+
+**7b. Spending capture, S5: where the month's money went.** The Overview's flow region opens *this month's money* (spending-capture.md section 10, the `MonthMoney` board): saved, split into spent, invested and left in the bank, then invested by class in the order and colours Holdings groups by, then the cash reserve by account. *Invested* is known from the holdings' own entries and needs no close, but **it needs the Gold class from 6b**, so it goes after that step; the cash-reserve half needs the close (6d).
+
 **8. Calendar.**
 
 Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here

@@ -126,6 +126,8 @@ picker, a legend or a filter until its stage ships.
 | insurance | violet | an umbrella |
 | liabilities | **coral** | a circle containing a minus |
 
+**Gold is wired when its step lands** (`docs/build-plan.md`, step 6b; `docs/design/gold.md` section 2), and not before: until then it appears in no picker, legend or filter, whatever the board draws. The Gold class is what the invested view of step 7b needs.
+
 Liabilities is the only tile on coral, and the only one carrying a negative
 signal. That is deliberate and it is the reason coral is not available to any
 other tile: the moment a second class wears it, a person scanning a list can no
