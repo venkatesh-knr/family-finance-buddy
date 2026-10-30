@@ -19,6 +19,7 @@ import { kindLabel } from '../../ui/labels.ts';
 import { splitFundName } from './fundName.ts';
 import { groupHoldings, matchesFilter, type Filter, type ListHolding, type Sort } from './holdingGroups.ts';
 import { AddHolding, RefreshPrices } from './holdingParts.tsx';
+import { AddRetirement } from './AddRetirement.tsx';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
 import { Chips, EmergencyCard, FixedExtras, GroupSection, ListHeader, Summary, type RowModel } from './HoldingsList.tsx';
@@ -34,6 +35,7 @@ const A: Record<string, string> = {
   equity: 'a share',
   bond: 'a bond',
   deposit: 'a deposit',
+  retirement: 'a retirement account',
   other: 'a holding',
 };
 
@@ -180,6 +182,7 @@ export function HoldingsScreen({
           position: facts?.position ?? null,
           view: facts?.view ?? null,
           institution: facts?.institution ?? null,
+          retirementType: holding.instrument.retirementType,
           privacy,
         }),
         value,
@@ -275,7 +278,7 @@ export function HoldingsScreen({
       />
       {!filtered && chips}
       {(filter.kind ?? '') === 'deposit' && (
-        <p className="note list-helper">FD, RD, PPF, SSY, NSC, KVP, SCSS and post office deposits all live here.</p>
+        <p className="note list-helper">FD, RD, SSY, NSC, KVP, SCSS and post office deposits all live here. A PPF is under Retirement.</p>
       )}
 
       {canWrite && panel === 'add' && (
@@ -283,6 +286,7 @@ export function HoldingsScreen({
           listing={listing}
           initialKind={filter.kind ?? ''}
           onAdd={hook.add}
+          onAddRetirement={hook.addRetirement}
           today={today}
           onDone={() => {
             fixed.reload();
@@ -353,16 +357,20 @@ function AddPanel({
   listing,
   initialKind,
   onAdd,
+  onAddRetirement,
   today,
   onDone,
 }: {
   listing: HoldingListing;
   initialKind: string;
   onAdd: React.ComponentProps<typeof AddHolding>['onAdd'];
+  onAddRetirement: React.ComponentProps<typeof AddRetirement>['onAdd'];
   today: IsoDate;
   onDone: () => void;
 }) {
-  const [what, setWhat] = useState<'holding' | 'fixed'>(initialKind === 'deposit' || initialKind === 'bond' ? 'fixed' : 'holding');
+  const [what, setWhat] = useState<'holding' | 'fixed' | 'retirement'>(
+    initialKind === 'deposit' || initialKind === 'bond' ? 'fixed' : initialKind === 'retirement' ? 'retirement' : 'holding',
+  );
   return (
     <div className="mb-3.5 flex flex-col gap-3">
       <label className="flex w-full flex-col gap-1.5 sm:w-[260px]">
@@ -371,18 +379,23 @@ function AddPanel({
           className="field"
           value={what}
           onChange={(event) => {
-            setWhat(event.target.value === 'fixed' ? 'fixed' : 'holding');
+            setWhat(event.target.value === 'fixed' ? 'fixed' : event.target.value === 'retirement' ? 'retirement' : 'holding');
           }}
         >
           <option value="holding">A fund, an ETF, a share or something else</option>
           <option value="fixed">A deposit or a bond</option>
+          <option value="retirement">A retirement account: EPF, NPS or PPF</option>
         </select>
       </label>
-      {what === 'holding' ? (
+      {what === 'retirement' ? (
+        <AddRetirement listing={listing} today={today} onAdd={onAddRetirement} onDone={onDone} />
+      ) : what === 'holding' ? (
         <AddHolding
           listing={listing}
           onAdd={onAdd}
-          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' ? {} : { initialKind: initialKind as InstrumentKind })}
+          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' || initialKind === 'retirement'
+            ? {}
+            : { initialKind: initialKind as InstrumentKind })}
         />
       ) : (
         <TermsForm

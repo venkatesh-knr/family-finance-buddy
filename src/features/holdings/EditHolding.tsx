@@ -191,21 +191,31 @@ export function EditHolding({
           />
         </div>
 
+        {/*
+          A retirement holding is an EPF, an NPS or a PPF and stays one: its kind is not offered for change, and no other holding
+          is offered it, because the type it needs is chosen when it is added.
+        */}
         <label className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
           <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value as InstrumentKind);
-            }}
-          >
-            {INSTRUMENT_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {option.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
+          {holding.instrument.kind === 'retirement' ? (
+            <span className="field" aria-label="Kind" style={{ color: 'var(--ink-2)' }}>
+              {holding.instrument.retirementType === null ? 'retirement' : holding.instrument.retirementType.toUpperCase()}
+            </span>
+          ) : (
+            <select
+              className="field"
+              value={kind}
+              onChange={(event) => {
+                setKind(event.target.value as InstrumentKind);
+              }}
+            >
+              {INSTRUMENT_KINDS.filter((option) => option !== 'retirement').map((option) => (
+                <option key={option} value={option}>
+                  {option.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
 
         {hasLots ? (

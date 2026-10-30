@@ -140,6 +140,32 @@ export async function voidPpfEntry(id: Uuid): Promise<void> {
   if ((data ?? []).length === 0) throw new Error('That entry could not be voided. It may already have been.');
 }
 
+/**
+ * Give a PPF holding its account: for one the migration converted from a deposit that had no reading to open it from, or one
+ * whose account was never made. The holding must be a PPF; the database refuses anything else.
+ */
+export async function addPpfAccount(input: {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly institution?: string | null;
+  readonly accountLast4?: string | null;
+  readonly openingDate: string;
+  readonly openingBalance: { readonly minor: bigint; readonly currency: string };
+}): Promise<void> {
+  checkAccount({ accountLast4: input.accountLast4 ?? null, openingBalance: input.openingBalance });
+  const text = (value: string | null | undefined): string | null => (value === undefined || value === null || value.trim() === '' ? null : value.trim());
+  const { error } = await supabase().from('ppf_account').insert({
+    holding_id: input.holdingId,
+    household_id: input.householdId,
+    institution: text(input.institution),
+    account_last4: text(input.accountLast4),
+    opening_date: input.openingDate,
+    opening_balance_minor: input.openingBalance.minor.toString(),
+    currency: input.openingBalance.currency,
+  });
+  if (error !== null) throw asRepositoryError(error);
+}
+
 export interface PpfAccountPatch {
   readonly institution?: string | null;
   readonly accountLast4?: string | null;

@@ -15,6 +15,8 @@ import { FixedIncome } from './FixedIncome.tsx';
 import { splitFundName } from './fundName.ts';
 import { daysPhrase } from './fixedIncomeRows.ts';
 import { barTerm } from './rowFact.ts';
+import { RetirementCards, RetirementValue } from './RetirementDetail.tsx';
+import { usePpf } from './usePpf.ts';
 import { kindColour } from '../../ui/labels.ts';
 import { ArchiveHolding, CurrencyOptions, FetchPrice, MissingMonths, QuotedValue, RecordReading } from './holdingParts.tsx';
 import type { FixedFacts, FixedIncomeFacts } from './useFixedIncomeFacts.ts';
@@ -59,6 +61,9 @@ export function HoldingDetail({
   const [archiving, setArchiving] = useState(false);
 
   const row = rows.find((r) => r.holding.id === holdingId);
+  // A PPF is worked out from its account, its payments and the notified rate, read only while one is on screen. A hook, so before the
+  // early returns.
+  const ppfData = usePpf(listing?.household.id ?? null, row?.holding.instrument.retirementType === 'ppf');
   if (listing === null) return null;
 
   if (row === undefined) {
@@ -79,6 +84,7 @@ export function HoldingDetail({
   const currency = holding.instrument.currency;
   const kind = holding.instrument.kind;
   const isFixed = kind === 'deposit' || kind === 'bond';
+  const isRetirement = kind === 'retirement';
   const name = splitFundName(holding.instrument.name);
   const facts = fixed.get(holdingId);
   // Paid out, or sold out: left out of the totals from the day it was, as net worth leaves it out.
@@ -286,7 +292,22 @@ export function HoldingDetail({
           />
         )}
 
-        {canWrite && !isFixed && (
+        {isRetirement && (
+          <RetirementValue
+            row={row}
+            listing={listing}
+            ppf={ppfData}
+            today={today}
+            privacy={privacy}
+            canWrite={canWrite}
+            record={record}
+            onChanged={async () => {
+              await reload();
+            }}
+          />
+        )}
+
+        {canWrite && !isFixed && !isRetirement && (
           <div className="value-actions">
             <button
               type="button"
@@ -354,6 +375,22 @@ export function HoldingDetail({
             void reload();
           }}
         />
+      ) : isRetirement ? (
+        <RetirementCards
+          row={row}
+          listing={listing}
+          ppf={ppfData}
+          today={today}
+          privacy={privacy}
+          canWrite={canWrite}
+          record={record}
+          onChanged={async () => {
+            await reload();
+          }}
+        >
+          {purpose}
+          <div>{archive}</div>
+        </RetirementCards>
       ) : (
         <>
           <Card title="Position">

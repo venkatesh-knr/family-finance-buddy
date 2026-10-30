@@ -277,6 +277,8 @@ export async function recordComputedReadings(input: {
   readonly householdId: string;
   readonly date: IsoDate;
   readonly readings: readonly { readonly holdingId: string; readonly value: Money }[];
+  /** What the reading says it was worked out from, for a screen that shows readings. Terms, unless it is a PPF's account. */
+  readonly note?: string;
 }): Promise<number> {
   if (input.readings.length === 0) return 0;
 
@@ -291,7 +293,7 @@ export async function recordComputedReadings(input: {
         value_minor: reading.value.minor.toString(),
         currency: reading.value.currency,
         source: 'backfill',
-        note: 'Worked out from the terms at the month end.',
+        note: input.note ?? 'Worked out from the terms at the month end.',
       })),
       { onConflict: 'holding_id,as_of_date', ignoreDuplicates: true },
     )

@@ -187,3 +187,21 @@ describe('barTerm — the term the progress bar is drawn over', () => {
     expect(barTerm(position, depositView('2027-08-01'), '2026-10-24')).toEqual({ start: '2026-08-01', end: '2027-08-01' });
   });
 });
+
+describe('a retirement holding says what it is', () => {
+  const base = { symbol: null, position: null, view: null, institution: null } as const;
+
+  it('names an EPF and a PPF by their type alone: there are no units to say', () => {
+    expect(rowFact({ ...base, kind: 'retirement', retirementType: 'epf', unitsText: '1' })).toBe('EPF');
+    expect(rowFact({ ...base, kind: 'retirement', retirementType: 'ppf', unitsText: '1' })).toBe('PPF');
+  });
+
+  it('says an NPS by its type and its units, which are what it is held in', () => {
+    expect(rowFact({ ...base, kind: 'retirement', retirementType: 'nps', unitsText: '1,234.5678' })).toBe('NPS · 1,234.5678 units');
+    expect(rowFact({ ...base, kind: 'retirement', retirementType: 'nps', unitsText: '1' })).toBe('NPS · 1 unit');
+  });
+
+  it('does not say "1 unit" of a fund for a retirement holding of no type, which is still one', () => {
+    expect(rowFact({ ...base, kind: 'retirement', retirementType: null, unitsText: '1' })).toBe('Retirement');
+  });
+});

@@ -37,6 +37,8 @@ import {
 import { addRate } from '../../repo/rates.ts';
 import { recordComputedReadings } from '../../repo/fixedIncome.ts';
 import { monthEndReadings } from '../../domain/fixed-income.ts';
+import { ppfMonthEndReadings } from '../../domain/ppf.ts';
+import { listPpf } from '../../repo/retirement.ts';
 import {
   buildPosition,
   daysPhrase,
@@ -70,12 +72,13 @@ function monthYear(date: string): string {
 }
 
 /** What Close month left out, named: "1 renewal not recorded yet, 2 paid out". */
-function notWorkedOut(left: { projected: number; notStarted: number; unvaluable: number; paidOut: number }): string {
+function notWorkedOut(left: { projected: number; notStarted: number; unvaluable: number; paidOut: number; ppfNoRate: number }): string {
   return [
     left.projected > 0 && `${String(left.projected)} renewal${left.projected === 1 ? '' : 's'} not recorded yet`,
     left.paidOut > 0 && `${String(left.paidOut)} paid out`,
     left.notStarted > 0 && `${String(left.notStarted)} not started`,
     left.unvaluable > 0 && `${String(left.unvaluable)} could not be valued`,
+    left.ppfNoRate > 0 && `${String(left.ppfNoRate)} PPF with no rate in force`,
   ]
     .filter((part): part is string => part !== false)
     .join(', ');
@@ -125,8 +128,10 @@ export function OverviewScreen({
     unread: number;
     /** Deposits and bonds worked out from their terms and written. */
     worked: number;
+    /** PPF accounts worked out from their payments and the notified rate and written. */
+    ppfWorked: number;
     /** What was left out, and why: each is named, not folded into the unread count. */
-    left: { projected: number; notStarted: number; unvaluable: number; paidOut: number };
+    left: { projected: number; notStarted: number; unvaluable: number; paidOut: number; ppfNoRate: number };
   } | null>(null);
   const [newRate, setNewRate] = useState('');
   const [savingRate, setSavingRate] = useState(false);
@@ -300,7 +305,7 @@ export function OverviewScreen({
       // function below runs, which would otherwise carry a stale mid-month reading into the
       // month-end slot and leave the worked-out figure with nowhere to go.
       let worked = 0;
-      const left = { projected: 0, notStarted: 0, unvaluable: 0, paidOut: 0 };
+      const left = { projected: 0, notStarted: 0, unvaluable: 0, paidOut: 0, ppfNoRate: 0 };
       {
         const seen = new Set(listing.holdings.filter((h) => !h.isArchived).map((h) => h.id));
         const { readings, skipped } = monthEndReadings(
@@ -319,8 +324,40 @@ export function OverviewScreen({
         left.unvaluable = skipped.filter((s) => s.why === 'unvaluable').length;
         left.paidOut = skipped.filter((s) => s.why === 'matured').length;
       }
+      // A PPF's value is a calculation too: its account, its payments and the notified rate, as the passbook stands at the month end.
+      // Read here and not from the page's data, and a failure stops the close rather than carrying a stale reading in its place.
+      let ppfWorked = 0;
+      {
+        const heldPpf = listing.holdings.filter((h) => !h.isArchived && h.instrument.retirementType === 'ppf');
+        if (heldPpf.length > 0) {
+          const ppf = await listPpf(listing.household.id);
+          const { readings, skipped } = ppfMonthEndReadings(
+            heldPpf.map((h) => {
+              const account = ppf.accounts.find((entry) => entry.holdingId === h.id);
+              return {
+                holdingId: h.id,
+                ...(account === undefined ? {} : { opening: { date: account.openingDate, balance: account.openingBalance } }),
+                entries: ppf.entries
+                  .filter((entry) => entry.holdingId === h.id && !entry.isVoided)
+                  .map((entry) => ({ date: entry.date, amount: entry.amount })),
+              };
+            }),
+            ppf.rates.map((rate) => ({ from: rate.effectiveFrom, ratePct: rate.ratePct })),
+            lastMonthEnd,
+          );
+          ppfWorked = await recordComputedReadings({
+            householdId: listing.household.id,
+            date: lastMonthEnd,
+            readings,
+            note: 'Worked out from the account at the month end.',
+          });
+          left.notStarted += skipped.filter((s) => s.why === 'not-started').length;
+          left.ppfNoRate = skipped.filter((s) => s.why === 'no-rate').length;
+          left.unvaluable += skipped.filter((s) => s.why === 'unworkable').length;
+        }
+      }
       const carried = await closeMonth({ householdId: listing.household.id, monthEnd: lastMonthEnd });
-      setClosed({ ...carried, worked, left });
+      setClosed({ ...carried, worked, ppfWorked, left });
       await load();
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not close the month.');
@@ -1272,12 +1309,14 @@ export function OverviewScreen({
               {closed !== null && (
                 <span className="note">
                   {closed.carried === 0
-                    ? closed.worked > 0
+                    ? closed.worked + closed.ppfWorked > 0
                       ? ''
                       : 'Nothing to carry.'
                     : `Carried ${String(closed.carried)} ${closed.carried === 1 ? 'reading' : 'readings'} to the month end.`}
                   {closed.worked > 0 &&
                     ` Worked out ${String(closed.worked)} ${closed.worked === 1 ? 'deposit or bond' : 'deposits and bonds'} from ${closed.worked === 1 ? 'its' : 'their'} terms.`}
+                  {closed.ppfWorked > 0 &&
+                    ` Worked out ${String(closed.ppfWorked)} ${closed.ppfWorked === 1 ? 'PPF' : 'PPFs'} from ${closed.ppfWorked === 1 ? 'its' : 'their'} payments.`}
                   {notWorkedOut(closed.left) !== '' && ` Not worked out: ${notWorkedOut(closed.left)}.`}
                   {closed.unread > 0 && ` ${String(closed.unread)} unread in all.`}
                 </span>
