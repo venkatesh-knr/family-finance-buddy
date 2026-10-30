@@ -41,8 +41,7 @@ async function readTable(entity: Entity, householdId: Uuid): Promise<Row[]> {
   const order = entity.rowKey[0] ?? 'id';
   for (let from = 0; ; from += PAGE) {
     let query = supabase().from(entity.key).select(selectOf(entity));
-    if (entity.key === 'household') query = query.eq('id', householdId);
-    else if (entity.scope === 'household') query = query.eq('household_id', householdId);
+    query = query.eq('household_id', householdId);
     const { data, error } = await query.order(order, { ascending: true }).range(from, from + PAGE - 1);
     if (error !== null) throw new Error(`Could not read ${entity.sheet} for the export: ${error.message}`);
     const page = (data ?? []) as unknown as Record<string, unknown>[];
@@ -62,11 +61,14 @@ export async function readEverything(householdId: Uuid): Promise<ExportSource> {
 
   for (const entity of ENTITIES) tables[entity.key] = await readTable(entity, householdId);
 
-  const household = tables['household']?.[0];
+  // What the file says about itself. The household's settings are not a sheet of it.
+  const { data, error } = await supabase().from('household').select('name, base_currency, kind').eq('id', householdId).maybeSingle();
+  if (error !== null) throw new Error(`Could not read the household for the export: ${error.message}`);
+  const household = (data ?? null) as { name?: string; base_currency?: string; kind?: string } | null;
   return {
     tables,
-    householdName: household?.['name'] ?? 'Household',
-    baseCurrency: household?.['base_currency'] ?? 'INR',
-    isDemo: household?.['kind'] === 'demo',
+    householdName: household?.name ?? 'Household',
+    baseCurrency: household?.base_currency ?? 'INR',
+    isDemo: household?.kind === 'demo',
   };
 }

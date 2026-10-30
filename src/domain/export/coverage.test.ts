@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ENTITIES, NOT_EXPORTED } from './entities.ts';
+import { ENTITIES, LEFT_OUT_COLUMNS, NOT_EXPORTED } from './entities.ts';
 
 /**
  * The full export is generated from `ENTITIES` and nothing else, so a table or a column that is not accounted for there is quietly
@@ -11,9 +11,6 @@ import { ENTITIES, NOT_EXPORTED } from './entities.ts';
  */
 
 const MIGRATIONS = join(process.cwd(), 'supabase', 'migrations');
-
-/** Columns that are in a table and in no sheet, on purpose: the account that did it is an identity, not household data. */
-const LEFT_OUT_COLUMNS = new Set(['created_by', 'voided_by', 'accepted_by']);
 
 function schema(): Map<string, Set<string>> {
   const tables = new Map<string, Set<string>>();
@@ -93,9 +90,10 @@ describe('the export holds the whole schema to account', () => {
       const present = tables.get(entity.key);
       if (present === undefined) continue;
       const registered = new Set(entity.columns.map((column) => column.key));
-      for (const column of present) if (!registered.has(column) && !LEFT_OUT_COLUMNS.has(column)) missing.push(`${entity.key}.${column}`);
+      const leftOut = new Set(entity.leftOut ?? []);
+      for (const column of present) if (!registered.has(column) && !LEFT_OUT_COLUMNS.has(column) && !leftOut.has(column)) missing.push(`${entity.key}.${column}`);
     }
-    expect(missing, 'add each to the entity’s columns, or to LEFT_OUT_COLUMNS with the reason').toEqual([]);
+    expect(missing, 'add each to the entity’s columns, or to its leftOut (or LEFT_OUT_COLUMNS) with the reason').toEqual([]);
   });
 
   it('names no column that the table does not have', () => {
