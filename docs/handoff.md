@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #110 (#109 the property cost basis, #110 the property migration; before them #102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #116 (#111 to #116: the bottom bar's ARIA role, property in net worth, the PPF calculation, the retirement migration, the CI retry and pin; and) #110 (#109 the property cost basis, #110 the property migration; before them #102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -289,7 +289,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
   (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98), FIRE (#99), the holding screens (#100), the Holdings list (#101)**.
-- **In flight:** nothing. The Holdings list was merged and deployed as #101, and the holding screens as #100 (each
+- **In flight:** the retirement screens, on `retirement-screens`, in a pull request (merged on green CI: check `git log origin/main` for it). Otherwise nothing. The Holdings list was merged and deployed as #101, and the holding screens as #100 (each
   reviewed by the design-conformance agent). Every artboard is now built to, apart from Goals (step 9). The Quoted panel and Fetch price on a fund are not covered by any test, because no fund in the test
   household is linked to a price feed: try them once on a real linked fund.
   CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
@@ -360,6 +360,10 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      existing PPF deposit has not been exercised on real data (check each converted PPF's opening balance against its passbook);
      a feed for the NPS NAV and an EPF estimate between checks were left out on purpose; contributors reach the retirement screens as they
      reach any holding's.
+     The design-conformance review of the retirement screens was applied except what is the maintainer's: no artboard exists (a `proposed`
+     row), the tokens.md section 6 claim that the ramp is stepped in lightness (the shipped `--c1`..`--c9` are not, and the lime/rose values
+     were measured darker than first chosen to hold 3:1), and whether Close month should skip a PPF whose typed passbook balance disagrees
+     with the worked-out figure (today the screen says so and does not offer to overwrite, and Close month still writes the worked-out value).
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.
