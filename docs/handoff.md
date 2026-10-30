@@ -280,7 +280,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
 > Rewrite this at the end of every session, on the branch you were working on.
 
 - **Environment:** local (the MSI, Windows).
-- **Merged and deployed:** everything through #117 (#117 the retirement screens; #111 to #116: the bottom bar's ARIA role, property in net worth, the PPF calculation, the retirement migration, the CI retry and pin; and) #110 (#109 the property cost basis, #110 the property migration; before them #102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
+- **Merged and deployed:** everything through #121 (#119 the retirement boards and the unchecked-rate caveat, #120 Export everything, #121 the Mist light theme; #117 the retirement screens; #111 to #116: the bottom bar's ARIA role, property in net worth, the PPF calculation, the retirement migration, the CI retry and pin; and) #110 (#109 the property cost basis, #110 the property migration; before them #102 the Plan buttons' labels, #103 the test tiers in `CLAUDE.md`, #104 a holding is valued and earmarked when it is added, #106 the deposit spec, #107 scheme on the Add forms, #108 Expenses totals add up the whole period). Since #64: Close month for deposits (#65, #66); the
   palette, asset tiles, the vibrant-canvas UI pass and the FIRE read-out (#67–#73); the protection-and-flow
   design, the document-honesty checks (invariant IDs, reviewer authority, a pgTAP reader) and steps 2a
   earmarks and schemes and 2b protection (#74–#77); Departures carry a Status (#78); the Overview's four
@@ -289,7 +289,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   seed that leaves a usable household (#82, #83); spec fixes (#84, #85); goals design and the departures
   mistake and its reversal (#86, #87); and the four screens rebuilt to their artboards: **Expenses
   (#88), More with the bar on the screens behind it (#89), Settings (#90), Profile (#92, #93), Tax (#94), Insurance (#96), Overview (#98), FIRE (#99), the holding screens (#100), the Holdings list (#101)**.
-- **In flight:** nothing. The retirement screens were merged and deployed as #117. The Holdings list was merged and deployed as #101, and the holding screens as #100 (each
+- **In flight:** nothing. Export everything (step 5, first half) and the Mist light theme were merged and deployed as #120 and #121. The Holdings list was merged and deployed as #101, and the holding screens as #100 (each
   reviewed by the design-conformance agent). Every artboard is now built to, apart from Goals (step 9). The Quoted panel and Fetch price on a fund are not covered by any test, because no fund in the test
   household is linked to a price feed: try them once on a real linked fund.
   CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
@@ -364,7 +364,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      row), the tokens.md section 6 claim that the ramp is stepped in lightness (the shipped `--c1`..`--c9` are not, and the lime/rose values
      were measured darker than first chosen to hold 3:1), and whether Close month should skip a PPF whose typed passbook balance disagrees
      with the worked-out figure (today the screen says so and does not offer to overwrite, and Close month still writes the worked-out value).
-  5. **Step 5**: Reports and export first (the gate is a round trip).
+  5. **Step 5**, second half: the template download and the upload (blueprint section 17). Export everything is built and its sheets are the template's shape (`src/domain/export`: `buildWorkbook`, and `readWorkbook` already reads them back, finding columns by header and naming sheet, row and column of any problem). Still to build: a template with the instructions sheet and dropdown validation, matching names to records, the preview before any write, commit as one `import_batch` (kind `template`) that can be reversed as a unit, and re-upload that updates by `id` and does not duplicate. The gate is: export, edit a hundred rows in Excel, upload, land in the same state. Also still to build in Reports: the year-end pack, the capital-gains statement, spending by category and foreign assets (drawn on the board, not shown until built). Reads are not recorded in the audit log anywhere yet, and the full export is the largest read the app makes. A partner's export has not been run (the e2e account is the owner).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.
 - **Bank and card import** waits for redacted sample statements the maintainer is collecting, outside the
