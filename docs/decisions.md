@@ -373,3 +373,25 @@ Proposal and reasons: `docs/reviews/2026-10-26-property/proposal.md`. Schema: `s
   out only a home the family **lives in** (`property.is_self_occupied`), with the loan linked to it; a property that is not lived in is in the
   corpus at the household's share and its loan is subtracted. (3) Property takes **its own new hue**, `--c8` rose, so it no longer shares Equity's
   emerald: `docs/tokens.md` section 6, `src/styles/tokens.css`.
+
+## Retirement (October 2026, the maintainer took the recommendations on all eight questions)
+
+Proposal and reasons: `docs/reviews/2026-10-27-retirement/proposal.md`. Schema: `supabase/migrations/20261027120000_retirement.sql`.
+
+- **One kind, `retirement`, with a `retirement_type` of epf, nps or ppf.** One Retirement row in the allocation and one chip on Holdings.
+- **A PPF is computed** from its entries and the notified rate (`src/domain/ppf.ts`): the lowest balance between the close of the 5th and the
+  month end, at the rate notified for the month, rounded once to the rupee and credited on 31 March; the value steps at the credit and is never
+  marked up in between (PF-C11). It reaches net worth as a deposit does: the screen works the value out and "Record as today's reading" or Close
+  month writes it. It is reconciled against a passbook reading once a year.
+- **The notified rate is a public table**, `scheme_rate`, readable by anyone signed in and written by migration only, as `tax_rule` is. Seeded
+  with **7.1% from 1 April 2020, which is not verified**: it is from memory of the 2020 notification and has to be checked against a real PPF
+  statement. A change is a migration that appends a row.
+- **An EPF is a passbook balance typed as a reading, and an NPS is units with a typed NAV**: no table for either. A feed for the pension
+  regulator's NAV, and an EPF estimate between checks, are not in this step.
+- **A retirement holding is never liquid**: in the FIRE corpus, out of the liquid corpus the cover gap subtracts (code, with the screen).
+- **A new hue for retirement** (the shield tile is periwinkle, which is Mutual funds'): a new token, `--c9`, lime, light `#5F8A1E` and dark
+  `#A3D65C`, to be measured against the tile contrast test and replaced by the nearest value that passes (code, with the screen).
+- **An existing PPF deposit is converted** by the migration: its latest reading becomes the opening balance at that date, its institution and last
+  four digits come across, and its terms and renewals are **deleted**, with the audit log keeping each row. The proposal said they would be left
+  unused; they are deleted instead, because a deposit's terms are worked out into a payout once past maturity and that takes a holding out of
+  every total, which a PPF must not meet.
