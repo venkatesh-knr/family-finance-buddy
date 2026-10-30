@@ -453,6 +453,12 @@ export function RetirementCards(props: Shared & { readonly children?: React.Reac
   );
 }
 
+/**
+ * Whether the notified rate in `scheme_rate` has been compared with a real statement. While it has not, the screen says so
+ * beside the rate, in both detail modes (DL-I4: a caveat survives essential mode). Set to true when somebody has checked it.
+ */
+const PPF_RATE_CHECKED = false;
+
 function PpfCards(props: Shared) {
   const { row, listing, ppf, today, privacy, canWrite, onChanged } = props;
   const { account, entries, view } = useWorkedPpf(row.holding.id, ppf.ppf, today);
@@ -520,6 +526,16 @@ function PpfCards(props: Shared) {
               ) : (
                 <>
                   {rateInForce.replace(/0+$/, '').replace(/\.$/, '')}%<span className="note"> since {formatIsoDate(rate.effectiveFrom)}</span>
+                  {!PPF_RATE_CHECKED && (
+                    <span className="note" data-testid="ppf-rate-unchecked">
+                      {' '}
+                      · not yet checked against a statement{' '}
+                      <Caveat tone="info" label="Why the rate is not yet checked">
+                        The notified rate is held by the app and has not been compared with a PPF statement. Every figure here that
+                        comes from it, the interest and the worked-out balance, is only as right as the rate is.
+                      </Caveat>
+                    </span>
+                  )}
                 </>
               )}
             </Stat>

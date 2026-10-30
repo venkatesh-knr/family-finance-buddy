@@ -356,7 +356,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      (30 October). Built: the PPF balance (`src/domain/ppf.ts`) and the NPS value (`nps.ts`), the repository layer
      (`src/repo/retirement.ts`), the Add form for each type (`AddRetirement.tsx`), the holding screen in the shape of each
      (`RetirementDetail.tsx`), the `retirement` class with the `--c9` lime hue, a retirement holding never liquid, and Close month writing
-     each PPF's month-end value. **Owed:** the seeded 7.1% PPF rate is NOT VERIFIED against a real statement; the migration's conversion of any
+     each PPF's month-end value. **Owed:** the seeded 7.1% PPF rate is, by the maintainer (30 October), the current one, but it has not been compared with a real statement, so the PPF screen says "not yet checked against a statement" in both modes until `PPF_RATE_CHECKED` in `RetirementDetail.tsx` is set; the migration's conversion of any
      existing PPF deposit has not been exercised on real data (check each converted PPF's opening balance against its passbook);
      a feed for the NPS NAV and an EPF estimate between checks were left out on purpose; contributors reach the retirement screens as they
      reach any holding's.
