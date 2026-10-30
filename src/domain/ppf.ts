@@ -169,3 +169,45 @@ export function ppfBalance(input: {
     rateInForce: inForce,
   };
 }
+
+/**
+ * What Close month writes for each PPF: the passbook as it stands at the month end, which is already the stepped value, so
+ * no rule is needed for it apart from the one `ppfBalance` has. An account that cannot be worked out is left out and named,
+ * and no figure is made up for it: one that had not begun by then, one with no rate in force, or one whose payments do not
+ * fit its opening balance.
+ */
+export function ppfMonthEndReadings(
+  accounts: readonly {
+    readonly holdingId: string;
+    readonly opening?: { readonly date: IsoDate; readonly balance: Money };
+    readonly entries: readonly PpfEntry[];
+  }[],
+  rates: readonly PpfRate[],
+  monthEnd: IsoDate,
+): {
+  readonly readings: readonly { readonly holdingId: string; readonly value: Money }[];
+  readonly skipped: readonly { readonly holdingId: string; readonly why: 'not-started' | 'no-rate' | 'unworkable' }[];
+} {
+  const readings: { holdingId: string; value: Money }[] = [];
+  const skipped: { holdingId: string; why: 'not-started' | 'no-rate' | 'unworkable' }[] = [];
+
+  for (const account of accounts) {
+    const begun =
+      (account.opening !== undefined && account.opening.date <= monthEnd) ||
+      account.entries.some((entry) => entry.date <= monthEnd);
+    if (!begun) {
+      skipped.push({ holdingId: account.holdingId, why: 'not-started' });
+      continue;
+    }
+    const view = ppfBalance({
+      ...(account.opening === undefined ? {} : { opening: account.opening }),
+      entries: account.entries,
+      rates,
+      on: monthEnd,
+    });
+    if (view.ok) readings.push({ holdingId: account.holdingId, value: view.value });
+    else skipped.push({ holdingId: account.holdingId, why: view.reason === 'no-rate' ? 'no-rate' : 'unworkable' });
+  }
+
+  return { readings, skipped };
+}

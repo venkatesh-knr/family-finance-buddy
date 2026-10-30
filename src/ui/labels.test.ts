@@ -5,7 +5,7 @@ import { INSTRUMENT_KIND_COLOUR, INSTRUMENT_KIND_LABEL, kindColour, kindLabel } 
 describe('kindColour', () => {
   it('gives every class a token, never a literal: a categorical slot, or the neutral grey for other', () => {
     for (const kind of INSTRUMENT_KINDS) {
-      expect(kindColour(kind)).toMatch(/^var\(--(c[1-7]|muted)\)$/);
+      expect(kindColour(kind)).toMatch(/^var\(--(c[1-9]|muted)\)$/);
     }
     expect(kindColour('other')).toBe('var(--muted)');
   });

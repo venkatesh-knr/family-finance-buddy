@@ -218,7 +218,11 @@ export interface NewExpense {
   readonly visibility?: Visibility;
 }
 
-export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'other';
+export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'retirement' | 'other';
+
+/** What a retirement holding is. Required when the kind is retirement and absent otherwise. */
+export type RetirementType = 'epf' | 'nps' | 'ppf';
+export const RETIREMENT_TYPES: readonly RetirementType[] = ['epf', 'nps', 'ppf'];
 
 export const INSTRUMENT_KINDS: readonly InstrumentKind[] = [
   'equity',
@@ -226,6 +230,7 @@ export const INSTRUMENT_KINDS: readonly InstrumentKind[] = [
   'mutual_fund',
   'bond',
   'deposit',
+  'retirement',
   'other',
 ];
 
@@ -252,8 +257,10 @@ export interface Instrument {
   readonly exposureCurrency: string;
   /** Schedule FA classification. A recorded decision, never inferred. */
   readonly isForeignAsset: boolean;
-  /** What a deposit is (FD, PPF, SSY...). Null on anything that is not a deposit, and on a deposit nobody labelled. */
+  /** What a deposit is (FD, SSY...). Null on anything that is not a deposit, and on a deposit nobody labelled. */
   readonly scheme: Scheme | null;
+  /** An EPF, an NPS or a PPF. Present on a retirement holding and on nothing else. */
+  readonly retirementType: RetirementType | null;
   /**
    * Which capital-gains rules apply, or null for "not classified".
    *

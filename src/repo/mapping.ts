@@ -31,6 +31,7 @@ import {
   MEMBER_COLOURS,
   PAYMENT_METHODS,
   PROPERTY_KINDS,
+  RETIREMENT_TYPES,
   VALUATION_BASES,
   VALUATION_SOURCES,
   VISIBILITIES,
@@ -210,6 +211,10 @@ export function toInstrument(raw: unknown): Instrument {
       row['scheme'] === null || row['scheme'] === undefined
         ? null
         : requireOneOf(row['scheme'], SCHEMES, 'instrument.scheme'),
+    retirementType:
+      row['retirement_type'] === null || row['retirement_type'] === undefined
+        ? null
+        : requireOneOf(row['retirement_type'], RETIREMENT_TYPES, 'instrument.retirement_type'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
   };

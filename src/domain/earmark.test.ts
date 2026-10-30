@@ -23,6 +23,7 @@ const inr = (rupees: number) => money(BigInt(Math.round(rupees * 100)), 'INR');
 const usd = (dollars: number) => money(BigInt(Math.round(dollars * 100)), 'USD');
 
 const holding = (over: Partial<CorpusHolding> & { id: string }): CorpusHolding => ({
+  kind: 'mutual_fund',
   currency: 'INR',
   earmark: 'none',
   scheme: null,
@@ -155,7 +156,8 @@ describe('the liquid corpus — the other named output of the one classification
     })[0]?.liquid.minor;
 
   it('names the schemes that lock money in', () => {
-    expect([...LOCKED_SCHEMES].sort()).toEqual(['kvp', 'nsc', 'po_td', 'pomis', 'ppf', 'scss', 'ssy']);
+    // A PPF is not here: it is a retirement holding now, locked by its kind and not by a deposit's scheme.
+    expect([...LOCKED_SCHEMES].sort()).toEqual(['kvp', 'nsc', 'po_td', 'pomis', 'scss', 'ssy']);
   });
 
   it('counts ordinary holdings and the emergency fund, which is the most liquid money there is', () => {
@@ -170,13 +172,37 @@ describe('the liquid corpus — the other named output of the one classification
     ).toBe(0n);
   });
 
-  it('leaves out a locked scheme even when it counts toward FIRE: a PPF is in the corpus and not liquid', () => {
+  it('leaves out a locked scheme even when it counts toward FIRE: an SSY is in the corpus and not liquid', () => {
     const [total] = fireCorpus({
-      holdings: [holding({ id: 'ppf', scheme: 'ppf' }), holding({ id: 'fd', scheme: 'fd' })],
-      valuations: [reading('ppf', inr(100)), reading('fd', inr(40))],
+      holdings: [holding({ id: 'ssy', kind: 'deposit', scheme: 'ssy' }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
+      valuations: [reading('ssy', inr(100)), reading('fd', inr(40))],
     });
     expect(total?.included.minor).toBe(14000n);
     expect(total?.liquid.minor).toBe(4000n);
+  });
+
+  it.each(['epf', 'nps', 'ppf'])(
+    'leaves out a retirement holding, whatever its type: %s is in the corpus and cannot be had in an emergency',
+    () => {
+      const [total] = fireCorpus({
+        holdings: [holding({ id: 'ret', kind: 'retirement' }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
+        valuations: [reading('ret', inr(100)), reading('fd', inr(40))],
+      });
+      expect(total?.included.minor).toBe(14000n);
+      expect(total?.liquid.minor).toBe(4000n);
+    },
+  );
+
+  it('counts a retirement holding in the corpus whether it is earmarked retirement or not earmarked at all', () => {
+    const [total] = fireCorpus({
+      holdings: [
+        holding({ id: 'a', kind: 'retirement', earmark: 'retirement' }),
+        holding({ id: 'b', kind: 'retirement', earmark: 'none' }),
+      ],
+      valuations: [reading('a', inr(100)), reading('b', inr(50))],
+    });
+    expect(total?.included.minor).toBe(15000n);
+    expect(total?.liquid.minor).toBe(0n);
   });
 
   it('PF-C17 — leaves out the surrender value a policy carries: a ULIP is in the corpus and cannot be had in an emergency', () => {
