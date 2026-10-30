@@ -166,6 +166,18 @@ export function Button({
 }
 
 /**
+ * The banner that marks figures as illustrative (docs/design/prototype.html, `.samplebar`). A demo household's export carries
+ * the same mark in its file name and on its first sheet; this is what stops a sample being mistaken for a real record on screen.
+ */
+export function SampleBar({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="samplebar" role="note">
+      <b>{title}</b> {children}
+    </div>
+  );
+}
+
+/**
  * A password field with a reveal control.
  *
  * Worth having: this app demands a password and then an authenticator code, and

@@ -24,7 +24,7 @@ import { goTo } from './holdings.ts';
  * excludes it. Run it when you want to look: `npm run test:screens`.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'reports', 'more', 'profile', 'settings'] as const;
 
 async function capture(page: import('@playwright/test').Page, screen: string, theme: string) {
   const project = test.info().project.name.replace('screens-', '');
