@@ -122,7 +122,7 @@ picker, a legend or a filter until its stage ships.
 | --- | --- | --- |
 | property | rose | a house |
 | gold | gold | a stack of coins seen in section |
-| retirement (PF · PPF · NPS) | periwinkle | a shield |
+| retirement (EPF · NPS · PPF) | lime (`--c9`; wired, a class of its own) | a shield |
 | insurance | violet | an umbrella |
 | liabilities | **coral** | a circle containing a minus |
 

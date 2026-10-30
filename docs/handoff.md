@@ -352,13 +352,14 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      section 6 still calls `--c5` the crypto slot while the proposed Departure calls it coral and reserved for liabilities: one of the two
      is out of date. (j) one full-suite run (27 October) failed `property-net-worth.spec.ts` at the second valuation on both projects, for a
      cause not found; it passed before and after, and the spec no longer works out a date of its own. Watch for it. Then the retirement kind
-     (PPF, EPF, NPS): the maintainer accepted all eight recommendations. Built: the PPF balance (`src/domain/ppf.ts`) and the
-     migration `20261027120000_retirement.sql` (a `retirement` kind with a type, a PPF account and entries, a public `scheme_rate`
-     table seeded with 7.1% from 1 April 2020, the conversion of any PPF deposit, the reset) with `supabase/tests/retirement.test.sql`,
-     **applied to live by the maintainer (30 October).** The seeded rate is NOT VERIFIED: check it against a real PPF statement. CI is
-     the first place the SQL runs, and the conversion block cannot be exercised there (the test database has no PPF deposit). Next, after
-     review: the repository layer, then the Add form and a holding screen for each type, the `--c9` lime hue (measured against the tile
-     test), `retirement` in `ASSET_CLASSES`, and a retirement holding left out of the liquid corpus.
+     (PPF, EPF, NPS): the maintainer accepted all eight recommendations and applied the migration `20261027120000_retirement.sql`
+     (30 October). Built: the PPF balance (`src/domain/ppf.ts`) and the NPS value (`nps.ts`), the repository layer
+     (`src/repo/retirement.ts`), the Add form for each type (`AddRetirement.tsx`), the holding screen in the shape of each
+     (`RetirementDetail.tsx`), the `retirement` class with the `--c9` lime hue, a retirement holding never liquid, and Close month writing
+     each PPF's month-end value. **Owed:** the seeded 7.1% PPF rate is NOT VERIFIED against a real statement; the migration's conversion of any
+     existing PPF deposit has not been exercised on real data (check each converted PPF's opening balance against its passbook);
+     a feed for the NPS NAV and an EPF estimate between checks were left out on purpose; contributors reach the retirement screens as they
+     reach any holding's.
   5. **Step 5**: Reports and export first (the gate is a round trip).
   6. **6a Flow** waits for about eight decisions from the maintainer. **Goals** (step 9) is last of the
      computed steps; `docs/design/goals.md` is committed and its invariants are waived until then.

@@ -173,6 +173,8 @@ export function HoldingDetail({
           </svg>
           <span>Holdings</span>
         </a>
+        {/* The app's own header, with its heading, is not on a phone's holding screen, so the page would have none: the name is it. */}
+        <h1 className="sr-only">{holding.instrument.name}</h1>
         <span className="screen-bar-end holding-bar-end">
           {householdKind !== null && <DemoBadge kind={householdKind} />}
           <button
