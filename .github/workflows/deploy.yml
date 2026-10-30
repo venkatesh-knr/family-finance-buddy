@@ -83,13 +83,29 @@ jobs:
       # These gate the deploy. Policy bugs are the single most likely way this
       # app leaks, so they get the same rigour as the tax arithmetic.
 
+      # Pinned, not `latest`: a new release can change the images the stack pulls, and the policy suite is what gates the
+      # deploy. 2.122.0 is what `latest` resolved to when this was last green. Upgrading is a change made on purpose.
       - name: Set up the Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: latest
+          version: 2.122.0
 
+      # The stack is a dozen images pulled from ghcr.io, which answers `toomanyrequests` when runners elsewhere are pulling at
+      # the same time, and a pull that fails fails the whole job before a single migration has run: four reruns in a row on one
+      # day. So it is tried up to five times with a longer wait each time (45, 90, 135, 180 seconds), and a failure that is the
+      # SQL and not the registry still fails, on the last attempt, with its own message.
       - name: Start a local stack, applying every migration
-        run: supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if supabase start -x studio,inbucket,imgproxy,edge-runtime,logflare,vector; then
+              exit 0
+            fi
+            echo "::warning::supabase start failed (attempt $attempt of 5)"
+            [ "$attempt" -lt 5 ] || exit 1
+            # A half-started stack would answer the next attempt with a conflict, not a fresh start.
+            supabase stop --no-backup >/dev/null 2>&1 || true
+            sleep $((attempt * 45))
+          done
 
       - name: Policy tests
         run: supabase test db

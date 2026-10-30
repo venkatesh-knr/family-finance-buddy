@@ -293,9 +293,9 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
   reviewed by the design-conformance agent). Every artboard is now built to, apart from Goals (step 9). The Quoted panel and Fetch price on a fund are not covered by any test, because no fund in the test
   household is linked to a price feed: try them once on a real linked fund.
   CI has failed transiently on `ghcr.io` answering `toomanyrequests` while the policy-suite job pulled Supabase's
-  images (CI downloads them on every run and caches nothing), and once on `supabase/setup-cli` failing to resolve
-  `latest` ("rate limit exceeded"). Both clear on a re-run. If they recur, consider pinning the CLI version and a
-  retry around `supabase start` in `.github/workflows/deploy.yml` (shown to the maintainer first).
+  images (four reruns in a row on 27 October). The workflow now pins the CLI (`2.122.0`, what `latest` was when it last went
+  green) and tries `supabase start` up to five times with a longer wait each time; upgrading the CLI is a change made on
+  purpose. A failure that is the SQL and not the registry still fails, on the last attempt, with its own message.
 - **Migrations written but not yet applied to live: none.** Every file in `supabase/migrations/` is applied
   as far as this note knows: through `20261015120000_demo_seed_stated_balance.sql`, which the maintainer
   applied after #83. Two older ones are recorded here only by inference (the live FIRE screen reads their
