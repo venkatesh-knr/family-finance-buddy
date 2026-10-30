@@ -355,7 +355,7 @@ the same ones. If one looks wrong, ask; do not assume the list is current.
      (PPF, EPF, NPS): the maintainer accepted all eight recommendations. Built: the PPF balance (`src/domain/ppf.ts`) and the
      migration `20261027120000_retirement.sql` (a `retirement` kind with a type, a PPF account and entries, a public `scheme_rate`
      table seeded with 7.1% from 1 April 2020, the conversion of any PPF deposit, the reset) with `supabase/tests/retirement.test.sql`,
-     **written for review and not yet applied to live.** The seeded rate is NOT VERIFIED: check it against a real PPF statement. CI is
+     **applied to live by the maintainer (30 October).** The seeded rate is NOT VERIFIED: check it against a real PPF statement. CI is
      the first place the SQL runs, and the conversion block cannot be exercised there (the test database has no PPF deposit). Next, after
      review: the repository layer, then the Add form and a holding screen for each type, the `--c9` lime hue (measured against the tile
      test), `retirement` in `ASSET_CLASSES`, and a retirement holding left out of the liquid corpus.
