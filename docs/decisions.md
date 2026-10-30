@@ -395,3 +395,7 @@ Proposal and reasons: `docs/reviews/2026-10-27-retirement/proposal.md`. Schema: 
   four digits come across, and its terms and renewals are **deleted**, with the audit log keeping each row. The proposal said they would be left
   unused; they are deleted instead, because a deposit's terms are worked out into a payout once past maturity and that takes a holding out of
   every total, which a PPF must not meet.
+- **Built (30 October 2026):** the kind, the type and the class with its hue (`--c9`, lime, light `#568019`: the first value measured under the
+  tile test's 3:1), the repository layer, the Add form for each type, a holding screen in the shape of each, a PPF worked out from its account,
+  payments and the notified rate and recorded as a reading by the person, and Close month writing each PPF's month-end value. A retirement
+  holding is in the FIRE corpus and never liquid.

@@ -529,6 +529,7 @@ export function useOverviewData({
         .filter((h) => scope === 'household' || h.member.id === mine)
         .map((h) => ({
           id: h.id,
+          kind: h.instrument.kind,
           currency: h.instrument.currency,
           earmark: h.earmark,
           scheme: h.instrument.scheme,

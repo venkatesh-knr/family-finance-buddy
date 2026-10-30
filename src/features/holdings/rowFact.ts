@@ -18,10 +18,19 @@ export function rowFact(options: {
   readonly position: FixedIncomePosition | null;
   readonly view: FixedIncomeView | null;
   readonly institution: string | null;
+  /** An EPF, an NPS or a PPF, for a retirement holding. */
+  readonly retirementType?: 'epf' | 'nps' | 'ppf' | null;
   /** Privacy mode removes an amount from the page, and a coupon on a row is one. */
   readonly privacy?: boolean;
 }): string {
-  const { kind, symbol, unitsText, position, view, institution, privacy = false } = options;
+  const { kind, symbol, unitsText, position, view, institution, retirementType = null, privacy = false } = options;
+
+  // What it is, and for an NPS the units it is held in: an EPF and a PPF have none to say.
+  if (kind === 'retirement') {
+    if (retirementType === null) return 'Retirement';
+    const type = retirementType.toUpperCase();
+    return retirementType === 'nps' ? `${type} · ${unitsText} ${unitsText === '1' ? 'unit' : 'units'}` : type;
+  }
 
   if (kind === 'deposit' || kind === 'bond') {
     if (position === null) return 'terms not recorded';

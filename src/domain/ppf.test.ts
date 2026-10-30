@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { ppfBalance, type PpfEntry, type PpfRate } from './ppf.ts';
+import { ppfBalance, ppfMonthEndReadings, type PpfEntry, type PpfRate } from './ppf.ts';
 
 /**
  * A PPF account's balance, from what was put in and the rate the government notified.
@@ -215,5 +215,82 @@ describe('the rate in force', () => {
     });
     if (!view.ok) throw new Error('refused');
     expect(view.rateInForce).toBe('6.900');
+  });
+});
+
+describe('the PPF readings Close month writes', () => {
+  const account = (holdingId: string, over: Partial<Parameters<typeof ppfMonthEndReadings>[0][number]> = {}) => ({
+    holdingId,
+    opening,
+    entries: [deposit('2025-04-04', 150_000)],
+    ...over,
+  });
+
+  it('is each account as the passbook stands at the month end: stepped, with no interest marked up in the year', () => {
+    const { readings, skipped } = ppfMonthEndReadings([account('a')], SEVEN_POINT_ONE, '2025-09-30');
+    expect(skipped).toEqual([]);
+    expect(readings).toEqual([{ holdingId: 'a', value: inr(250_000) }]);
+  });
+
+  it('includes the credit when the month end is 31 March', () => {
+    const { readings } = ppfMonthEndReadings([account('a')], SEVEN_POINT_ONE, '2026-03-31');
+    expect(readings).toEqual([{ holdingId: 'a', value: inr(267_750) }]);
+  });
+
+  it('does not count a payment dated after the month end', () => {
+    const { readings } = ppfMonthEndReadings(
+      [account('a', { entries: [deposit('2025-04-04', 150_000), deposit('2025-10-02', 50_000)] })],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(readings).toEqual([{ holdingId: 'a', value: inr(250_000) }]);
+  });
+
+  it('skips an account that had not begun by the month end, and says so', () => {
+    const { readings, skipped } = ppfMonthEndReadings(
+      [account('late', { opening: { date: '2026-01-01', balance: inr(1_000) }, entries: [] })],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(readings).toEqual([]);
+    expect(skipped).toEqual([{ holdingId: 'late', why: 'not-started' }]);
+  });
+
+  it('says a PPF with no account at all needs one, which is not the same as one that had not begun', () => {
+    const { readings, skipped } = ppfMonthEndReadings(
+      [{ holdingId: 'bare', entries: [] }],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(readings).toEqual([]);
+    expect(skipped).toEqual([{ holdingId: 'bare', why: 'no-account' }]);
+  });
+
+  it('skips one it cannot work out and names why, rather than writing a figure it made up: no rate in force', () => {
+    const { readings, skipped } = ppfMonthEndReadings([account('a'), account('b')], [rate('2025-10-01', '7.100')], '2025-12-31');
+    expect(readings).toEqual([]);
+    expect(skipped).toEqual([
+      { holdingId: 'a', why: 'no-rate' },
+      { holdingId: 'b', why: 'no-rate' },
+    ]);
+  });
+
+  it('skips one whose entries are not consistent with its opening balance', () => {
+    const { skipped } = ppfMonthEndReadings(
+      [account('a', { entries: [deposit('2025-03-01', 1_000)] })],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(skipped).toEqual([{ holdingId: 'a', why: 'unworkable' }]);
+  });
+
+  it('writes the readings it can and skips the rest, in the order it was given', () => {
+    const { readings, skipped } = ppfMonthEndReadings(
+      [account('a'), account('late', { opening: { date: '2026-01-01', balance: inr(1_000) }, entries: [] }), account('c')],
+      SEVEN_POINT_ONE,
+      '2025-09-30',
+    );
+    expect(readings.map((r) => r.holdingId)).toEqual(['a', 'c']);
+    expect(skipped).toEqual([{ holdingId: 'late', why: 'not-started' }]);
   });
 });

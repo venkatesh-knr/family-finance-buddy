@@ -57,6 +57,7 @@ export function RecordReading({
   quantity,
   currency,
   today,
+  label,
   onRecord,
 }: {
   listing: HoldingListing;
@@ -64,6 +65,8 @@ export function RecordReading({
   quantity: string;
   currency: string;
   today: string;
+  /** What the figure is called where it is not a value: a passbook balance. */
+  label?: string;
   onRecord: (valuation: Parameters<ReturnType<typeof useHoldings>['record']>[0]) => Promise<void>;
 }) {
   const [amount, setAmount] = useState('');
@@ -115,7 +118,7 @@ export function RecordReading({
     >
       <div className="w-full sm:w-[8.75rem] sm:shrink-0">
         <Field
-          label={`Value (${currency})`}
+          label={`${label ?? 'Value'} (${currency})`}
           numeric
           inputMode="decimal"
           placeholder="0.00"
@@ -290,7 +293,8 @@ export function AddHolding({
               setKind(event.target.value as InstrumentKind);
             }}
           >
-            {INSTRUMENT_KINDS.map((option) => (
+            {/* Retirement is added by its own form, which asks for its type: a fund cannot be made one here. */}
+            {INSTRUMENT_KINDS.filter((option) => option !== 'retirement').map((option) => (
               <option key={option} value={option}>
                 {option.replace('_', ' ')}
               </option>

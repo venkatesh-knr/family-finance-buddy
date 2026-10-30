@@ -114,6 +114,8 @@ export function Chips({ chips, filter }: { chips: GroupedHoldings['chips']; filt
 export interface CurrencyTotals {
   readonly currency: string;
   readonly value: bigint;
+  /** The part of `value` that has a cost to be compared with: a retirement holding has none, and is in `value` only. */
+  readonly comparable: bigint;
   readonly invested: bigint;
   readonly unread: number;
   /** Valued positions whose cost covers only part of their units. */
@@ -234,10 +236,10 @@ export function Summary({
             <span />
           )}
           {mine !== undefined && mine.invested > 0n && mine.short === 0 && mine.missing === 0 && (
-            <Delta direction={mine.value - mine.invested > 0n ? 'up' : mine.value - mine.invested < 0n ? 'down' : 'flat'}>
+            <Delta direction={mine.comparable - mine.invested > 0n ? 'up' : mine.comparable - mine.invested < 0n ? 'down' : 'flat'}>
               {privacy
-                ? formatMoney(money(mine.value - mine.invested, mine.currency), { privacy })
-                : `${percentOfCost(mine.value - mine.invested, mine.invested) ?? ''} on cost`}
+                ? formatMoney(money(mine.comparable - mine.invested, mine.currency), { privacy })
+                : `${percentOfCost(mine.comparable - mine.invested, mine.invested) ?? ''} on cost`}
             </Delta>
           )}
         </p>

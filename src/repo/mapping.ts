@@ -31,6 +31,7 @@ import {
   MEMBER_COLOURS,
   PAYMENT_METHODS,
   PROPERTY_KINDS,
+  RETIREMENT_TYPES,
   VALUATION_BASES,
   VALUATION_SOURCES,
   VISIBILITIES,
@@ -47,9 +48,12 @@ import {
   type Instrument,
   type Member,
   type PaymentMethod,
+  type PpfAccount,
+  type PpfEntryRow,
   type Property,
   type PropertyImprovement,
   type PropertyValuation,
+  type SchemeRate,
   type ExpenseCategory,
   type Quantity,
   type Valuation,
@@ -210,6 +214,10 @@ export function toInstrument(raw: unknown): Instrument {
       row['scheme'] === null || row['scheme'] === undefined
         ? null
         : requireOneOf(row['scheme'], SCHEMES, 'instrument.scheme'),
+    retirementType:
+      row['retirement_type'] === null || row['retirement_type'] === undefined
+        ? null
+        : requireOneOf(row['retirement_type'], RETIREMENT_TYPES, 'instrument.retirement_type'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
   };
@@ -536,5 +544,44 @@ export function toPropertyValuation(raw: unknown): PropertyValuation {
     value: money(toBigIntExact(row['value_minor'], 'property_valuation.value_minor'), currency),
     basis: requireOneOf(row['basis'], VALUATION_BASES, 'property_valuation.basis'),
     note: optionalString(row['note'], 'property_valuation.note'),
+  };
+}
+
+// ─── retirement ────────────────────────────────────────────────────────────
+
+export function toPpfAccount(raw: unknown): PpfAccount {
+  const row = requireRecord(raw, 'ppf_account');
+  const currency = requireString(row['currency'], 'ppf_account.currency');
+  return {
+    holdingId: requireString(row['holding_id'], 'ppf_account.holding_id'),
+    institution: optionalString(row['institution'], 'ppf_account.institution'),
+    accountLast4: optionalString(row['account_last4'], 'ppf_account.account_last4'),
+    openingDate: requireIsoDate(row['opening_date'], 'ppf_account.opening_date'),
+    openingBalance: money(toBigIntExact(row['opening_balance_minor'], 'ppf_account.opening_balance_minor'), currency),
+    note: optionalString(row['note'], 'ppf_account.note'),
+  };
+}
+
+export function toPpfEntry(raw: unknown): PpfEntryRow {
+  const row = requireRecord(raw, 'ppf_entry');
+  const currency = requireString(row['currency'], 'ppf_entry.currency');
+  return {
+    id: requireString(row['id'], 'ppf_entry.id'),
+    holdingId: requireString(row['holding_id'], 'ppf_entry.holding_id'),
+    date: requireIsoDate(row['entry_date'], 'ppf_entry.entry_date'),
+    amount: money(toBigIntExact(row['amount_minor'], 'ppf_entry.amount_minor'), currency),
+    note: optionalString(row['note'], 'ppf_entry.note'),
+    isVoided: row['voided_at'] !== null && row['voided_at'] !== undefined,
+  };
+}
+
+export function toSchemeRate(raw: unknown): SchemeRate {
+  const row = requireRecord(raw, 'scheme_rate');
+  const rate = row['rate_pct'];
+  return {
+    scheme: requireOneOf(row['scheme'], ['ppf'] as const, 'scheme_rate.scheme'),
+    effectiveFrom: requireIsoDate(row['effective_from'], 'scheme_rate.effective_from'),
+    // numeric(6,3) arrives as "7.100" when cast to text; a number is said the same way.
+    ratePct: typeof rate === 'number' ? rate.toFixed(3) : requireString(rate, 'scheme_rate.rate_pct'),
   };
 }

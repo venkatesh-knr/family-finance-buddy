@@ -70,6 +70,13 @@ export function latestValuationPerHolding(
   return latest;
 }
 
+/**
+ * A holding that has no cost to have: an EPF is a passbook balance and an NPS is units at a NAV, and nobody has "what it cost".
+ * A figure that is not there is not a figure that is missing, so it is in the value and out of the comparison of value with
+ * cost: it neither claims a gain nor refuses everybody else's.
+ */
+const hasNoCost = (kind: string): boolean => kind === 'retirement';
+
 export interface CurrencyTotal {
   readonly currency: string;
   /** The sum of the latest readings. Holdings never read are not in it. */
@@ -107,6 +114,8 @@ export function assetTotals(options: {
     string,
     {
       value: bigint;
+      /** The part of `value` that has a cost to be compared with. */
+      comparable: bigint;
       invested: bigint;
       investedValued: bigint;
       unvalued: number;
@@ -120,6 +129,7 @@ export function assetTotals(options: {
 
     const bucket = buckets.get(holding.currency) ?? {
       value: 0n,
+      comparable: 0n,
       invested: 0n,
       investedValued: 0n,
       unvalued: 0,
@@ -133,8 +143,11 @@ export function assetTotals(options: {
 
     if (reading === undefined) {
       bucket.unvalued += 1;
+    } else if (hasNoCost(holding.kind)) {
+      bucket.value += reading.amount.minor;
     } else {
       bucket.value += reading.amount.minor;
+      bucket.comparable += reading.amount.minor;
       bucket.investedValued += cost;
       // Only once it has been read: an unvalued holding is on neither side of
       // the comparison, so its short cost is not a reason to refuse it.
@@ -151,7 +164,7 @@ export function assetTotals(options: {
       value: money(b.value, currency),
       invested: money(b.invested, currency),
       investedValued: money(b.investedValued, currency),
-      gain: b.costShort > 0 || b.costMissing > 0 ? null : money(b.value - b.investedValued, currency),
+      gain: b.costShort > 0 || b.costMissing > 0 ? null : money(b.comparable - b.investedValued, currency),
       costShort: b.costShort,
       costMissing: b.costMissing,
       unvalued: b.unvalued,
@@ -200,8 +213,10 @@ export function allocationByKind(options: {
     const bucket = byKind.get(holding.kind) ?? { value: 0n, invested: 0n, costShort: 0, costMissing: 0 };
     bucket.value += reading.amount.minor;
     bucket.invested += holding.cost?.minor ?? 0n;
-    if (holding.costIsShort) bucket.costShort += 1;
-    if (holding.cost === null) bucket.costMissing += 1;
+    if (!hasNoCost(holding.kind)) {
+      if (holding.costIsShort) bucket.costShort += 1;
+      if (holding.cost === null) bucket.costMissing += 1;
+    }
     byKind.set(holding.kind, bucket);
     total += reading.amount.minor;
   }
@@ -221,12 +236,14 @@ export function allocationByKind(options: {
       share: Number(b.value) / Number(total),
       invested: money(b.invested, options.currency),
       // A short cost has no return, for the same reason it has no gain: a class
-      // holding one would print a percentage set against money never paid.
-      gain: b.costShort > 0 || b.costMissing > 0 ? null : money(b.value - b.invested, options.currency),
+      // holding one would print a percentage set against money never paid. A class with no cost to have, as retirement is,
+      // claims no return and refuses none.
+      gain:
+        hasNoCost(kind) || b.costShort > 0 || b.costMissing > 0 ? null : money(b.value - b.invested, options.currency),
       costShort: b.costShort,
       costMissing: b.costMissing,
       returnOnCost:
-        b.costShort > 0 || b.costMissing > 0 || b.invested === 0n
+        hasNoCost(kind) || b.costShort > 0 || b.costMissing > 0 || b.invested === 0n
           ? null
           : Number(b.value - b.invested) / Number(b.invested),
     }))

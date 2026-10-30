@@ -191,21 +191,31 @@ export function EditHolding({
           />
         </div>
 
+        {/*
+          A retirement holding is an EPF, an NPS or a PPF and stays one: its kind is not offered for change, and no other holding
+          is offered it, because the type it needs is chosen when it is added.
+        */}
         <label className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
           <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value as InstrumentKind);
-            }}
-          >
-            {INSTRUMENT_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {option.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
+          {holding.instrument.kind === 'retirement' ? (
+            <span className="field" aria-label="Kind" style={{ color: 'var(--ink-2)' }}>
+              {holding.instrument.retirementType === null ? 'retirement' : holding.instrument.retirementType.toUpperCase()}
+            </span>
+          ) : (
+            <select
+              className="field"
+              value={kind}
+              onChange={(event) => {
+                setKind(event.target.value as InstrumentKind);
+              }}
+            >
+              {INSTRUMENT_KINDS.filter((option) => option !== 'retirement').map((option) => (
+                <option key={option} value={option}>
+                  {option.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
 
         {hasLots ? (
@@ -218,30 +228,38 @@ export function EditHolding({
           </p>
         ) : (
           <>
-            <div className="w-full sm:w-[110px] sm:shrink-0">
-              <Field
-                label="Units"
-                numeric
-                inputMode="decimal"
-                value={quantity}
-                onChange={(event) => {
-                  setQuantity(event.target.value);
-                }}
-              />
-            </div>
+            {/*
+              An EPF and a PPF are one balance and not units, and nothing a retirement holding is has a cost to have: "Units 1" and "Cost
+              not recorded" would be asking for figures nobody has. An NPS is held in units, so it keeps them.
+            */}
+            {!(holding.instrument.kind === 'retirement' && holding.instrument.retirementType !== 'nps') && (
+              <div className="w-full sm:w-[110px] sm:shrink-0">
+                <Field
+                  label="Units"
+                  numeric
+                  inputMode="decimal"
+                  value={quantity}
+                  onChange={(event) => {
+                    setQuantity(event.target.value);
+                  }}
+                />
+              </div>
+            )}
 
-            <div className="w-full sm:w-[130px] sm:shrink-0">
-              <Field
-                label={`Cost (${currency})`}
-                numeric
-                inputMode="decimal"
-                placeholder="not recorded"
-                value={cost}
-                onChange={(event) => {
-                  setCost(event.target.value);
-                }}
-              />
-            </div>
+            {holding.instrument.kind !== 'retirement' && (
+              <div className="w-full sm:w-[130px] sm:shrink-0">
+                <Field
+                  label={`Cost (${currency})`}
+                  numeric
+                  inputMode="decimal"
+                  placeholder="not recorded"
+                  value={cost}
+                  onChange={(event) => {
+                    setCost(event.target.value);
+                  }}
+                />
+              </div>
+            )}
           </>
         )}
 
@@ -356,7 +374,8 @@ export function EditHolding({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {EARMARKS.map((option) => (
+            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}
+            {EARMARKS.filter((option) => !(holding.instrument.kind === 'retirement' && option === 'emergency')).map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>

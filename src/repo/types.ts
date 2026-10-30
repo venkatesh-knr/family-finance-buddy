@@ -218,7 +218,11 @@ export interface NewExpense {
   readonly visibility?: Visibility;
 }
 
-export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'other';
+export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'retirement' | 'other';
+
+/** What a retirement holding is. Required when the kind is retirement and absent otherwise. */
+export type RetirementType = 'epf' | 'nps' | 'ppf';
+export const RETIREMENT_TYPES: readonly RetirementType[] = ['epf', 'nps', 'ppf'];
 
 export const INSTRUMENT_KINDS: readonly InstrumentKind[] = [
   'equity',
@@ -226,6 +230,7 @@ export const INSTRUMENT_KINDS: readonly InstrumentKind[] = [
   'mutual_fund',
   'bond',
   'deposit',
+  'retirement',
   'other',
 ];
 
@@ -252,8 +257,10 @@ export interface Instrument {
   readonly exposureCurrency: string;
   /** Schedule FA classification. A recorded decision, never inferred. */
   readonly isForeignAsset: boolean;
-  /** What a deposit is (FD, PPF, SSY...). Null on anything that is not a deposit, and on a deposit nobody labelled. */
+  /** What a deposit is (FD, SSY...). Null on anything that is not a deposit, and on a deposit nobody labelled. */
   readonly scheme: Scheme | null;
+  /** An EPF, an NPS or a PPF. Present on a retirement holding and on nothing else. */
+  readonly retirementType: RetirementType | null;
   /**
    * Which capital-gains rules apply, or null for "not classified".
    *
@@ -467,6 +474,8 @@ export interface NewHolding {
     readonly isForeignAsset: boolean;
     /** What a deposit is. Only a deposit has one (PF-C5). */
     readonly scheme?: Scheme;
+    /** What a retirement holding is. Required for that kind and given for no other. */
+    readonly retirementType?: RetirementType;
   };
   readonly quantity: Quantity;
   readonly cost?: Money | null;
@@ -812,3 +821,83 @@ export interface NewPropertyValuation {
   readonly basis: ValuationBasis;
   readonly note?: string | null;
 }
+
+// ─── retirement: a PPF's account and entries, and the notified rate ──────────────
+
+/** A PPF's account: where it is and the balance it was opened from, as at a day. The balance now is worked out, never stored. */
+export interface PpfAccount {
+  readonly holdingId: Uuid;
+  readonly institution: string | null;
+  readonly accountLast4: string | null;
+  readonly openingDate: IsoDate;
+  readonly openingBalance: Money;
+  readonly note: string | null;
+}
+
+/** A payment into a PPF, or a withdrawal out of it as a negative amount. */
+export interface PpfEntryRow {
+  readonly id: Uuid;
+  readonly holdingId: Uuid;
+  readonly date: IsoDate;
+  readonly amount: Money;
+  readonly note: string | null;
+  readonly isVoided: boolean;
+}
+
+/** The rate the government notified, by the day it took effect: the same for every household. */
+export interface SchemeRate {
+  readonly scheme: 'ppf';
+  readonly effectiveFrom: IsoDate;
+  /** A percentage a year to three places, as text: "7.100". */
+  readonly ratePct: string;
+}
+
+export interface PpfListing {
+  readonly accounts: readonly PpfAccount[];
+  /** Every entry, voided ones included, oldest first. */
+  readonly entries: readonly PpfEntryRow[];
+  readonly rates: readonly SchemeRate[];
+}
+
+export interface NewPpfEntry {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly date: IsoDate;
+  /** A payment in is positive; a withdrawal is negative. */
+  readonly amount: Money;
+  readonly note?: string | null;
+}
+
+/** What is needed to add a retirement holding: an EPF and an NPS are a holding and a reading, a PPF is also an account. */
+export type NewRetirement =
+  | {
+      readonly type: 'epf';
+      readonly householdId: Uuid;
+      readonly memberId: Uuid;
+      readonly name: string;
+      readonly currency: string;
+      readonly earmark?: Earmark;
+    }
+  | {
+      readonly type: 'nps';
+      readonly householdId: Uuid;
+      readonly memberId: Uuid;
+      readonly name: string;
+      readonly currency: string;
+      /** The units held, a decimal string of up to eight places. */
+      readonly units: Quantity;
+      readonly earmark?: Earmark;
+    }
+  | {
+      readonly type: 'ppf';
+      readonly householdId: Uuid;
+      readonly memberId: Uuid;
+      readonly name: string;
+      readonly currency: string;
+      readonly institution?: string | null;
+      readonly accountLast4?: string | null;
+      /** The balance it is worked out from and the day it is as at: a 31 March credit, or the day it opened. */
+      readonly openingDate: IsoDate;
+      readonly openingBalance: Money;
+      readonly earmark?: Earmark;
+    };

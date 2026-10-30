@@ -101,7 +101,7 @@ export interface AssetClassSpec {
    * but it is not a sixth asset class and must not look like one competing for attention, so it is
    * the neutral grey (`classColour`). "The next colour in the ramp" is the wrong answer for it.
    */
-  readonly ramp: 1 | 2 | 3 | 4 | 6 | null;
+  readonly ramp: 1 | 2 | 3 | 4 | 6 | 9 | null;
   readonly glyph: Glyph;
 }
 
@@ -112,6 +112,8 @@ export const ASSET_CLASSES: readonly AssetClassSpec[] = [
   { kind: 'bond', label: 'Bonds', ramp: 3, glyph: 'certificate' },
   { kind: 'etf', label: 'ETF', ramp: 4, glyph: 'basket' },
   { kind: 'deposit', label: 'Deposits', ramp: 6, glyph: 'card' },
+  // Slot 9, lime: periwinkle (`--c1`) is Mutual funds', and a second class in a hue is what the one-colour rule forbids.
+  { kind: 'retirement', label: 'Retirement', ramp: 9, glyph: 'shield' },
   { kind: 'other', label: 'Other', ramp: null, glyph: 'ellipsis' },
 ];
 
@@ -157,7 +159,6 @@ export function classColour(spec: AssetClassSpec): string {
 export const UNWIRED_TILES = {
   property: { glyph: 'house', colour: 'var(--c8)' },
   gold: { glyph: 'coins', colour: 'var(--c3)' },
-  retirement: { glyph: 'shield', colour: 'var(--c1)' },
   insurance: { glyph: 'umbrella', colour: 'var(--c4)' },
   liabilities: { glyph: 'minus', colour: 'var(--c5)' },
 } as const satisfies Record<string, { glyph: Glyph; colour: string }>;

@@ -43,9 +43,10 @@
   --c3: #916500; /* brass  */
   --c4: #7A3FBF; /* plum   */
   --c5: #BB3D2D; /* coral  */
-  --c6: #0E7490; /* steel  */
-  --c7: #B45309; /* slate  */
+  --c6: #0E7490; /* cyan   */
+  --c7: #B45309; /* amber  */
   --c8: #C2477F; /* rose   */
+  --c9: #568019; /* lime   */
 
   --shadow: 0 1px 2px rgba(17,23,34,.06), 0 10px 26px -18px rgba(17,23,34,.35);
   --radius: 12px;
@@ -108,6 +109,7 @@
     --c6: #46C5E8;
     --c7: #FF9D4D;
     --c8: #FF8FC7;
+    --c9: #A3D65C;
 
     --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
     --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
@@ -150,6 +152,7 @@
   --c6: #46C5E8;
   --c7: #FF9D4D;
   --c8: #FF8FC7;
+  --c9: #A3D65C;
 
   --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
   --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);

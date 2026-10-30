@@ -21,6 +21,7 @@ import { istCalendarDate } from '../../lib/dates.ts';
 import type { Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
+import { addRetirement } from '../../repo/retirement.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
 import { positionInputs } from './history.ts';
 import { listTaxRules } from '../../repo/taxRules.ts';
@@ -34,6 +35,7 @@ import type {
   HoldingListing,
   NewDisposal,
   NewHolding,
+  NewRetirement,
   NewLot,
   NewValuation,
 } from '../../repo/types.ts';
@@ -104,6 +106,14 @@ export function useHoldings(householdId: string | null): {
    * rather than throwing, so the form does not offer to add it a second time.
    */
   add: (holding: NewHolding, worth?: Money | null) => Promise<{ valueProblem: string | null }>;
+  /**
+   * Add an EPF, an NPS or a PPF, and, when `reading` is given, record it as the first reading so it is valued from the
+   * start. Two writes, as for a fund: when the second fails the holding exists and what comes back says so.
+   */
+  addRetirement: (
+    input: NewRetirement,
+    reading: { readonly date: string; readonly quantity: string; readonly amount: Money; readonly note?: string } | null,
+  ) => Promise<{ valueProblem: string | null }>;
   record: (valuation: NewValuation) => Promise<void>;
   recordLot: (lot: NewLot) => Promise<void>;
   recordSale: (disposal: NewDisposal) => Promise<void>;
@@ -305,6 +315,34 @@ export function useHoldings(householdId: string | null): {
     [load, today],
   );
 
+  const addRetirementWithReading = useCallback(
+    async (
+      input: NewRetirement,
+      reading: { readonly date: string; readonly quantity: string; readonly amount: Money; readonly note?: string } | null,
+    ) => {
+      const { holdingId } = await addRetirement(input);
+      let valueProblem: string | null = null;
+      if (reading !== null) {
+        try {
+          await recordValuation({
+            householdId: input.householdId,
+            holdingId,
+            date: reading.date,
+            quantity: reading.quantity,
+            amount: reading.amount,
+            source: reading.date === today ? 'manual' : 'backfill',
+            ...(reading.note === undefined ? {} : { note: reading.note }),
+          });
+        } catch (error) {
+          valueProblem = error instanceof Error ? error.message : 'Could not record that.';
+        }
+      }
+      await load();
+      return { valueProblem };
+    },
+    [load, today],
+  );
+
   const record = useCallback(
     async (valuation: NewValuation) => {
       await recordValuation(valuation);
@@ -338,6 +376,7 @@ export function useHoldings(householdId: string | null): {
     loading,
     problem,
     add,
+    addRetirement: addRetirementWithReading,
     record,
     recordLot,
     recordSale,

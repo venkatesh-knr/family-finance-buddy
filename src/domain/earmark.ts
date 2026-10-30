@@ -33,13 +33,13 @@ export function isEarmark(value: string): value is Earmark {
   return (EARMARKS as readonly string[]).includes(value);
 }
 
-export const SCHEMES = ['fd', 'rd', 'ppf', 'ssy', 'nsc', 'kvp', 'scss', 'pomis', 'po_td', 'other'] as const;
+// No `ppf`: a PPF is a retirement holding, not a deposit (supabase/migrations/20261027120000_retirement.sql).
+export const SCHEMES = ['fd', 'rd', 'ssy', 'nsc', 'kvp', 'scss', 'pomis', 'po_td', 'other'] as const;
 export type Scheme = (typeof SCHEMES)[number];
 
 export const SCHEME_LABELS: Record<Scheme, string> = {
   fd: 'Fixed deposit',
   rd: 'Recurring deposit',
-  ppf: 'PPF',
   ssy: 'Sukanya Samriddhi',
   nsc: 'NSC',
   kvp: 'Kisan Vikas Patra',
@@ -55,7 +55,7 @@ export const SCHEME_LABELS: Record<Scheme, string> = {
  * available, so neither is here. A classification and not a household's judgement, which is why it is a
  * list in code and the years of dependency are a setting.
  */
-export const LOCKED_SCHEMES = ['ppf', 'ssy', 'nsc', 'kvp', 'scss', 'pomis', 'po_td'] as const;
+export const LOCKED_SCHEMES = ['ssy', 'nsc', 'kvp', 'scss', 'pomis', 'po_td'] as const;
 
 export function isScheme(value: string): value is Scheme {
   return (SCHEMES as readonly string[]).includes(value);
@@ -68,6 +68,11 @@ export function schemeAllowedFor(kind: string): boolean {
 
 export interface CorpusHolding {
   readonly id: string;
+  /**
+   * The instrument's kind. A retirement holding (an EPF, an NPS, a PPF) is in the corpus and is never liquid: it is locked
+   * by what it is, and not by a scheme a deposit carries.
+   */
+  readonly kind: string;
   /** The instrument's own currency. Totals are grouped by it. */
   readonly currency: string;
   readonly earmark: Earmark;
@@ -125,7 +130,7 @@ export function fireCorpus(options: {
 
     const committed = holding.earmark === 'child' || holding.earmark === 'house';
     const locked = holding.scheme !== null && (LOCKED_SCHEMES as readonly string[]).includes(holding.scheme);
-    if (!committed && !locked && !holding.carriesPolicy) bucket.liquid += reading.amount.minor;
+    if (!committed && !locked && !holding.carriesPolicy && holding.kind !== 'retirement') bucket.liquid += reading.amount.minor;
 
     if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) {
       bucket.excluded[holding.earmark as ExcludedEarmark] += reading.amount.minor;

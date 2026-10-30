@@ -210,7 +210,7 @@ test('filtered to deposits: the chips come first, the summary has the interest a
   await expect(summary.getByText('Interest so far')).toBeVisible();
   await expect(summary.getByText('Next to mature')).toBeVisible();
   await expect(page.getByTestId('worked-out-note')).toContainText(/Worked out today.*Not in net worth until it is recorded/);
-  await expect(page.getByText('FD, RD, PPF, SSY, NSC, KVP, SCSS and post office deposits all live here.')).toBeVisible();
+  await expect(page.getByText('FD, RD, SSY, NSC, KVP, SCSS and post office deposits all live here. A PPF is under Retirement.')).toBeVisible();
   const card = page.getByTestId('emergency-card');
   if ((await card.count()) > 0) await expect(card).toContainText(/earmarked/);
 });
