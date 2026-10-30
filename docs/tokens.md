@@ -20,43 +20,43 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 ```css
 :root{
   /* surfaces */
-  --bg:#EFF2F7;          /* page ground */
-  --surface:#FFFFFF;     /* cards, panels */
-  --surface-2:#F5F7FB;   /* table headers, insets, code */
-  --surface-3:#E8EDF5;   /* segmented-control track, progress track */
-  --inset:#EDF1F7;       /* the ground of an editable row: darker than its card, in both themes */
+  --bg:#E3E8EF;          /* page ground */
+  --surface:#F5F7FA;     /* cards, panels */
+  --surface-2:#EDF1F6;   /* table headers, insets, code */
+  --surface-3:#DCE2EA;   /* segmented-control track, progress track */
+  --inset:#E8ECF2;       /* the ground of an editable row: darker than its card, in both themes */
 
   /* text */
-  --ink:#111722;         /* primary */
-  --ink-2:#39424F;       /* body, secondary */
-  --muted:#616A78;       /* captions, labels, axis text — NEUTRAL, see rules */
+  --ink:#131A27;         /* primary */
+  --ink-2:#394250;       /* body, secondary */
+  --muted:#5A6371;       /* captions, labels, axis text — NEUTRAL, see rules */
 
   /* lines */
-  --line:#DFE5EE;        /* hairlines, borders */
-  --line-strong:#808996; /* control outlines, chip edges — 3:1, see §2 */
+  --line:#D6DCE5;        /* hairlines, borders */
+  --line-strong:#747D8A; /* control outlines, chip edges — 3:1, see §2 */
 
   /* brand + semantic */
-  --brass:#916500;       --brass-soft:#FFF2D4;   /* accent, targets, "plan" */
-  --teal:#077964;        --teal-soft:#D8F5ED;    /* gain, positive, "ok" */
-  --coral:#BB3D2D;       --coral-soft:#FFE6E2;   /* loss, overspend, "due" */
-  --indigo:#3D5BD9;      --indigo-soft:#E6EBFF;  /* attribution, ownership */
+  --brass:#835A00;       --brass-soft:#F6E9C8;   /* accent, targets, "plan" */
+  --teal:#066F5C;        --teal-soft:#D2EEE6;    /* gain, positive, "ok" */
+  --coral:#AD3728;       --coral-soft:#F9E0DB;   /* loss, overspend, "due" */
+  --indigo:#3752CC;      --indigo-soft:#E0E6FD;  /* attribution, ownership */
 
   /* categorical — charts only, in this order */
-  --c1:#3D5BD9;  /* periwinkle */
-  --c2:#077964;  /* emerald    */
-  --c3:#916500;  /* gold       */
-  --c4:#7A3FBF;  /* plum       */
-  --c5:#BB3D2D;  /* coral      */
-  --c6:#0E7490;  /* cyan       */
-  --c7:#B45309;  /* amber      */
-  --c8:#C2477F;  /* rose       */
-  --c9:#568019;  /* lime       */
+  --c1:#3752CC;  /* periwinkle */
+  --c2:#066F5C;  /* emerald    */
+  --c3:#835A00;  /* gold       */
+  --c4:#7238B6;  /* plum       */
+  --c5:#AD3728;  /* coral      */
+  --c6:#0B6A85;  /* cyan       */
+  --c7:#A04A07;  /* amber      */
+  --c8:#AD3C70;  /* rose       */
+  --c9:#4E7417;  /* lime       */
 
   /* depth */
-  --surface-lift:radial-gradient(120% 140% at 8% 0%, #FFFFFF 0%, #F7F9FD 48%, #FFFFFF 100%);
+  --surface-lift:radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%);
   --lift-edge:linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
-  --shadow:0 1px 2px rgba(17,23,34,.06), 0 10px 26px -18px rgba(17,23,34,.35);
-  --shadow-lift:0 2px 4px rgba(17,23,34,.05), 0 18px 38px -24px rgba(17,23,34,.45);
+  --shadow:0 1px 2px rgba(19,26,39,.05), 0 8px 22px -16px rgba(19,26,39,.22);
+  --shadow-lift:0 2px 4px rgba(19,26,39,.05), 0 16px 34px -22px rgba(55,82,204,.35);
 
   --radius:12px;
   --radius-pill:100px;
@@ -96,9 +96,16 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
   host's ground.
 - Dark is *not* an inversion. Both palettes were tuned separately; keep them that way.
   The dark accents are the saturated ones; their light counterparts are darkened to hold
-  4.5:1 on white and are not the same hex.
-- **A light accent is tuned against the ground it is drawn on, not only against white.**
-  Each passes 4.5:1 on white, and that was never the problem: text is also set on the
+  4.5:1 on the card and are not the same hex.
+- **In the light theme a card is off-white, never `#FFFFFF`.** The light theme is **Mist**
+  (chosen 30 October 2026): a cool grey-blue ground (`--bg`), a card one step lighter
+  (`--surface`), and the one lifted card painted with a pale periwinkle light and not white.
+  The brightest thing on a light screen should be its content, not the background of every
+  card; a screen of pure-white cards makes a figure no brighter than the box around it, and
+  it is what a tidy-up would drift back to. `--surface` stays below white, and no component
+  paints `#FFFFFF` as a fill.
+- **A light accent is tuned against the ground it is drawn on, not only against the card.**
+  Each passes 4.5:1 on the card, and that was never the problem: text is also set on the
   soft fills (a pill, an attention row), on `--bg`, and on `--surface-3` (an unselected
   tab), and those are where the first light values fell to 4.2–4.5. So an accent holds
   4.5:1 on its own `-soft`, and `--muted` on `--bg` and `--surface-3`. The fix for a
@@ -124,8 +131,8 @@ in both themes** — against the stop it is hardest to read on, which is the bri
 dark, where the figures are light, and the dimmest in light, where they are dark. The test
 (`src/ui/liftContrast.test.ts`) reads the shipped values of `--surface-lift`, `--ink`,
 `--ink-2` and `--muted` and measures every stop, so a lighter glow or a dimmer ink fails the
-build rather than a review. (Today the worst pair is `--muted` at 5.19:1 on the light
-theme's `#F7F9FD` and 5.02:1 on the dark theme's `#26324C`.) An earlier version of this
+build rather than a review. (Today the worst pair is `--muted` at 4.75:1 on the light
+theme's dimmest stop, `#DCE3FB`, and 5.02:1 on the dark theme's brightest, `#26324C`.) An earlier version of this
 section said the gradient "never crosses a figure"; the canvas it described did, and the rule
 was the part that was wrong. One lifted surface per screen — a second one is two things
 claiming to be the most important, which is §4's "not everything is a card" in another
@@ -174,8 +181,8 @@ A border that is the *only* thing telling you something is there must reach 3:1 
 what sits behind it: an input's outline, a chip's edge, a segmented control's active
 pill, and the focus ring above all. `--line-strong` is the token those use, and it is
 the one to check. It was `#C6CFDC`, 1.57:1 on white: fine for a divider and not for an
-input a person has to find. It is now `#808996` in light and `#6D7683` in dark, each at least 3:1 on
-`--surface`, `--surface-2`, `--surface-3`, `--bg` and `--inset` (3.12:1 in light, the smallest margin of
+input a person has to find. It is now `#747D8A` in light and `#6D7683` in dark, each at least 3:1 on
+`--surface`, `--surface-2`, `--surface-3`, `--bg` and `--inset` (3.19:1 in light, on `--surface-3`, the smallest margin of
 the five, and 3.98:1 in dark): the grounds a field, a quiet button or a
 segmented pill sits on. Dark needs the lighter value because its track (`--surface-3`) is
 lighter than a card, so a pill edge borders the lighter side, and `#646D7A` was 2.67:1 there.
