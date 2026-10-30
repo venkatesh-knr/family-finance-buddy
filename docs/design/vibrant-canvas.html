@@ -27,15 +27,16 @@
 <div class="doc">
 <header>
 <h1>Saturation, depth and warmth &mdash; same structure, new tokens</h1>
-<p>Static export of the design canvas. <strong>Exported 15 October 2026 &middot; 16 artboards.</strong>
-Every screen in the app has one, except Summary (a contributor's and a viewer's screen) and sign-in.</p>
+<p>Static export of the design canvas. <strong>Exported 30 October 2026 &middot; 21 artboards.</strong>
+Every screen in the app has one, except Summary (a contributor's and a viewer's screen), sign-in and Property.</p>
 <p><strong>How to read it.</strong> Values &mdash; colour, size, radius, glyph &mdash; come from <code>docs/tokens.md</code> and
 <code>docs/design/icons.md</code>, which win wherever this file disagrees. Layout and hierarchy &mdash; what is on a screen, in what order,
 what is most prominent &mdash; come from the artboard. A difference from an artboard is a Departure in <code>conformance.md</code>,
-proposed to the owner, not decided in code. The boards are drawn dark-only, so no hex here settles light theme. Figures on the boards
+proposed to the owner, not decided in code. A board may draw more than is built yet: <code>docs/build-plan.md</code> says what is
+due, and a part not yet due is not a finding. The boards are drawn dark-only, so no hex here settles light theme. Figures on the boards
 drawn after the first four are illustrative, chosen to show each state; they are not the demo household's data. The first four boards
-predate the Goals decision (<code>docs/design/goals.md</code>): where their bottom bar says FIRE or Tax, the Goals boards are current.</p>
-<ol class="index"><li><a href="#Main">Overview</a></li><li><a href="#Fire">FIRE — now the independence goal's detail</a></li><li><a href="#Tokens">The token change</a></li><li><a href="#Kit">Icons and components</a></li><li><a href="#Holdings">Holdings — all, grouped</a></li><li><a href="#HoldingsDeposits">Holdings — filtered to deposits</a></li><li><a href="#HoldingDeposit">Deposit detail — FD 1</a></li><li><a href="#HoldingFund">Fund detail — Parag Parikh</a></li><li><a href="#Expenses">Expenses</a></li><li><a href="#More">More</a></li><li><a href="#Tax">Tax</a></li><li><a href="#Insurance">Insurance</a></li><li><a href="#Profile">Profile</a></li><li><a href="#Settings">Settings</a></li><li><a href="#Goals">Goals — the tab that was FIRE</a></li><li><a href="#GoalDetail">Goal detail — Daughter's education</a></li></ol>
+predate the Goals decision (<code>docs/design/goals.md</code>): where their bottom bar says FIRE or Tax, the later boards are current.</p>
+<ol class="index"><li><a href="#Main">Overview</a></li><li><a href="#Fire">FIRE — now the independence goal's detail</a></li><li><a href="#Tokens">The token change</a></li><li><a href="#Kit">Icons and components</a></li><li><a href="#Holdings">Holdings — all, grouped</a></li><li><a href="#HoldingsDeposits">Holdings — filtered to deposits</a></li><li><a href="#HoldingDeposit">Deposit detail — FD 1</a></li><li><a href="#HoldingFund">Fund detail — Parag Parikh</a></li><li><a href="#Expenses">Expenses</a></li><li><a href="#More">More</a></li><li><a href="#Tax">Tax</a></li><li><a href="#Insurance">Insurance</a></li><li><a href="#Profile">Profile</a></li><li><a href="#Settings">Settings</a></li><li><a href="#Goals">Goals — the tab that was FIRE</a></li><li><a href="#GoalDetail">Goal detail — Daughter's education</a></li><li><a href="#Reports">Reports — behind More</a></li><li><a href="#AddRetirement">Add a holding — a retirement account</a></li><li><a href="#RetirementPPF">Retirement — PPF</a></li><li><a href="#RetirementEPF">Retirement — EPF</a></li><li><a href="#RetirementNPS">Retirement — NPS</a></li></ol>
 </header>
 <div class="boards">
 <section class="board" id="Main">
@@ -1623,7 +1624,7 @@ predate the Goals decision (<code>docs/design/goals.md</code>): where their bott
 </section>
 <section class="board" id="More">
 <h2>More</h2>
-<div style="width: 390px; height: 844px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+<div style="width: 390px; height: 940px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
 
   <!-- header -->
   <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
@@ -1652,6 +1653,16 @@ predate the Goals decision (<code>docs/design/goals.md</code>): where their bott
           <span style="display: block; font-size: 15px; font-weight: 600">Tax</span>
           <span class="n" style="display: block; font-size: 12.5px; color: #9AA3B2; margin-top: 2px">2026–27 · ₹1,53,296 estimated</span>
           <span class="n" style="display: inline-block; font-size: 11px; font-weight: 600; color: #F0B429; background: #3A2C0C; border-radius: 999px; padding: 2px 8px; margin-top: 6px">₹85,000 allowance unused</span>
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+      <div aria-hidden="true" style="height: 1px; background: #222C41; margin-left: 66px"></div>
+
+      <a href="#Reports" style="display: flex; align-items: center; gap: 12px; padding: 14px 14px; text-decoration: none; color: #EEF3FB">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(154,163,178,0.12); border: 1px solid rgba(154,163,178,0.30); color: #C3CEDF; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 15px; font-weight: 600">Reports</span>
+          <span class="n" style="display: block; font-size: 12.5px; color: #9AA3B2; margin-top: 2px">Export everything · last on 12 Oct</span>
         </span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
       </a>
@@ -1704,9 +1715,9 @@ predate the Goals decision (<code>docs/design/goals.md</code>): where their bott
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
       <span style="font-size: 10.5px">Holdings</span>
     </a>
-    <a href="#Fire" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 8 15H4Z"/></svg>
-      <span style="font-size: 10.5px">FIRE</span>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
     </a>
     <a href="#More" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
@@ -2607,6 +2618,645 @@ predate the Goals decision (<code>docs/design/goals.md</code>): where their bott
     <a href="#Goals" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
       <span style="font-size: 10.5px; font-weight: 600">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="Reports">
+<h2>Reports — behind More</h2>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- back bar -->
+  <div style="display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <a href="#More" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 10px 0 4px; color: #C3CEDF; text-decoration: none; font-size: 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <span>More</span>
+    </a>
+    <h1 style="margin: 0; font-size: 16px; font-weight: 600">Reports</h1>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 14px 12px 0; display: flex; flex-direction: column; gap: 12px">
+
+    <!-- everything: the one lifted surface, and the one thing built today -->
+    <section aria-label="Export everything" style="position: relative; border-radius: 12px; padding: 16px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Export everything</div>
+      <div style="font-size: 19px; font-weight: 600; line-height: 1.3; margin-top: 6px">Your whole household, as one workbook</div>
+      <div style="font-size: 13px; line-height: 1.5; color: #C3CEDF; margin-top: 6px">A sheet for each kind of record, in the same shape as the upload template, so you can edit it in Excel and bring it back.</div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 12px; font-size: 12.5px; color: #C3CEDF">
+        <span style="display: flex; align-items: center; gap: 8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          Made on this device. Nothing is uploaded.
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+          Holds what you can see; others' private entries stay out.
+        </span>
+      </div>
+
+      <button type="button" style="width: 100%; height: 46px; margin-top: 14px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 14.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <span>Export everything · Excel</span>
+      </button>
+      <div class="n" style="font-size: 12px; color: #9AA3B2; text-align: center; margin-top: 8px">Last exported 12 Oct 2026</div>
+    </section>
+
+    <!-- the reports, each with its own year -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px; margin-top: 4px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">For a year</h2>
+      <label style="display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; color: #EEF3FB; font-size: 13px">
+        <span class="n">Tax year 2025–26</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </label>
+    </div>
+
+    <section aria-label="Reports for a year" style="border-radius: 12px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+
+      <div style="padding: 14px 16px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="font-size: 14.5px; font-weight: 600">Year-end pack</span>
+          <span class="n" style="font-size: 12px; color: #9AA3B2">Apr 2025 – Mar 2026</span>
+        </div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: #9AA3B2; margin-top: 3px">For your CA: the computation, gains by lot, foreign assets, and a list of what the app couldn't work out.</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px">
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">PDF</button>
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">Excel</button>
+        </div>
+      </div>
+      <div aria-hidden="true" style="height: 1px; background: #222C41; margin: 0 16px"></div>
+
+      <div style="padding: 14px 16px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="font-size: 14.5px; font-weight: 600">Capital gains statement</span>
+          <span class="n" style="font-size: 12px; color: #9AA3B2">2025–26</span>
+        </div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: #9AA3B2; margin-top: 3px">Every sale, matched to the purchases it came from.</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px">
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">PDF</button>
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">Excel</button>
+        </div>
+      </div>
+      <div aria-hidden="true" style="height: 1px; background: #222C41; margin: 0 16px"></div>
+
+      <div style="padding: 14px 16px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="font-size: 14.5px; font-weight: 600">Spending by category</span>
+          <span class="n" style="font-size: 12px; color: #9AA3B2">2025–26</span>
+        </div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: #9AA3B2; margin-top: 3px">The year against its plan, month by month.</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px">
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">Excel</button>
+        </div>
+      </div>
+      <div aria-hidden="true" style="height: 1px; background: #222C41; margin: 0 16px"></div>
+
+      <div style="padding: 14px 16px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="font-size: 14.5px; font-weight: 600">Foreign assets</span>
+          <span style="font-size: 11px; font-weight: 600; color: #C3CEDF; background: #1A2234; border-radius: 999px; padding: 2px 8px">Calendar year 2025</span>
+        </div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: #9AA3B2; margin-top: 3px">Schedule FA runs January to December: each holding's opening, peak and closing value.</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px">
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">PDF</button>
+          <button type="button" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13px; cursor: pointer">Excel</button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 7px; padding: 0 4px; font-size: 12px; line-height: 1.5; color: #9AA3B2">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="margin-top: 3px; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+      <span>To export a single list as you've filtered it, use Export on that screen.</span>
+    </div>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="AddRetirement">
+<h2>Add a holding — a retirement account</h2>
+<div style="width: 390px; height: 1260px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- back bar -->
+  <div style="display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <a href="#Holdings" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 10px 0 4px; color: #C3CEDF; text-decoration: none; font-size: 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <span>Holdings</span>
+    </a>
+    <h1 style="margin: 0; font-size: 16px; font-weight: 600">Add a holding</h1>
+  </div>
+
+  <form style="flex: 1; overflow: hidden; padding: 14px 12px 0; display: flex; flex-direction: column; gap: 12px; margin: 0">
+
+    <!-- what it is: the kinds, as choices -->
+    <fieldset style="margin: 0; padding: 0; border: 0">
+      <legend style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; padding: 0 4px 8px">What is it?</legend>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <label style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-radius: 12px; background: #121825; border: 1px solid #222C41">
+          <input type="radio" name="kind" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(123,156,255,0.16); border: 1px solid rgba(123,156,255,0.38); color: #7B9CFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+          <span style="flex: 1; font-size: 14px">A fund, share or ETF</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-radius: 12px; background: #121825; border: 1px solid #222C41">
+          <input type="radio" name="kind" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(70,197,232,0.16); border: 1px solid rgba(70,197,232,0.38); color: #46C5E8; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="12" cy="14.5" r="2"/></svg></span>
+          <span style="flex: 1; font-size: 14px">A deposit or bond</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 0 14px; border-radius: 12px; background: #1A2234; border: 1.5px solid #EEF3FB">
+          <input type="radio" name="kind" checked style="position: absolute; opacity: 0; width: 1px; height: 1px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(163,214,92,0.16); border: 1px solid rgba(163,214,92,0.38); color: #A3D65C; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6Z"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 600">A retirement account</span>
+            <span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 1px">EPF, NPS or PPF</span>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EEF3FB" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 7"/></svg>
+        </label>
+        <label style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-radius: 12px; background: #121825; border: 1px solid #222C41">
+          <input type="radio" name="kind" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(154,163,178,0.12); border: 1px solid rgba(154,163,178,0.30); color: #9AA3B2; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18" cy="12" r="1.8"/></svg></span>
+          <span style="flex: 1; font-size: 14px">Something else</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <!-- the form follows the type -->
+    <section aria-label="Retirement account" style="border-radius: 12px; padding: 14px 16px 16px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 13px; color: #C3CEDF">Which account?</span>
+        <div role="group" aria-label="Account type" style="display: flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px">
+          <button type="button" aria-pressed="false" style="font: inherit; font-size: 12px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 6px 13px; cursor: pointer">EPF</button>
+          <button type="button" aria-pressed="false" style="font: inherit; font-size: 12px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 6px 13px; cursor: pointer">NPS</button>
+          <button type="button" aria-pressed="true" style="font: inherit; font-size: 12px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 6px 13px; cursor: pointer">PPF</button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px">
+        <label style="display: block; padding: 8px 11px; border-radius: 10px; background: #0E1522; border: 1px solid #6D7683">
+          <span style="display: block; font-size: 11.5px; color: #9AA3B2">Held with</span>
+          <input type="text" value="SBI" aria-label="Held with" style="width: 100%; border: 0; outline: 0; background: transparent; color: #EEF3FB; font: inherit; font-size: 14.5px; margin-top: 2px">
+        </label>
+        <label style="display: block; padding: 8px 11px; border-radius: 10px; background: #0E1522; border: 1px solid #6D7683">
+          <span style="display: block; font-size: 11.5px; color: #9AA3B2">Whose</span>
+          <span style="display: flex; align-items: center; justify-content: space-between; font-size: 14.5px; margin-top: 2px">Venkatesh <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+        </label>
+        <label style="display: block; padding: 8px 11px; border-radius: 10px; background: #0E1522; border: 1px solid #6D7683">
+          <span style="display: block; font-size: 11.5px; color: #9AA3B2">Opened on</span>
+          <input type="text" value="10 Jun 2016" aria-label="Opened on" style="width: 100%; border: 0; outline: 0; background: transparent; color: #EEF3FB; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; margin-top: 2px">
+        </label>
+        <label style="display: block; padding: 8px 11px; border-radius: 10px; background: #0E1522; border: 1px solid #6D7683">
+          <span style="display: block; font-size: 11.5px; color: #9AA3B2">Set aside for</span>
+          <span style="display: flex; align-items: center; justify-content: space-between; font-size: 14.5px; margin-top: 2px">Retirement <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+        </label>
+      </div>
+
+      <label style="display: block; padding: 8px 11px; margin-top: 8px; border-radius: 10px; background: #0E1522; border: 1px solid #6D7683">
+        <span style="display: block; font-size: 11.5px; color: #9AA3B2">Balance on the last 31 March</span>
+        <input type="text" inputmode="decimal" value="14,82,350" aria-label="Balance on the last 31 March" style="width: 100%; border: 0; outline: 0; background: transparent; color: #EEF3FB; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 16px; margin-top: 2px">
+      </label>
+      <div style="font-size: 12px; line-height: 1.5; color: #9AA3B2; margin: 6px 2px 0">From the passbook. Payments since then are added on the account's screen.</div>
+
+      <div style="display: flex; gap: 7px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #0E1522; font-size: 12px; line-height: 1.5; color: #C3CEDF">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+        <span>A PPF's value isn't typed. It's worked out from this balance, your payments and the notified rate.</span>
+      </div>
+
+      <button type="button" style="width: 100%; height: 46px; margin-top: 14px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer">Add the PPF</button>
+    </section>
+
+  </form>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="RetirementPPF">
+<h2>Retirement — PPF</h2>
+<div style="width: 390px; height: 1300px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- back bar -->
+  <div style="display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <a href="#Holdings" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 10px 0 4px; color: #C3CEDF; text-decoration: none; font-size: 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <span>Holdings</span>
+    </a>
+    <span style="flex: 1"></span>
+    <button type="button" aria-label="Amounts shown. Hide them." style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button type="button" aria-label="Edit PPF" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 16px 12px 0; display: flex; flex-direction: column; gap: 14px">
+
+    <!-- identity -->
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 4px">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(163,214,92,0.16); border: 1px solid rgba(163,214,92,0.38); color: #A3D65C; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6Z"/></svg></span>
+      <span style="flex: 1; min-width: 0">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em">PPF</h1>
+        <span style="display: block; font-size: 12.5px; color: #9AA3B2; margin-top: 2px">SBI · <span style="color: #7B9CFF">Venkatesh</span></span>
+      </span>
+      <span style="font-size: 11.5px; font-weight: 600; color: #C3CEDF; background: #1A2234; border-radius: 999px; padding: 4px 10px">Retirement</span>
+    </div>
+
+    <!-- value: the one lifted surface -->
+    <section aria-label="Value" style="position: relative; border-radius: 12px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">In net worth</div>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 6px">₹15,32,350</div>
+      <div class="n" style="font-size: 12px; color: #9AA3B2; margin-top: 3px">reading · 30 Sept 2026</div>
+
+      <div style="margin-top: 14px; padding-top: 13px; border-top: 1px solid #2A3650">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <span style="font-size: 12.5px; color: #C3CEDF">Worked out today</span>
+          <span class="n" style="font-size: 16px; font-weight: 600">₹15,82,350</span>
+        </div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 3px">
+          <span style="font-size: 12px; color: #9AA3B2">last 31 March's balance, plus payments since</span>
+          <span class="n" style="font-size: 12px; font-weight: 600; color: #2ED3A8">+₹50,000</span>
+        </div>
+        <div style="display: flex; gap: 7px; margin-top: 10px; font-size: 12px; line-height: 1.5; color: #C3CEDF">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+          <span>Interest earned so far this year, <span class="n" style="font-weight: 600">₹59,420</span>, is credited on 31 March. It isn't counted until then.</span>
+        </div>
+        <button type="button" style="width: 100%; height: 44px; margin-top: 13px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Record as today's reading</button>
+      </div>
+    </section>
+
+    <!-- this year: payments against the limit -->
+    <section aria-label="This year" style="border-radius: 12px; padding: 14px 16px 10px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Paid in this year</h2>
+        <span class="n" style="font-size: 12px; color: #9AA3B2">2026–27</span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px"><span>₹1,00,000 <span style="color: #9AA3B2">of ₹1,50,000</span></span><span style="color: #C3CEDF">₹50,000 more by 31 Mar</span></div>
+      <div aria-hidden="true" style="position: relative; height: 5px; margin-top: 8px; border-radius: 999px; background: #222C41"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 66.7%; border-radius: 999px; background: #C3CEDF"></span></div>
+
+      <div style="margin-top: 10px">
+        <div class="n" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #222C41; font-size: 13.5px"><span style="color: #C3CEDF">5 Oct 2026</span><span>₹50,000</span></div>
+        <div class="n" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; font-size: 13.5px"><span style="color: #C3CEDF">2 Apr 2026</span><span>₹50,000</span></div>
+      </div>
+      <button type="button" style="width: 100%; height: 44px; margin-top: 6px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span>Add a payment</span>
+      </button>
+      <div style="height: 6px"></div>
+    </section>
+
+    <!-- the account -->
+    <section aria-label="Account" style="border-radius: 12px; padding: 14px 16px 16px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Account</h2>
+        <span class="n" style="font-size: 12px; color: #9AA3B2">5 yr 5 mo to go</span>
+      </div>
+      <div role="img" aria-label="64 percent of the term has passed" style="position: relative; height: 6px; margin-top: 14px; border-radius: 999px; background: #222C41">
+        <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 64%; border-radius: 999px; background: #A3D65C"></span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11.5px; color: #9AA3B2"><span>opened 10 Jun 2016</span><span>matures 1 Apr 2032</span></div>
+
+      <dl style="margin: 14px 0 0">
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 36px; font-size: 13px">
+          <dt style="color: #C3CEDF">Rate</dt>
+          <dd style="margin: 0; display: inline-flex; align-items: center; gap: 6px">7.1% notified <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" role="img" aria-label="Caveat"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></dd>
+        </div>
+        <div style="font-size: 12px; color: #9AA3B2; margin-top: -4px">not yet checked against a statement</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; font-size: 13px; margin-top: 4px; border-top: 1px solid #222C41">
+          <dt style="color: #C3CEDF">Passbook check</dt>
+          <dd class="n" style="margin: 0; display: inline-flex; align-items: center; gap: 5px; color: #2ED3A8"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 7"/></svg>matched 31 Mar 2026</dd>
+        </div>
+      </dl>
+    </section>
+
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; cursor: pointer">Check against passbook</button>
+      <button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+        <span>Archive</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="RetirementEPF">
+<h2>Retirement — EPF</h2>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- back bar -->
+  <div style="display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <a href="#Holdings" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 10px 0 4px; color: #C3CEDF; text-decoration: none; font-size: 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <span>Holdings</span>
+    </a>
+    <span style="flex: 1"></span>
+    <button type="button" aria-label="Amounts shown. Hide them." style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button type="button" aria-label="Edit EPF" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 16px 12px 0; display: flex; flex-direction: column; gap: 14px">
+
+    <!-- identity -->
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 4px">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(163,214,92,0.16); border: 1px solid rgba(163,214,92,0.38); color: #A3D65C; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6Z"/></svg></span>
+      <span style="flex: 1; min-width: 0">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em">EPF</h1>
+        <span class="n" style="display: block; font-size: 12.5px; color: #9AA3B2; margin-top: 2px">UAN ending 4821 · <span style="color: #7B9CFF">Venkatesh</span></span>
+      </span>
+      <span style="font-size: 11.5px; font-weight: 600; color: #C3CEDF; background: #1A2234; border-radius: 999px; padding: 4px 10px">Retirement</span>
+    </div>
+
+    <!-- the passbook balance: the one lifted surface -->
+    <section aria-label="Passbook balance" style="position: relative; border-radius: 12px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Passbook balance</div>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 6px">₹9,60,500</div>
+      <div class="n" style="font-size: 12px; color: #9AA3B2; margin-top: 3px">as at 31 Mar 2026 · recorded 2 Apr</div>
+
+      <div role="img" aria-label="Your share 642,100 rupees, employer's share 318,400 rupees" style="display: flex; gap: 2px; height: 8px; margin-top: 14px; border-radius: 999px; overflow: hidden">
+        <span style="width: 66.9%; background: #A3D65C"></span>
+        <span style="flex: 1; background: rgba(163,214,92,0.45)"></span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: #C3CEDF">
+        <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #A3D65C"></span>Your share ₹6,42,100</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 999px; background: rgba(163,214,92,0.45)"></span>Employer ₹3,18,400</span>
+      </div>
+
+      <div style="display: flex; gap: 7px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #C3CEDF">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+        <span>The pension part (EPS) isn't in this balance. It's paid as a pension, not as a lump sum.</span>
+      </div>
+      <button type="button" style="width: 100%; height: 44px; margin-top: 13px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Update from the passbook</button>
+    </section>
+
+    <!-- how it is valued -->
+    <section aria-label="How it's valued" style="border-radius: 12px; padding: 14px 16px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">How it's valued</h2>
+      <div style="font-size: 12.5px; line-height: 1.55; color: #9AA3B2; margin-top: 5px">An EPF is worth what its passbook says. Interest is credited once a year, so the balance steps up then, and the time to update it is after the credit appears.</div>
+    </section>
+
+    <!-- the readings -->
+    <section aria-label="Readings" style="border-radius: 12px; padding: 14px 16px 6px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Readings</h2>
+        <span class="n" style="font-size: 12px; color: #9AA3B2">3</span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; border-bottom: 1px solid #222C41; font-size: 13.5px">
+        <span style="color: #C3CEDF">31 Mar 2026</span>
+        <span style="text-align: right"><span style="display: block; font-weight: 600">₹9,60,500</span><span style="display: block; font-size: 11.5px; color: #2ED3A8">+₹1,62,300</span></span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; border-bottom: 1px solid #222C41; font-size: 13.5px">
+        <span style="color: #C3CEDF">31 Mar 2025</span>
+        <span style="text-align: right"><span style="display: block; font-weight: 600">₹7,98,200</span><span style="display: block; font-size: 11.5px; color: #2ED3A8">+₹1,45,300</span></span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; font-size: 13.5px">
+        <span style="color: #C3CEDF">31 Mar 2024</span>
+        <span style="font-weight: 600">₹6,52,900</span>
+      </div>
+    </section>
+
+    <button type="button" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+      <span>Archive</span>
+    </button>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="RetirementNPS">
+<h2>Retirement — NPS</h2>
+<div style="width: 390px; height: 1220px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- back bar -->
+  <div style="display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <a href="#Holdings" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 10px 0 4px; color: #C3CEDF; text-decoration: none; font-size: 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <span>Holdings</span>
+    </a>
+    <span style="flex: 1"></span>
+    <button type="button" aria-label="Amounts shown. Hide them." style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button type="button" aria-label="Edit NPS" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 16px 12px 0; display: flex; flex-direction: column; gap: 14px">
+
+    <!-- identity -->
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 4px">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(163,214,92,0.16); border: 1px solid rgba(163,214,92,0.38); color: #A3D65C; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6Z"/></svg></span>
+      <span style="flex: 1; min-width: 0">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em">NPS Tier I</h1>
+        <span class="n" style="display: block; font-size: 12.5px; color: #9AA3B2; margin-top: 2px">PRAN ending 7730 · <span style="color: #7B9CFF">Venkatesh</span></span>
+      </span>
+      <span style="font-size: 11.5px; font-weight: 600; color: #C3CEDF; background: #1A2234; border-radius: 999px; padding: 4px 10px">Retirement</span>
+    </div>
+
+    <!-- value: the one lifted surface -->
+    <section aria-label="Value" style="position: relative; border-radius: 12px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">In net worth</div>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 6px">₹1,85,978</div>
+      <div class="n" style="font-size: 12px; color: #9AA3B2; margin-top: 3px">reading · 30 Sept 2026</div>
+
+      <div style="margin-top: 14px; padding-top: 13px; border-top: 1px solid #2A3650">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <span style="font-size: 12.5px; color: #C3CEDF">Worked out from today's NAVs</span>
+          <span class="n" style="font-size: 16px; font-weight: 600">₹1,87,412</span>
+        </div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 3px">
+          <span class="n" style="font-size: 12px; color: #9AA3B2">NAVs you typed on 29 Oct</span>
+          <span class="n" style="font-size: 12px; font-weight: 600; color: #2ED3A8">+₹1,434</span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 13px">
+          <button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Record as today's reading</button>
+          <button type="button" style="height: 44px; padding: 0 15px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; cursor: pointer">Update NAVs</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- the schemes: units times NAV -->
+    <section aria-label="By scheme" style="border-radius: 12px; padding: 14px 16px 8px; background: #121825; border: 1px solid #222C41; box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 12px 30px -20px rgba(0,0,0,0.95)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">By scheme</h2>
+        <span style="font-size: 12px; color: #9AA3B2">units × NAV</span>
+      </div>
+
+      <div role="img" aria-label="Equity 57 percent, corporate bonds 24 percent, government bonds 19 percent" style="display: flex; gap: 2px; height: 8px; margin-top: 12px; border-radius: 999px; overflow: hidden">
+        <span style="width: 57.4%; background: #A3D65C"></span>
+        <span style="width: 23.5%; background: rgba(163,214,92,0.62)"></span>
+        <span style="flex: 1; background: rgba(163,214,92,0.32)"></span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 54px; border-bottom: 1px solid #222C41; margin-top: 6px">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #A3D65C; flex-shrink: 0"></span>
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 13.5px; font-weight: 500">Equity <span style="color: #9AA3B2; font-weight: 400">· E</span></span>
+          <span class="n" style="display: block; font-size: 11.5px; color: #9AA3B2; margin-top: 1px">1,842.60 units × ₹58.41</span>
+        </span>
+        <span class="n" style="font-size: 13.5px; font-weight: 600">₹1,07,627</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 54px; border-bottom: 1px solid #222C41">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: rgba(163,214,92,0.62); flex-shrink: 0"></span>
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 13.5px; font-weight: 500">Corporate bonds <span style="color: #9AA3B2; font-weight: 400">· C</span></span>
+          <span class="n" style="display: block; font-size: 11.5px; color: #9AA3B2; margin-top: 1px">1,120.30 units × ₹39.20</span>
+        </span>
+        <span class="n" style="font-size: 13.5px; font-weight: 600">₹43,916</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 54px">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: rgba(163,214,92,0.32); flex-shrink: 0"></span>
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 13.5px; font-weight: 500">Government bonds <span style="color: #9AA3B2; font-weight: 400">· G</span></span>
+          <span class="n" style="display: block; font-size: 11.5px; color: #9AA3B2; margin-top: 1px">960.00 units × ₹35.87</span>
+        </span>
+        <span class="n" style="font-size: 13.5px; font-weight: 600">₹34,435</span>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 7px; padding: 0 4px; font-size: 12px; line-height: 1.5; color: #9AA3B2">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="margin-top: 3px; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+      <span>NAVs are typed from your statement; the app doesn't fetch them. The money is locked until retirement age.</span>
+    </div>
+
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; cursor: pointer">Update units</button>
+      <button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+        <span>Archive</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
     </a>
     <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>

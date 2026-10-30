@@ -122,6 +122,8 @@ test('a PPF is worked out from its account and payments, offered as a reading, a
     await expect(account).toContainText('SBI');
     await expect(account).toContainText('1234');
     await expect(account).toContainText('7.1%');
+    // The rate has not been compared with a statement, and the screen says so.
+    await expect(page.getByTestId('ppf-rate-unchecked')).toContainText('not yet checked against a statement');
 
     // The value is worked out and is the reading: nothing to record, and the interest not yet credited is said apart from it.
     const worked = page.getByTestId('ppf-worked-out');
