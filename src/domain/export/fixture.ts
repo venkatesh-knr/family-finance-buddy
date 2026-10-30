@@ -59,7 +59,6 @@ export function exportFixture(): Record<string, Row[]> {
       { id: '00000000-0000-4000-8000-000000000b01', household_id: HOUSEHOLD, holding_id: PPF_HOLDING, entry_date: '2026-04-02', amount_minor: '5000000', currency: 'INR', note: null, voided_at: null, created_at: '2026-04-02T00:00:00+00:00', updated_at: '2026-04-02T00:00:00+00:00' },
       { id: '00000000-0000-4000-8000-000000000b02', household_id: HOUSEHOLD, holding_id: PPF_HOLDING, entry_date: '2026-09-02', amount_minor: '-1000000', currency: 'INR', note: 'withdrawal', voided_at: null, created_at: '2026-09-02T00:00:00+00:00', updated_at: '2026-09-02T00:00:00+00:00' },
     ],
-    scheme_rate: [{ id: '00000000-0000-4000-8000-000000000a01', scheme: 'ppf', effective_from: '2020-04-01', rate_pct: '7.100', created_at: '2026-10-27T00:00:00+00:00' }],
   };
 }
 

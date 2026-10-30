@@ -36,14 +36,13 @@ function asText(value: unknown): string | null {
   return JSON.stringify(value);
 }
 
-async function readTable(entity: Entity, householdId: Uuid, priceIds: readonly string[]): Promise<Row[]> {
+async function readTable(entity: Entity, householdId: Uuid): Promise<Row[]> {
   const rows: Row[] = [];
   const order = entity.rowKey[0] ?? 'id';
   for (let from = 0; ; from += PAGE) {
     let query = supabase().from(entity.key).select(selectOf(entity));
     if (entity.key === 'household') query = query.eq('id', householdId);
     else if (entity.scope === 'household') query = query.eq('household_id', householdId);
-    if (entity.key === 'price') query = query.in('external_id', priceIds as string[]);
     const { data, error } = await query.order(order, { ascending: true }).range(from, from + PAGE - 1);
     if (error !== null) throw new Error(`Could not read ${entity.sheet} for the export: ${error.message}`);
     const page = (data ?? []) as unknown as Record<string, unknown>[];
@@ -61,20 +60,7 @@ async function readTable(entity: Entity, householdId: Uuid, priceIds: readonly s
 export async function readEverything(householdId: Uuid): Promise<ExportSource> {
   const tables: Record<string, Row[]> = {};
 
-  // The prices that are the household's own are the ones its instruments are priced from; the table holds every household's.
-  const instruments = ENTITIES.find((entity) => entity.key === 'instrument');
-  const instrumentRows = instruments === undefined ? [] : await readTable(instruments, householdId, []);
-  tables['instrument'] = instrumentRows;
-  const priceIds = [...new Set(instrumentRows.map((row) => row['price_external_id']).filter((id): id is string => id !== null && id !== undefined))];
-
-  for (const entity of ENTITIES) {
-    if (entity.key === 'instrument') continue;
-    if (entity.key === 'price' && priceIds.length === 0) {
-      tables['price'] = [];
-      continue;
-    }
-    tables[entity.key] = await readTable(entity, householdId, priceIds);
-  }
+  for (const entity of ENTITIES) tables[entity.key] = await readTable(entity, householdId);
 
   const household = tables['household']?.[0];
   return {
