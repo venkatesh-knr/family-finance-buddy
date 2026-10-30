@@ -9,7 +9,7 @@ describe('screensFor', () => {
   });
 
   it('keeps Tax and Insurance behind More for the roles that can read the household, and offers nobody else a More', () => {
-    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'insurance', 'property']);
+    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'reports', 'insurance', 'property']);
     for (const role of ['contributor', 'viewer', null] as const) {
       expect(moreFor(role)).toEqual([]);
       expect(screensFor(role)).not.toContain('more');

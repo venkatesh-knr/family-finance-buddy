@@ -41,6 +41,8 @@ export interface SheetModel {
   /** The entity it holds, or null for the About sheet. */
   readonly entity: string | null;
   readonly headers: readonly string[];
+  /** A number format for each header (an amount is shown with its places), or null. */
+  readonly formats: readonly (string | null)[];
   readonly rows: readonly (readonly Cell[])[];
   /** Written for reading and for a backup; the upload does not accept rows from it. */
   readonly readOnly: boolean;
@@ -126,6 +128,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
     name: ABOUT,
     entity: null,
     headers: ['Item', 'Value'],
+    formats: [null, null],
     readOnly: true,
     rows: [
       ['Template version', TEMPLATE_VERSION],
@@ -142,11 +145,13 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
   const sheets: SheetModel[] = [about];
   for (const entity of ENTITIES) {
     const headers: string[] = [];
+    const formats: (string | null)[] = [];
     const writers: ((row: Row, rowNumber: number) => Cell)[] = [];
 
     for (const column of entity.columns) {
       const header = headerOf(column);
       headers.push(header);
+      formats.push(column.kind === 'money' ? '#,##0.00' : null);
       writers.push((row, rowNumber) => {
         try {
           return toCell(column, row[column.key] ?? null, row, lookup);
@@ -161,18 +166,20 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       if (nameHeader !== null && column.ref !== undefined) {
         const target = ENTITY_BY_KEY.get(column.ref);
         headers.push(nameHeader);
+        formats.push(null);
         writers.push((row) => target?.label?.(lookup(column.ref as string, row[column.key]) ?? {}, lookup) ?? null);
       }
 
       for (const derived of entity.derived ?? []) {
         if (derived.after !== column.key) continue;
         headers.push(derived.header);
+        formats.push(null);
         writers.push((row) => derived.value(row, lookup));
       }
     }
 
     const rows = (tables[entity.key] ?? []).map((row, index) => writers.map((write) => write(row, index + 2)));
-    sheets.push({ name: entity.sheet, entity: entity.key, headers, rows, readOnly: entity.upload === 'none' });
+    sheets.push({ name: entity.sheet, entity: entity.key, headers, formats, rows, readOnly: entity.upload === 'none' });
   }
 
   return { workbook: { sheets }, problems };

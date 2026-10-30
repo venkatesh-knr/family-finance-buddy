@@ -108,3 +108,24 @@ describe('the export holds the whole schema to account', () => {
     expect(invented).toEqual([]);
   });
 });
+
+describe('the export does not depend on how much detail a person has chosen to see', () => {
+  // detail_level is a rendering preference and never an access control (CLAUDE.md; docs/design/detail-level.md): the file is the
+  // same in essential and full mode, so nothing that makes it may read the preference.
+  const files = [
+    ['src', 'domain', 'export', 'entities.ts'],
+    ['src', 'domain', 'export', 'workbook.ts'],
+    ['src', 'domain', 'export', 'cells.ts'],
+    ['src', 'repo', 'export.ts'],
+    ['src', 'lib', 'workbookFile.ts'],
+    ['src', 'features', 'reports', 'runExport.ts'],
+    ['src', 'features', 'reports', 'ReportsScreen.tsx'],
+  ];
+
+  it('reads no detail level and no privacy switch', () => {
+    for (const parts of files) {
+      const source = readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      expect(source, parts.join('/')).not.toMatch(/detailLevel|detail_level|essentialMode|bprivacyb/i);
+    }
+  });
+});

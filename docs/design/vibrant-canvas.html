@@ -27,16 +27,17 @@
 <div class="doc">
 <header>
 <h1>Saturation, depth and warmth &mdash; same structure, new tokens</h1>
-<p>Static export of the design canvas. <strong>Exported 30 October 2026 &middot; 21 artboards.</strong>
+<p>Static export of the design canvas. <strong>Exported 30 October 2026 &middot; 25 artboards.</strong>
 Every screen in the app has one, except Summary (a contributor's and a viewer's screen), sign-in and Property.</p>
 <p><strong>How to read it.</strong> Values &mdash; colour, size, radius, glyph &mdash; come from <code>docs/tokens.md</code> and
 <code>docs/design/icons.md</code>, which win wherever this file disagrees. Layout and hierarchy &mdash; what is on a screen, in what order,
 what is most prominent &mdash; come from the artboard. A difference from an artboard is a Departure in <code>conformance.md</code>,
 proposed to the owner, not decided in code. A board may draw more than is built yet: <code>docs/build-plan.md</code> says what is
-due, and a part not yet due is not a finding. The boards are drawn dark-only, so no hex here settles light theme. Figures on the boards
-drawn after the first four are illustrative, chosen to show each state; they are not the demo household's data. The first four boards
-predate the Goals decision (<code>docs/design/goals.md</code>): where their bottom bar says FIRE or Tax, the later boards are current.</p>
-<ol class="index"><li><a href="#Main">Overview</a></li><li><a href="#Fire">FIRE — now the independence goal's detail</a></li><li><a href="#Tokens">The token change</a></li><li><a href="#Kit">Icons and components</a></li><li><a href="#Holdings">Holdings — all, grouped</a></li><li><a href="#HoldingsDeposits">Holdings — filtered to deposits</a></li><li><a href="#HoldingDeposit">Deposit detail — FD 1</a></li><li><a href="#HoldingFund">Fund detail — Parag Parikh</a></li><li><a href="#Expenses">Expenses</a></li><li><a href="#More">More</a></li><li><a href="#Tax">Tax</a></li><li><a href="#Insurance">Insurance</a></li><li><a href="#Profile">Profile</a></li><li><a href="#Settings">Settings</a></li><li><a href="#Goals">Goals — the tab that was FIRE</a></li><li><a href="#GoalDetail">Goal detail — Daughter's education</a></li><li><a href="#Reports">Reports — behind More</a></li><li><a href="#AddRetirement">Add a holding — a retirement account</a></li><li><a href="#RetirementPPF">Retirement — PPF</a></li><li><a href="#RetirementEPF">Retirement — EPF</a></li><li><a href="#RetirementNPS">Retirement — NPS</a></li></ol>
+due, and a part not yet due is not a finding. The screen boards are drawn dark; the light theme is the <strong>Mist</strong> palette,
+chosen on 30 October 2026, shown on three of them and listed on the light-tokens board. Figures on the boards drawn after the first
+four are illustrative, chosen to show each state; they are not the demo household's data. The first four boards predate the Goals
+decision (<code>docs/design/goals.md</code>): where their bottom bar says FIRE or Tax, the later boards are current.</p>
+<ol class="index"><li><a href="#Main">Overview</a></li><li><a href="#Fire">FIRE — now the independence goal's detail</a></li><li><a href="#Tokens">The token change</a></li><li><a href="#Kit">Icons and components</a></li><li><a href="#Holdings">Holdings — all, grouped</a></li><li><a href="#HoldingsDeposits">Holdings — filtered to deposits</a></li><li><a href="#HoldingDeposit">Deposit detail — FD 1</a></li><li><a href="#HoldingFund">Fund detail — Parag Parikh</a></li><li><a href="#Expenses">Expenses</a></li><li><a href="#More">More</a></li><li><a href="#Tax">Tax</a></li><li><a href="#Insurance">Insurance</a></li><li><a href="#Profile">Profile</a></li><li><a href="#Settings">Settings</a></li><li><a href="#Goals">Goals — the tab that was FIRE</a></li><li><a href="#GoalDetail">Goal detail — Daughter's education</a></li><li><a href="#Reports">Reports — behind More</a></li><li><a href="#AddRetirement">Add a holding — a retirement account</a></li><li><a href="#RetirementPPF">Retirement — PPF</a></li><li><a href="#RetirementEPF">Retirement — EPF</a></li><li><a href="#RetirementNPS">Retirement — NPS</a></li><li><a href="#LightMist">Light theme (Mist) — Overview</a></li><li><a href="#LightMistHoldings">Light theme (Mist) — Holdings</a></li><li><a href="#LightMistExpenses">Light theme (Mist) — Expenses</a></li><li><a href="#LightTokens">Light tokens — Mist chosen, with the alternatives</a></li></ol>
 </header>
 <div class="boards">
 <section class="board" id="Main">
@@ -3264,6 +3265,628 @@ predate the Goals decision (<code>docs/design/goals.md</code>): where their bott
     </a>
   </nav>
 
+</div>
+</section>
+<section class="board" id="LightMist">
+<h2>Light theme (Mist) — Overview</h2>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #E3E8EF; font-family: 'Public Sans', system-ui, sans-serif; color: #131A27; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #D6DCE5; background: #F5F7FA">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #D6DCE5; background: #EDF1F6; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #5A6371">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #835A00; background: #F6E9C8; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+
+    <!-- net worth: the one lifted surface -->
+    <section aria-label="Net worth" style="position: relative; border-radius: 12px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%); border: 1px solid #CCD5EE; box-shadow: 0 2px 4px rgba(19,26,39,0.05), 0 16px 34px -22px rgba(55,82,204,0.35); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(131,90,0,0), rgba(131,90,0,0.55), rgba(55,82,204,0.35), rgba(131,90,0,0))"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371">Net worth</span>
+        <div role="group" aria-label="Whose" style="display: flex; background: #EDF1F6; border: 1px solid #D6DCE5; border-radius: 999px; padding: 2px">
+          <button type="button" aria-pressed="true" style="font: inherit; font-size: 11.5px; font-weight: 600; color: #F5F7FA; background: #131A27; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Household</button>
+          <button type="button" aria-pressed="false" style="font: inherit; font-size: 11.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Mine</button>
+        </div>
+      </div>
+      <div class="n" style="font-size: 44px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 8px">₹62.58<span style="font-size: 28px; font-weight: 600; color: #394250; margin-left: 2px">L</span></div>
+      <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: #5A6371">
+        <span class="n">as at 30 Sept 2026</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+      </div>
+    </section>
+
+    <!-- two sides of the world -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div style="border-radius: 12px; padding: 14px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6371">India · INR</div>
+        <div class="n" style="font-size: 20px; font-weight: 600; margin-top: 7px">₹17.06<span style="font-size: 15px; color: #394250; margin-left: 1px">L</span></div>
+        <div class="n" style="font-size: 12px; color: #5A6371; margin-top: 4px">invested ₹5.75 L</div>
+      </div>
+      <div style="border-radius: 12px; padding: 14px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6371">Abroad · USD</div>
+        <div class="n" style="font-size: 20px; font-weight: 600; margin-top: 7px">$41.8<span style="font-size: 15px; color: #394250; margin-left: 1px">K</span></div>
+        <div class="n" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #066F5C; margin-top: 4px">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+          +22.9% on cost
+        </div>
+      </div>
+    </div>
+
+    <!-- allocation: ring beside rows -->
+    <section aria-label="Allocation" style="border-radius: 12px; padding: 16px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Allocation</h2>
+        <span class="n" style="font-size: 12px; color: #5A6371">INR · ₹17.06 L</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px">
+        <svg width="104" height="104" viewBox="0 0 120 120" role="img" aria-label="Mutual funds 70 percent, deposits 18 percent, bonds 12 percent" style="flex-shrink: 0">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#EDF1F6" stroke-width="12"/>
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#3752CC" stroke-width="12" stroke-dasharray="199 90" transform="rotate(-90 60 60)"/>
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#0B6A85" stroke-width="12" stroke-dasharray="50 239" transform="rotate(164 60 60)"/>
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#835A00" stroke-width="12" stroke-dasharray="32 257" transform="rotate(229 60 60)"/>
+        </svg>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+          <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #131A27">
+            <span style="width: 32px; height: 32px; border-radius: 10px; background: rgba(55,82,204,0.12); border: 1px solid rgba(55,82,204,0.38); color: #3752CC; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+            <span style="flex: 1; min-width: 0"><span style="display: block; font-size: 13px; font-weight: 500">Mutual funds</span><span class="n" style="display: block; font-size: 11px; color: #5A6371">70.1%</span></span>
+            <span class="n" style="font-size: 13px; font-weight: 600">₹11.96 L</span>
+          </a>
+          <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #131A27">
+            <span style="width: 32px; height: 32px; border-radius: 10px; background: rgba(11,106,133,0.12); border: 1px solid rgba(11,106,133,0.38); color: #0B6A85; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="12" cy="14.5" r="2"/></svg></span>
+            <span style="flex: 1; min-width: 0"><span style="display: block; font-size: 13px; font-weight: 500">Deposits</span><span class="n" style="display: block; font-size: 11px; color: #5A6371">18.0%</span></span>
+            <span class="n" style="font-size: 13px; font-weight: 600">₹3.08 L</span>
+          </a>
+          <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #131A27">
+            <span style="width: 32px; height: 32px; border-radius: 10px; background: rgba(131,90,0,0.12); border: 1px solid rgba(131,90,0,0.38); color: #835A00; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg></span>
+            <span style="flex: 1; min-width: 0"><span style="display: block; font-size: 13px; font-weight: 500">Bonds</span><span class="n" style="display: block; font-size: 11px; color: #5A6371">11.8%</span></span>
+            <span class="n" style="font-size: 13px; font-weight: 600">₹2.02 L</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- needs attention -->
+    <section aria-label="Needs attention" style="border-radius: 12px; padding: 14px 16px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+      <h2 style="margin: 0 0 10px; font-size: 14.5px; font-weight: 600">Needs attention</h2>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #F6E9C8">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#835A00" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0"><path d="M12 4 2.5 20h19Z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+        <span style="flex: 1; font-size: 12.5px; color: #131A27">Family floater renews in 18 days</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #EDF1F6; margin-top: 8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+        <span style="flex: 1; font-size: 12.5px; color: #394250">3 funds rest on a partial statement, so no return is shown</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #D6DCE5; background: #F5F7FA; padding: 9px 4px 14px">
+    <a href="#" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #835A00">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Overview</span>
+    </a>
+    <a href="#Expenses" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </a>
+    <a href="#Holdings" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="LightMistHoldings">
+<h2>Light theme (Mist) — Holdings</h2>
+<div style="width: 390px; height: 1240px; box-sizing: border-box; background: #E3E8EF; font-family: 'Public Sans', system-ui, sans-serif; color: #131A27; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #D6DCE5; background: #F5F7FA">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #D6DCE5; background: #EDF1F6; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+
+    <!-- household strip -->
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #5A6371">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #835A00; background: #F6E9C8; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+
+    <!-- summary: the one lifted surface -->
+    <section aria-label="Portfolio" style="position: relative; border-radius: 12px; padding: 15px 16px 15px; background: radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%); border: 1px solid #CCD5EE; box-shadow: 0 2px 4px rgba(19,26,39,0.05), 0 16px 34px -22px rgba(55,82,204,0.35); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(131,90,0,0), rgba(131,90,0,0.55), rgba(55,82,204,0.35), rgba(131,90,0,0))"></div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371">Portfolio</span>
+        <span style="display: flex; align-items: center; gap: 6px">
+          <span style="font-size: 11.5px; color: #5A6371">latest readings</span>
+          <button type="button" aria-label="Fetch prices" style="width: 32px; height: 32px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+          </button>
+        </span>
+      </div>
+
+      <div class="n" style="font-size: 38px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 4px">₹17.06<span style="font-size: 25px; font-weight: 600; color: #394250; margin-left: 2px">L</span></div>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; color: #394250">
+        <span style="display: inline-flex; color: #5A6371"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 9.5h17"/><path d="M3.5 14.5h17"/><path d="M12 3.5a15 15 0 0 0 0 17"/><path d="M12 3.5a15 15 0 0 1 0 17"/></svg></span>
+        <span class="n">and $41.8 K abroad</span>
+        <span class="n" style="font-weight: 600; color: #066F5C">+22.9% on cost</span>
+      </div>
+
+      <div role="img" aria-label="Mutual funds 70.1 percent, deposits 18.0 percent, bonds 11.8 percent of the rupee portfolio" style="display: flex; gap: 2px; height: 8px; margin-top: 14px; border-radius: 999px; overflow: hidden">
+        <span style="width: 70.1%; background: #3752CC"></span>
+        <span style="width: 18%; background: #0B6A85"></span>
+        <span style="width: 11.8%; background: #835A00"></span>
+      </div>
+      <div style="display: flex; gap: 14px; margin-top: 9px; font-size: 11.5px; color: #394250">
+        <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #3752CC"></span><span>Funds <span class="n" style="color: #5A6371">70.1%</span></span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #0B6A85"></span><span>Deposits <span class="n" style="color: #5A6371">18.0%</span></span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #835A00"></span><span>Bonds <span class="n" style="color: #5A6371">11.8%</span></span></span>
+      </div>
+    </section>
+
+    <!-- list header: one Add, one Import, sort -->
+    <div style="display: flex; align-items: center; gap: 6px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">Holdings</h2>
+      <span class="n" style="font-size: 12px; color: #394250; background: #EDF1F6; border-radius: 999px; padding: 2px 8px">8</span>
+      <span style="flex: 1"></span>
+      <button type="button" style="height: 44px; padding: 0 8px; border: 0; background: transparent; color: #394250; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"/><path d="m4 17 3 3 3-3"/><path d="M17 20V4"/><path d="m14 7 3-3 3 3"/></svg>
+        <span>Largest</span>
+      </button>
+      <button type="button" aria-label="Import a statement" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+      <button type="button" style="height: 44px; padding: 0 16px 0 12px; border-radius: 999px; border: 0; background: #131A27; color: #F5F7FA; font: inherit; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span>Add</span>
+      </button>
+    </div>
+
+    <!-- filter chips: class, then earmark -->
+    <div style="position: relative; margin-top: -4px">
+      <nav aria-label="Show" style="display: flex; align-items: center; gap: 8px; overflow: hidden">
+        <a href="#Holdings" aria-current="page" style="flex-shrink: 0; height: 36px; padding: 0 15px; border-radius: 999px; border: 1px solid #131A27; background: #131A27; color: #F5F7FA; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">All</a>
+        <a href="#Holdings" style="flex-shrink: 0; height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid #747D8A; color: #394250; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">Mutual funds <span class="n" style="color: #5A6371">3</span></a>
+        <a href="#HoldingsDeposits" style="flex-shrink: 0; height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid #747D8A; color: #394250; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">Deposits <span class="n" style="color: #5A6371">2</span></a>
+        <a href="#Holdings" style="flex-shrink: 0; height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid #747D8A; color: #394250; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">Bonds <span class="n" style="color: #5A6371">1</span></a>
+        <a href="#Holdings" style="flex-shrink: 0; height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid #747D8A; color: #394250; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">ETF <span class="n" style="color: #5A6371">1</span></a>
+        <span aria-hidden="true" style="flex-shrink: 0; width: 1px; height: 20px; background: #D6DCE5"></span>
+        <a href="#HoldingsDeposits" style="flex-shrink: 0; height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid #747D8A; color: #835A00; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4Z"/></svg>
+          Emergency fund
+        </a>
+      </nav>
+      <div aria-hidden="true" style="position: absolute; top: 0; right: 0; bottom: 0; width: 44px; background: linear-gradient(90deg, rgba(227,232,239,0), #E3E8EF)"></div>
+    </div>
+
+    <!-- group: mutual funds -->
+    <div>
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 7px; width: 100%; min-height: 40px; padding: 0 4px; background: none; border: 0; color: #131A27; font: inherit; cursor: pointer; text-align: left">
+        <span style="font-size: 13px; font-weight: 600">Mutual funds</span>
+        <span class="n" style="font-size: 12px; color: #5A6371">3</span>
+        <span style="flex: 1"></span>
+        <span class="n" style="font-size: 13px; font-weight: 600">₹11.96 L</span>
+        <span class="n" style="font-size: 12px; color: #5A6371; width: 40px; text-align: right">70.1%</span>
+        <span style="display: inline-flex; color: #5A6371"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <div style="border-radius: 12px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+
+        <a href="#HoldingFund" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-decoration: none; color: #131A27">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(55,82,204,0.12); border: 1px solid rgba(55,82,204,0.38); color: #3752CC; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Parag Parikh Flexi Cap Fund</span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: #3752CC">Venkatesh</span> · 6,992.23 units</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹6,28,300.11</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: #5A6371; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg><span>return not shown</span></span>
+          </span>
+        </a>
+        <div aria-hidden="true" style="height: 1px; background: #D6DCE5; margin-left: 66px"></div>
+
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(55,82,204,0.12); border: 1px solid rgba(55,82,204,0.38); color: #3752CC; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ICICI Prudential Large Cap Fund</span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: #3752CC">Venkatesh</span> · 4,013.73 units</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹4,22,766.18</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: #5A6371; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg><span>return not shown</span></span>
+          </span>
+        </div>
+        <div aria-hidden="true" style="height: 1px; background: #D6DCE5; margin-left: 66px"></div>
+
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(55,82,204,0.12); border: 1px solid rgba(55,82,204,0.38); color: #3752CC; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 6-8"/><path d="M14 7h5v5"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">UTI Nifty 50 Index Fund</span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: #3752CC">Venkatesh</span> · 882.86 units</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹1,45,157.38</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: #5A6371; margin-top: 2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg><span>return not shown</span></span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- group: deposits -->
+    <div>
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 7px; width: 100%; min-height: 40px; padding: 0 4px; background: none; border: 0; color: #131A27; font: inherit; cursor: pointer; text-align: left">
+        <span style="font-size: 13px; font-weight: 600">Deposits</span>
+        <span class="n" style="font-size: 12px; color: #5A6371">2</span>
+        <span style="flex: 1"></span>
+        <span class="n" style="font-size: 13px; font-weight: 600">₹3.08 L</span>
+        <span class="n" style="font-size: 12px; color: #5A6371; width: 40px; text-align: right">18.0%</span>
+        <span style="display: inline-flex; color: #5A6371"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <div style="border-radius: 12px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(11,106,133,0.12); border: 1px solid rgba(11,106,133,0.38); color: #0B6A85; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="12" cy="14.5" r="2"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500">FD 2</span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: #3752CC">Venkatesh</span> · matures 28 Feb 2027</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹2,03,365.75</span>
+            <span class="n" style="display: block; font-size: 11.5px; color: #5A6371; margin-top: 2px">as at 30 Sept</span>
+          </span>
+        </div>
+        <div aria-hidden="true" style="height: 1px; background: #D6DCE5; margin-left: 66px"></div>
+
+        <a href="#HoldingDeposit" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-decoration: none; color: #131A27">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(11,106,133,0.12); border: 1px solid rgba(11,106,133,0.38); color: #0B6A85; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="12" cy="14.5" r="2"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: flex; align-items: center; gap: 7px">
+              <span style="font-size: 14px; font-weight: 500">FD 1</span>
+              <span style="font-size: 10.5px; font-weight: 600; color: #835A00; background: #F6E9C8; border-radius: 999px; padding: 2px 7px">Emergency</span>
+            </span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">HDFC · 6.5% · matures 31 Jul 2027</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹1,04,291.78</span>
+            <span class="n" style="display: block; font-size: 11.5px; color: #5A6371; margin-top: 2px">as at 30 Sept</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- group: bonds -->
+    <div>
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 7px; width: 100%; min-height: 40px; padding: 0 4px; background: none; border: 0; color: #131A27; font: inherit; cursor: pointer; text-align: left">
+        <span style="font-size: 13px; font-weight: 600">Bonds</span>
+        <span class="n" style="font-size: 12px; color: #5A6371">1</span>
+        <span style="flex: 1"></span>
+        <span class="n" style="font-size: 13px; font-weight: 600">₹2.02 L</span>
+        <span class="n" style="font-size: 12px; color: #5A6371; width: 40px; text-align: right">11.8%</span>
+        <span style="display: inline-flex; color: #5A6371"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <div style="border-radius: 12px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(131,90,0,0.12); border: 1px solid rgba(131,90,0,0.38); color: #835A00; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500">SBI Bond 2026</span>
+            <span class="n" style="display: block; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">10.5% · next ₹1,750 on 1 Nov</span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">₹2,01,668.49</span>
+            <span class="n" style="display: block; font-size: 11.5px; color: #5A6371; margin-top: 2px">as at 30 Sept</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- group: etf, abroad -->
+    <div>
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; gap: 7px; width: 100%; min-height: 40px; padding: 0 4px; background: none; border: 0; color: #131A27; font: inherit; cursor: pointer; text-align: left">
+        <span style="font-size: 13px; font-weight: 600">ETF</span>
+        <span class="n" style="font-size: 12px; color: #5A6371">1</span>
+        <span style="flex: 1"></span>
+        <span class="n" style="font-size: 13px; font-weight: 600">$41.8 K</span>
+        <span style="font-size: 12px; color: #5A6371; width: 40px; text-align: right">abroad</span>
+        <span style="display: inline-flex; color: #5A6371"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <div style="border-radius: 12px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(114,56,182,0.12); border: 1px solid rgba(114,56,182,0.38); color: #7238B6; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></span>
+          <span style="flex: 1; min-width: 0">
+            <span style="display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Vanguard Total Stock Market ETF</span>
+            <span class="n" style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #5A6371; margin-top: 2px; white-space: nowrap">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 9.5h17"/><path d="M3.5 14.5h17"/><path d="M12 3.5a15 15 0 0 0 0 17"/><path d="M12 3.5a15 15 0 0 1 0 17"/></svg>
+              <span>VTI · 12.5 units</span>
+            </span>
+          </span>
+          <span style="text-align: right; flex-shrink: 0">
+            <span class="n" style="display: block; font-size: 14px; font-weight: 600">$41,800</span>
+            <span class="n" style="display: block; font-size: 11.5px; font-weight: 600; color: #066F5C; margin-top: 2px">+$7,800 · 22.9%</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ended, collapsed -->
+    <button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 0 4px; background: none; border: 0; color: #394250; font: inherit; cursor: pointer; text-align: left">
+      <span style="font-size: 13px; font-weight: 600">Ended</span>
+      <span class="n" style="font-size: 12px; color: #5A6371">1</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 12px; color: #5A6371">sold or matured</span>
+      <span style="display: inline-flex; color: #5A6371"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #D6DCE5; background: #F5F7FA; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px">Expenses</span>
+    </span>
+    <a href="#Holdings" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #835A00">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </span>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="LightMistExpenses">
+<h2>Light theme (Mist) — Expenses</h2>
+<div style="width: 390px; height: 1320px; box-sizing: border-box; background: #E3E8EF; font-family: 'Public Sans', system-ui, sans-serif; color: #131A27; overflow: hidden; display: flex; flex-direction: column">
+
+  <!-- header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #D6DCE5; background: #F5F7FA">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #D6DCE5; background: #EDF1F6; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #5A6371">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #835A00; background: #F6E9C8; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+
+    <!-- the month: the one lifted surface -->
+    <section aria-label="This month" style="position: relative; border-radius: 12px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%); border: 1px solid #CCD5EE; box-shadow: 0 2px 4px rgba(19,26,39,0.05), 0 16px 34px -22px rgba(55,82,204,0.35); overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(131,90,0,0), rgba(131,90,0,0.55), rgba(55,82,204,0.35), rgba(131,90,0,0))"></div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371">Spent</span>
+        <div role="group" aria-label="Period" style="display: flex; background: #E8ECF2; border: 1px solid #D6DCE5; border-radius: 999px; padding: 2px">
+          <button type="button" aria-pressed="true" style="font: inherit; font-size: 11.5px; font-weight: 600; color: #F5F7FA; background: #131A27; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">This month</button>
+          <button type="button" aria-pressed="false" style="font: inherit; font-size: 11.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">This year</button>
+        </div>
+      </div>
+
+      <div class="n" style="font-size: 38px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 6px">₹37,790</div>
+      <div class="n" style="font-size: 12.5px; color: #5A6371; margin-top: 4px">of ₹62,500 planned · day 15 of 31</div>
+
+      <div role="img" aria-label="60 percent of the plan spent, 48 percent of the month gone" style="position: relative; height: 8px; margin-top: 14px; border-radius: 999px; background: #D6DCE5">
+        <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 60.5%; border-radius: 999px; background: #066F5C"></span>
+        <span style="position: absolute; left: 48.4%; top: -4px; width: 2px; height: 16px; margin-left: -1px; border-radius: 2px; background: #835A00"></span>
+      </div>
+      <div class="n" style="display: flex; justify-content: space-between; margin-top: 9px; font-size: 12px">
+        <span style="color: #394250">₹24,710 left for 16 days</span>
+        <span style="color: #835A00">ahead of the month's pace</span>
+      </div>
+    </section>
+
+    <!-- quick add: amount first, everything else folded -->
+    <section aria-label="Add an expense" style="border-radius: 12px; padding: 14px 14px 14px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+      <div style="display: flex; gap: 8px">
+        <label style="flex: 0 0 132px; display: flex; align-items: center; gap: 6px; height: 48px; padding: 0 12px; border-radius: 10px; background: #E8ECF2; border: 1px solid #747D8A">
+          <span style="font-size: 18px; color: #5A6371">₹</span>
+          <input type="text" inputmode="decimal" aria-label="Amount" placeholder="0" style="width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #131A27; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 20px">
+        </label>
+        <label style="flex: 1; display: flex; align-items: center; height: 48px; padding: 0 12px; border-radius: 10px; background: #E8ECF2; border: 1px solid #747D8A">
+          <input type="text" aria-label="Payee" placeholder="Payee (optional)" style="width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #131A27; font: inherit; font-size: 14px">
+        </label>
+      </div>
+
+      <div role="group" aria-label="Category" style="display: flex; gap: 6px; margin-top: 10px; overflow: hidden">
+        <button type="button" aria-pressed="true" style="flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #131A27; background: #131A27; color: #F5F7FA; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Groceries</button>
+        <button type="button" aria-pressed="false" style="flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; font: inherit; font-size: 12.5px; cursor: pointer">Fuel</button>
+        <button type="button" aria-pressed="false" style="flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; font: inherit; font-size: 12.5px; cursor: pointer">Dining</button>
+        <button type="button" aria-pressed="false" style="flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; font: inherit; font-size: 12.5px; cursor: pointer">Utilities</button>
+        <button type="button" aria-pressed="false" style="flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #394250; font: inherit; font-size: 12.5px; cursor: pointer">More</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px">
+        <button type="button" aria-expanded="false" style="flex: 1; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 2px; border: 0; background: transparent; color: #394250; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer">
+          <span>Today · you · shared</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button type="button" style="height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: #131A27; color: #F5F7FA; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Add</button>
+      </div>
+    </section>
+
+    <!-- the plan, over-spent first -->
+    <section aria-label="Plan" style="border-radius: 12px; padding: 14px 16px 6px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Plan</h2>
+        <span style="font-size: 12px; color: #5A6371">2 over</span>
+      </div>
+
+      <div style="padding: 9px 0">
+        <div class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Dining</span><span><span style="color: #AD3728; font-weight: 600">₹1,140 over</span> <span style="color: #5A6371">· ₹4,000</span></span></div>
+        <div aria-hidden="true" style="height: 4px; margin-top: 7px; border-radius: 999px; background: #AD3728"></div>
+      </div>
+      <div style="padding: 9px 0">
+        <div class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Utilities</span><span><span style="color: #AD3728; font-weight: 600">₹240 over</span> <span style="color: #5A6371">· ₹6,000</span></span></div>
+        <div aria-hidden="true" style="height: 4px; margin-top: 7px; border-radius: 999px; background: #AD3728"></div>
+      </div>
+      <div style="padding: 9px 0">
+        <div class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Groceries</span><span style="color: #394250">₹9,860 <span style="color: #5A6371">of ₹12,000</span></span></div>
+        <div aria-hidden="true" style="position: relative; height: 4px; margin-top: 7px; border-radius: 999px; background: #D6DCE5"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 82%; border-radius: 999px; background: #066F5C"></span></div>
+      </div>
+      <div style="padding: 9px 0">
+        <div class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Household help</span><span style="color: #394250">₹8,000 <span style="color: #5A6371">of ₹8,000</span></span></div>
+        <div aria-hidden="true" style="position: relative; height: 4px; margin-top: 7px; border-radius: 999px; background: #D6DCE5"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 999px; background: #066F5C"></span></div>
+      </div>
+      <div style="padding: 9px 0">
+        <div class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Fuel</span><span style="color: #394250">₹4,500 <span style="color: #5A6371">of ₹6,000</span></span></div>
+        <div aria-hidden="true" style="position: relative; height: 4px; margin-top: 7px; border-radius: 999px; background: #D6DCE5"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 75%; border-radius: 999px; background: #066F5C"></span></div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #D6DCE5; margin-top: 4px">
+        <span style="flex: 1; min-width: 0">
+          <span class="n" style="display: flex; justify-content: space-between; font-size: 13.5px"><span style="font-weight: 500">Uncategorised</span><span>₹4,050</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #5A6371; margin-top: 3px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>no plan to compare against</span>
+        </span>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 12.5px; cursor: pointer">File them</button>
+      </div>
+
+      <button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 0; border: 0; border-top: 1px solid #D6DCE5; background: transparent; color: #394250; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <span class="n">3 with nothing spent yet · ₹26,500 planned</span>
+      </button>
+    </section>
+
+    <!-- recent, by day -->
+    <section aria-label="Recent expenses" style="border-radius: 12px; padding: 14px 16px 6px; background: #F5F7FA; border: 1px solid #D6DCE5; box-shadow: 0 1px 2px rgba(19,26,39,0.05), 0 8px 22px -16px rgba(19,26,39,0.22)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 600">Recent</h2>
+        <button type="button" style="height: 32px; padding: 0; border: 0; background: transparent; color: #394250; font: inherit; font-size: 12.5px; cursor: pointer">See all</button>
+      </div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371; margin-top: 8px">Today</div>
+      <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: 1px solid #D6DCE5; background: transparent; color: #131A27; font: inherit; text-align: left; cursor: pointer">
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 14px; font-weight: 500">BigBasket</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5A6371; margin-top: 2px">Groceries <span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #3752CC; color: #3752CC; font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">V</span></span>
+        </span>
+        <span class="n" style="font-size: 14px; font-weight: 600">₹2,184.50</span>
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: 1px solid #D6DCE5; background: transparent; color: #131A27; font: inherit; text-align: left; cursor: pointer">
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 14px; font-weight: 500">Shell</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5A6371; margin-top: 2px">Fuel <span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #3752CC; color: #3752CC; font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">V</span></span>
+        </span>
+        <span class="n" style="font-size: 14px; font-weight: 600">₹1,500</span>
+      </button>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371; margin-top: 12px">Yesterday</div>
+      <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: 1px solid #D6DCE5; background: transparent; color: #131A27; font: inherit; text-align: left; cursor: pointer">
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 14px; font-weight: 500">Swiggy</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5A6371; margin-top: 2px">Dining <span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #066F5C; color: #066F5C; font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">M</span></span>
+        </span>
+        <span class="n" style="font-size: 14px; font-weight: 600">₹642</span>
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0; border: 0; background: transparent; color: #131A27; font: inherit; text-align: left; cursor: pointer">
+        <span style="flex: 1; min-width: 0">
+          <span style="display: block; font-size: 14px; font-weight: 500">Tata Power</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5A6371; margin-top: 2px">Utilities <span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #3752CC; color: #3752CC; font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">V</span></span>
+        </span>
+        <span class="n" style="font-size: 14px; font-weight: 600">₹3,120</span>
+      </button>
+    </section>
+
+  </div>
+
+  <!-- bottom bar -->
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #D6DCE5; background: #F5F7FA; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">Overview</span>
+    </a>
+    <a href="#Expenses" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #835A00">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg>
+      <span style="font-size: 10.5px; font-weight: 600">Expenses</span>
+    </a>
+    <a href="#Holdings" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg>
+      <span style="font-size: 10.5px">Holdings</span>
+    </a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+      <span style="font-size: 10.5px">Goals</span>
+    </a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span style="font-size: 10.5px">More</span>
+    </a>
+  </nav>
+
+</div>
+</section>
+<section class="board" id="LightTokens">
+<h2>Light tokens — Mist chosen, with the alternatives</h2>
+<div style="width: 820px; height: 1000px; box-sizing: border-box; padding: 36px 36px; background: #E3E8EF; font-family: 'Public Sans', system-ui, sans-serif; color: #131A27; overflow: hidden">
+  <h1 style="margin: 0; font-family: Newsreader, Georgia, serif; font-size: 34px; font-weight: 500; letter-spacing: -0.01em">Light mode: three grounds</h1>
+  <p style="margin: 10px 0 0; max-width: 64ch; font-size: 14px; line-height: 1.55; color: #394250">The light theme as built puts pure white cards on a pale ground, so the brightest thing on screen is the background of every card. Both proposals take the cards off pure white and deepen the ground a step, which cuts glare and lets cards stand off the page without leaning on shadows. Every pair below holds the same contrast rules as the dark theme: text at 4.5:1 on every surface it sits on, control edges at 3:1, and a neutral caption grey.</p>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 22px; background: #F5F7FA; border: 1px solid #D6DCE5; border-radius: 12px; overflow: hidden">
+    <thead><tr><th scope="col" style="text-align: left; padding: 8px; font-size: 13px; font-weight: 600; color: #131A27">Token</th><th scope="col" style="text-align: left; padding: 8px; font-size: 13px; font-weight: 600; color: #131A27">As built</th><th scope="col" style="text-align: left; padding: 8px; font-size: 13px; font-weight: 600; color: #131A27">Mist — recommended</th><th scope="col" style="text-align: left; padding: 8px; font-size: 13px; font-weight: 600; color: #131A27">Paper</th></tr></thead>
+    <tbody>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Page ground<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--bg</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #EFF2F7; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#EFF2F7</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #E3E8EF; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#E3E8EF</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #EAE6DF; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#EAE6DF</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Card<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--surface</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #FFFFFF; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#FFFFFF</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #F5F7FA; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#F5F7FA</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #F7F5F1; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#F7F5F1</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Quiet surface<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--surface-2</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #F5F7FB; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#F5F7FB</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #EDF1F6; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#EDF1F6</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #F0EDE7; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#F0EDE7</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Track<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--surface-3</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #E8EDF5; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#E8EDF5</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #DCE2EA; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#DCE2EA</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #E0DBD2; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#E0DBD2</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Editable row<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--inset</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #EDF1F7; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#EDF1F7</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #E8ECF2; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#E8ECF2</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #E8E4DD; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#E8E4DD</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Lifted card, lit corner<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--surface-lift</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #FFFFFF; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#FFFFFF</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #DCE3FB; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#DCE3FB</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #F9EBCF; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#F9EBCF</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Text<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--ink</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #111722; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#111722</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #131A27; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#131A27</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #1D1B18; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#1D1B18</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Body text<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--ink-2</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #39424F; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#39424F</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #394250; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#394250</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #45403A; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#45403A</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Captions<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--muted</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #616A78; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#616A78</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #5A6371; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#5A6371</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #666058; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#666058</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Hairline<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--line</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #DFE5EE; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#DFE5EE</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #D6DCE5; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#D6DCE5</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #DCD6CC; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#DCD6CC</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Control edge<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--line-strong</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #808996; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#808996</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #747D8A; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#747D8A</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #7E776C; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#7E776C</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Plan, attention<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--brass</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #916500; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#916500</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #835A00; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#835A00</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #7D5700; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#7D5700</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Gain<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--teal</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #077964; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#077964</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #066F5C; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#066F5C</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #086B5A; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#086B5A</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Loss<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--coral</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #BB3D2D; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#BB3D2D</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #AD3728; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#AD3728</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #A93627; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#A93627</span></span></td></tr>
+<tr style="border-top: 1px solid #D6DCE5"><td style="padding: 7px 8px; font-size: 13px; color: #131A27">Ownership<span style="display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #5A6371">--indigo</span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #3D5BD9; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#3D5BD9</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #3752CC; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#3752CC</span></span></td><td style="padding: 5px 8px"><span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; height: 22px; border-radius: 6px; background: #3650C2; border: 1px solid #C9D0DA; flex-shrink: 0"></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #394250">#3650C2</span></span></td></tr>
+    </tbody>
+  </table>
+  <p style="margin: 16px 0 0; font-size: 13px; line-height: 1.55; color: #394250"><strong>Mist</strong> keeps the cool family of the dark theme, so switching themes feels like the same app, and paints the one lifted card with a pale periwinkle light instead of white. <strong>Paper</strong> warms the whole ground toward cream and lights the hero with gold. Accents are a step darker in both, so they keep 4.5:1 on the tinted hero.</p>
 </div>
 </section>
 </div>

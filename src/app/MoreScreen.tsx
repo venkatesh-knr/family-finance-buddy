@@ -3,6 +3,8 @@ import type { AppScreen } from '../domain/access.ts';
 import { formatMoney } from '../lib/money.ts';
 import { GLYPHS as GLYPH_PATHS } from '../ui/assetClass.ts';
 import { hashFor } from './route.ts';
+import { formatIsoDate, istCalendarDate } from '../lib/dates.ts';
+import { readLastExport } from '../features/reports/exportFile.ts';
 import { policiesPhrase, profileLine, renewalPill, taxLine, taxYearLabel } from './moreGlance.ts';
 import { useMoreGlance } from './useMoreGlance.ts';
 
@@ -37,6 +39,13 @@ const GLYPHS: Partial<Record<AppScreen, ReactNode>> = {
       ))}
     </>
   ),
+  reports: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </>
+  ),
   profile: (
     <>
       <circle cx="12" cy="8" r="4" />
@@ -62,6 +71,7 @@ const TITLES: Partial<Record<AppScreen, string>> = {
   tax: 'Tax',
   insurance: 'Insurance',
   property: 'Property',
+  reports: 'Reports',
   profile: 'Profile',
   settings: 'Settings',
 };
@@ -71,6 +81,7 @@ const PURPOSE: Partial<Record<AppScreen, string>> = {
   tax: 'What the year’s gains and income come to, on the rules that applied.',
   insurance: 'Policies, what they cover and when they renew.',
   property: 'What each cost, what it is thought to be worth, and how old that is.',
+  reports: 'Export everything as one workbook.',
   settings: 'Theme, how amounts show, members',
 };
 
@@ -119,6 +130,14 @@ export function MoreScreen({
         return insurance === null
           ? { text: PURPOSE.insurance ?? '', pill: null }
           : { text: policiesPhrase(insurance.inForce), pill: renewalPill(insurance.due) };
+      case 'reports': {
+        // Remembered by this device alone, so it says so (docs/design/conformance.md, Departures).
+        const last = householdId === null ? null : readLastExport(householdId);
+        return {
+          text: last === null ? (PURPOSE.reports ?? '') : `Export everything · last on this device ${formatIsoDate(istCalendarDate(new Date(last)))}`,
+          pill: null,
+        };
+      }
       case 'profile':
         return { text: profileLine(role), pill: null };
       default:

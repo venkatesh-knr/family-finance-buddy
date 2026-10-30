@@ -19,6 +19,7 @@ import { FireScreen } from '../features/plan/PlanScreen.tsx';
 import { TaxScreen } from '../features/tax/TaxScreen.tsx';
 import { InsuranceScreen } from '../features/insurance/InsuranceScreen.tsx';
 import { PropertyScreen } from '../features/property/PropertyScreen.tsx';
+import { ReportsScreen } from '../features/reports/ReportsScreen.tsx';
 import { MoreScreen } from './MoreScreen.tsx';
 import { ProfileScreen } from '../features/profile/ProfileScreen.tsx';
 import { SettingsScreen } from '../features/settings/SettingsScreen.tsx';
@@ -214,7 +215,7 @@ function SignedIn({
   // reaches Tax from the bar itself and has no More to go back to, so keeps the ordinary header.
   const subTitle =
     SCREENS.some(([id]) => id === 'more')
-      ? ({ tax: 'Tax', insurance: 'Insurance', property: 'Property', profile: 'Profile', settings: 'Settings' } as Partial<Record<Screen, string>>)[
+      ? ({ tax: 'Tax', insurance: 'Insurance', property: 'Property', reports: 'Reports', profile: 'Profile', settings: 'Settings' } as Partial<Record<Screen, string>>)[
           screen
         ] ?? null
       : null;
@@ -412,6 +413,7 @@ function SignedIn({
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
         {screen === 'insurance' && <InsuranceScreen privacy={privacy} householdId={householdId} />}
         {screen === 'property' && <PropertyScreen privacy={privacy} householdId={householdId} />}
+        {screen === 'reports' && <ReportsScreen householdId={householdId} />}
         {screen === 'more' && (
           <MoreScreen
             screens={behindMore}
