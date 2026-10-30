@@ -1,5 +1,7 @@
 /**
- * What the full export holds: one sheet for each entity, every one named here.
+ * What the full export holds: one sheet for each entity, every one named here. It holds the household’s own records and the
+ * setup it changes (its settings, members, categories, budgets, instruments), and its transactions. Reference data the app keeps
+ * (prices, rates, tax rules, exchange rates) and the app’s own logs are not in it: they come back with the app.
  *
  * The export is generated from this list and nothing else, so a table that is not on it is not in the file. That is the point and
  * the danger, and `NOT_EXPORTED` is the answer to the danger: every table in `supabase/migrations/` is either an entity below or
@@ -39,8 +41,8 @@ export interface Entity {
   readonly key: string;
   readonly sheet: string;
   readonly columns: readonly Column[];
-  /** A household's own records, or reference data that is the same for every household and is written by migration. */
-  readonly scope: 'household' | 'reference';
+  /** Whose records they are: the household's. (Reference data the app keeps is not exported at all.) */
+  readonly scope: 'household';
   /** Whether the upload template accepts rows for it. Reference data and records the app keeps itself are read-only. */
   readonly upload: 'rows' | 'none';
   /** Which columns together find a row again. */
@@ -199,7 +201,7 @@ export const ENTITIES: readonly Entity[] = [
         text('folio_last4'),
         decimal('stated_quantity'),
         date('stated_as_at'),
-        id('stated_source_batch_id', 'import_batch'),
+        id('stated_source_batch_id'),
         text('earmark'),
         text('status'),
         ts('archived_at'),
@@ -225,7 +227,7 @@ export const ENTITIES: readonly Entity[] = [
     upload: 'rows',
     rowKey: ['id'],
     columns: [
-      ...household(id('holding_id', 'holding'), date('acquired_on'), decimal('quantity'), money('cost_minor'), currency(), text('kind'), text('note'), id('source_batch_id', 'import_batch'), text('source_hash'), ts('created_at'), ts('updated_at')),
+      ...household(id('holding_id', 'holding'), date('acquired_on'), decimal('quantity'), money('cost_minor'), currency(), text('kind'), text('note'), id('source_batch_id'), text('source_hash'), ts('created_at'), ts('updated_at')),
     ],
   },
   {
@@ -235,7 +237,7 @@ export const ENTITIES: readonly Entity[] = [
     upload: 'rows',
     rowKey: ['id'],
     columns: [
-      ...household(id('holding_id', 'holding'), date('disposed_on'), decimal('quantity'), money('proceeds_minor'), currency(), text('kind'), text('note'), id('source_batch_id', 'import_batch'), text('source_hash'), ts('created_at'), ts('updated_at')),
+      ...household(id('holding_id', 'holding'), date('disposed_on'), decimal('quantity'), money('proceeds_minor'), currency(), text('kind'), text('note'), id('source_batch_id'), text('source_hash'), ts('created_at'), ts('updated_at')),
     ],
   },
   {
@@ -417,70 +419,15 @@ export const ENTITIES: readonly Entity[] = [
       ...household(id('holding_id', 'holding'), date('entry_date'), money('amount_minor'), currency(), text('note'), ts('voided_at'), ts('created_at'), ts('updated_at')),
     ],
   },
-  {
-    key: 'import_batch',
-    sheet: 'Imports',
-    scope: 'household',
-    upload: 'none',
-    rowKey: ['id'],
-    columns: [...household(text('kind'), date('period_start'), date('period_end'), text('label'), integer('row_count'), ts('created_at'))],
-  },
-  {
-    key: 'fx_rate',
-    sheet: 'FX rates',
-    scope: 'household',
-    upload: 'none',
-    rowKey: ['id'],
-    columns: [...household(currency('base_currency'), currency('quote_currency'), decimal('rate'), date('as_of_date'), text('source'), ts('created_at'))],
-  },
-  {
-    key: 'price',
-    sheet: 'Prices',
-    scope: 'reference',
-    upload: 'none',
-    rowKey: ['id'],
-    columns: [id(), text('source'), text('external_id'), date('as_of_date'), decimal('value'), currency(), ts('fetched_at'), ts('created_at')],
-  },
-  {
-    key: 'scheme_rate',
-    sheet: 'Scheme rates',
-    scope: 'reference',
-    upload: 'none',
-    rowKey: ['id'],
-    columns: [id(), text('scheme'), date('effective_from'), decimal('rate_pct'), ts('created_at')],
-  },
-  {
-    key: 'tax_rule',
-    sheet: 'Tax rules',
-    scope: 'reference',
-    upload: 'none',
-    rowKey: ['id'],
-    // The band and amount columns are in minor units of the rule's own jurisdiction, with no currency column to say which, so
-    // they are written as the integers they are.
-    columns: [
-      id(),
-      text('jurisdiction'),
-      text('kind'),
-      text('regime'),
-      text('asset_class'),
-      integer('band_from_minor'),
-      integer('band_to_minor'),
-      decimal('rate_pct'),
-      integer('months'),
-      text('term'),
-      integer('amount_minor'),
-      text('subject'),
-      date('effective_from'),
-      date('effective_to'),
-      text('authority'),
-      date('verified_on'),
-      ts('created_at'),
-    ],
-  },
 ];
 
 /** Every table that is left out of the full export, and why. A table is on this list or in `ENTITIES`, and a test holds it to that. */
 export const NOT_EXPORTED: Readonly<Record<string, string>> = {
+  price: 'Quotes the app fetches for every household’s instruments. Reference data the app keeps, not the household’s own record.',
+  scheme_rate: 'The rate the government notified for a small-savings scheme: the same for every household, written by migration, and not the household’s own record.',
+  tax_rule: 'Slabs, rates and thresholds: the same for every household and written by migration. Not the household’s own record.',
+  fx_rate: 'Exchange rates the app fetches and appends. Reference data the app keeps, not something a household enters.',
+  import_batch: 'The log of what was imported, which the app writes itself. The rows it made are in their own sheets.',
   audit_log:
     'Its before and after images carry every figure of every table, including reads of private entries. A person’s own activity is the Profile screen’s export, not this one.',
   user_account: 'Sign-in identities: an email address and an authentication id. Not household data.',

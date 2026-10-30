@@ -95,7 +95,10 @@ describe('the shape of the file', () => {
 
   it('marks the sheets the upload will not accept as read-only', () => {
     const { workbook } = buildWorkbook(fixture(), META);
-    expect(workbook.sheets.find((sheet) => sheet.name === 'Scheme rates')?.readOnly).toBe(true);
+    expect(workbook.sheets.find((sheet) => sheet.name === 'Household')?.readOnly).toBe(true);
+    // Reference data the app keeps is not in the file at all.
+    const names = workbook.sheets.map((sheet) => sheet.name);
+    for (const absent of ['Prices', 'Scheme rates', 'Tax rules', 'FX rates', 'Imports']) expect(names).not.toContain(absent);
     expect(workbook.sheets.find((sheet) => sheet.name === 'Expenses')?.readOnly).toBe(false);
   });
 
