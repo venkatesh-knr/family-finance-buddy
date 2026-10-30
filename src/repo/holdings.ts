@@ -224,6 +224,7 @@ export async function addHolding(input: NewHolding): Promise<{ readonly holdingI
       exposure_currency: input.instrument.exposureCurrency,
       is_foreign_asset: input.instrument.isForeignAsset,
       ...(input.instrument.scheme === undefined ? {} : { scheme: input.instrument.scheme }),
+      ...(input.instrument.retirementType === undefined ? {} : { retirement_type: input.instrument.retirementType }),
     })
     .select('id')
     .single();

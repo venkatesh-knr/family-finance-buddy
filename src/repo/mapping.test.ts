@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange } from './mapping.ts';
+import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toPpfAccount, toPpfEntry, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange, toSchemeRate } from './mapping.ts';
 import { MalformedRowError } from '../lib/guards.ts';
 import type { Member } from './types.ts';
 
@@ -696,5 +696,77 @@ describe('property rows', () => {
       basis: 'broker',
     });
     expect(() => toPropertyValuation({ ...valuation, basis: 'guess' })).toThrow(MalformedRowError);
+  });
+});
+
+describe('retirement rows', () => {
+  const instrument = {
+    id: 'i-9',
+    name: 'PPF',
+    kind: 'retirement',
+    symbol: null,
+    isin: null,
+    currency: 'INR',
+    exposure_currency: 'INR',
+    is_foreign_asset: false,
+    status: 'active',
+    retirement_type: 'ppf',
+  };
+
+  it('reads a retirement instrument with its type, and null for anything else', () => {
+    expect(toInstrument(instrument)).toMatchObject({ kind: 'retirement', retirementType: 'ppf' });
+    expect(toInstrument({ ...instrument, kind: 'mutual_fund', retirement_type: null }).retirementType).toBeNull();
+    expect(toInstrument({ ...instrument, kind: 'mutual_fund', retirement_type: undefined }).retirementType).toBeNull();
+  });
+
+  it('refuses a type it does not know', () => {
+    expect(() => toInstrument({ ...instrument, retirement_type: 'nsc' })).toThrow(MalformedRowError);
+  });
+
+  const account = {
+    holding_id: 'h-1',
+    institution: 'SBI',
+    account_last4: '1234',
+    opening_date: '2025-03-31',
+    opening_balance_minor: '10000000',
+    currency: 'INR',
+    note: null,
+  };
+
+  it('reads a PPF account with its opening balance in its own currency, and as at a day', () => {
+    expect(toPpfAccount(account)).toEqual({
+      holdingId: 'h-1',
+      institution: 'SBI',
+      accountLast4: '1234',
+      openingDate: '2025-03-31',
+      openingBalance: { minor: 10_000_000n, currency: 'INR' },
+      note: null,
+    });
+    expect(() => toPpfAccount({ ...account, opening_balance_minor: 'lots' })).toThrow(MalformedRowError);
+    expect(() => toPpfAccount({ ...account, opening_date: '31/03/2025' })).toThrow(MalformedRowError);
+  });
+
+  const entry = {
+    id: 'e-1',
+    holding_id: 'h-1',
+    entry_date: '2025-04-04',
+    amount_minor: '15000000',
+    currency: 'INR',
+    note: null,
+    voided_at: null,
+  };
+
+  it('reads a payment and a withdrawal, and whether it was voided', () => {
+    expect(toPpfEntry(entry)).toMatchObject({ date: '2025-04-04', amount: { minor: 15_000_000n, currency: 'INR' }, isVoided: false });
+    expect(toPpfEntry({ ...entry, amount_minor: '-5000000', voided_at: '2026-01-01T00:00:00Z' })).toMatchObject({
+      amount: { minor: -5_000_000n },
+      isVoided: true,
+    });
+  });
+
+  it('reads a notified rate as text, to three places, however it arrives', () => {
+    expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: '7.100' }).ratePct).toBe('7.100');
+    expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: 7.1 }).ratePct).toBe('7.100');
+    expect(() => toSchemeRate({ scheme: 'nsc', effective_from: '2020-04-01', rate_pct: '7.100' })).toThrow(MalformedRowError);
   });
 });
