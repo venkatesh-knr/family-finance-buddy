@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ENTITIES } from './entities.ts';
+import { ENTITIES, UPLOAD_ORDER } from './entities.ts';
 
 /**
  * The database decides which sheets an upload may write and which columns of each, in `app.template_entities()`
@@ -54,6 +54,10 @@ describe('what an upload may write, as the database and the export each say it',
     expect(entity.rowKey).toEqual([row.keyCol]);
     const registered = entity.columns.map((column) => column.key).filter((column) => column !== row.keyCol);
     expect([...row.cols].sort(), `${key}: the database's columns and the export's`).toEqual([...registered].sort());
+  });
+
+  it('writes the sheets in the order the database does', () => {
+    expect([...sql].sort((a, b) => a.ord - b.ord).map((entity) => entity.entity)).toEqual([...UPLOAD_ORDER]);
   });
 
   it('writes parents before the rows that point at them', () => {
