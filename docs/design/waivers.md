@@ -41,3 +41,30 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - GL-I6 — not built: goals ("needs a month" as a calculation) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
 - GL-I7 — not built: goals (progress uses the values net worth uses) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
 - GL-I8 — not built: goals (private holdings inside goals) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
+
+## spending-capture.md
+
+- SC-I1 — not built: the month close needs the account registry and income ledger from slice 6a (spending-capture.md §8, S3) — 2026-10-30
+- SC-I2 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
+- SC-I3 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
+- SC-I4 — not built: needs the transfer rule and account from slice 6a (spending-capture.md §8, S3) — 2026-10-30
+- SC-I5 — not built: witnesses arrive with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
+- SC-I6 — not built: matching arrives with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
+- SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30
+- SC-I8 — not built: the UPI reference columns arrive with slice S2 or S4, whichever lands first (spending-capture.md §8) — 2026-10-30
+- SC-I9 — not built: the unclosed-month label arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
+- SC-I10 — not built: recurring rules are slice S1 (spending-capture.md §8) — 2026-10-30
+- SC-I11 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
+- SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
+- SC-I13 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
+- SC-I14 — not built: the payroll line arrives with slice S5 and the income ledger from 6a (spending-capture.md §8) — 2026-10-30
+
+## gold.md
+
+- GD-I1 — not built: the gold kind and its forms (gold.md §6) — 2026-10-30
+- GD-I2 — not built: the gold savings scheme (gold.md §3) — 2026-10-30
+- GD-I3 — not built: the weight variant and physical gold need the gold kind and a dated gold rate (gold.md §6) — 2026-10-30
+- GD-I4 — not built: the gold kind (gold.md §4) — 2026-10-30
+- GD-I5 — not built: the gold kind and the month's invested view (gold.md §4; spending-capture.md §10) — 2026-10-30
+- GD-I6 — not built: redemption arrives with the gold kind (gold.md §5) — 2026-10-30
+- GD-I7 — not built: the scheme terms table (gold.md §6) — 2026-10-30

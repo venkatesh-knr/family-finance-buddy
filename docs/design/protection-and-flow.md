@@ -141,6 +141,8 @@ The gap between them is market movement, and a month where you saved diligently
 and the market fell is exactly the month a household needs to see both. Showing
 one labelled as the other is the thing to avoid.
 
+"Saved" itself splits into invested and change in cash reserve: see `spending-capture.md` section 10.
+
 `income` needs: amount, date, category (`salary`, `rent`, `interest`,
 `dividend`, `capital_gain`, `business`, `gift`, `other`), earner attribution
 (same member model as expenses), and a recurring flag.
