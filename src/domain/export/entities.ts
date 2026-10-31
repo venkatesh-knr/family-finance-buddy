@@ -365,6 +365,8 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
   tax_rule: 'Slabs, rates and thresholds: the same for every household and written by migration. Not the household’s own record.',
   fx_rate: 'Exchange rates the app fetches and appends. Reference data the app keeps, not something a household enters.',
   import_batch: 'The log of what was imported, which the app writes itself. The rows it made are in their own sheets.',
+  import_ref: 'A row’s reference in the upload template. It is the ref column of the sheets once the template carries one, and not a sheet of its own.',
+  import_batch_row: 'The images an upload keeps so it can be reversed, which include rows that are private to whoever made it. Not something to hand out in a file.',
   audit_log:
     'Its before and after images carry every figure of every table, including reads of private entries. A person’s own activity is the Profile screen’s export, not this one.',
   user_account: 'Sign-in identities: an email address and an authentication id. Not household data.',
