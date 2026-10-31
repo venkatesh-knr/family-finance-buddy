@@ -26,6 +26,7 @@ import {
   type Cell,
 } from './cells.ts';
 import { minorUnitExponent } from '../../lib/money.ts';
+import { COLUMN_RULES } from './rules.generated.ts';
 import { ENTITIES, ENTITY_BY_KEY, SHEETED, TEMPLATE_VERSION, headerOf, sheetColumns, type Column, type Entity, type Lookup, type Row } from './entities.ts';
 
 export interface ExportMeta {
@@ -44,6 +45,8 @@ export interface SheetModel {
   readonly headers: readonly string[];
   /** A number format for each header (an amount is shown with its places), or null. */
   readonly formats: readonly (string | null)[];
+  /** The values a column may take, for a dropdown in the sheet, or null. The database's own list, so a dropdown never offers what it would refuse. */
+  readonly lists: readonly (readonly string[] | null)[];
   readonly rows: readonly (readonly Cell[])[];
   /** Written for reading and for a backup; the upload does not accept rows from it. */
   readonly readOnly: boolean;
@@ -153,6 +156,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
     entity: null,
     headers: ['Item', 'Value'],
     formats: [null, null],
+    lists: [null, null],
     readOnly: true,
     rows: [
       ['Template version', TEMPLATE_VERSION],
@@ -174,6 +178,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
     const joinedRef = entity.joins?.entity;
     const headers: string[] = [];
     const formats: (string | null)[] = [];
+    const lists: (readonly string[] | null)[] = [];
     const writers: ((row: Row, rowNumber: number) => Cell)[] = [];
 
     // A holding's sheet also carries what its instrument is, so each row is read as the two together.
@@ -189,6 +194,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       const header = headerOf(column);
       headers.push(header);
       formats.push(column.kind === 'money' ? moneyFormat(column, merged, lookup) : null);
+      lists.push(COLUMN_RULES[entity.key]?.[column.key]?.values ?? (joinedRef === undefined ? undefined : COLUMN_RULES[joinedRef]?.[column.key]?.values) ?? null);
       writers.push((row, rowNumber) => {
         try {
           return toCell(column, row[column.key] ?? null, row, lookup);
@@ -205,6 +211,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
         const target = ENTITY_BY_KEY.get(column.ref);
         headers.push(nameHeader);
         formats.push(null);
+        lists.push(null);
         writers.push((row) => target?.label?.(lookup(column.ref as string, row[column.key]) ?? {}, lookup) ?? null);
       }
 
@@ -212,12 +219,13 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       if (takesRef && column === columns[0]) {
         headers.push(REF);
         formats.push(null);
+        lists.push(null);
         writers.push((row) => refs[entity.key]?.[keyOf(row)] ?? null);
       }
     }
 
     const rows = merged.map((row, index) => writers.map((write) => write(row, index + 2)));
-    sheets.push({ name: sheetName, entity: entity.key, headers, formats, rows, readOnly: entity.upload === 'none' });
+    sheets.push({ name: sheetName, entity: entity.key, headers, formats, lists, rows, readOnly: entity.upload === 'none' });
   }
 
   return { workbook: { sheets }, problems };
@@ -375,6 +383,8 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
 
     sheet.rows.slice(1).forEach((cells, offset) => {
       if (cells.every(blank)) return;
+      // A row of the template that is there to show the shape, marked EXAMPLE in its ref, is not a record.
+      if (isExample(cells[indexOf.get(REF) ?? -1] ?? null)) return;
       const values: Record<string, string | null> = {};
       const rowNumber = offset + 2;
       for (const column of sheetColumns(entity)) {
@@ -439,6 +449,11 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
   }
 
   return { tables, sheets: sheetRows, problems };
+}
+
+/** Whether a ref cell marks a row as one of the template's examples: it begins with EXAMPLE. */
+export function isExample(cell: Cell): boolean {
+  return typeof cell === 'string' && /^EXAMPLE\b/.test(cell.trim());
 }
 
 /** The reference a person typed, trimmed; empty is none. */

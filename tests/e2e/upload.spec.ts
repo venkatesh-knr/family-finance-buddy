@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Page } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { readFileSync } from 'node:fs';
@@ -137,4 +138,8 @@ test('a workbook with a cell that is wrong is refused before anything is written
   await expect(problems).toContainText('YYYY-MM-DD');
   // Nothing can be confirmed while there is a problem.
   await expect(page.getByRole('form', { name: 'Confirm the upload' })).toHaveCount(0);
+
+  // And the screen in this state, with its list of problems, has nothing axe can find.
+  const scan = await new AxeBuilder({ page }).analyze();
+  expect(scan.violations.map((violation) => `${violation.id}: ${String(violation.nodes.length)}`)).toEqual([]);
 });
