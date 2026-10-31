@@ -69,6 +69,7 @@ export interface ReadSheet {
 }
 
 const ABOUT = 'About';
+const REF = 'ref';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function makeLookup(tables: Readonly<Record<string, readonly Row[]>>): Lookup {
@@ -140,7 +141,10 @@ function toCell(column: Column, value: string | null, row: Row, lookup: Lookup):
   }
 }
 
-export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, meta: ExportMeta): BuiltWorkbook {
+/** The references a household has given its rows: entity, then the row's key, then the reference. */
+export type RefMap = Readonly<Record<string, Readonly<Record<string, string>>>>;
+
+export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, meta: ExportMeta, refs: RefMap = {}): BuiltWorkbook {
   const lookup = makeLookup(tables);
   const problems: Problem[] = [];
 
@@ -158,7 +162,8 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       ['Base currency', meta.baseCurrency],
       ['Sample figures', meta.demo ? 'Yes — these are illustrative, not a real household’s' : 'No'],
       ['Amounts', 'Written in major units (rupees, not paise), with the currency in the column beside them.'],
-      ['Read by', 'The headers on the first row of each sheet, never by position. Columns ending in _name are for reading and are ignored.'],
+      ['Read by', 'The headers on the first row of each sheet, never by position. Columns ending in _name are for reading: they are ignored when the id is there, and used to find the record when the id is empty.'],
+      ['Ref', 'A reference of your own for a row (BB-17, kitchen loan). Give a new row one and uploading the corrected file again updates it instead of adding a second copy.'],
     ],
   };
 
@@ -176,6 +181,9 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       const joined = entity.joins === undefined ? undefined : lookup(entity.joins.entity, row[entity.joins.via]);
       return joined === undefined ? row : { ...joined, ...row };
     });
+
+    const takesRef = entity.upload === 'rows';
+    const keyOf = (row: Row): string => entity.rowKey.map((key) => row[key] ?? '').join('|');
 
     for (const column of columns) {
       const header = headerOf(column);
@@ -200,6 +208,12 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
         writers.push((row) => target?.label?.(lookup(column.ref as string, row[column.key]) ?? {}, lookup) ?? null);
       }
 
+      // The person's own reference sits beside the row's key, the first column.
+      if (takesRef && column === columns[0]) {
+        headers.push(REF);
+        formats.push(null);
+        writers.push((row) => refs[entity.key]?.[keyOf(row)] ?? null);
+      }
     }
 
     const rows = merged.map((row, index) => writers.map((write) => write(row, index + 2)));
@@ -262,10 +276,23 @@ interface PendingRow {
   readonly cells: readonly Cell[];
   readonly indexOf: ReadonlyMap<string, number>;
   readonly values: Record<string, string | null>;
+  readonly ref: string | null;
+  readonly names: Record<string, string | null>;
+}
+
+/** A row as the sheet says it, before it is matched to anything: every column of the sheet, the person's reference, and the names written beside ids. */
+export interface SheetRow {
+  readonly sheetRow: number;
+  readonly ref: string | null;
+  /** The text of each `<thing>_name` column, by the column it sits beside: member_id gets the member's name. */
+  readonly names: Readonly<Record<string, string | null>>;
+  readonly values: Readonly<Record<string, string | null>>;
 }
 
 export interface ReadWorkbook {
   readonly tables: Readonly<Record<string, readonly Row[]>>;
+  /** Each sheet's rows as written, by entity, for matching names and references to records before anything is written. */
+  readonly sheets: Readonly<Record<string, readonly SheetRow[]>>;
   readonly problems: readonly Problem[];
 }
 
@@ -280,6 +307,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
   if (versionRow === undefined) {
     return {
       tables: {},
+      sheets: {},
       problems: [{ sheet: ABOUT, row: 1, column: 'Template version', message: 'This workbook says nothing of its template version, so it cannot be read safely. Download a fresh template or export.' }],
     };
   }
@@ -287,6 +315,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
   if (version !== TEMPLATE_VERSION) {
     return {
       tables: {},
+      sheets: {},
       problems: [
         {
           sheet: ABOUT,
@@ -301,11 +330,13 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
   const problems: Problem[] = [];
   const pending: PendingRow[] = [];
   const tables: Record<string, Row[]> = {};
+  const sheetRows: Record<string, SheetRow[]> = {};
 
   for (const entity of SHEETED) {
     const sheet = sheetNamed(sheets, entity.sheet ?? entity.key);
     if (sheet === undefined) continue;
     tables[entity.key] = [];
+    sheetRows[entity.key] = [];
     if (entity.joins !== undefined) tables[entity.joins.entity] = [];
 
     const header = sheet.rows[0] ?? [];
@@ -327,7 +358,20 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
         structural = true;
       }
     }
+    // A sheet an upload takes carries the person's reference; a version-1 file, or one with the column cut away, is refused.
+    if (entity.upload === 'rows' && !indexOf.has(REF)) {
+      problems.push({ sheet: sheet.name, row: 1, column: REF, message: `The sheet has no column "${REF}". It is read by its headers, never by position.` });
+      structural = true;
+    }
     if (structural) continue;
+
+    // The names written beside ids: member_id has member_name beside it.
+    const nameColumns = sheetColumns(entity).flatMap((column) => {
+      const target = column.ref === undefined ? undefined : ENTITY_BY_KEY.get(column.ref);
+      return target?.label === undefined || column.ref === entity.joins?.entity || column.ref === 'household'
+        ? []
+        : [{ key: column.key, header: `${column.key.replace(/_id$/, '')}_name` }];
+    });
 
     sheet.rows.slice(1).forEach((cells, offset) => {
       if (cells.every(blank)) return;
@@ -344,7 +388,13 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
           values[column.key] = null;
         }
       }
-      pending.push({ entity, sheet: sheet.name, rowNumber, cells, indexOf, values });
+      const refCell = takesRefCell(cells[indexOf.get(REF) ?? -1] ?? null);
+      const names: Record<string, string | null> = {};
+      for (const nameColumn of nameColumns) {
+        const at = indexOf.get(nameColumn.header);
+        names[nameColumn.key] = at === undefined ? null : textOfName(cells[at] ?? null);
+      }
+      pending.push({ entity, sheet: sheet.name, rowNumber, cells, indexOf, values, ref: refCell, names });
     });
   }
 
@@ -374,6 +424,7 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
       }
     }
     tables[row.entity.key]?.push(pick(row.entity.columns, row.values));
+    sheetRows[row.entity.key]?.push({ sheetRow: row.rowNumber, ref: row.ref, names: row.names, values: row.values });
     // The instrument written beside a holding is one row of its own, however many holdings name it.
     const joins = row.entity.joins;
     const joined = joins === undefined ? undefined : ENTITY_BY_KEY.get(joins.entity);
@@ -387,7 +438,18 @@ export function readWorkbook(sheets: readonly ReadSheet[]): ReadWorkbook {
     }
   }
 
-  return { tables, problems };
+  return { tables, sheets: sheetRows, problems };
+}
+
+/** The reference a person typed, trimmed; empty is none. */
+function takesRefCell(cell: Cell): string | null {
+  if (blank(cell)) return null;
+  return String(cell instanceof Date ? cell.toISOString() : cell).trim();
+}
+
+function textOfName(cell: Cell): string | null {
+  if (blank(cell)) return null;
+  return String(cell).trim();
 }
 
 function pick(columns: readonly Column[], values: Readonly<Record<string, string | null>>): Row {

@@ -393,5 +393,8 @@ export function headerOf(column: Column): string {
   return column.kind === 'money' ? column.key.replace(/_minor$/, '') : column.key;
 }
 
-/** The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused. */
-export const TEMPLATE_VERSION = 1;
+/**
+ * The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused.
+ * Version 2 added `ref` to every sheet an upload takes: a reference of the person's own, so a re-upload finds the row again.
+ */
+export const TEMPLATE_VERSION = 2;

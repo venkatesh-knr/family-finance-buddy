@@ -26,12 +26,11 @@ export async function runFullExport(householdId: string, code: string): Promise<
   await verifyTotpCode(code);
   const source = await readEverything(householdId);
   const exportedAt = new Date().toISOString();
-  const { workbook, problems } = buildWorkbook(source.tables, {
-    exportedAt,
-    householdName: source.householdName,
-    baseCurrency: source.baseCurrency,
-    demo: source.isDemo,
-  });
+  const { workbook, problems } = buildWorkbook(
+    source.tables,
+    { exportedAt, householdName: source.householdName, baseCurrency: source.baseCurrency, demo: source.isDemo },
+    source.refs,
+  );
   if (problems.length > 0) throw new ExportBlocked(problems);
 
   const bytes = await writeWorkbookFile(workbook.sheets, { sample: source.isDemo });
