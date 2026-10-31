@@ -35,6 +35,8 @@ export interface UploadInput {
 }
 
 export interface Change {
+  /** An amount, which privacy mode masks. */
+  readonly money: boolean;
   readonly column: string;
   readonly from: string | null;
   readonly to: string | null;
@@ -45,6 +47,8 @@ export interface PlannedRow {
   readonly sheet: string;
   readonly sheetRow: number;
   readonly action: 'create' | 'update';
+  /** What a person calls the row: its name, so a list of rows to add says which they are. */
+  readonly label: string | null;
   readonly key: string;
   readonly ref: string | null;
   /** The columns to write, in the database's text. A column left out takes its default or is left as it is. */
@@ -110,6 +114,12 @@ export function planUpload(input: UploadInput): UploadPlan {
 
   const labelOf = (entity: string, row: Row): string | null => ENTITY_BY_KEY.get(entity)?.label?.(row, lookup) ?? null;
 
+  /** What a person calls the record an id points at, for a change that would otherwise show two ids. */
+  const nameOf = (entity: string, id: string): string | null => {
+    const held = records.get(entity)?.get(id);
+    return held === undefined ? null : labelOf(entity, held);
+  };
+
   /** Who a name means: the records of that entity whose label is that, existing or about to be created. */
   const byName = (entity: string, name: string): string[] => {
     const wanted = norm(name);
@@ -142,6 +152,8 @@ export function planUpload(input: UploadInput): UploadPlan {
     instrumentByNaturalKey.set(instrumentByNaturalKey.has(key) ? `${key}|duplicate` : key, id);
   }
   const instrumentsInThisFile = new Map<string, string>();
+  // The instrument a holding row names is shared by every holding of it, so two rows that say different things about one are refused.
+  const instrumentFirst = new Map<string, { sheetRow: number; values: Values }>();
 
   for (const entityKey of UPLOAD_ORDER) {
     const entity = ENTITY_BY_KEY.get(entityKey);
@@ -170,8 +182,25 @@ export function planUpload(input: UploadInput): UploadPlan {
         if (target === undefined || target.key === 'household') continue;
         const given = row.values[column.key] ?? null;
         const named = row.names[column.key] ?? null;
+        const nameHeader = `${column.key.replace(/_id$/, '')}_name`;
         if (given !== null) {
-          if (!(records.get(column.ref)?.has(given) ?? false)) where(headerOf(column), `There is no ${column.ref.replace(/_/g, ' ')} with this id. Clear it and write its name beside it instead.`);
+          const held = records.get(column.ref)?.get(given);
+          if (held === undefined) {
+            where(headerOf(column), `There is no ${column.ref.replace(/_/g, ' ')} with this id. Clear it and write its name beside it instead.`);
+            continue;
+          }
+          // The id and the name beside it agree, or the person has changed the name: that is what they mean, and it is shown as a
+          // change. It is never ignored. A key column is the row's identity, so a name that disagrees with it is refused instead.
+          const label = labelOf(column.ref, held);
+          if (named === null || label === null || norm(label) === norm(named)) continue;
+          if (column.key === keyColumn && keyColumn !== 'id') {
+            where(nameHeader, `The id is ${label} and the name says ${named}. This row belongs to ${label}: clear the name, or write the row for ${named} on a new row.`);
+            continue;
+          }
+          const moved = byName(column.ref, named);
+          if (moved.length === 1) values[column.key] = moved[0] ?? null;
+          else if (moved.length === 0) where(nameHeader, `The id is ${label} and the name says ${named}, which no ${column.ref.replace(/_/g, ' ')} is called. Clear one of them.`);
+          else where(nameHeader, `${String(moved.length)} ${column.ref.replace(/_/g, ' ')} records are called "${named}": write the id, or make the names differ.`);
           continue;
         }
         if (named === null) continue;
@@ -283,17 +312,31 @@ export function planUpload(input: UploadInput): UploadPlan {
       if (problems.length > before || resolved === null) continue;
 
       // ── an instrument that is new, or changed, comes before the holding that points at it ────────────
+      if (joined !== undefined && instrumentPlan !== null && (instrumentPlan.create || givenExplicitly(row, entity))) {
+        const first = instrumentFirst.get(instrumentPlan.id);
+        if (first === undefined) instrumentFirst.set(instrumentPlan.id, { sheetRow: row.sheetRow, values: instrumentPlan.row });
+        else {
+          for (const column of joined.columns) {
+            if (column.key === 'id') continue;
+            const a = canonicalRow(joined, { id: instrumentPlan.id, ...first.values } as Row)[column.key] ?? null;
+            const b = canonicalRow(joined, { id: instrumentPlan.id, ...instrumentPlan.row } as Row)[column.key] ?? null;
+            if (a !== b) where(headerOf(column), `This instrument is also on row ${String(first.sheetRow)}, with a different ${headerOf(column)}. An instrument is shared by every holding of it and is written once: make them the same.`);
+          }
+        }
+      }
+      if (problems.length > before || resolved === null) continue;
+
       if (joined !== undefined && instrumentPlan !== null) {
         const instrumentRow = writable(joined, instrumentPlan.row, COLUMN_RULES[joined.key] ?? {}, instrumentPlan.id, 'id');
         const held = have(joined.key).get(instrumentPlan.id);
         if (instrumentPlan.create) {
-          planned.push({ entity: joined.key, sheet, sheetRow: row.sheetRow, action: 'create', key: instrumentPlan.id, ref: null, values: instrumentRow, changes: [] });
+          planned.push({ entity: joined.key, sheet, sheetRow: row.sheetRow, action: 'create', label: instrumentRow['name'] ?? null, key: instrumentPlan.id, ref: null, values: instrumentRow, changes: [] });
           have(joined.key).set(instrumentPlan.id, { id: instrumentPlan.id, ...instrumentRow });
           instrumentByNaturalKey.set(naturalKey(instrumentRow), instrumentPlan.id);
         } else if (held !== undefined && givenExplicitly(row, entity)) {
-          const changes = diff(joined, held, instrumentRow);
+          const changes = diff(joined, held, instrumentRow, nameOf);
           if (changes.length > 0 && !planned.some((p) => p.entity === joined.key && p.key === instrumentPlan?.id)) {
-            planned.push({ entity: joined.key, sheet, sheetRow: row.sheetRow, action: 'update', key: instrumentPlan.id, ref: null, values: instrumentRow, changes });
+            planned.push({ entity: joined.key, sheet, sheetRow: row.sheetRow, action: 'update', label: instrumentRow['name'] ?? held['name'] ?? null, key: instrumentPlan.id, ref: null, values: instrumentRow, changes });
           }
         }
       }
@@ -302,14 +345,14 @@ export function planUpload(input: UploadInput): UploadPlan {
       const body = writable(entity, values, rules, resolved.id, keyColumn);
       if (resolved.existing) {
         const held = have(entityKey).get(resolved.id);
-        const changes = held === undefined ? [] : diff(entity, held, body);
+        const changes = held === undefined ? [] : diff(entity, held, body, nameOf);
         if (changes.length === 0 && (row.ref === null || keyToRef.get(entityKey)?.get(resolved.id) === row.ref)) {
           unchanged[entityKey] = (unchanged[entityKey] ?? 0) + 1;
         } else {
-          planned.push({ entity: entityKey, sheet, sheetRow: row.sheetRow, action: 'update', key: resolved.id, ref: row.ref, values: body, changes });
+          planned.push({ entity: entityKey, sheet, sheetRow: row.sheetRow, action: 'update', label: (held === undefined ? null : labelOf(entityKey, held)) ?? row.ref, key: resolved.id, ref: row.ref, values: body, changes });
         }
       } else {
-        planned.push({ entity: entityKey, sheet, sheetRow: row.sheetRow, action: 'create', key: resolved.id, ref: row.ref, values: body, changes: [] });
+        planned.push({ entity: entityKey, sheet, sheetRow: row.sheetRow, action: 'create', label: labelOf(entityKey, body as Row) ?? row.ref ?? row.names['member_id'] ?? null, key: resolved.id, ref: row.ref, values: body, changes: [] });
         have(entityKey).set(resolved.id, { ...body } as Row);
       }
     }
@@ -350,7 +393,7 @@ function writable(
 }
 
 /** What would change in an existing row: the columns this upload writes whose value differs from the household's. */
-function diff(entity: Entity, held: Row, body: Readonly<Record<string, string | null>>): Change[] {
+function diff(entity: Entity, held: Row, body: Readonly<Record<string, string | null>>, nameOf: (entity: string, id: string) => string | null): Change[] {
   const now = canonicalRow(entity, held);
   const next = canonicalRow(entity, body as Row);
   const changes: Change[] = [];
@@ -358,13 +401,21 @@ function diff(entity: Entity, held: Row, body: Readonly<Record<string, string | 
     if (!(column.key in body)) continue;
     const from = now[column.key] ?? null;
     const to = next[column.key] ?? null;
-    if (from !== to) changes.push({ column: headerOf(column), from: shown(column, from, held, body), to: shown(column, to, held, body) });
+    if (from !== to) {
+      changes.push({
+        money: column.kind === 'money',
+        column: headerOf(column),
+        from: shown(column, from, held, body, nameOf),
+        to: shown(column, to, held, body, nameOf),
+      });
+    }
   }
   return changes;
 }
 
 /** A value as a person reads it: an amount in major units, as the sheet writes it, and everything else as it is. */
-function shown(column: Column, value: string | null, held: Row, body: Readonly<Record<string, string | null>>): string | null {
+function shown(column: Column, value: string | null, held: Row, body: Readonly<Record<string, string | null>>, nameOf: (entity: string, id: string) => string | null): string | null {
+  if (value !== null && column.kind === 'id' && column.ref !== undefined) return nameOf(column.ref, value) ?? value;
   if (value === null || column.kind !== 'money' || column.currency === undefined || !('column' in column.currency) || 'via' in column.currency) return value;
   const currency = body[column.currency.column] ?? held[column.currency.column] ?? null;
   if (currency === null) return value;

@@ -166,7 +166,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       ['Base currency', meta.baseCurrency],
       ['Sample figures', meta.demo ? 'Yes — these are illustrative, not a real household’s' : 'No'],
       ['Amounts', 'Written in major units (rupees, not paise), with the currency in the column beside them.'],
-      ['Read by', 'The headers on the first row of each sheet, never by position. Columns ending in _name are for reading: they are ignored when the id is there, and used to find the record when the id is empty.'],
+      ['Read by', 'The headers on the first row of each sheet, never by position. Columns ending in _name show what an id is. Where the id is empty, the name finds the record. Where you change a name and keep the id, the row moves to the record you named.'],
       ['Ref', 'A reference of your own for a row (BB-17, kitchen loan). Give a new row one and uploading the corrected file again updates it instead of adding a second copy.'],
     ],
   };
@@ -194,7 +194,12 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       const header = headerOf(column);
       headers.push(header);
       formats.push(column.kind === 'money' ? moneyFormat(column, merged, lookup) : null);
-      lists.push(COLUMN_RULES[entity.key]?.[column.key]?.values ?? (joinedRef === undefined ? undefined : COLUMN_RULES[joinedRef]?.[column.key]?.values) ?? null);
+      // A yes or no is a choice from two, like any other.
+      lists.push(
+        column.kind === 'boolean'
+          ? ['TRUE', 'FALSE']
+          : (COLUMN_RULES[entity.key]?.[column.key]?.values ?? (joinedRef === undefined ? undefined : COLUMN_RULES[joinedRef]?.[column.key]?.values) ?? null),
+      );
       writers.push((row, rowNumber) => {
         try {
           return toCell(column, row[column.key] ?? null, row, lookup);

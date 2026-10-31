@@ -16,7 +16,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(59);
+select plan(64);
 
 -- ============================================================== the fixture
 --
@@ -387,6 +387,48 @@ select throws_ok(
   '42501'::char(5),
   null::text,
   'and nobody rewrites the ledger'
+);
+
+-- ======================================================= the ledger is the upload's alone
+
+select throws_ok(
+  $q$ insert into public.import_batch_row (batch_id, household_id, entity, row_id, action, before, after)
+      select b.id, b.household_id, 'expense_txn', e.id, 'insert', null, to_jsonb(e.*)
+        from public.import_batch b, public.expense_txn e
+       where b.label = 'partner' and e.id = 'ee600000-0000-4000-8000-000000000001' $q$,
+  '42501'::char(5),
+  null::text,
+  'a ledger row cannot be written by hand at all, not even into one''s own batch: the reversal trusts the ledger'
+);
+
+select throws_ok(
+  $q$ insert into public.import_ref (household_id, entity, ref, row_id, batch_id)
+      select b.household_id, 'expense_category', 'FORGED', 'aa600000-0000-4000-8000-0000000000d4', b.id
+        from public.import_batch b where b.label = 'partner' $q$,
+  '42501'::char(5),
+  null::text,
+  'nor a reference'
+);
+
+select throws_ok(
+  $q$ select app.record_template_row((select id from public.import_batch where label = 'first'),
+        'e6000000-0000-4000-8000-0000000000f1', 'expense_category', 'aa600000-0000-4000-8000-000000000002', 'insert', null, '{}'::jsonb, null) $q$,
+  '42501'::char(5),
+  null::text,
+  'and the helper that does write it refuses a batch somebody else made'
+);
+
+select lives_ok(
+  $q$ insert into public.import_batch (household_id, kind, label, row_count)
+      values ('e6000000-0000-4000-8000-0000000000f1', 'template', 'forged', 0) $q$,
+  'a partner can still make a batch of kind template by hand, as the batch policy has always allowed'
+);
+
+select is(
+  (public.reverse_template_batch((select id from public.import_batch where label = 'forged')) ->> 'removed')::int
+  || ':' || (select count(*)::int from public.expense_txn where id = 'ee600000-0000-4000-8000-000000000001')::text,
+  '0:1',
+  'but it has no ledger, so reversing it removes nothing, and the owner''s expense is still there'
 );
 
 -- ================================================================ the contributor

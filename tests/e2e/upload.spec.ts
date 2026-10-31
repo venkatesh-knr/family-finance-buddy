@@ -31,7 +31,10 @@ async function exportWorkbook(page: Page, path: string) {
   await download.saveAs(path);
 }
 
-/** The exported file, edited: three expenses given a note, and two new ones with a reference of their own. */
+/**
+ * The exported file, edited the way a person edits one: three expenses given a note, a fourth moved to another category by changing
+ * the name beside its id, a holding's quantity raised by one, and two new expenses with a reference of their own.
+ */
 async function edited(from: string, to: string): Promise<void> {
   const sheets = await readWorkbookFile(new Uint8Array(readFileSync(from)));
   const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
@@ -43,6 +46,21 @@ async function edited(from: string, to: string): Promise<void> {
 
   for (let index = 0; index < 3; index += 1) (data[index] as Cell[])[at('note')] = `e2e-edited-${String(index)}`;
   const first = data[0] as Cell[];
+
+  // Recategorised by the name written beside the id, which the person changes and the id they leave: that is what they mean.
+  const categories = sheets.find((sheet) => sheet.name === 'Categories');
+  const categoryNames = (categories?.rows.slice(1) ?? []).map((row) => String(row[(categories?.rows[0] ?? []).indexOf('name')] ?? ''));
+  const fourth = data[3] as Cell[];
+  const other = categoryNames.find((name) => name !== '' && name !== String(fourth[at('category_name')] ?? ''));
+  expect(other, 'the demo household has a second category to move an expense to').toBeDefined();
+  fourth[at('category_name')] = other ?? null;
+
+  // And a holding's quantity, a column of the sheet that also carries what the holding is.
+  const holdings = sheets.find((sheet) => sheet.name === 'Holdings');
+  const holdingHeaders = (holdings?.rows[0] ?? []).map(String);
+  const holding = holdings?.rows[1] as Cell[] | undefined;
+  if (holding === undefined) throw new Error('no holding to edit');
+  holding[holdingHeaders.indexOf('quantity')] = Number(holding[holdingHeaders.indexOf('quantity')] ?? 0) + 1;
   for (const n of [1, 2]) {
     const row: Cell[] = headers.map(() => null);
     row[at('ref')] = `e2e-up-${String(n)}`;
@@ -84,15 +102,20 @@ test('export, edit, upload: it says what it will do, writes it, writes nothing t
   await choose(page, changed);
   await expect(page.getByTestId('upload-problems')).toHaveCount(0);
   await expect(page.getByTestId('upload-add')).toHaveText('2');
-  await expect(page.getByTestId('upload-change')).toHaveText('3');
-  await expect(page.getByTestId('upload-preview')).toContainText('What changes (3)');
+  await expect(page.getByTestId('upload-change')).toHaveText('5');
+  // The category change is said by name, not by two ids.
+  await expect(page.getByTestId('upload-preview')).toContainText(/category_id: .+ \u2192 .+/);
+  await expect(page.getByTestId('upload-preview')).toContainText('What will be added (2)');
 
   // Written: all of it, once.
   const confirm = page.getByRole('form', { name: 'Confirm the upload' });
+  await confirm.getByLabel('Name this upload (optional)').fill('e2e upload one');
   await confirm.getByLabel('Code from your authenticator app').fill(await freshCode());
-  await confirm.getByRole('button', { name: 'Add 2 and change 3' }).click();
-  await expect(page.getByTestId('upload-done')).toContainText('2 added and 3 changed', { timeout: 60_000 });
-  await expect(page.getByTestId('upload-list')).toContainText(/household-edited\.xlsx/);
+  await confirm.getByRole('button', { name: 'Add 2 and change 5' }).click();
+  await expect(page.getByTestId('upload-done')).toContainText('2 added and 5 changed', { timeout: 60_000 });
+  // Remembered by the name the person gave it, never by the file's.
+  await expect(page.getByTestId('upload-list')).toContainText('e2e upload one');
+  await expect(page.getByTestId('upload-list')).not.toContainText('household-edited');
 
   // The same file again: the references lead to the rows the first upload made, so nothing is added twice and nothing has changed.
   await choose(page, changed);
@@ -103,12 +126,12 @@ test('export, edit, upload: it says what it will do, writes it, writes nothing t
   const reverse = page.getByRole('form', { name: 'Confirm the reversal' });
   await reverse.getByLabel('Code from your authenticator app').fill(await freshCode());
   await reverse.getByRole('button', { name: 'Reverse this upload' }).click();
-  await expect(page.getByTestId('upload-done')).toContainText('3 put back as they were and 2 removed', { timeout: 60_000 });
+  await expect(page.getByTestId('upload-done')).toContainText('5 put back as they were and 2 removed', { timeout: 60_000 });
 
   // And the household is as it was: the same file asks for the same two additions and three changes again.
   await choose(page, changed);
   await expect(page.getByTestId('upload-add')).toHaveText('2');
-  await expect(page.getByTestId('upload-change')).toHaveText('3');
+  await expect(page.getByTestId('upload-change')).toHaveText('5');
 });
 
 test('a workbook with a cell that is wrong is refused before anything is written, naming the sheet, row and column', async ({ page }, testInfo) => {

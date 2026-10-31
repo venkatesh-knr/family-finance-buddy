@@ -105,7 +105,63 @@ describe('changing rows that exist', () => {
     const result = plan(sheets);
     expect(result.problems).toEqual([]);
     expect(result.rows.map((row) => `${row.action}:${row.entity}`)).toEqual(['update:instrument']);
-    expect(result.rows[0]?.changes).toEqual([{ column: 'isin', from: 'INF204K01XX1', to: 'INF204K01YY2' }]);
+    expect(result.rows[0]?.changes).toEqual([{ money: false, column: 'isin', from: 'INF204K01XX1', to: 'INF204K01YY2' }]);
+  });
+});
+
+describe('a name changed beside an id that was kept', () => {
+  const OTHER = '00000000-0000-4000-8000-0000000000c2';
+  function withFuel(): Record<string, Row[]> {
+    const existing = fixture();
+    existing['expense_category'] = [...(existing['expense_category'] ?? []), { ...(existing['expense_category']?.[0] as Row), id: OTHER, name: 'Fuel' }];
+    return existing;
+  }
+
+  it('is what the person means: the row moves to that record, and the change says so by name', () => {
+    const existing = withFuel();
+    const sheets = sheetsOf(existing);
+    set(sheets, 'Expenses', 0, 'category_name', 'Fuel');
+    const result = plan(sheets, existing);
+    expect(result.problems).toEqual([]);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.values['category_id']).toBe(OTHER);
+    expect(result.rows[0]?.changes).toEqual([{ money: false, column: 'category_id', from: 'Groceries', to: 'Fuel' }]);
+  });
+
+  it('is refused when it names nothing the household has, saying what the id was', () => {
+    const sheets = sheetsOf(fixture());
+    set(sheets, 'Expenses', 0, 'category_name', 'Fuell');
+    expect(messages(plan(sheets))[0]).toMatch(/^Expenses!2!category_name: The id is Groceries and the name says Fuell, which no expense category is called/);
+  });
+
+  it('is refused on a row keyed by its holding, which is its identity: an account belongs to one holding', () => {
+    const existing = fixture();
+    existing['ppf_account'] = [{ holding_id: PPF_HOLDING, institution: 'SBI', account_last4: '1234', opening_date: '2026-03-31', opening_balance_minor: '10000000', currency: 'INR', note: null }];
+    const sheets = sheetsOf(existing);
+    set(sheets, 'PPF accounts', 0, 'holding_name', 'Nippon Nifty 50 (Venkatesh)');
+    expect(messages(plan(sheets, existing))[0]).toMatch(/^PPF accounts!2!holding_name: The id is PPF \(Venkatesh\) and the name says Nippon Nifty 50 \(Venkatesh\)\. This row belongs to PPF \(Venkatesh\)/);
+  });
+});
+
+describe('what the preview lists', () => {
+  it('names each row to add, and writes the instrument a holding names once', () => {
+    const sheets = sheetsOf(fixture());
+    add(sheets, 'Categories', { name: 'Gifts', nature: 'variable', ref: 'CAT-3' });
+    add(sheets, 'Holdings', { member_name: 'Venkatesh', name: 'HDFC Bank', kind: 'equity', currency: 'INR', exposure_currency: 'INR', quantity: 1, ref: 'H-1' });
+    const result = plan(sheets);
+    expect(result.rows.map((row) => `${row.entity}:${row.label ?? ''}`)).toEqual(['expense_category:Gifts', 'instrument:HDFC Bank', 'holding:HDFC Bank (Venkatesh)']);
+  });
+
+  it('refuses two holdings that say different things about the one instrument they share', () => {
+    const sheets = sheetsOf(fixture());
+    const second = (sheets.find((sheet) => sheet.name === 'Holdings')?.rows[2] ?? []) as (string | number | boolean | Date | null)[];
+    const headers = sheets.find((sheet) => sheet.name === 'Holdings')?.rows[0] ?? [];
+    // Both holdings now name the fund; one renames it and the other does not.
+    second[headers.indexOf('instrument_id')] = '00000000-0000-4000-8000-0000000000d1';
+    second[headers.indexOf('name')] = 'Nippon A';
+    set(sheets, 'Holdings', 0, 'name', 'Nippon B');
+    const found = messages(plan(sheets)).join('\n');
+    expect(found).toMatch(/Holdings!3!name: This instrument is also on row 2, with a different name/);
   });
 });
 

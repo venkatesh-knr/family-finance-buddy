@@ -9,6 +9,7 @@
  * `reverse_template_batch` undoes an upload as a unit, for the person who made it.
  */
 
+import { ENTITY_BY_KEY } from '../domain/export/entities.ts';
 import { currentAccountId } from './account.ts';
 import { supabase } from './client.ts';
 import type { Uuid } from './types.ts';
@@ -82,7 +83,13 @@ export interface Reversed {
 export async function reverseTemplate(batchId: Uuid): Promise<Reversed> {
   const { data, error } = await supabase().rpc('reverse_template_batch', { p_batch: batchId });
   if (error !== null) {
-    if (error.code === '40001' || error.code === '23503' || error.code === '22023') throw new UploadError(error.message, error.code);
+    if (error.code === '40001' || error.code === '23503' || error.code === '22023') {
+      // The database names the table; the person knows the sheet.
+      const place = whereIt(error.details);
+      const sheet = place.entity === undefined ? undefined : ENTITY_BY_KEY.get(place.entity)?.sheet;
+      const message = sheet === undefined || place.entity === undefined ? error.message : error.message.replace(new RegExp(`\\b${place.entity}\\b`), `the ${sheet} sheet`);
+      throw new UploadError(message, error.code, place.entity);
+    }
     throw asUploadError(error);
   }
   const result = (data ?? {}) as { restored?: number; removed?: number };
@@ -111,7 +118,7 @@ export async function listUploads(householdId: Uuid, limit = 20): Promise<Upload
       .order('created_at', { ascending: false })
       .limit(limit),
   ]);
-  if (result.error !== null) throw new Error(result.error.message);
+  if (result.error !== null) throw new UploadError(result.error.message, result.error.code);
   return ((result.data ?? []) as unknown as { id: string; label: string | null; row_count: number; created_at: string; reversed_at: string | null; created_by: string }[]).map(
     (row) => ({
       id: row.id,

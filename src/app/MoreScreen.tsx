@@ -81,7 +81,7 @@ const PURPOSE: Partial<Record<AppScreen, string>> = {
   tax: 'What the year’s gains and income come to, on the rules that applied.',
   insurance: 'Policies, what they cover and when they renew.',
   property: 'What each cost, what it is thought to be worth, and how old that is.',
-  reports: 'Export everything as one workbook.',
+  reports: 'Export everything, or bring an edited workbook back.',
   settings: 'Theme, how amounts show, members',
 };
 

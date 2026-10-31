@@ -33,19 +33,23 @@ export async function previewUpload(householdId: string, file: File): Promise<Pr
   return { filename: file.name, readProblems: [], plan };
 }
 
-/** The label an upload is remembered by: the file's name, without a path and not too long to store. */
-export function labelFor(filename: string): string {
-  return filename.replace(/^.*[\\/]/, '').slice(0, 120);
+/**
+ * The label an upload is remembered by: what the person typed, or a neutral one made from the day. Never the file's name: a file is
+ * often called after what is in it (a PAN, an account), and the household reads this label and the audit log it is written to.
+ */
+export function labelFor(typed: string, isoDate: string): string {
+  const cleaned = typed.trim().replace(/\s+/g, ' ').slice(0, 120);
+  return cleaned === '' ? `Upload of ${isoDate}` : cleaned;
 }
 
 /**
  * Write what the preview showed. A fresh authenticator code first, as for an export: an upload changes the household's whole record,
  * and a device left unlocked should not be enough. The database refuses all of it or accepts all of it.
  */
-export async function commitUpload(householdId: string, filename: string, plan: UploadPlan, code: string): Promise<Applied> {
+export async function commitUpload(householdId: string, label: string, plan: UploadPlan, code: string): Promise<Applied> {
   if (plan.problems.length > 0) throw new Error('There are problems in the workbook; nothing is written until they are put right.');
   await verifyTotpCode(code);
-  return applyTemplate(householdId, labelFor(filename), toApplyPayload(plan));
+  return applyTemplate(householdId, label, toApplyPayload(plan));
 }
 
 export async function reverseUpload(batchId: string, code: string): Promise<Reversed> {
