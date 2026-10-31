@@ -217,7 +217,7 @@ select is(
 );
 
 select is(
-  (select r.before ->> 'name' || '>' || r.after ->> 'name' from public.import_batch_row r
+  (select (r.before ->> 'name') || '>' || (r.after ->> 'name') from public.import_batch_row r
      join public.import_batch b on b.id = r.batch_id where b.label = 'rename c0'),
   'Old name>Groceries',
   'with its image before and after in the ledger'
