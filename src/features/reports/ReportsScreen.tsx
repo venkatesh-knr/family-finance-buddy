@@ -3,6 +3,7 @@ import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { Button, Field, Problem, SampleBar } from '../../ui/primitives.tsx';
 import { readLastExport } from './exportFile.ts';
 import { ExportBlocked, runFullExport } from './runExport.ts';
+import { UploadPanel } from './UploadPanel.tsx';
 
 /**
  * Reports (docs/design/vibrant-canvas.html, Reports; docs/blueprint.md sections 14 and 17; docs/build-plan.md, step 5).
@@ -177,6 +178,8 @@ export function ReportsScreen({ householdId, isDemo }: { householdId: string | n
             : `Last exported on this device ${formatIsoDate(istCalendarDate(new Date(lastExport)))}`}
         </p>
       </section>
+
+      <UploadPanel householdId={householdId} />
     </div>
   );
 }

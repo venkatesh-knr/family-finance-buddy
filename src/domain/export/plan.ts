@@ -10,6 +10,8 @@
  * an upload: one missing from the sheet is simply not mentioned. Pure; no I/O.
  */
 
+import { minorUnitExponent } from '../../lib/money.ts';
+import { minorToMajorText } from './cells.ts';
 import { COLUMN_RULES } from './rules.generated.ts';
 import {
   ENTITY_BY_KEY,
@@ -356,9 +358,21 @@ function diff(entity: Entity, held: Row, body: Readonly<Record<string, string | 
     if (!(column.key in body)) continue;
     const from = now[column.key] ?? null;
     const to = next[column.key] ?? null;
-    if (from !== to) changes.push({ column: headerOf(column), from, to });
+    if (from !== to) changes.push({ column: headerOf(column), from: shown(column, from, held, body), to: shown(column, to, held, body) });
   }
   return changes;
+}
+
+/** A value as a person reads it: an amount in major units, as the sheet writes it, and everything else as it is. */
+function shown(column: Column, value: string | null, held: Row, body: Readonly<Record<string, string | null>>): string | null {
+  if (value === null || column.kind !== 'money' || column.currency === undefined || !('column' in column.currency) || 'via' in column.currency) return value;
+  const currency = body[column.currency.column] ?? held[column.currency.column] ?? null;
+  if (currency === null) return value;
+  try {
+    return minorToMajorText(BigInt(value), minorUnitExponent(currency));
+  } catch {
+    return value;
+  }
 }
 
 /** The payload `apply_template` takes: the rows to create and change, by sheet, in the order they must be written. */

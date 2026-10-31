@@ -33,5 +33,7 @@ describe('the column rules an upload is checked against', () => {
     expect(COLUMN_RULES['expense_category']?.['is_essential']).toMatchObject({ notNull: true, hasDefault: true });
     expect(COLUMN_RULES['instrument']?.['kind']?.values).toContain('retirement');
     expect(COLUMN_RULES['instrument']?.['kind']?.values).not.toContain('gold');
+    // A check that says more than a list of values (a condition that holds for some kinds only) is not read as one: the policy's kind is the whole list.
+    expect(COLUMN_RULES['insurance_policy']?.['kind']?.values).toEqual(['health', 'term_life', 'endowment', 'ulip', 'money_back', 'vehicle', 'home', 'personal_accident', 'other']);
   });
 });

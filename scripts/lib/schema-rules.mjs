@@ -57,10 +57,17 @@ function balanced(text, start) {
 
 const strip = (sql) => sql.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** `col in ('a', 'b')` inside a check, as { col: [values] }. */
+/**
+ * The values a check allows, as { col: [values] }, from a check that does nothing else: `check (col in ('a', 'b'))`. A check that
+ * says more (`kind in ('ulip') or cover is null`, a condition that holds only for some kinds) is not a list of the values a column
+ * may take, and is left out rather than read as one.
+ */
 function enumsIn(text) {
   const found = {};
-  for (const match of text.matchAll(/\b(\w+)\s+in\s*\(\s*((?:'(?:[^']|'')*'\s*,?\s*)+)\)/gi)) {
+  for (const start of [...text.matchAll(/check\s*\(/gi)]) {
+    const { inside } = balanced(text, start.index + start[0].length - 1);
+    const match = /^\s*"?(\w+)"?\s+in\s*\(\s*((?:'(?:[^']|'')*'\s*,?\s*)+)\)\s*$/i.exec(inside);
+    if (match === null) continue;
     found[match[1]] = [...match[2].matchAll(/'((?:[^']|'')*)'/g)].map((value) => value[1].replace(/''/g, "'"));
   }
   return found;

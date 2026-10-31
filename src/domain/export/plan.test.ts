@@ -67,7 +67,7 @@ describe('changing rows that exist', () => {
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ entity: 'expense_txn', action: 'update', sheetRow: 2 });
     expect(result.rows[0]?.changes.map((change) => change.column).sort()).toEqual(['amount', 'payee']);
-    expect(result.rows[0]?.changes.find((change) => change.column === 'amount')).toMatchObject({ from: '123456789', to: '150000' });
+    expect(result.rows[0]?.changes.find((change) => change.column === 'amount')).toMatchObject({ from: '1234567.89', to: '1500' });
     expect(result.rows[0]?.values).toMatchObject({ amount_minor: '150000', payee: 'Tata Power' });
   });
 
