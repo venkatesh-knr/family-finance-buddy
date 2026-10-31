@@ -181,6 +181,53 @@ describe('the round trip', () => {
   });
 });
 
+describe('a reference of the person\u2019s own, and the names written beside ids', () => {
+  const CATEGORY = '00000000-0000-4000-8000-0000000000c1';
+
+  it('writes a ref column beside the key of every sheet an upload takes, and not on the others', () => {
+    const { workbook } = buildWorkbook(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
+    const categories = workbook.sheets.find((sheet) => sheet.name === 'Categories');
+    expect(categories?.headers.slice(0, 2)).toEqual(['id', 'ref']);
+    expect(categories?.rows[0]?.[1]).toBe('CAT-1');
+    const expenses = workbook.sheets.find((sheet) => sheet.name === 'Expenses');
+    expect(expenses?.rows[0]?.[expenses.headers.indexOf('ref')]).toBeNull();
+    expect(workbook.sheets.find((sheet) => sheet.name === 'Bond ratings')?.headers).not.toContain('ref');
+  });
+
+  it('reads the reference and the names back with the row, by the sheet row they are on', () => {
+    const { workbook } = buildWorkbook(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
+    const back = readWorkbook(sheetsFor(workbook));
+    expect(back.problems).toEqual([]);
+    expect(back.sheets['expense_category']?.[0]).toMatchObject({ sheetRow: 2, ref: 'CAT-1', values: { name: 'Groceries' } });
+    expect(back.sheets['expense_txn']?.[0]?.names).toMatchObject({ member_id: 'Venkatesh', category_id: 'Groceries' });
+    // The holding's sheet carries its instrument's name as a column of its own, so no second name is written beside the id.
+    expect(back.sheets['holding']?.[0]?.values).toMatchObject({ name: 'Nippon Nifty 50', kind: 'fund' });
+  });
+
+  it('refuses a sheet that has lost its ref column, as a version-1 file has', () => {
+    const { workbook } = buildWorkbook(fixture(), META);
+    const sheets = sheetsFor(workbook).map((sheet) => {
+      if (sheet.name !== 'Categories') return sheet;
+      const drop = (sheet.rows[0] ?? []).indexOf('ref');
+      return { name: sheet.name, rows: sheet.rows.map((row) => row.filter((_, index) => index !== drop)) };
+    });
+    const back = readWorkbook(sheets);
+    expect(back.problems.some((problem) => problem.sheet === 'Categories' && problem.column === 'ref')).toBe(true);
+  });
+
+  it('reads the names a person typed to find a record, where the id is empty', () => {
+    const { workbook } = buildWorkbook(fixture(), META);
+    const sheets = sheetsFor(workbook);
+    const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
+    const headers = expenses?.rows[0] ?? [];
+    (expenses!.rows[1] as unknown[])[headers.indexOf('id')] = null;
+    (expenses!.rows[1] as unknown[])[headers.indexOf('member_id')] = null;
+    (expenses!.rows[1] as unknown[])[headers.indexOf('member_name')] = '  Venkatesh ';
+    const back = readWorkbook(sheets);
+    expect(back.sheets['expense_txn']?.[0]).toMatchObject({ values: { id: null, member_id: null }, names: { member_id: 'Venkatesh' } });
+  });
+});
+
 describe('what the reader refuses, and says where', () => {
   it('names the sheet, the row and the column of a cell that is wrong, and goes on to read the rest', () => {
     const { workbook } = buildWorkbook(fixture(), META);
@@ -220,7 +267,7 @@ describe('what the reader refuses, and says where', () => {
     const { workbook } = buildWorkbook(fixture(), META);
     const older = sheetsFor(workbook).map((sheet) => (sheet.name === 'About' ? { name: 'About', rows: sheet.rows.map((row) => (row[0] === 'Template version' ? ['Template version', 0] : row)) } : sheet));
     const refused = readWorkbook(older);
-    expect(refused.problems[0]?.message).toMatch(/version 0.*version 1|version 1/i);
+    expect(refused.problems[0]?.message).toContain(`version 0; this app reads version ${String(TEMPLATE_VERSION)}`);
     expect(refused.tables).toEqual({});
     const none = readWorkbook(sheetsFor(workbook).filter((sheet) => sheet.name !== 'About'));
     expect(none.problems[0]?.message).toMatch(/template version/i);

@@ -18,6 +18,8 @@ const PAGE = 1000;
 
 export interface ExportSource {
   readonly tables: Readonly<Record<string, readonly Row[]>>;
+  /** The references the household has given its rows: entity, then the row's key, then the reference. */
+  readonly refs: Readonly<Record<string, Readonly<Record<string, string>>>>;
   readonly householdName: string;
   readonly baseCurrency: string;
   readonly isDemo: boolean;
@@ -61,12 +63,31 @@ export async function readEverything(householdId: Uuid): Promise<ExportSource> {
 
   for (const entity of ENTITIES) tables[entity.key] = await readTable(entity, householdId);
 
+  // The references a person has given rows in an earlier upload, written beside them so the next upload finds them. Only an owner
+  // and a partner can read them, and for anybody else there are none.
+  const refs: Record<string, Record<string, string>> = {};
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase()
+      .from('import_ref')
+      .select('entity, ref, row_id')
+      .eq('household_id', householdId)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    // Until the upload migration is applied the table is not there, and an export has no references to write: that is not a failure.
+    if (error !== null && (error.code === '42P01' || error.code === 'PGRST205')) break;
+    if (error !== null) throw new Error(`Could not read the references for the export: ${error.message}`);
+    const page = (data ?? []) as unknown as { entity: string; ref: string; row_id: string }[];
+    for (const row of page) (refs[row.entity] ??= {})[row.row_id] = row.ref;
+    if (page.length < PAGE) break;
+  }
+
   // What the file says about itself. The household's settings are not a sheet of it.
   const { data, error } = await supabase().from('household').select('name, base_currency, kind').eq('id', householdId).maybeSingle();
   if (error !== null) throw new Error(`Could not read the household for the export: ${error.message}`);
   const household = (data ?? null) as { name?: string; base_currency?: string; kind?: string } | null;
   return {
     tables,
+    refs,
     householdName: household?.name ?? 'Household',
     baseCurrency: household?.base_currency ?? 'INR',
     isDemo: household?.kind === 'demo',

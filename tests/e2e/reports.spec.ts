@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { TOTP } from 'otpauth';
 import { readFileSync } from 'node:fs';
 import { SHEETED } from '../../src/domain/export/entities.ts';
 import { readWorkbook } from '../../src/domain/export/workbook.ts';
 import { readWorkbookFile } from '../../src/lib/workbookFile.ts';
+import { freshCode } from './totp.ts';
 
 /**
  * Reports: Export everything makes a workbook on the device from what the signed-in person can read, behind a fresh
@@ -14,18 +14,6 @@ import { readWorkbookFile } from '../../src/lib/workbookFile.ts';
  */
 
 test.use({ actionTimeout: 15_000 });
-
-let lastWindow = -1;
-
-/** A code for the current 30-second window, waiting for the next if this worker has already used the current one. */
-async function freshCode(): Promise<string> {
-  const secret = process.env['E2E_TOTP_SECRET'];
-  if (!secret) throw new Error('E2E_TOTP_SECRET must be set (tests/e2e/README.md).');
-  const window = () => Math.floor(Date.now() / 30_000);
-  while (window() === lastWindow) await new Promise((resolve) => setTimeout(resolve, 1_000));
-  lastWindow = window();
-  return new TOTP({ secret, digits: 6, period: 30 }).generate();
-}
 
 async function openReports(page: Page) {
   await page.goto('/#/reports');

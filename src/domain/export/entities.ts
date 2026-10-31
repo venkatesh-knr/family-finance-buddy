@@ -374,6 +374,30 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
   invite: 'An invitation’s code is a credential, and a hash of one.',
 };
 
+/**
+ * The order an upload writes its sheets in, parents before the rows that point at them. It is the database's own
+ * (`app.template_entities()`), and a test holds the two to each other.
+ */
+export const UPLOAD_ORDER: readonly string[] = [
+  'expense_category',
+  'budget',
+  'instrument',
+  'holding',
+  'valuation_snapshot',
+  'lot',
+  'disposal',
+  'fixed_income_terms',
+  'deposit_renewal',
+  'ppf_account',
+  'ppf_entry',
+  'liability',
+  'property',
+  'property_improvement',
+  'property_valuation',
+  'insurance_policy',
+  'expense_txn',
+];
+
 export const ENTITY_BY_KEY: ReadonlyMap<string, Entity> = new Map(ENTITIES.map((entity) => [entity.key, entity]));
 
 /** The entities that have a sheet of their own, in the order the sheets are written. */
@@ -393,5 +417,8 @@ export function headerOf(column: Column): string {
   return column.kind === 'money' ? column.key.replace(/_minor$/, '') : column.key;
 }
 
-/** The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused. */
-export const TEMPLATE_VERSION = 1;
+/**
+ * The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused.
+ * Version 2 added `ref` to every sheet an upload takes: a reference of the person's own, so a re-upload finds the row again.
+ */
+export const TEMPLATE_VERSION = 2;
