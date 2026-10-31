@@ -409,8 +409,8 @@ select is(
 
 select throws_ok(
   $q$ insert into public.import_ref (household_id, entity, ref, row_id, batch_id)
-      select b.household_id, 'expense_category', 'MINE', 'aa600000-0000-4000-8000-0000000000d2', b.id
-        from public.import_batch b where b.label = 'first' $q$,
+      values ('e6000000-0000-4000-8000-0000000000f1', 'expense_category', 'MINE',
+              'aa600000-0000-4000-8000-0000000000d2', 'bb600000-0000-4000-8000-0000000000d3') $q$,
   '42501'::char(5),
   null::text,
   'nor writes a reference'
