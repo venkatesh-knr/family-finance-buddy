@@ -454,3 +454,16 @@ Built from `docs/design/gold.md`: `supabase/migrations/20261102120000_gold.sql` 
 - **An amount scheme is valued as the instalments paid, and the bonus is not in it** (GD-I2). Its instalments are lots on the holding (the quantity is rupees), and recording one also records the value as a reading, as a PPF's is, so net worth reads it as it reads any holding.
 - **An upload does not add a gold or a retirement holding**, which have more to them than a sheet carries; the preview says so. The scheme is a read-only sheet of the export.
 - The demo household has one amount scheme, five of eleven instalments paid, from a fictional jeweller (gold.md section 7, item 2: the seed values are still the maintainer's to confirm).
+
+
+## Recurring rules, the first slice (November 2026)
+
+Built from `docs/design/spending-capture.md` section 3 and SC-I10: `supabase/migrations/20261102130000_recurring_rules.sql` with `supabase/tests/recurring_rules.test.sql`. Where the design left room:
+
+- **What posts them is the app, when an owner or a partner opens it.** There is no server of our own and no scheduler (the month-end close made the same choice), so `public.post_due_recurring` runs on open: for each active rule that posts itself and is due, it posts every due date up to today in India (the database's clock, not the device's), advances the rule, and returns how many entries it made. A rule left for more than two years of due dates finishes catching up the next time. Two devices take turns (a rule is locked while it is posted) and the unique (rule, due date) index makes a second run, or a second device, post nothing (SC-I10).
+- **A voided entry is not posted again**, because its row still holds the date. To post that date again, a person enters it.
+- **A rule is the household's**: owner and partner make, change, pause and post them; a contributor reads the rules under their own name and writes none; a viewer reads none; a personal rule is its member's alone. A contributor's own recurring spending is therefore a rule an owner or partner makes under their name. Say if that is wrong.
+- **A due day is 1 to 28**, so it exists in every month and a rule on the 10th is never moved by a short month. A rule due on the 29th to 31st is not expressible; the nearest is the 28th.
+- **`captured_via`** (typed, shared, rule, import) is on every entry from now on, defaulting to typed for what exists, so the other capture paths (share, import) do not need another column.
+- **Reminders** (`reminder_days`) are stored and not yet used: they wait for the calendar (step 8).
+- The demo household has two rules that are not due yet, so seeding posts nothing.
