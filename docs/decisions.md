@@ -425,3 +425,21 @@ The database half is `supabase/migrations/20261031120000_template_upload.sql`, t
 6. **Owner and partner only**, with the second factor. A contributor and a viewer are refused by the function and by the policies behind it. The ledger holds images of rows that may be private, so only the person who made the upload reads it, and it has no audit trigger: an audit row is readable by the household. What it records is audited at the tables it names.
 
 How: one call, `public.apply_template`, as the caller (so row-level security decides every row), all or none. A row that fails stops the call and names its sheet and row. The entity and column lists are fixed inside it and are held to the export's entity list by `src/domain/export/templateEntities.test.ts`.
+
+## Open: spending capture and gold (30 October 2026, designed, none decided)
+
+Written down so they are not lost, and **decided by nobody**: each is the maintainer's to answer. The design documents are `docs/design/spending-capture.md` and `docs/design/gold.md`; neither is built, and `CLAUDE.md` is unchanged.
+
+**Spending capture, `docs/design/spending-capture.md` section 9** (six items):
+
+1. **`CLAUDE.md` says "no SMS parsing".** Share-to-app parses text the person hands over, one message at a time; it never reads the inbox and asks no permission. The document proposes rewording the line to *"No SMS reading: the app requests no SMS, notification or accessibility permission. Text a person shares into the app may be parsed."* Until the maintainer decides, the line stands as written.
+2. **Loan EMIs.** The principal reduces a liability and is not spending; the interest is. Proposed: an EMI paid to a recorded liability is excluded from *spent* and shown as its own line until the liability carries the split.
+3. **The UPI reference:** its last four and a hash (proposed) or the full number.
+4. **A spreadsheet library** for Paytm's Excel file. Step 7 already owes this decision for bank XLS; Paytm's PDF works without it.
+5. **Who closes a month.** Proposed: an owner or partner for the household, and a contributor for their own accounts only.
+6. **Take-home income.** Section 10 assumes salary is recorded as what reached the account, so payroll deductions sit outside *saved*. Step 6a already owes the "which income" decision (gross with TDS for the Tax card, or take-home); if it is gross, *saved* must subtract tax and payroll deductions, and section 10 changes with it.
+
+**Gold, `docs/design/gold.md` section 7** (two items):
+
+1. **The cost basis of physical gold after redemption.** Proposed: the gold value on the bill, acquired on the redemption date. A tax rule depends on it, so the Tax screen refuses a sale of it until this is decided.
+2. **Seed values.** The demo's jeweller is fictional, and its bonus is one instalment.

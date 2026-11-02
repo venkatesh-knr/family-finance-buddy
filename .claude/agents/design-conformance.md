@@ -3,7 +3,8 @@ name: design-conformance
 description: >
   Reviews built screens and features against the project's own specification —
   docs/blueprint.md, docs/tokens.md, docs/design/icons.md, the feature design
-  documents (docs/design/protection-and-flow.md, docs/design/detail-level.md),
+  documents (docs/design/protection-and-flow.md, docs/design/spending-capture.md, docs/design/gold.md,
+  docs/design/detail-level.md),
   CLAUDE.md invariants and docs/design/conformance.md — and reports findings. Use after a vertical slice
   is finished, before merging, or when asked to check whether something matches
   the design. Reports only; never edits, never fixes, never commits.
@@ -37,6 +38,8 @@ When two documents disagree, this is the order. Say which one you applied.
    against `icons.md`.
 5. **The feature design documents** — `docs/design/protection-and-flow.md`
    (insurance, the small-savings schemes, earmarks, income and transfers),
+   `docs/design/spending-capture.md` (how spending is captured cheaply, the month-close figure and where the month's money went;
+   not built), `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
    holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9). Each is
@@ -44,7 +47,7 @@ When two documents disagree, this is the order. Say which one you applied.
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `DL-…`, `HD-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
