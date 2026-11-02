@@ -37,7 +37,8 @@ describe('the blank template', () => {
     const categories = sheets.find((sheet) => sheet.name === 'Categories');
     expect(categories?.lists[categories.headers.indexOf('nature')]).toEqual(COLUMN_RULES['expense_category']?.['nature']?.values);
     const holdings = sheets.find((sheet) => sheet.name === 'Holdings');
-    expect(holdings?.lists[holdings.headers.indexOf('kind')]).toEqual(COLUMN_RULES['instrument']?.['kind']?.values);
+    // The kinds an upload adds: not gold or retirement, which are added on the Holdings screen.
+    expect(holdings?.lists[holdings.headers.indexOf('kind')]).toEqual((COLUMN_RULES['instrument']?.['kind']?.values ?? []).filter((kind) => kind !== 'gold' && kind !== 'retirement'));
     expect(holdings?.lists[holdings.headers.indexOf('kind')]).not.toContain('gold');
   });
 

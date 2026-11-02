@@ -300,6 +300,10 @@ export function planUpload(input: UploadInput): UploadPlan {
       };
       for (const column of entity.columns) check(column, rules);
       if (joined !== undefined && instrumentPlan !== null && instrumentPlan.create) {
+        // A gold or a retirement holding has more to it than a row of this sheet carries (its form, its type, its scheme or account), so it
+        // is added on the Holdings screen and an upload does not add one.
+        const madeKind = instrumentPlan.row['kind'] ?? null;
+        if (madeKind === 'gold' || madeKind === 'retirement') where('kind', `A ${madeKind} holding is added on the Holdings screen: an upload does not add one.`);
         for (const column of joined.columns) {
           const rule = (COLUMN_RULES[joined.key] ?? {})[column.key];
           if (rule === undefined || column.key === 'id') continue;

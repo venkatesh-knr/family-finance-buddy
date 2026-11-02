@@ -122,6 +122,12 @@ function moneyFormat(column: Column, rows: readonly Row[], lookup: Lookup): stri
   return decimals === 0 ? '#,##0' : `#,##0.${'0'.repeat(decimals)}`;
 }
 
+/** An instrument's kind as a dropdown offers it: not the kinds an upload does not add, which have more to them than a sheet carries. */
+function uploadable(values: readonly string[] | undefined, key: string): readonly string[] | null {
+  if (values === undefined) return null;
+  return key === 'kind' && values.includes('gold') ? values.filter((value) => value !== 'gold' && value !== 'retirement') : values;
+}
+
 function toCell(column: Column, value: string | null, row: Row, lookup: Lookup): Cell {
   if (value === null) return null;
   switch (column.kind) {
@@ -198,7 +204,7 @@ export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, 
       lists.push(
         column.kind === 'boolean'
           ? ['TRUE', 'FALSE']
-          : (COLUMN_RULES[entity.key]?.[column.key]?.values ?? (joinedRef === undefined ? undefined : COLUMN_RULES[joinedRef]?.[column.key]?.values) ?? null),
+          : uploadable(COLUMN_RULES[entity.key]?.[column.key]?.values ?? (joinedRef === undefined ? undefined : COLUMN_RULES[joinedRef]?.[column.key]?.values), column.key),
       );
       writers.push((row, rowNumber) => {
         try {

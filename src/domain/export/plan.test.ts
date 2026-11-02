@@ -281,10 +281,10 @@ describe('what the preview refuses, and where', () => {
     expect(found).toContain('Categories!4!name: This is required.');
   });
 
-  it('refuses a new instrument whose kind is not one the app has, so no kind is invented by a file', () => {
+  it('refuses a new gold or retirement holding, which has more to it than a sheet carries, so none is invented by a file', () => {
     const sheets = sheetsOf(fixture());
     add(sheets, 'Holdings', { member_name: 'Venkatesh', name: 'Krugerrand', kind: 'gold', currency: 'INR', exposure_currency: 'INR', quantity: 1, ref: 'H-9' });
-    expect(messages(plan(sheets)).join('\n')).toMatch(/Holdings!4!kind: "gold" is not one of: equity, etf, mutual_fund/);
+    expect(messages(plan(sheets)).join('\n')).toMatch(/Holdings!4!kind: A gold holding is added on the Holdings screen: an upload does not add one/);
   });
 
   it('refuses the same record twice in a file, and a reference that means two rows', () => {

@@ -134,7 +134,8 @@ export const ENTITIES: readonly Entity[] = [
     upload: 'rows',
     rowKey: ['id'],
     label: named('name'),
-    leftOut: ['status', 'archived_at'],
+    // Which gold a gold instrument is: written when a gold holding is added on the Holdings screen, never by an upload.
+    leftOut: ['status', 'archived_at', 'gold_form'],
     columns: [
       id(),
       text('name'),
@@ -246,6 +247,30 @@ export const ENTITIES: readonly Entity[] = [
     upload: 'none',
     rowKey: ['id'],
     columns: [id(), id('holding_id', 'holding'), integer('seq'), text('from_rating'), text('to_rating'), date('changed_on')],
+  },
+  {
+    // A jeweller's gold savings scheme (docs/design/gold.md). Written when the scheme is added on the Holdings screen, so a sheet to read
+    // and back up, and the upload does not take it.
+    key: 'gold_scheme_terms',
+    sheet: 'Gold schemes',
+    scope: 'household',
+    upload: 'none',
+    rowKey: ['holding_id'],
+    columns: [
+      id('holding_id', 'holding'),
+      text('variant'),
+      text('jeweller'),
+      money('instalment_minor'),
+      currency(),
+      integer('instalments'),
+      date('start_date'),
+      integer('due_day'),
+      text('bonus_text'),
+      money('bonus_minor'),
+      text('purity'),
+      text('scheme_last4'),
+      text('note'),
+    ],
   },
   {
     key: 'liability',
