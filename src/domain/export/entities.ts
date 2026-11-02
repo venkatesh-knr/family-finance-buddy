@@ -103,6 +103,8 @@ export const ENTITIES: readonly Entity[] = [
     scope: 'household',
     upload: 'rows',
     rowKey: ['id'],
+    // How an entry arrived, and for one a recurring rule posted, which rule and which due date: set by the poster, never by a sheet.
+    leftOut: ['captured_via', 'recurring_rule_id', 'due_date'],
     columns: [
       id(),
       id('member_id', 'member'),
@@ -124,6 +126,34 @@ export const ENTITIES: readonly Entity[] = [
     upload: 'rows',
     rowKey: ['id'],
     columns: [id(), id('category_id', 'expense_category'), integer('fy'), text('cadence'), integer('period'), money('planned_minor'), currency(), id('member_id', 'member')],
+  },
+  {
+    // What recurs (docs/design/spending-capture.md section 3). Made on the Expenses screen and posted by the poster, so a sheet to read and
+    // back up, and the upload does not take it.
+    key: 'recurring_rule',
+    sheet: 'Recurring rules',
+    scope: 'household',
+    upload: 'none',
+    rowKey: ['id'],
+    label: named('name'),
+    columns: [
+      id(),
+      text('name'),
+      id('category_id', 'expense_category'),
+      id('member_id', 'member'),
+      money('amount_minor'),
+      currency(),
+      text('cadence'),
+      integer('due_day'),
+      date('next_due'),
+      text('payee'),
+      text('method'),
+      text('visibility'),
+      bool('auto_post'),
+      integer('reminder_days'),
+      text('status'),
+      ts('archived_at'),
+    ],
   },
   {
     // What a holding is. Written in the Holdings sheet, beside the holding: a person adds a holding, and its kind, scheme and type are
