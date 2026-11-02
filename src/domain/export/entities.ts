@@ -365,12 +365,38 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
   tax_rule: 'Slabs, rates and thresholds: the same for every household and written by migration. Not the household’s own record.',
   fx_rate: 'Exchange rates the app fetches and appends. Reference data the app keeps, not something a household enters.',
   import_batch: 'The log of what was imported, which the app writes itself. The rows it made are in their own sheets.',
+  import_ref: 'A row’s reference in the upload template. It is the ref column of the sheets once the template carries one, and not a sheet of its own.',
+  import_batch_row: 'The images an upload keeps so it can be reversed, which include rows that are private to whoever made it. Not something to hand out in a file.',
   audit_log:
     'Its before and after images carry every figure of every table, including reads of private entries. A person’s own activity is the Profile screen’s export, not this one.',
   user_account: 'Sign-in identities: an email address and an authentication id. Not household data.',
   membership: 'Who may sign in, and with what role. Access, not records, and it is rebuilt by inviting people.',
   invite: 'An invitation’s code is a credential, and a hash of one.',
 };
+
+/**
+ * The order an upload writes its sheets in, parents before the rows that point at them. It is the database's own
+ * (`app.template_entities()`), and a test holds the two to each other.
+ */
+export const UPLOAD_ORDER: readonly string[] = [
+  'expense_category',
+  'budget',
+  'instrument',
+  'holding',
+  'valuation_snapshot',
+  'lot',
+  'disposal',
+  'fixed_income_terms',
+  'deposit_renewal',
+  'ppf_account',
+  'ppf_entry',
+  'liability',
+  'property',
+  'property_improvement',
+  'property_valuation',
+  'insurance_policy',
+  'expense_txn',
+];
 
 export const ENTITY_BY_KEY: ReadonlyMap<string, Entity> = new Map(ENTITIES.map((entity) => [entity.key, entity]));
 
@@ -391,5 +417,8 @@ export function headerOf(column: Column): string {
   return column.kind === 'money' ? column.key.replace(/_minor$/, '') : column.key;
 }
 
-/** The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused. */
-export const TEMPLATE_VERSION = 1;
+/**
+ * The version of the sheets' shape. Changed when a column is added, removed or changes meaning; an older file is refused.
+ * Version 2 added `ref` to every sheet an upload takes: a reference of the person's own, so a re-upload finds the row again.
+ */
+export const TEMPLATE_VERSION = 2;

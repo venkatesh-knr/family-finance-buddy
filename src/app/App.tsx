@@ -248,7 +248,7 @@ function SignedIn({
           onTogglePrivacy={() => {
             setPrivacy((on) => !on);
           }}
-          showPrivacy={screen === 'tax' || screen === 'insurance' || screen === 'property' || screen === 'profile'}
+          showPrivacy={screen === 'tax' || screen === 'insurance' || screen === 'property' || screen === 'profile' || screen === 'reports'}
           householdKind={current?.household.kind ?? null}
         />
       )}
@@ -413,7 +413,7 @@ function SignedIn({
         {screen === 'tax' && <TaxScreen privacy={privacy} householdId={householdId} />}
         {screen === 'insurance' && <InsuranceScreen privacy={privacy} householdId={householdId} />}
         {screen === 'property' && <PropertyScreen privacy={privacy} householdId={householdId} />}
-        {screen === 'reports' && <ReportsScreen key={householdId ?? 'none'} householdId={householdId} isDemo={current?.household.kind === 'demo'} />}
+        {screen === 'reports' && <ReportsScreen key={householdId ?? 'none'} householdId={householdId} isDemo={current?.household.kind === 'demo'} privacy={privacy} />}
         {screen === 'more' && (
           <MoreScreen
             screens={behindMore}

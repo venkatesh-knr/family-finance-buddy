@@ -73,7 +73,12 @@ here to push what was left. The next session may be a cloud one that sees only w
   trigger only, updatable by nobody, deletable by nobody. Adding one trigger to a new table
   is trivial; retrofitting audit across a schema that already has thirty of them is a day
   nobody enjoys. The log records reads as well as writes on tables carrying personal detail,
-  because section 20 shows it to members — including reads by the owner.
+  because section 20 shows it to members — including reads by the owner. **One exception,
+  decided by the maintainer (`docs/decisions.md`, Upload):** `import_batch_row`, the ledger an
+  upload from a template keeps so it can be reversed, has no audit trigger, because an audit
+  row is readable by the household and the ledger's images include rows that are private to
+  whoever made the upload. What it records is audited at the tables it names. It is read only
+  by the upload's maker and written only by `app.record_template_row`. Nothing else is exempt.
 - **`detail_level` is a rendering preference, never an access control.** The data reaches the
   client either way — essential mode simply does not draw it. If figures ever need to be hidden
   from a household member, that is row-level security and a separate mechanism. See
@@ -95,7 +100,13 @@ here to push what was left. The next session may be a cloud one that sees only w
   the last calendar day in IST; the tax year runs 1 April to 31 March. Timestamps are stored
   in UTC and converted for display.
 - Members and categories are **archived, never deleted** — their history is the household's
-  arithmetic. Deletes are soft everywhere.
+  arithmetic. Deletes are soft everywhere. **Two exceptions, both hard deletes and both
+  decided by the maintainer:** `reset_demo_household` (a demo household only, owner only) and
+  `reverse_template_batch` (`docs/decisions.md`, Upload), which lets the person who made an
+  upload from a template undo it as a unit. It removes only rows that upload itself created,
+  listed in its own ledger, untouched since and referred to by nothing, all or none, and every
+  delete is in the audit log. No client has a delete grant on any table, and neither exception
+  widens that.
 - Renaming a category changes the label only; transactions reference it by id.
 - Transactions are freely editable until a figure has been relied upon (a frozen snapshot, a
   completed tax year, a generated report) — after that, **void and re-enter**.

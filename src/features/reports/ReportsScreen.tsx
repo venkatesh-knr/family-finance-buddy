@@ -3,18 +3,19 @@ import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { Button, Field, Problem, SampleBar } from '../../ui/primitives.tsx';
 import { readLastExport } from './exportFile.ts';
 import { ExportBlocked, runFullExport } from './runExport.ts';
+import { UploadPanel } from './UploadPanel.tsx';
 
 /**
  * Reports (docs/design/vibrant-canvas.html, Reports; docs/blueprint.md sections 14 and 17; docs/build-plan.md, step 5).
  *
- * Only Export everything is built: the household as one workbook, a sheet for each kind of record, in the shape the upload
- * template will take. The year-end pack, the capital-gains statement and the rest of the board are step 5's later work and are
- * not drawn here until they exist.
+ * Export everything: the household as one workbook, a sheet for each kind of record, in the shape the upload template takes. Below it
+ * Bring a workbook back (`UploadPanel.tsx`): the same workbook, edited, taken back in. The year-end pack, the capital-gains statement
+ * and the rest of the board are step 5's later work and are not drawn here until they exist.
  *
  * The file is made on this device from what the signed-in person can already read; nothing is uploaded. A fresh authenticator
  * code is asked for first, since an export takes the whole record out of the app; the board draws the button alone.
  */
-export function ReportsScreen({ householdId, isDemo }: { householdId: string | null; isDemo: boolean }) {
+export function ReportsScreen({ householdId, isDemo, privacy }: { householdId: string | null; isDemo: boolean; privacy: boolean }) {
   const [asking, setAsking] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -177,6 +178,8 @@ export function ReportsScreen({ householdId, isDemo }: { householdId: string | n
             : `Last exported on this device ${formatIsoDate(istCalendarDate(new Date(lastExport)))}`}
         </p>
       </section>
+
+      <UploadPanel householdId={householdId} privacy={privacy} />
     </div>
   );
 }

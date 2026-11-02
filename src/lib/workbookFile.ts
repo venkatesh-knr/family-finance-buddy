@@ -39,6 +39,33 @@ export async function writeWorkbookFile(sheets: readonly SheetModel[], options: 
       const format = sheet.formats[index];
       if (format !== null && format !== undefined) column.numFmt = format;
     });
+    // A dropdown on every column that takes one of a few values: the database's own list, down the whole column.
+    sheet.headers.forEach((_, index) => {
+      const list = sheet.lists[index];
+      if (list === null || list === undefined || list.length === 0) return;
+      // A list in a cell's validation is one string of at most 255 characters; a longer one is left as free text.
+      const joined = list.join(',');
+      if (joined.length > 250) return;
+      const last = Math.max(sheet.rows.length + 1 + 200, 500);
+      for (let row = 2; row <= last; row += 1) {
+        worksheet.getCell(row, index + 1).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${joined}"`],
+          showErrorMessage: true,
+          errorTitle: 'Not one of the choices',
+          error: `Choose one of: ${joined}`,
+        };
+      }
+    });
+    // The template's example rows are shown as examples: grey and italic.
+    const refAt = sheet.headers.indexOf('ref');
+    if (refAt >= 0) {
+      worksheet.eachRow((row, number) => {
+        const marker = row.getCell(refAt + 1).value;
+        if (number > 1 && typeof marker === 'string' && /^EXAMPLE\b/.test(marker)) row.font = { italic: true, color: { argb: 'FF7A869A' } };
+      });
+    }
     if (sheet.headers.length > 0) {
       worksheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.headers.length } };
     }
