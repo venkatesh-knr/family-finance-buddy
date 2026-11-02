@@ -443,3 +443,14 @@ Written down so they are not lost, and **decided by nobody**: each is the mainta
 
 1. **The cost basis of physical gold after redemption.** Proposed: the gold value on the bill, acquired on the redemption date. A tax rule depends on it, so the Tax screen refuses a sale of it until this is decided.
 2. **Seed values.** The demo's jeweller is fictional, and its bonus is one instalment.
+
+
+## Gold, the first slice (November 2026)
+
+Built from `docs/design/gold.md`: `supabase/migrations/20261102120000_gold.sql` with `supabase/tests/gold_scheme.test.sql`. What was chosen where the design left room, and what is still open:
+
+- **Only the jeweller's scheme is made.** `instrument.gold_form` allows `physical`, as the design says, and nothing makes one yet: it arises on redemption (gold.md section 5), whose cost basis (gold.md section 7, item 1) is still open, so redemption waits for that decision.
+- **A weight scheme and physical gold are valued from the `price` table, and nothing writes a gold rate into it** until the blueprint's gold job exists (GD-I3 says the value is never typed). Until then a weight scheme is said to be not valued, and why. **New question for the maintainer:** how does a gold rate get in before the job does? Options: build the gold job first; or let an owner or partner record a dated rate for a purity by hand, in a table of their household's own, which GD-I3 would then be read as allowing (a rate typed, never a value). The amount scheme needs no rate and is built first.
+- **An amount scheme is valued as the instalments paid, and the bonus is not in it** (GD-I2). Its instalments are lots on the holding (the quantity is rupees), and recording one also records the value as a reading, as a PPF's is, so net worth reads it as it reads any holding.
+- **An upload does not add a gold or a retirement holding**, which have more to them than a sheet carries; the preview says so. The scheme is a read-only sheet of the export.
+- The demo household has one amount scheme, five of eleven instalments paid, from a fictional jeweller (gold.md section 7, item 2: the seed values are still the maintainer's to confirm).

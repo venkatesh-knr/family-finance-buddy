@@ -34,7 +34,7 @@ export const COLUMN_RULES: Readonly<Record<string, Readonly<Record<string, Colum
   instrument: {
     id: { notNull: true, hasDefault: true },
     name: { notNull: true, hasDefault: false },
-    kind: { notNull: true, hasDefault: false, values: ['equity', 'etf', 'mutual_fund', 'bond', 'deposit', 'other', 'retirement'] },
+    kind: { notNull: true, hasDefault: false, values: ['equity', 'etf', 'mutual_fund', 'bond', 'deposit', 'other', 'retirement', 'gold'] },
     symbol: { notNull: false, hasDefault: false },
     isin: { notNull: false, hasDefault: false },
     currency: { notNull: true, hasDefault: false },
