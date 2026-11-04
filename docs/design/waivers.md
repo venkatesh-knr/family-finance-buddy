@@ -53,7 +53,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30
 - SC-I8 — not built: the UPI reference columns arrive with slice S2 or S4, whichever lands first (spending-capture.md §8) — 2026-10-30
 - SC-I9 — not built: the unclosed-month label arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
-- SC-I10 — not built: recurring rules are slice S1 (spending-capture.md §8) — 2026-10-30
 - SC-I11 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
 - SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
 - SC-I13 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
@@ -61,10 +60,5 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## gold.md
 
-- GD-I1 — not built: the gold kind and its forms (gold.md §6) — 2026-10-30
-- GD-I2 — not built: the gold savings scheme (gold.md §3) — 2026-10-30
-- GD-I3 — not built: the weight variant and physical gold need the gold kind and a dated gold rate (gold.md §6) — 2026-10-30
-- GD-I4 — not built: the gold kind (gold.md §4) — 2026-10-30
 - GD-I5 — not built: the gold kind and the month's invested view (gold.md §4; spending-capture.md §10) — 2026-10-30
 - GD-I6 — not built: redemption arrives with the gold kind (gold.md §5) — 2026-10-30
-- GD-I7 — not built: the scheme terms table (gold.md §6) — 2026-10-30
