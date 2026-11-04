@@ -197,9 +197,13 @@ export function EditHolding({
         */}
         <label className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
           <span className="label">Kind</span>
-          {holding.instrument.kind === 'retirement' ? (
+          {holding.instrument.kind === 'retirement' || holding.instrument.kind === 'gold' ? (
             <span className="field" aria-label="Kind" style={{ color: 'var(--ink-2)' }}>
-              {holding.instrument.retirementType === null ? 'retirement' : holding.instrument.retirementType.toUpperCase()}
+              {holding.instrument.kind === 'gold'
+                ? 'gold'
+                : holding.instrument.retirementType === null
+                  ? 'retirement'
+                  : holding.instrument.retirementType.toUpperCase()}
             </span>
           ) : (
             <select
@@ -209,7 +213,7 @@ export function EditHolding({
                 setKind(event.target.value as InstrumentKind);
               }}
             >
-              {INSTRUMENT_KINDS.filter((option) => option !== 'retirement').map((option) => (
+              {INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
                 <option key={option} value={option}>
                   {option.replace('_', ' ')}
                 </option>
@@ -232,7 +236,8 @@ export function EditHolding({
               An EPF and a PPF are one balance and not units, and nothing a retirement holding is has a cost to have: "Units 1" and "Cost
               not recorded" would be asking for figures nobody has. An NPS is held in units, so it keeps them.
             */}
-            {!(holding.instrument.kind === 'retirement' && holding.instrument.retirementType !== 'nps') && (
+            {/* A gold scheme's units and cost are its instalments: they are recorded there, not typed here. */}
+            {holding.instrument.kind !== 'gold' && !(holding.instrument.kind === 'retirement' && holding.instrument.retirementType !== 'nps') && (
               <div className="w-full sm:w-[110px] sm:shrink-0">
                 <Field
                   label="Units"
@@ -246,7 +251,7 @@ export function EditHolding({
               </div>
             )}
 
-            {holding.instrument.kind !== 'retirement' && (
+            {holding.instrument.kind !== 'retirement' && holding.instrument.kind !== 'gold' && (
               <div className="w-full sm:w-[130px] sm:shrink-0">
                 <Field
                   label={`Cost (${currency})`}
@@ -374,8 +379,8 @@ export function EditHolding({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}
-            {EARMARKS.filter((option) => !(holding.instrument.kind === 'retirement' && option === 'emergency')).map((option) => (
+            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund, nor is gold held by a jeweller (GD-I4). */}
+            {EARMARKS.filter((option) => !((holding.instrument.kind === 'retirement' || holding.instrument.kind === 'gold') && option === 'emergency')).map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>

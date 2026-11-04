@@ -12,6 +12,9 @@ import { ASSET_CLASSES, GLYPHS, GLYPH_STROKE, classColour } from '../../src/ui/a
  * stylesheet, tokens and path data at 1x, in both themes, and measures the strongest glyph pixel
  * against the tile fill beside it (docs/design/icons.md §5).
  *
+ * The tiles wrap, so that however many there are each keeps its whole pixels: a row that overflowed a phone's width shrank them to fractions
+ * and smeared the dots (nine tiles did, at 412px).
+ *
  * It does not need the app or a household: the demo household holds no `other`, so the tile that
  * most needs measuring is on no screen. The page is built from the shipped CSS and the shipped paths.
  */
@@ -26,7 +29,7 @@ const svg = (paths: readonly string[]): string =>
 
 const page = (theme: 'light' | 'dark'): string =>
   `<!doctype html><html data-theme="${theme}"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head>` +
-  `<body style="margin:0;background:var(--bg)"><div style="display:flex;gap:16px;padding:16px;background:var(--surface)">` +
+  `<body style="margin:0;background:var(--bg)"><div style="display:flex;flex-wrap:wrap;gap:16px;padding:16px;background:var(--surface)">` +
   ASSET_CLASSES.map(
     (c) =>
       `<span class="asset-tile" data-kind="${c.kind}" style="--tile:${classColour(c)}">${svg(GLYPHS[c.glyph])}</span>`,

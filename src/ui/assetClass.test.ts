@@ -177,9 +177,9 @@ describe('the geometry', () => {
 describe('the Stage 5 tiles: drawn, and not wired', () => {
   const kinds = Object.keys(UNWIRED_TILES).sort();
 
-  it('are the four that are drawn and not a class, each with a glyph that is drawn', () => {
-    // Retirement was a fifth and is a class now: an instrument kind, with a ramp slot of its own (--c9).
-    expect(kinds).toEqual(['gold', 'insurance', 'liabilities', 'property']);
+  it('are the three that are drawn and not a class, each with a glyph that is drawn', () => {
+    // Retirement was a fourth and gold a fifth, and each is a class now: an instrument kind with a ramp slot of its own (--c9, --c7).
+    expect(kinds).toEqual(['insurance', 'liabilities', 'property']);
     for (const kind of kinds) {
       const tile = UNWIRED_TILES[kind as keyof typeof UNWIRED_TILES];
       expect(GLYPHS[tile.glyph], `${kind} points at a glyph that does not exist`).toBeDefined();
@@ -190,7 +190,7 @@ describe('the Stage 5 tiles: drawn, and not wired', () => {
 
   it('carry the colours the design gives them', () => {
     expect(UNWIRED_TILES.property.colour).toBe('var(--c8)'); // rose, a house: its own hue, not Equity's emerald
-    expect(UNWIRED_TILES.gold.colour).toBe('var(--c3)'); // gold, a coin stack
+    expect(kindColour('gold')).toBe('var(--c7)'); // amber, a coin stack: Bonds already wears --c3, and one class takes one hue
     expect(kindColour('retirement')).toBe('var(--c9)'); // lime, a shield: its own hue, not Mutual funds' periwinkle
     expect(UNWIRED_TILES.insurance.colour).toBe('var(--c4)'); // violet, an umbrella
     expect(UNWIRED_TILES.liabilities.colour).toBe('var(--c5)'); // coral, a circle with a minus

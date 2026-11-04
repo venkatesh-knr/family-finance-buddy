@@ -218,7 +218,15 @@ export interface NewExpense {
   readonly visibility?: Visibility;
 }
 
-export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'retirement' | 'other';
+export type InstrumentKind = 'equity' | 'etf' | 'mutual_fund' | 'bond' | 'deposit' | 'retirement' | 'gold' | 'other';
+
+/** Which gold a gold holding is: a jeweller's savings scheme, or physical gold (docs/design/gold.md section 2). Present on gold and on nothing else. */
+export type GoldForm = 'jeweller_scheme' | 'physical';
+export const GOLD_FORMS: readonly GoldForm[] = ['jeweller_scheme', 'physical'];
+
+export type GoldVariant = 'amount' | 'weight';
+export type GoldPurity = '24k' | '22k' | '18k';
+export const GOLD_PURITIES: readonly GoldPurity[] = ['24k', '22k', '18k'];
 
 /** What a retirement holding is. Required when the kind is retirement and absent otherwise. */
 export type RetirementType = 'epf' | 'nps' | 'ppf';
@@ -231,6 +239,7 @@ export const INSTRUMENT_KINDS: readonly InstrumentKind[] = [
   'bond',
   'deposit',
   'retirement',
+  'gold',
   'other',
 ];
 
@@ -261,6 +270,8 @@ export interface Instrument {
   readonly scheme: Scheme | null;
   /** An EPF, an NPS or a PPF. Present on a retirement holding and on nothing else. */
   readonly retirementType: RetirementType | null;
+  /** A jeweller's scheme or physical gold. Present on a gold holding and on nothing else. */
+  readonly goldForm: GoldForm | null;
   /**
    * Which capital-gains rules apply, or null for "not classified".
    *
@@ -476,6 +487,8 @@ export interface NewHolding {
     readonly scheme?: Scheme;
     /** What a retirement holding is. Required for that kind and given for no other. */
     readonly retirementType?: RetirementType;
+    /** Which gold a gold holding is. Required for that kind and given for no other. */
+    readonly goldForm?: GoldForm;
   };
   readonly quantity: Quantity;
   readonly cost?: Money | null;
@@ -850,6 +863,70 @@ export interface SchemeRate {
   readonly effectiveFrom: IsoDate;
   /** A percentage a year to three places, as text: "7.100". */
   readonly ratePct: string;
+}
+
+/** A jeweller's gold savings scheme as it was agreed (docs/design/gold.md section 3). */
+export interface GoldSchemeTerms {
+  readonly holdingId: Uuid;
+  readonly variant: GoldVariant;
+  readonly jeweller: string;
+  readonly instalment: Money;
+  readonly instalments: number;
+  readonly startDate: IsoDate;
+  /** The day of the month an instalment falls due, 1 to 28. */
+  readonly dueDay: number;
+  readonly bonusText: string | null;
+  /** What the bonus is worth in money, where it is stated as money. */
+  readonly bonus: Money | null;
+  readonly purity: GoldPurity | null;
+  /** The last four characters of the scheme number, and nothing more of it. */
+  readonly schemeLast4: string | null;
+  readonly note: string | null;
+}
+
+/** One instalment paid: a lot on the scheme's holding. A weight scheme's receipt has the grams. */
+export interface GoldInstalment {
+  readonly id: Uuid;
+  readonly holdingId: Uuid;
+  readonly date: IsoDate;
+  readonly amount: Money;
+  readonly grams: Quantity | null;
+  readonly note: string | null;
+}
+
+export interface GoldListing {
+  readonly schemes: readonly GoldSchemeTerms[];
+  /** Every instalment of every scheme, oldest first. */
+  readonly instalments: readonly GoldInstalment[];
+}
+
+export interface NewGoldScheme {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  /** What the holding is called in the list. */
+  readonly name: string;
+  readonly jeweller: string;
+  readonly variant: GoldVariant;
+  readonly instalment: Money;
+  readonly instalments: number;
+  readonly startDate: IsoDate;
+  readonly dueDay: number;
+  readonly bonusText?: string | null;
+  readonly bonus?: Money | null;
+  readonly purity?: GoldPurity | null;
+  readonly schemeLast4?: string | null;
+  readonly earmark?: Earmark;
+}
+
+export interface NewInstalment {
+  readonly householdId: Uuid;
+  readonly holdingId: Uuid;
+  readonly date: IsoDate;
+  readonly amount: Money;
+  /** On a weight scheme's receipt: the grams bought, a decimal string. */
+  readonly grams?: Quantity | null;
+  /** The day an amount scheme's value is recorded as at: today in India. */
+  readonly valueOn: IsoDate;
 }
 
 export interface PpfListing {

@@ -294,7 +294,7 @@ export function AddHolding({
             }}
           >
             {/* Retirement is added by its own form, which asks for its type: a fund cannot be made one here. */}
-            {INSTRUMENT_KINDS.filter((option) => option !== 'retirement').map((option) => (
+            {INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
               <option key={option} value={option}>
                 {option.replace('_', ' ')}
               </option>

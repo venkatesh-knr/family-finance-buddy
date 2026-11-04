@@ -17,6 +17,8 @@ import { daysPhrase } from './fixedIncomeRows.ts';
 import { barTerm } from './rowFact.ts';
 import { RETIREMENT_LABEL } from './AddRetirement.tsx';
 import { RetirementCards, RetirementValue } from './RetirementDetail.tsx';
+import { GoldCards, GoldValue } from './GoldDetail.tsx';
+import { useGold } from './useGold.ts';
 import { usePpf } from './usePpf.ts';
 import { kindColour } from '../../ui/labels.ts';
 import { ArchiveHolding, CurrencyOptions, FetchPrice, MissingMonths, QuotedValue, RecordReading } from './holdingParts.tsx';
@@ -65,6 +67,7 @@ export function HoldingDetail({
   // A PPF is worked out from its account, its payments and the notified rate, read only while one is on screen. A hook, so before the
   // early returns.
   const ppfData = usePpf(listing?.household.id ?? null, row?.holding.instrument.retirementType === 'ppf');
+  const goldData = useGold(listing?.household.id ?? null, row?.holding.instrument.kind === 'gold');
   if (listing === null) return null;
 
   if (row === undefined) {
@@ -86,6 +89,7 @@ export function HoldingDetail({
   const kind = holding.instrument.kind;
   const isFixed = kind === 'deposit' || kind === 'bond';
   const isRetirement = kind === 'retirement';
+  const isGold = kind === 'gold';
   const name = splitFundName(holding.instrument.name);
   const facts = fixed.get(holdingId);
   // Paid out, or sold out: left out of the totals from the day it was, as net worth leaves it out.
@@ -146,7 +150,7 @@ export function HoldingDetail({
         <p className="note mt-2">
           {holding.earmark === 'retirement'
             ? 'Counted toward the FIRE corpus.'
-            : holding.earmark === 'emergency'
+            : holding.earmark === 'emergency' && !isGold
               ? 'Counts toward emergency cover. Left out of the FIRE corpus.'
               : 'Left out of the FIRE corpus.'}
         </p>
@@ -210,6 +214,7 @@ export function HoldingDetail({
       </section>
       <div className="flex flex-wrap items-center gap-2">
         {isFixed && <Pill tone="neutral">{kind === 'deposit' ? 'Fixed deposit' : 'Bond'}</Pill>}
+        {isGold && <Pill tone="neutral">Gold savings</Pill>}
         {isRetirement && holding.instrument.retirementType !== null && (
           <Pill tone="neutral">{RETIREMENT_LABEL[holding.instrument.retirementType]}</Pill>
         )}
@@ -313,7 +318,21 @@ export function HoldingDetail({
           />
         )}
 
-        {canWrite && !isFixed && !isRetirement && (
+        {isGold && (
+          <GoldValue
+            row={row}
+            gold={goldData}
+            householdId={listing.household.id}
+            today={today}
+            privacy={privacy}
+            canWrite={canWrite}
+            onChanged={async () => {
+              await reload();
+            }}
+          />
+        )}
+
+        {canWrite && !isFixed && !isRetirement && !isGold && (
           <div className="value-actions">
             <button
               type="button"
@@ -381,6 +400,21 @@ export function HoldingDetail({
             void reload();
           }}
         />
+      ) : isGold ? (
+        <GoldCards
+          row={row}
+          gold={goldData}
+          householdId={listing.household.id}
+          today={today}
+          privacy={privacy}
+          canWrite={canWrite}
+          onChanged={async () => {
+            await reload();
+          }}
+        >
+          {purpose}
+          <div>{archive}</div>
+        </GoldCards>
       ) : isRetirement ? (
         <RetirementCards
           row={row}

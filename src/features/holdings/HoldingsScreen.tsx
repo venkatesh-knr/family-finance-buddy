@@ -19,7 +19,10 @@ import { kindLabel } from '../../ui/labels.ts';
 import { splitFundName } from './fundName.ts';
 import { groupHoldings, matchesFilter, type Filter, type ListHolding, type Sort } from './holdingGroups.ts';
 import { AddHolding, RefreshPrices } from './holdingParts.tsx';
+import { AddGold } from './AddGold.tsx';
 import { AddRetirement } from './AddRetirement.tsx';
+import { goldRowLine } from './goldFacts.ts';
+import { useGold } from './useGold.ts';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
 import { Chips, EmergencyCard, FixedExtras, GroupSection, ListHeader, Summary, type RowModel } from './HoldingsList.tsx';
@@ -36,6 +39,7 @@ const A: Record<string, string> = {
   bond: 'a bond',
   deposit: 'a deposit',
   retirement: 'a retirement account',
+  gold: 'a gold scheme',
   other: 'a holding',
 };
 
@@ -58,6 +62,8 @@ export function HoldingsScreen({
   const hook = useHoldings(householdId);
   const { listing, rows, loading, problem, today, paidOut, paidOutFailed } = hook;
   const fixed = useFixedIncomeFacts(listing, today);
+  // Read once for the list, so a gold scheme's row can say how far through it is.
+  const goldData = useGold(listing?.household.id ?? null, rows.some((row) => row.holding.instrument.kind === 'gold'));
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
   const [sort, setSort] = useState<Sort>('largest');
   const [fetchSaid, setFetchSaid] = useState<string | null>(null);
@@ -140,7 +146,7 @@ export function HoldingsScreen({
 
   /** What is earmarked as an emergency fund and still held, per currency, for the card under a list of deposits. */
   const emergency = useMemo(() => {
-    const live = listHoldings.filter((h) => h.earmark === 'emergency' && h.paidOutOn === null && h.unitsHeld !== 0n);
+    const live = listHoldings.filter((h) => h.earmark === 'emergency' && h.kind !== 'gold' && h.paidOutOn === null && h.unitsHeld !== 0n);
     const by = new Map<string, bigint>();
     for (const h of live) if (h.latest !== null) by.set(h.latest.currency, (by.get(h.latest.currency) ?? 0n) + h.latest.minor);
     return {
@@ -161,7 +167,10 @@ export function HoldingsScreen({
       // A deposit's row says when its reading was taken, and so does a retirement holding's: an EPF is a passbook balance and an
       // NPS units at a NAV, neither has a cost to have, and "no cost recorded" on it would be asking for a figure nobody has.
       const isFixed =
-        holding.instrument.kind === 'deposit' || holding.instrument.kind === 'bond' || holding.instrument.kind === 'retirement';
+        holding.instrument.kind === 'deposit' ||
+        holding.instrument.kind === 'bond' ||
+        holding.instrument.kind === 'retirement' ||
+        holding.instrument.kind === 'gold';
       const value = row.latest === null ? null : money(row.latest.amountMinor, currency);
 
       let gain: RowModel['gain'] = { kind: 'none' };
@@ -191,6 +200,10 @@ export function HoldingsScreen({
           view: facts?.view ?? null,
           institution: facts?.institution ?? null,
           retirementType: holding.instrument.retirementType,
+          goldLine:
+            holding.instrument.kind === 'gold'
+              ? goldRowLine(goldData.gold?.schemes.find((scheme) => scheme.holdingId === id), goldData.gold?.instalments ?? [], today)
+              : null,
           privacy,
         }),
         value,
@@ -199,7 +212,7 @@ export function HoldingsScreen({
         gain,
       };
     };
-  }, [rows, fixed, privacy]);
+  }, [rows, fixed, privacy, goldData.gold, today]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
   if (problem !== null && listing === null) {
@@ -295,9 +308,11 @@ export function HoldingsScreen({
           initialKind={filter.kind ?? ''}
           onAdd={hook.add}
           onAddRetirement={hook.addRetirement}
+          onAddGold={hook.addGold}
           today={today}
           onDone={() => {
             fixed.reload();
+            void goldData.reload();
             void hook.reload();
             setPanel(null);
           }}
@@ -366,6 +381,7 @@ function AddPanel({
   initialKind,
   onAdd,
   onAddRetirement,
+  onAddGold,
   today,
   onDone,
 }: {
@@ -373,11 +389,18 @@ function AddPanel({
   initialKind: string;
   onAdd: React.ComponentProps<typeof AddHolding>['onAdd'];
   onAddRetirement: React.ComponentProps<typeof AddRetirement>['onAdd'];
+  onAddGold: React.ComponentProps<typeof AddGold>['onAdd'];
   today: IsoDate;
   onDone: () => void;
 }) {
-  const [what, setWhat] = useState<'holding' | 'fixed' | 'retirement'>(
-    initialKind === 'deposit' || initialKind === 'bond' ? 'fixed' : initialKind === 'retirement' ? 'retirement' : 'holding',
+  const [what, setWhat] = useState<'holding' | 'fixed' | 'retirement' | 'gold'>(
+    initialKind === 'deposit' || initialKind === 'bond'
+      ? 'fixed'
+      : initialKind === 'retirement'
+        ? 'retirement'
+        : initialKind === 'gold'
+          ? 'gold'
+          : 'holding',
   );
   return (
     <div className="mb-3.5 flex flex-col gap-3">
@@ -387,21 +410,25 @@ function AddPanel({
           className="field"
           value={what}
           onChange={(event) => {
-            setWhat(event.target.value === 'fixed' ? 'fixed' : event.target.value === 'retirement' ? 'retirement' : 'holding');
+            const value = event.target.value;
+            setWhat(value === 'fixed' || value === 'retirement' || value === 'gold' ? value : 'holding');
           }}
         >
           <option value="holding">A fund, an ETF, a share or something else</option>
           <option value="fixed">A deposit or a bond</option>
           <option value="retirement">A retirement account: EPF, NPS or PPF</option>
+          <option value="gold">Gold savings with a jeweller</option>
         </select>
       </label>
       {what === 'retirement' ? (
         <AddRetirement listing={listing} today={today} onAdd={onAddRetirement} onDone={onDone} />
+      ) : what === 'gold' ? (
+        <AddGold listing={listing} today={today} onAdd={onAddGold} onDone={onDone} />
       ) : what === 'holding' ? (
         <AddHolding
           listing={listing}
           onAdd={onAdd}
-          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' || initialKind === 'retirement'
+          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' || initialKind === 'retirement' || initialKind === 'gold'
             ? {}
             : { initialKind: initialKind as InstrumentKind })}
         />

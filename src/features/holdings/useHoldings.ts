@@ -21,6 +21,7 @@ import { istCalendarDate } from '../../lib/dates.ts';
 import type { Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
+import { addGoldScheme } from '../../repo/gold.ts';
 import { addRetirement } from '../../repo/retirement.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
 import { positionInputs } from './history.ts';
@@ -35,6 +36,7 @@ import type {
   HoldingListing,
   NewDisposal,
   NewHolding,
+  NewGoldScheme,
   NewRetirement,
   NewLot,
   NewValuation,
@@ -114,6 +116,8 @@ export function useHoldings(householdId: string | null): {
     input: NewRetirement,
     reading: { readonly date: string; readonly quantity: string; readonly amount: Money; readonly note?: string } | null,
   ) => Promise<{ valueProblem: string | null }>;
+  /** Add a jeweller's gold savings scheme: its holding and its terms, and re-read. No instalment is recorded. */
+  addGold: (input: NewGoldScheme) => Promise<void>;
   record: (valuation: NewValuation) => Promise<void>;
   recordLot: (lot: NewLot) => Promise<void>;
   recordSale: (disposal: NewDisposal) => Promise<void>;
@@ -315,6 +319,14 @@ export function useHoldings(householdId: string | null): {
     [load, today],
   );
 
+  const addGoldWithReload = useCallback(
+    async (input: NewGoldScheme) => {
+      await addGoldScheme(input);
+      await load();
+    },
+    [load],
+  );
+
   const addRetirementWithReading = useCallback(
     async (
       input: NewRetirement,
@@ -377,6 +389,7 @@ export function useHoldings(householdId: string | null): {
     problem,
     add,
     addRetirement: addRetirementWithReading,
+    addGold: addGoldWithReload,
     record,
     recordLot,
     recordSale,
