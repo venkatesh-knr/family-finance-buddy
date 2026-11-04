@@ -121,12 +121,12 @@ picker, a legend or a filter until its stage ships.
 | kind | hue | glyph |
 | --- | --- | --- |
 | property | rose (`--c8`; wired) | a house |
-| gold | gold | a stack of coins seen in section |
+| gold | gold (`--c7`; wired, a proposed departure from the board's `--c3`: see `conformance.md`) | a stack of coins seen in section |
 | retirement (EPF · NPS · PPF) | lime (`--c9`; wired, a class of its own) | a shield |
 | insurance | violet | an umbrella |
 | liabilities | **coral** | a circle containing a minus |
 
-**Gold is wired when its step lands** (`docs/build-plan.md`, step 6b; `docs/design/gold.md` section 2), and not before: until then it appears in no picker, legend or filter, whatever the board draws. The Gold class is what the invested view of step 7b needs.
+**Gold is wired** (`docs/build-plan.md`, step 6b; `docs/design/gold.md` section 2): it is a kind of its own in the pickers, the legend and the filter, wears `--c7` because the board's `--c3` is the colour Bonds already wears, and is held out of the liquid sum (GD-I4). The Gold class is what the invested view of step 7b needs.
 
 Liabilities is the only tile on coral, and the only one carrying a negative
 signal. That is deliberate and it is the reason coral is not available to any
