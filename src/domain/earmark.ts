@@ -130,10 +130,13 @@ export function fireCorpus(options: {
 
     const committed = holding.earmark === 'child' || holding.earmark === 'house';
     const locked = holding.scheme !== null && (LOCKED_SCHEMES as readonly string[]).includes(holding.scheme);
-    if (!committed && !locked && !holding.carriesPolicy && holding.kind !== 'retirement') bucket.liquid += reading.amount.minor;
+    // A retirement account cannot be had before retirement, and a gold scheme is held by a jeweller and redeemed as jewellery (GD-I4).
+    if (!committed && !locked && !holding.carriesPolicy && holding.kind !== 'retirement' && holding.kind !== 'gold') bucket.liquid += reading.amount.minor;
 
-    if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) {
-      bucket.excluded[holding.earmark as ExcludedEarmark] += reading.amount.minor;
+    // Gold is never the emergency goal (GD-I4): one already earmarked so, from before the picker refused it, is counted as the corpus it is.
+    const earmark = holding.kind === 'gold' && holding.earmark === 'emergency' ? 'none' : holding.earmark;
+    if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(earmark)) {
+      bucket.excluded[earmark as ExcludedEarmark] += reading.amount.minor;
     } else {
       bucket.included += reading.amount.minor;
     }

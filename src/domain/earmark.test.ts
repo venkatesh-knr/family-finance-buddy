@@ -193,6 +193,24 @@ describe('the liquid corpus — the other named output of the one classification
     },
   );
 
+  it('GD-I4 — leaves a gold holding out of the liquid corpus: jewellery is not money that can be had in an emergency at its face value, though it is in the corpus', () => {
+    const [total] = fireCorpus({
+      holdings: [holding({ id: 'gold', kind: 'gold' }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
+      valuations: [reading('gold', inr(100)), reading('fd', inr(40))],
+    });
+    expect(total?.included.minor).toBe(14000n);
+    expect(total?.liquid.minor).toBe(4000n);
+  });
+
+  it('GD-I4 — never counts gold toward the emergency goal, even one earmarked so already: it stays in the corpus', () => {
+    const [total] = fireCorpus({
+      holdings: [holding({ id: 'gold', kind: 'gold', earmark: 'emergency' })],
+      valuations: [reading('gold', inr(100))],
+    });
+    expect(total?.excluded.emergency.minor).toBe(0n);
+    expect(total?.included.minor).toBe(10000n);
+  });
+
   it('counts a retirement holding in the corpus whether it is earmarked retirement or not earmarked at all', () => {
     const [total] = fireCorpus({
       holdings: [
