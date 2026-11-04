@@ -18,6 +18,7 @@ import { Button, Problem } from '../../ui/primitives.tsx';
 import { DemoBadge, useHouseholdChoice } from '../../app/household.tsx';
 import { resetDemoHousehold } from '../../repo/households.ts';
 import { listRates } from '../../repo/rates.ts';
+import { RecurringRules } from '../recurring/RecurringRules.tsx';
 
 function Chevron() {
   return (
@@ -40,6 +41,8 @@ function Chevron() {
 
 export function SettingsScreen({
   householdId,
+  privacy,
+  recurringMade = 0,
   theme,
   onTheme,
   hideAmountsByDefault,
@@ -48,6 +51,10 @@ export function SettingsScreen({
   onDisplayCurrency,
 }: {
   householdId: string | null;
+  /** Amounts are drawn as dots while the app is hiding them. */
+  privacy: boolean;
+  /** How many recurring entries were made since the app opened. */
+  recurringMade?: number;
   theme: ThemeChoice;
   onTheme: (next: ThemeChoice) => void;
   hideAmountsByDefault: boolean;
@@ -200,6 +207,8 @@ export function SettingsScreen({
       </section>
 
       <HouseholdScreen key={resets} householdId={householdId} />
+
+      <RecurringRules key={`rules-${String(resets)}`} householdId={householdId} privacy={privacy} recurringMade={recurringMade} />
 
       {/*
         Data. The prototype's group also holds the template, the upload, the export and deleting a household; each

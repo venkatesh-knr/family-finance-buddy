@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
+import { usePostRecurring } from './usePostRecurring.ts';
 import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
 import { FireScreen } from '../features/plan/PlanScreen.tsx';
@@ -191,6 +192,8 @@ function SignedIn({
   const { current } = useHouseholdChoice();
   const householdId = current?.household.id ?? null;
   const role = current?.role ?? null;
+  // The recurring entries that have come due are made when an owner or a partner opens the app; the Expenses screen reads again when some were.
+  const recurringMade = usePostRecurring(householdId, role);
 
   // What was asked for (a hash somebody typed, a link followed) is a request and
   // not a grant: the role decides which screen is actually shown, and which
@@ -374,6 +377,8 @@ function SignedIn({
         {screen === 'settings' && (
           <SettingsScreen
             householdId={householdId}
+            privacy={privacy}
+            recurringMade={recurringMade}
             theme={choice}
             onTheme={setChoice}
             hideAmountsByDefault={hideAmountsByDefault}
@@ -396,6 +401,7 @@ function SignedIn({
           <ExpensesScreen
             privacy={privacy}
             householdId={householdId}
+            recurringMade={recurringMade}
             displayCurrency={displayCurrency}
           />
         )}

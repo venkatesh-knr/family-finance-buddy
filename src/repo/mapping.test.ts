@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toPpfAccount, toPpfEntry, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange, toSchemeRate } from './mapping.ts';
+import { toExpense, toRecurringRule, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toPpfAccount, toPpfEntry, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange, toSchemeRate } from './mapping.ts';
 import { MalformedRowError } from '../lib/guards.ts';
 import type { Member } from './types.ts';
 
@@ -18,6 +18,7 @@ const row = {
   note: null,
   voided_at: null,
   visibility: 'household',
+  captured_via: 'typed',
 };
 
 describe('toExpense', () => {
@@ -69,6 +70,12 @@ describe('toExpense', () => {
     // disclosure produced by being helpful about a bug.
     const { visibility: _omitted, ...withoutVisibility } = row;
     expect(() => toExpense(withoutVisibility, membersById)).toThrow(/visibility/);
+  });
+
+  it('says how an entry arrived, and refuses a way we do not know', () => {
+    expect(toExpense(row, membersById).capturedVia).toBe('typed');
+    expect(toExpense({ ...row, captured_via: 'rule' }, membersById).capturedVia).toBe('rule');
+    expect(() => toExpense({ ...row, captured_via: 'telepathy' }, membersById)).toThrow(/not one of/);
   });
 
   it('refuses a visibility we do not know', () => {
@@ -768,5 +775,42 @@ describe('retirement rows', () => {
     expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: '7.100' }).ratePct).toBe('7.100');
     expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: 7.1 }).ratePct).toBe('7.100');
     expect(() => toSchemeRate({ scheme: 'nsc', effective_from: '2020-04-01', rate_pct: '7.100' })).toThrow(MalformedRowError);
+  });
+});
+
+describe('toRecurringRule', () => {
+  const rule = {
+    id: 'r-1',
+    household_id: 'h-1',
+    name: 'Electricity',
+    category_id: 'c-1',
+    member_id: 'm-1',
+    amount_minor: '320000',
+    currency: 'INR',
+    cadence: 'monthly',
+    due_day: 5,
+    next_due: '2026-12-05',
+    payee: null,
+    method: 'auto_debit',
+    visibility: 'household',
+    auto_post: true,
+    reminder_days: 2,
+    status: 'active',
+  };
+
+  it('maps a rule with its amount in minor units and the day it next falls due', () => {
+    const mapped = toRecurringRule(rule);
+    expect(mapped.amount).toEqual({ minor: 320000n, currency: 'INR' });
+    expect(mapped.cadence).toBe('monthly');
+    expect(mapped.dueDay).toBe(5);
+    expect(mapped.nextDue).toBe('2026-12-05');
+    expect(mapped.method).toBe('auto_debit');
+    expect(mapped.payee).toBeNull();
+    expect(mapped.autoPost).toBe(true);
+  });
+
+  it('refuses a cadence or a status it does not know, rather than guessing one', () => {
+    expect(() => toRecurringRule({ ...rule, cadence: 'fortnightly' })).toThrow(/not one of/);
+    expect(() => toRecurringRule({ ...rule, status: 'deleted' })).toThrow(/not one of/);
   });
 });

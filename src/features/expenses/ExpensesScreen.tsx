@@ -22,9 +22,12 @@ export function ExpensesScreen({
   privacy,
   householdId,
   displayCurrency,
+  recurringMade = 0,
 }: {
   privacy: boolean;
   householdId: string | null;
+  /** How many recurring entries were made since the app opened. When it grows, the entries are read again. */
+  recurringMade?: number;
   /** Empty for the household's own currency. A device setting (§366). */
   displayCurrency: string;
 }) {
@@ -75,6 +78,11 @@ export function ExpensesScreen({
     add,
     reload,
   } = useExpenses(householdId);
+
+  // The poster ran after the first read: read again, so the entries it made are here.
+  useEffect(() => {
+    if (recurringMade > 0) reload();
+  }, [recurringMade]);
 
   if (loading) {
     return <p className="note px-4.5 py-4.5">Loading…</p>;

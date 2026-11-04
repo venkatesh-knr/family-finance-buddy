@@ -223,6 +223,8 @@ function Entry({
           <MemberTag member={expense.member} mark={mark} />
           {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
           {expense.isVoided && <Pill tone="due">Voided</Pill>}
+          {/* Nobody typed this one: a recurring rule made it on its due day. */}
+          {expense.capturedVia === 'rule' && <Pill tone="neutral">Recurring</Pill>}
           {/*
             A row reaching this screen at all means the caller may read it, so a personal one here is always the
             caller's own. "A privacy control nobody can observe working is indistinguishable from one that does

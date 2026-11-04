@@ -19,6 +19,7 @@ import {
 import { EARMARKS, SCHEMES } from '../domain/earmark.ts';
 import { money } from '../lib/money.ts';
 import {
+  CAPTURED_VIA,
   CATEGORY_NATURES,
   COMPOUNDINGS,
   COUPON_FREQUENCIES,
@@ -33,6 +34,8 @@ import {
   PROPERTY_KINDS,
   GOLD_FORMS,
   GOLD_PURITIES,
+  RECURRING_CADENCES,
+  RULE_STATUSES,
   RETIREMENT_TYPES,
   VALUATION_BASES,
   VALUATION_SOURCES,
@@ -42,6 +45,7 @@ import {
   type FixedIncomeTerms,
   type GoldInstalment,
   type GoldSchemeTerms,
+  type RecurringRule,
   type RatingChange,
   type Expense,
   type Holding,
@@ -177,6 +181,7 @@ export function toExpense(raw: unknown, membersById: ReadonlyMap<string, Member>
       VISIBILITIES,
       'expense_txn.visibility',
     ),
+    capturedVia: requireOneOf(row['captured_via'], CAPTURED_VIA, 'expense_txn.captured_via'),
   };
 }
 
@@ -629,5 +634,29 @@ export function toSchemeRate(raw: unknown): SchemeRate {
     effectiveFrom: requireIsoDate(row['effective_from'], 'scheme_rate.effective_from'),
     // numeric(6,3) arrives as "7.100" when cast to text; a number is said the same way.
     ratePct: typeof rate === 'number' ? rate.toFixed(3) : requireString(rate, 'scheme_rate.rate_pct'),
+  };
+}
+
+/** A recurring rule: what recurs, how often, on which day, and whether it posts itself. */
+export function toRecurringRule(raw: unknown): RecurringRule {
+  const row = requireRecord(raw, 'recurring_rule');
+  const currency = requireString(row['currency'], 'recurring_rule.currency');
+  const method = optionalString(row['method'], 'recurring_rule.method');
+  return {
+    id: requireString(row['id'], 'recurring_rule.id'),
+    householdId: requireString(row['household_id'], 'recurring_rule.household_id'),
+    name: requireString(row['name'], 'recurring_rule.name'),
+    categoryId: requireString(row['category_id'], 'recurring_rule.category_id'),
+    memberId: requireString(row['member_id'], 'recurring_rule.member_id'),
+    amount: money(toBigIntExact(row['amount_minor'], 'recurring_rule.amount_minor'), currency),
+    cadence: requireOneOf(row['cadence'], RECURRING_CADENCES, 'recurring_rule.cadence'),
+    dueDay: requireNumber(row['due_day'], 'recurring_rule.due_day'),
+    nextDue: requireIsoDate(row['next_due'], 'recurring_rule.next_due'),
+    payee: optionalString(row['payee'], 'recurring_rule.payee'),
+    method: method === null ? null : requireOneOf(method, PAYMENT_METHODS, 'recurring_rule.method'),
+    visibility: requireOneOf(row['visibility'], VISIBILITIES, 'recurring_rule.visibility'),
+    autoPost: requireBoolean(row['auto_post'], 'recurring_rule.auto_post'),
+    reminderDays: requireNumber(row['reminder_days'], 'recurring_rule.reminder_days'),
+    status: requireOneOf(row['status'], RULE_STATUSES, 'recurring_rule.status'),
   };
 }
