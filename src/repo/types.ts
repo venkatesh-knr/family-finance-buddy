@@ -160,6 +160,8 @@ export interface Expense {
    * of theirs never arrives here at all. On your own rows it is what you set.
    */
   readonly visibility: Visibility;
+  /** How it arrived. A rule's entry says so, because nobody typed it. */
+  readonly capturedVia: CapturedVia;
 }
 
 /**
@@ -978,3 +980,70 @@ export type NewRetirement =
       readonly openingBalance: Money;
       readonly earmark?: Earmark;
     };
+
+// ───────────────────────────────────────────── recurring rules
+
+export type RecurringCadence = 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+
+export const RECURRING_CADENCES: readonly RecurringCadence[] = ['monthly', 'quarterly', 'half_yearly', 'yearly'];
+
+export type RuleStatus = 'active' | 'paused' | 'archived';
+
+export const RULE_STATUSES: readonly RuleStatus[] = ['active', 'paused', 'archived'];
+
+/** How an expense entry arrived: typed by a person, shared into the app, posted by a recurring rule, or imported from a statement. */
+export type CapturedVia = 'typed' | 'shared' | 'rule' | 'import';
+
+export const CAPTURED_VIA: readonly CapturedVia[] = ['typed', 'shared', 'rule', 'import'];
+
+/** What recurs: a category, a member, an amount, how often and on which day (docs/design/spending-capture.md section 3). */
+export interface RecurringRule {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly name: string;
+  readonly categoryId: Uuid;
+  readonly memberId: Uuid;
+  readonly amount: Money;
+  readonly cadence: RecurringCadence;
+  /** The day of the month, 1 to 28. */
+  readonly dueDay: number;
+  /** The next day it falls due and has not been posted. */
+  readonly nextDue: IsoDate;
+  readonly payee: string | null;
+  readonly method: PaymentMethod | null;
+  readonly visibility: Visibility;
+  readonly autoPost: boolean;
+  readonly reminderDays: number;
+  readonly status: RuleStatus;
+}
+
+export interface NewRecurringRule {
+  readonly householdId: Uuid;
+  readonly name: string;
+  readonly categoryId: Uuid;
+  readonly memberId: Uuid;
+  readonly amount: Money;
+  readonly cadence: RecurringCadence;
+  /** The first day it falls due. Its day of the month is the rule's due day (1 to 28). */
+  readonly firstDue: IsoDate;
+  readonly payee?: string | null;
+  readonly method?: PaymentMethod | null;
+  readonly visibility?: Visibility;
+  readonly autoPost?: boolean;
+  readonly reminderDays?: number;
+}
+
+/** What may change on a rule. A new due day comes with the day it next falls due, which must be on it. */
+export interface RecurringRulePatch {
+  readonly name?: string;
+  readonly categoryId?: Uuid;
+  readonly memberId?: Uuid;
+  readonly amount?: Money;
+  readonly cadence?: RecurringCadence;
+  readonly nextDue?: IsoDate;
+  readonly payee?: string | null;
+  readonly method?: PaymentMethod | null;
+  readonly autoPost?: boolean;
+  readonly reminderDays?: number;
+  readonly status?: RuleStatus;
+}

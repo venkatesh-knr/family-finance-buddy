@@ -127,7 +127,7 @@ export async function listExpenses(
     .from('expense_txn')
     // amount_minor::text — a bigint over 2^53 would otherwise arrive as a
     // lossy double. See the note in holdings.ts.
-    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility, captured_via')
     .eq('household_id', household.id)
     .order('txn_date', { ascending: false })
     .order('created_at', { ascending: false })
@@ -183,7 +183,7 @@ export async function listExpensesBetween(options: {
   const { data, error, count } = await supabase()
     .from('expense_txn')
     .select(
-      'id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility',
+      'id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility, captured_via',
       { count: 'exact' },
     )
     .eq('household_id', options.householdId)
@@ -236,7 +236,7 @@ export async function addExpense(expense: NewExpense): Promise<Expense> {
       // the schema and the wrong thing to rely on at a seam.
       visibility: expense.visibility ?? 'household',
     })
-    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility')
+    .select('id, household_id, member_id, category_id, txn_date, amount_minor::text, currency, payee, method, note, voided_at, visibility, captured_via')
     .single();
 
   if (result.error !== null) throw asRepositoryError(result.error);
