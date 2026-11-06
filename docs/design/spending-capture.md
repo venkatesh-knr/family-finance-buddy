@@ -224,7 +224,7 @@ cash reserve       = savings and current account balances − card dues
 ```
 
 **Put into holdings** comes from the holdings' own entries, by date, per class: a
-purchase lot, a deposit opened, an RD or gold-scheme instalment, a PPF or NPS
+purchase lot (a gold purchase among them), a deposit opened, an RD instalment, a PPF or NPS
 contribution paid from an account. **Taken out** is a sale, a redemption or a
 maturity paid into an account. Both are shown, and the net.
 
@@ -232,8 +232,7 @@ maturity paid into an account. Both are shown, and the net.
 
 - Market movement. A fund that rose ₹10,000 is in *net worth change*, not here.
 - Dividends and interest reinvested inside a holding, bonus units and splits.
-- Moving a holding between members, or converting one holding into another
-  (gold.md §5).
+- Moving a holding between members.
 - **Contributions that never pass through an account** (EPF, and employer NPS
   through payroll). They are shown on a line of their own, *also put away through
   payroll*, and are not in *invested* or *saved*, because they were never in the
@@ -310,7 +309,7 @@ reserve by account. A class with nothing in it this month is folded into one lin
   constraint, in pgTAP).
 - SC-I11: a fund's price rising leaves invested unchanged; an SIP lot dated in the
   month adds its amount to the month's invested and its class.
-- SC-I12: the §2 worked example plus a gold-scheme instalment gives saved ₹1,26,580
+- SC-I12: the §2 worked example plus a ₹5,000 gold ETF purchase gives saved ₹1,26,580
   = invested ₹57,500 + cash reserve ₹69,080.
 - SC-I13: invested by class sums to invested, and a class absent from Holdings
   never appears.

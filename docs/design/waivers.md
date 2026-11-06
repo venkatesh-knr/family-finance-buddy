@@ -59,6 +59,5 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I14 — not built: the payroll line arrives with slice S5 and the income ledger from 6a (spending-capture.md §8) — 2026-10-30
 
 ## gold.md
-
-- GD-I5 — not built: the gold kind and the month's invested view (gold.md §4; spending-capture.md §10) — 2026-10-30
-- GD-I6 — not built: redemption arrives with the gold kind (gold.md §5) — 2026-10-30
+- GD-I11 — not built: physical gold is built, but the month's invested view it is asserted against is slice S5 (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
+- GD-I13 — not built: the listed-gold-ETF tax class is open until the owner agrees its holding period (gold.md §5, §8 item 4) — 2026-11-06

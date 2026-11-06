@@ -236,7 +236,7 @@ export function EditHolding({
               An EPF and a PPF are one balance and not units, and nothing a retirement holding is has a cost to have: "Units 1" and "Cost
               not recorded" would be asking for figures nobody has. An NPS is held in units, so it keeps them.
             */}
-            {/* A gold scheme's units and cost are its instalments: they are recorded there, not typed here. */}
+            {/* A gold holding's grams and cost are its purchases: they are recorded there, not typed here. */}
             {holding.instrument.kind !== 'gold' && !(holding.instrument.kind === 'retirement' && holding.instrument.retirementType !== 'nps') && (
               <div className="w-full sm:w-[110px] sm:shrink-0">
                 <Field
@@ -379,8 +379,8 @@ export function EditHolding({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund, nor is gold held by a jeweller (GD-I4). */}
-            {EARMARKS.filter((option) => !((holding.instrument.kind === 'retirement' || holding.instrument.kind === 'gold') && option === 'emergency')).map((option) => (
+            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund, nor is physical gold (GD-I10). */}
+            {EARMARKS.filter((option) => !((holding.instrument.kind === 'retirement' || (holding.instrument.kind === 'gold' && holding.instrument.goldForm === 'physical')) && option === 'emergency')).map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>

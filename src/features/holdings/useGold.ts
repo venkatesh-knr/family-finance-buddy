@@ -1,16 +1,16 @@
 /**
- * A household's gold schemes and their instalments, for the screens that work a scheme out.
+ * A household's typed gold rates, for the screens that value physical gold (docs/design/gold.md section 3).
  *
- * Read apart from the holdings: a scheme that could not be read says so, and is not read as a scheme with nothing paid. Nothing here
- * works out a figure: that is `src/domain/gold.ts`.
+ * Read apart from the holdings: a rate that could not be read says so, and is not read as there being none, because "no rate" means
+ * "not valued" and that must never be said of a failed read. Nothing here works out a figure: that is `src/domain/gold.ts`.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { listGold } from '../../repo/gold.ts';
-import type { GoldListing } from '../../repo/types.ts';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { asDomainRates, listGoldRates } from '../../repo/gold.ts';
+import type { GoldRateRow } from '../../repo/types.ts';
 
 export function useGold(householdId: string | null, enabled: boolean) {
-  const [gold, setGold] = useState<GoldListing | null>(null);
+  const [rows, setRows] = useState<readonly GoldRateRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const generation = useRef(0);
 
@@ -18,9 +18,9 @@ export function useGold(householdId: string | null, enabled: boolean) {
     if (householdId === null || !enabled) return;
     const mine = ++generation.current;
     try {
-      const next = await listGold(householdId);
+      const next = await listGoldRates(householdId);
       if (mine === generation.current) {
-        setGold(next);
+        setRows(next);
         setFailed(false);
       }
     } catch {
@@ -32,7 +32,8 @@ export function useGold(householdId: string | null, enabled: boolean) {
     void load();
   }, [load]);
 
-  return { gold, failed, reload: load };
+  const rates = useMemo(() => (rows === null ? null : asDomainRates(rows)), [rows]);
+  return { rows, rates, failed, reload: load };
 }
 
 export type GoldData = ReturnType<typeof useGold>;

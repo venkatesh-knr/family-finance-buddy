@@ -43,8 +43,7 @@ import {
   type DepositRenewal,
   type Disposal,
   type FixedIncomeTerms,
-  type GoldInstalment,
-  type GoldSchemeTerms,
+  type GoldRateRow,
   type RecurringRule,
   type RatingChange,
   type Expense,
@@ -234,6 +233,10 @@ export function toInstrument(raw: unknown): Instrument {
         : requireOneOf(row['retirement_type'], RETIREMENT_TYPES, 'instrument.retirement_type'),
     goldForm:
       row['gold_form'] === null || row['gold_form'] === undefined ? null : requireOneOf(row['gold_form'], GOLD_FORMS, 'instrument.gold_form'),
+    goldPurity:
+      row['gold_purity'] === null || row['gold_purity'] === undefined
+        ? null
+        : requireOneOf(row['gold_purity'], GOLD_PURITIES, 'instrument.gold_purity'),
     isArchived:
       requireOneOf(row['status'], ['active', 'archived'] as const, 'instrument.status') === 'archived',
   };
@@ -565,38 +568,16 @@ export function toPropertyValuation(raw: unknown): PropertyValuation {
 
 // ─── retirement ────────────────────────────────────────────────────────────
 
-export function toGoldTerms(raw: unknown): GoldSchemeTerms {
-  const row = requireRecord(raw, 'gold_scheme_terms');
-  const currency = requireString(row['currency'], 'gold_scheme_terms.currency');
-  const bonus = row['bonus_minor'];
-  const purity = row['purity'];
+export function toGoldRate(raw: unknown): GoldRateRow {
+  const row = requireRecord(raw, 'gold_rate');
+  const currency = requireString(row['currency'], 'gold_rate.currency');
   return {
-    holdingId: requireString(row['holding_id'], 'gold_scheme_terms.holding_id'),
-    variant: requireOneOf(row['variant'], ['amount', 'weight'] as const, 'gold_scheme_terms.variant'),
-    jeweller: requireString(row['jeweller'], 'gold_scheme_terms.jeweller'),
-    instalment: money(toBigIntExact(row['instalment_minor'], 'gold_scheme_terms.instalment_minor'), currency),
-    instalments: requireNumber(row['instalments'], 'gold_scheme_terms.instalments'),
-    startDate: requireIsoDate(row['start_date'], 'gold_scheme_terms.start_date'),
-    dueDay: requireNumber(row['due_day'], 'gold_scheme_terms.due_day'),
-    bonusText: optionalString(row['bonus_text'], 'gold_scheme_terms.bonus_text'),
-    bonus: bonus === null || bonus === undefined ? null : money(toBigIntExact(bonus, 'gold_scheme_terms.bonus_minor'), currency),
-    purity: purity === null || purity === undefined ? null : requireOneOf(purity, GOLD_PURITIES, 'gold_scheme_terms.purity'),
-    schemeLast4: optionalString(row['scheme_last4'], 'gold_scheme_terms.scheme_last4'),
-    note: optionalString(row['note'], 'gold_scheme_terms.note'),
-  };
-}
-
-/** A lot of a gold scheme's holding as an instalment: the quantity is grams on a weight scheme and rupees on an amount scheme. */
-export function toGoldInstalment(raw: unknown, variant: 'amount' | 'weight'): GoldInstalment {
-  const row = requireRecord(raw, 'lot');
-  const currency = requireString(row['currency'], 'lot.currency');
-  return {
-    id: requireString(row['id'], 'lot.id'),
-    holdingId: requireString(row['holding_id'], 'lot.holding_id'),
-    date: requireIsoDate(row['acquired_on'], 'lot.acquired_on'),
-    amount: money(toBigIntExact(row['cost_minor'], 'lot.cost_minor'), currency),
-    grams: variant === 'weight' ? requireString(row['quantity'], 'lot.quantity') : null,
-    note: optionalString(row['note'], 'lot.note'),
+    id: requireString(row['id'], 'gold_rate.id'),
+    purity: requireOneOf(row['purity'], GOLD_PURITIES, 'gold_rate.purity'),
+    perGram: money(toBigIntExact(row['rate_per_gram_minor'], 'gold_rate.rate_per_gram_minor'), currency),
+    asAt: requireIsoDate(row['as_at'], 'gold_rate.as_at'),
+    typedAt: requireString(row['created_at'], 'gold_rate.created_at'),
+    typedBy: requireString(row['created_by'], 'gold_rate.created_by'),
   };
 }
 

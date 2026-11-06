@@ -439,21 +439,46 @@ Written down so they are not lost, and **decided by nobody**: each is the mainta
 5. **Who closes a month.** Proposed: an owner or partner for the household, and a contributor for their own accounts only.
 6. **Take-home income.** Section 10 assumes salary is recorded as what reached the account, so payroll deductions sit outside *saved*. Step 6a already owes the "which income" decision (gross with TDS for the Tax card, or take-home); if it is gross, *saved* must subtract tax and payroll deductions, and section 10 changes with it.
 
-**Gold, `docs/design/gold.md` section 7** (two items):
-
-1. **The cost basis of physical gold after redemption.** Proposed: the gold value on the bill, acquired on the redemption date. A tax rule depends on it, so the Tax screen refuses a sale of it until this is decided.
-2. **Seed values.** The demo's jeweller is fictional, and its bonus is one instalment.
+**Gold, `docs/design/gold.md`** (answered on 6 November 2026, below): the cost basis of physical gold after a scheme's redemption is moot, because the scheme is withdrawn; the demo's seed values are replaced by those of the physical-gold seed. Still open: the listed-gold-ETF tax class (see *Gold, physical gold and gold ETFs*).
 
 
-## Gold, the first slice (November 2026)
+## Gold, the first slice (November 2026): superseded
 
-Built from `docs/design/gold.md`: `supabase/migrations/20261102120000_gold.sql` with `supabase/tests/gold_scheme.test.sql`. What was chosen where the design left room, and what is still open:
+**Superseded on 6 November 2026: the owner withdrew the jeweller's savings scheme, and every item below about the scheme, its instalments, its redemption and its bonus is history. What replaces it is the next section.** Built from the first version of `docs/design/gold.md`: `supabase/migrations/20261102120000_gold.sql` with `supabase/tests/gold_scheme.test.sql`. What was chosen where the design left room, and what is still open:
 
 - **Only the jeweller's scheme is made.** `instrument.gold_form` allows `physical`, as the design says, and nothing makes one yet: it arises on redemption (gold.md section 5), whose cost basis (gold.md section 7, item 1) is still open, so redemption waits for that decision.
 - **A weight scheme and physical gold are valued from the `price` table, and nothing writes a gold rate into it** until the blueprint's gold job exists (GD-I3 says the value is never typed). Until then a weight scheme is said to be not valued, and why. **New question for the maintainer:** how does a gold rate get in before the job does? Options: build the gold job first; or let an owner or partner record a dated rate for a purity by hand, in a table of their household's own, which GD-I3 would then be read as allowing (a rate typed, never a value). The amount scheme needs no rate and is built first.
 - **An amount scheme is valued as the instalments paid, and the bonus is not in it** (GD-I2). Its instalments are lots on the holding (the quantity is rupees), and recording one also records the value as a reading, as a PPF's is, so net worth reads it as it reads any holding.
 - **An upload does not add a gold or a retirement holding**, which have more to them than a sheet carries; the preview says so. The scheme is a read-only sheet of the export.
 - The demo household has one amount scheme, five of eleven instalments paid, from a fictional jeweller (gold.md section 7, item 2: the seed values are still the maintainer's to confirm).
+
+
+## Gold, physical gold and gold ETFs (6 November 2026)
+
+**The owner withdrew the jeweller's gold savings scheme on 6 November 2026**: too much to record (terms, bonus, variants, instalment by instalment) for what a household learns from it. `docs/design/gold.md` was rewritten, and `supabase/migrations/20261106120000_gold_physical_etf.sql` takes the scheme out. Decided by the owner (gold.md section 8):
+
+1. **The gold rate is typed**, by an owner or a partner, per purity, from IBJA's published rate, into `gold_rate`, a table of the household's own, appended and never edited (GD-I12). GD-I3 allows a typed *rate*, never a typed *value*. This answers the question left open in the first slice.
+2. **Gold ETFs and funds are kind `gold`**, form `etf` or `fund`, so that the allocation and the Gold group are right; they are still priced as funds. Those already recorded with `tax_asset_class = gold` moved to it, with their lots and price untouched.
+3. **The gold hue is as built, `--c7`.** The `proposed` Departure is decided (`docs/design/conformance.md`).
+
+**Automatic fetching of the gold rate is held, not forgotten.** No international metals API: it reads below the Indian rate, which includes import duty. No scraping of Indian rate sites: they publish pages, not feeds, and `CLAUDE.md` rules out screen-scraping. If automation is wanted, the route is a licensed feed of IBJA's rates, and a driver that writes `gold_rate`; the typed rate stays as the override.
+
+**Still open: the listed-gold-ETF tax class** (gold.md section 5, GD-I13). A listed gold ETF needs a class of its own (12 months, no equity allowance, short term at slab), or a 14-month ETF sale is classed short term under the physical gold's 24 months. No tax row is seeded until the owner agrees the periods. What was found, from secondary sources only, the enacted text of section 2(42A) not having been read: listed gold ETF units long term after 12 months, 12.5% with no indexation, short term at slab; a gold fund of funds (unlisted) and physical gold after 24 months, 12.5%; gold funds no longer within section 50AA from 1 April 2025; and sources disagree on whether the 12-month period for listed units applies to those bought on or after 1 April 2025 or to any sold after 31 March 2025. Until then, a moved ETF stays classed `gold` (24 months) and is mis-classed as long term too late.
+
+Where the build chose, inside what the owner decided:
+
+- **`instrument.gold_purity`** (24K, 22K, 18K) is set exactly when the form is physical: the rate is per purity, so the purity is a fact about the gold. Not in the design, which names purity but no column.
+- **A value is recorded as a reading.** Net worth reads the latest reading for every holding (HD-I1), so physical gold's value (grams times the latest rate on or before the day) is worked out by `src/domain/gold.ts` and written as the day's reading whenever a rate is typed or a purchase or sale changes the grams. Where no rate exists no reading is written, and the holding says it is not valued. A private holding of another member is revalued by its owner's next change.
+- **Two rates for one day are allowed**; the one typed later wins.
+- **The migration refuses** if a household that is not a demo one holds a jeweller's scheme, naming how many; the demo's scheme is kept as an archived holding of kind `other`, and a reset removes it. Recurring rules are archived when their payee or name is a scheme's jeweller, since a rule is not linked to a holding.
+- **A gift is a lot of kind `gift` at nil cost.** The Tax screen has no refusal for a lot of unknown cost beyond the ones it already has; whether a gift of unknown cost should refuse a gain is a question for the owner.
+- **A gold ETF or fund is added by ISIN**, which is also what the price driver reads it by; there is no search by name in the app to reuse (the price table holds no names), which the board's wording assumes. A `proposed` Departure.
+- Physical gold is not offered the emergency fund, and is left out of the liquid sum (GD-I10); a gold ETF or fund is offered it and counts, as any fund does.
+- **Physical gold bought is classed `gold`** when it is added, so the Tax screen applies the 24-month rows the class already carries (gold.md section 5). A gold ETF or fund is left unclassed until the owner settles GD-I13. The demo's seeded necklace and coin have no class, because the seed is in an applied migration: a small migration that sets it, shown first, would fix the demo.
+- **A gift is a lot of kind `gift` at nil cost, and the gains engine cannot see that nil means unknown.** Fed to it as it is, a classed gift would book its whole sale price as a gain. So, for now: physical gold added as a gift is left unclassed (the Tax screen refuses it, asking for a class), a gift cannot be added to gold that has a class, and the screen shows no gain over the price paid where a gift is among the lots. The proper answer, which gold.md section 2 asks for, is that a lot of unknown cost makes the engine refuse with its own reason; that changes `lots.ts`, `capital-gains.ts` and the Sales card, and is the owner's to ask for.
+- **An ETF or fund needs its ISIN**, because the ISIN is what the driver prices it by. It is checked for its shape, not against the AMFI list.
+- **Export everything does not carry `gold_form` or `gold_purity`.** They are not columns the upload function writes, and the registry test holds the Holdings sheet's columns to that function's. A backup therefore cannot tell a necklace from an ETF, nor give the purity physical gold is valued at. A read-only sheet for them wants its own entity, or a column list change in `app.record_template_row`, and is left for the owner. `TEMPLATE_VERSION` is unchanged: the only sheet that changed is read-only, and a template made before it is read as it always was.
+- The demo household: a 22K necklace with a price paid, a 24K coin received as a gift, Axis Gold ETF (ISIN `INF846K01W80`, read from AMFI's `NAVAll.txt` on 5 November 2026; its units and cost are invented), and typed 22K and 24K rates.
 
 
 ## Recurring rules, the first slice (November 2026)

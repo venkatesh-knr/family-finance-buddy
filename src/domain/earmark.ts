@@ -73,6 +73,11 @@ export interface CorpusHolding {
    * by what it is, and not by a scheme a deposit carries.
    */
   readonly kind: string;
+  /**
+   * Which gold a gold holding is, or null. Physical gold is never liquid and never the emergency goal; a gold ETF or fund is, as any fund is
+   * (GD-I10).
+   */
+  readonly goldForm: string | null;
   /** The instrument's own currency. Totals are grouped by it. */
   readonly currency: string;
   readonly earmark: Earmark;
@@ -130,11 +135,13 @@ export function fireCorpus(options: {
 
     const committed = holding.earmark === 'child' || holding.earmark === 'house';
     const locked = holding.scheme !== null && (LOCKED_SCHEMES as readonly string[]).includes(holding.scheme);
-    // A retirement account cannot be had before retirement, and a gold scheme is held by a jeweller and redeemed as jewellery (GD-I4).
-    if (!committed && !locked && !holding.carriesPolicy && holding.kind !== 'retirement' && holding.kind !== 'gold') bucket.liquid += reading.amount.minor;
+    // A retirement account cannot be had before retirement, and physical gold is jewellery and coin, not money that can be had in an
+    // emergency at its rate (GD-I10). A gold ETF or fund can be sold as any fund can, so it is liquid.
+    const physicalGold = holding.kind === 'gold' && holding.goldForm === 'physical';
+    if (!committed && !locked && !holding.carriesPolicy && holding.kind !== 'retirement' && !physicalGold) bucket.liquid += reading.amount.minor;
 
-    // Gold is never the emergency goal (GD-I4): one already earmarked so, from before the picker refused it, is counted as the corpus it is.
-    const earmark = holding.kind === 'gold' && holding.earmark === 'emergency' ? 'none' : holding.earmark;
+    // Physical gold is never the emergency goal (GD-I10): one already earmarked so, from before the picker refused it, is counted as the corpus it is.
+    const earmark = physicalGold && holding.earmark === 'emergency' ? 'none' : holding.earmark;
     if ((EXCLUDED_FROM_FIRE as readonly string[]).includes(earmark)) {
       bucket.excluded[earmark as ExcludedEarmark] += reading.amount.minor;
     } else {
@@ -280,6 +287,8 @@ export function earmarkedHoldings(options: {
   for (const holding of options.holdings) {
     if (holding.isArchived) continue;
     if (!(EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) continue;
+    // Physical gold is never the emergency goal (GD-I10), here as in the corpus: the two must count the same holdings.
+    if (holding.kind === 'gold' && holding.goldForm === 'physical' && holding.earmark === 'emergency') continue;
     count[holding.earmark as ExcludedEarmark] += 1;
     if (!valued.has(holding.id)) {
       unvalued += 1;

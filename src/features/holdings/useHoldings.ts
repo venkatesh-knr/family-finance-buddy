@@ -21,7 +21,7 @@ import { istCalendarDate } from '../../lib/dates.ts';
 import type { Money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { addHolding, listHoldings, recordValuation } from '../../repo/holdings.ts';
-import { addGoldScheme } from '../../repo/gold.ts';
+import { addGold, revalueGold } from '../../repo/gold.ts';
 import { addRetirement } from '../../repo/retirement.ts';
 import { addDisposal, addLot } from '../../repo/lots.ts';
 import { positionInputs } from './history.ts';
@@ -36,7 +36,7 @@ import type {
   HoldingListing,
   NewDisposal,
   NewHolding,
-  NewGoldScheme,
+  NewGold,
   NewRetirement,
   NewLot,
   NewValuation,
@@ -116,8 +116,8 @@ export function useHoldings(householdId: string | null): {
     input: NewRetirement,
     reading: { readonly date: string; readonly quantity: string; readonly amount: Money; readonly note?: string } | null,
   ) => Promise<{ valueProblem: string | null }>;
-  /** Add a jeweller's gold savings scheme: its holding and its terms, and re-read. No instalment is recorded. */
-  addGold: (input: NewGoldScheme) => Promise<void>;
+  /** Add gold: physical gold, or a gold ETF or fund. Its holding and first lot, and for physical gold its first value, then re-read. */
+  addGold: (input: NewGold) => Promise<{ valued: boolean }>;
   record: (valuation: NewValuation) => Promise<void>;
   recordLot: (lot: NewLot) => Promise<void>;
   recordSale: (disposal: NewDisposal) => Promise<void>;
@@ -320,11 +320,12 @@ export function useHoldings(householdId: string | null): {
   );
 
   const addGoldWithReload = useCallback(
-    async (input: NewGoldScheme) => {
-      await addGoldScheme(input);
+    async (input: NewGold) => {
+      const { valued } = await addGold(input, today);
       await load();
+      return { valued };
     },
-    [load],
+    [load, today],
   );
 
   const addRetirementWithReading = useCallback(
@@ -363,20 +364,28 @@ export function useHoldings(householdId: string | null): {
     [load],
   );
 
+  // Physical gold is valued from its grams, so a purchase or a sale of it brings the reading with it (GD-I3). Read at the time of the call.
+  const physicalGold = useRef<ReadonlySet<string>>(new Set());
+  physicalGold.current = new Set(
+    (listing?.holdings ?? []).filter((h) => h.instrument.kind === 'gold' && h.instrument.goldForm === 'physical').map((h) => h.id),
+  );
+
   const recordLot = useCallback(
     async (lot: NewLot) => {
       await addLot(lot);
+      if (physicalGold.current.has(lot.holdingId)) await revalueGold(lot.householdId, today, null, lot.holdingId);
       await load();
     },
-    [load],
+    [load, today],
   );
 
   const recordSale = useCallback(
     async (disposal: NewDisposal) => {
       await addDisposal(disposal);
+      if (physicalGold.current.has(disposal.holdingId)) await revalueGold(disposal.householdId, today, null, disposal.holdingId);
       await load();
     },
-    [load],
+    [load, today],
   );
 
   return {
