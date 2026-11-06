@@ -574,7 +574,7 @@ Three things are owed before it is built:
 
 *Withdrawn.* The jeweller's savings scheme (`gold_scheme_terms`, instalments, redemption, GD-I2 and GD-I4 to GD-I7) was built in #129, #131 and #133 and withdrawn on 6 November 2026; the migration refuses if a household that is not a demo one holds one, and then drops it.
 
-*Open* (`docs/decisions.md`, Open): the listed-gold-ETF tax class, whose holding period the owner has not yet agreed, so no tax row is seeded (GD-I13); the gold purchase in the month's invested view arrives with 7b (GD-I11).
+*Decided against* (`docs/decisions.md`, Gold): a listed-gold-ETF tax class, so no tax row is seeded (GD-I13). *Open*: the gold purchase in the month's invested view arrives with 7b (GD-I11).
 
 **6c. Spending capture, S1 and S2.**
 
