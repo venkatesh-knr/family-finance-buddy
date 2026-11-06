@@ -59,6 +59,9 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I14 — not built: the payroll line arrives with slice S5 and the income ledger from 6a (spending-capture.md §8) — 2026-10-30
 
 ## gold.md
-
-- GD-I5 — not built: the gold kind and the month's invested view (gold.md §4; spending-capture.md §10) — 2026-10-30
-- GD-I6 — not built: redemption arrives with the gold kind (gold.md §5) — 2026-10-30
+- GD-I8 — not built: physical gold replaces the scheme (gold.md §7) — 2026-11-06
+- GD-I9 — not built: gold ETFs and funds as kind gold (gold.md §1, §7) — 2026-11-06
+- GD-I10 — not built: physical gold and gold ETFs replace the scheme (gold.md §6, §7) — 2026-11-06
+- GD-I11 — not built: needs physical gold and the month's invested view (gold.md §6; spending-capture.md §10) — 2026-11-06
+- GD-I12 — not built: the household gold-rate table (gold.md §3, §7) — 2026-11-06
+- GD-I13 — not built: the listed-gold-ETF tax class, once its periods are checked (gold.md §5) — 2026-11-06
