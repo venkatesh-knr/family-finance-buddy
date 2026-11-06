@@ -77,7 +77,7 @@ export interface CorpusHolding {
    * Which gold a gold holding is, or null. Physical gold is never liquid and never the emergency goal; a gold ETF or fund is, as any fund is
    * (GD-I10).
    */
-  readonly goldForm?: string | null;
+  readonly goldForm: string | null;
   /** The instrument's own currency. Totals are grouped by it. */
   readonly currency: string;
   readonly earmark: Earmark;
@@ -287,6 +287,8 @@ export function earmarkedHoldings(options: {
   for (const holding of options.holdings) {
     if (holding.isArchived) continue;
     if (!(EXCLUDED_FROM_FIRE as readonly string[]).includes(holding.earmark)) continue;
+    // Physical gold is never the emergency goal (GD-I10), here as in the corpus: the two must count the same holdings.
+    if (holding.kind === 'gold' && holding.goldForm === 'physical' && holding.earmark === 'emergency') continue;
     count[holding.earmark as ExcludedEarmark] += 1;
     if (!valued.has(holding.id)) {
       unvalued += 1;

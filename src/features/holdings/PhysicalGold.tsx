@@ -21,7 +21,7 @@ import { parseQuantity } from '../../lib/quantity.ts';
 import { recordGoldRate, revalueGold } from '../../repo/gold.ts';
 import type { GoldPurity, HoldingListing, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Button, Caveat, Delta, Field, Problem } from '../../ui/primitives.tsx';
-import { amountOf, GOLD_CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
+import { amountOf, costNoteOf, GOLD_CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
 import type { GoldData } from './useGold.ts';
 import type { HoldingRow } from './useHoldings.ts';
 
@@ -56,7 +56,16 @@ function useWorked({ row, listing, gold, today }: Pick<Shared, 'row' | 'listing'
             (candidate) => candidate.purity === value.rate.purity && candidate.asAt === value.rate.asOf && candidate.typedAt === value.rate.typedAt,
           ) ?? null
         : null;
-    return { purity, grams, lots, value, typed, allGifts: lots.length > 0 && lots.every((lot) => lot.kind === 'gift') };
+    return {
+      purity,
+      grams,
+      lots,
+      value,
+      typed,
+      allGifts: lots.length > 0 && lots.every((lot) => lot.kind === 'gift'),
+      // A gift's cost is not known, so a gain measured against the rest of the cost would be overstated by the gift's whole value.
+      hasGift: lots.some((lot) => lot.kind === 'gift'),
+    };
   }, [row, listing.lots, gold.rates, gold.rows, today]);
 }
 
@@ -64,14 +73,12 @@ function useWorked({ row, listing, gold, today }: Pick<Shared, 'row' | 'listing'
 export function PhysicalGoldValue(props: Shared) {
   const { row, listing, gold, today, privacy, canWrite, onChanged } = props;
   const worked = useWorked(props);
-  const [typing, setTyping] = useState(false);
   const [recording, setRecording] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const { purity, grams, lots, value, typed, allGifts } = worked;
+  const { purity, grams, lots, value, allGifts, hasGift } = worked;
   const currency = row.holding.instrument.currency;
   const label = purity === null ? 'gold' : purity.toUpperCase();
-  const mayTypeRate = listing.viewer.role === 'owner' || listing.viewer.role === 'partner';
 
   if (gold.failed) {
     return (
@@ -95,6 +102,7 @@ export function PhysicalGoldValue(props: Shared) {
         </p>
       ) : (
         <p className="note" role="status" data-testid="gold-not-valued">
+          {formatGrams(grams)} g ·{' '}
           {value.reason === 'no-rate'
             ? `Not valued: add today's ${label} rate. Gold is worth its grams at the day's rate, and is never counted at zero or at what was paid.`
             : 'Not valued: the rate is in another currency than the gold.'}
@@ -114,7 +122,7 @@ export function PhysicalGoldValue(props: Shared) {
             )}
           </dd>
         </div>
-        {!allGifts && sinceMinor !== null && value.ok && (
+        {!hasGift && sinceMinor !== null && value.ok && (
           <div className="stat">
             <dt className="label">{sinceMinor < 0n ? 'Below the price paid' : 'Up since'}</dt>
             <dd className="tabular-nums" data-testid="gold-up-since">
@@ -163,12 +171,32 @@ export function PhysicalGoldValue(props: Shared) {
         </div>
       )}
 
-      {/* The rate: what it is, the day it is for, who may type a newer one, and where it is read from. */}
-      <section aria-label={`${label} rate`} data-testid="gold-rate-card">
-        <h3 className="label">
+      {problem !== null && <Problem>{problem}</Problem>}
+    </div>
+  );
+}
+
+/**
+ * The rate card, apart from the value card as the board draws it: what the rate is, the day it is for, who may type a newer one, and where
+ * it is read from; and under it the caveat line that makes the figure honest (DL-I4). Nothing is fetched from IBJA, and nothing of the
+ * household's goes in the link.
+ */
+function PhysicalGoldRate(props: Shared) {
+  const { row, listing, gold, today, privacy, onChanged } = props;
+  const { purity, value, typed, allGifts } = useWorked(props);
+  const [typing, setTyping] = useState(false);
+  const label = purity === null ? 'gold' : purity.toUpperCase();
+  const mayTypeRate = listing.viewer.role === 'owner' || listing.viewer.role === 'partner';
+  if (value === null || gold.failed) return null;
+  void row;
+
+  return (
+    <>
+      <section className="card" aria-label={`${label} rate`} data-testid="gold-rate-card">
+        <h2 className="label">
           {label} rate
           {value.ok && <> · {formatMoney(money(value.rate.perGramMinor, value.rate.currency), { privacy })} a gram</>}
-        </h3>
+        </h2>
         {value.ok ? (
           <p className="note" data-testid="gold-rate-line">
             typed{' '}
@@ -214,14 +242,12 @@ export function PhysicalGoldValue(props: Shared) {
         )}
       </section>
 
-      {problem !== null && <Problem>{problem}</Problem>}
-
       {/* Always, in either detail mode: it is what makes the figure honest (DL-I4). */}
       <p className="note" data-testid="gold-caveat">
         Not counted in your emergency fund or liquid money.
         {!allGifts && ' The price paid included making charges, which the gold rate does not.'}
       </p>
-    </div>
+    </>
   );
 }
 
@@ -315,6 +341,8 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
 
   return (
     <>
+      <PhysicalGoldRate {...props} />
+
       <section className="card" aria-label="Purchases">
         <h2 className="label">Purchases</h2>
         <p className="note mt-1">{lots.length}</p>
@@ -393,6 +421,7 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
           <PurchaseForm
             householdId={listing.household.id}
             holdingId={row.holding.id}
+            classed={row.holding.instrument.taxAssetClass !== null}
             today={today}
             onLot={onLot}
             onDone={() => {
@@ -425,12 +454,15 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
 function PurchaseForm({
   householdId,
   holdingId,
+  classed,
   today,
   onLot,
   onDone,
 }: {
   householdId: string;
   holdingId: string;
+  /** The holding has a tax class, so a gain on it is worked out; a gift's cost is not known and must not be worked into one. */
+  classed: boolean;
   today: IsoDate;
   onLot: (lot: NewLot) => Promise<void>;
   onDone: () => void;
@@ -451,6 +483,9 @@ function PurchaseForm({
       if (!isIsoDate(date) || Number(date.slice(0, 4)) < 1990) throw new Error('That date is not one this can be: check the year.');
       if (date > today) throw new Error('A purchase cannot be dated after today.');
       if (grams === null) throw new Error('The weight is in grams, above nothing, to three decimals at most.');
+      if (gift && classed) {
+        throw new Error('A gift’s cost is not known, so a gain on selling it cannot be worked out with the rest of this gold. Add it as gold of its own.');
+      }
       const cost = workedCost({ gift, costBy, typed, grams });
       if (cost === null) throw new Error(costBy === 'rate' ? 'The rate per gram is needed.' : 'What it cost is needed. If it was a gift, say so.');
       setBusy(true);
@@ -461,7 +496,7 @@ function PurchaseForm({
         quantity: weight.trim(),
         cost: money(cost, GOLD_CURRENCY),
         kind: gift ? 'gift' : 'purchase',
-        note: gift ? 'A gift: what it cost is not known.' : 'Price paid.',
+        note: gift ? 'A gift: what it cost is not known.' : costNoteOf({ costBy, typed, grams }),
       });
       onDone();
     } catch (error) {

@@ -4,6 +4,7 @@ import { DemoBadge } from '../../app/household.tsx';
 import { hashFor } from '../../app/route.ts';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
+import { formatGrams } from '../../domain/gold.ts';
 import { quantityToNumeric } from '../../lib/quantity.ts';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import type { HouseholdKind } from '../../repo/types.ts';
@@ -209,6 +210,12 @@ export function HoldingDetail({
             {name.title}
           </h2>
           {name.detail !== null && <span className="note block">{name.detail}</span>}
+          {isGold && (
+            <span className="note block" data-testid="gold-identity">
+              Physical gold
+              {holding.instrument.goldPurity !== null && ` · ${holding.instrument.goldPurity.toUpperCase()}`} · {formatGrams(row.unitsHeld)} g
+            </span>
+          )}
           <span className="note block">
             {isFixed && facts?.institution != null && <>{facts.institution} · </>}
             <span className="detail-member">{holding.member.displayName}</span>

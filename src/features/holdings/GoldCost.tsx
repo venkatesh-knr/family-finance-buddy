@@ -5,7 +5,7 @@
  * figure: the cost of the lot, in paise. A rate typed is multiplied by the grams on the device and is not kept.
  */
 
-import { costFromRate, ratePerGram } from '../../domain/gold.ts';
+import { costFromRate, formatGrams, ratePerGram } from '../../domain/gold.ts';
 import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { Field } from '../../ui/primitives.tsx';
@@ -46,6 +46,13 @@ export function workedCost(input: { readonly gift: boolean; readonly costBy: Cos
   if (typed === null) return null;
   if (input.costBy === 'price') return typed;
   return input.grams === null ? null : costFromRate(typed, input.grams);
+}
+
+/** What the lot's note says of how its cost was typed (GD-I8 stores one figure; the note records the way in). */
+export function costNoteOf(input: { readonly costBy: CostBy; readonly typed: string; readonly grams: bigint | null }): string {
+  const typed = amountOf(input.typed);
+  if (input.costBy === 'price' || typed === null || input.grams === null) return 'Price paid.';
+  return `Rate per gram ${formatMoney(money(typed, GOLD_CURRENCY))} on the day, times ${formatGrams(input.grams)} g.`;
 }
 
 /** The other way of saying the cost, to show beside the one typed: the rate for a price, the price for a rate. */

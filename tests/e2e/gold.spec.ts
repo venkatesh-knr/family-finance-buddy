@@ -64,6 +64,8 @@ test('physical gold is added with a price paid, is valued at the typed rate for 
     await expect(page.getByTestId('gold-rate-date')).toContainText('2000');
     await expect(page.getByTestId('gold-rate-date')).toContainText('over 30 days ago');
     await expect(page.getByTestId('gold-caveat')).toContainText('Not counted in your emergency fund or liquid money');
+    // The identity line says what it is, its purity and its weight.
+    await expect(page.getByTestId('gold-identity')).toContainText('Physical gold · 18K · 10.000 g');
 
     // The row says what it is.
     await openList(page);
@@ -171,6 +173,9 @@ test('physical gold is not offered the emergency fund, a fund is, and a gold ETF
   await form.getByLabel('Units').fill('50');
   await form.getByLabel('Bought on').fill('2024-06-03');
   await form.getByLabel('Total cost (INR)').fill('5200');
+  // The ISIN is needed: it is what prices a fund.
+  await expect(form.getByLabel('ISIN')).toHaveJSProperty('required', true);
+  await form.getByLabel('ISIN').fill('INF000000001');
   await form.getByLabel('Worth today (INR)').fill('5931.31');
   await form.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -227,3 +232,26 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(found, found.join('\n')).toEqual([]);
   });
 }
+
+test('a gift cannot be added to gold that has a tax class, and a purchase says how its cost was typed', async ({ page }) => {
+  test.setTimeout(150_000);
+  const name = `e2e-mixed-${Date.now()}`;
+  const form = await openAddGold(page);
+  await form.getByLabel('What it is').fill(name);
+  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await form.getByLabel('Weight (g)').fill('2');
+  await form.getByLabel('Price paid (INR)').fill('12000');
+  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  try {
+    await openHolding(page, name);
+    await page.getByRole('button', { name: 'Add a purchase' }).click();
+    const purchase = page.getByRole('form', { name: 'Add a purchase' });
+    await purchase.getByLabel('Weight (g)').fill('1');
+    await purchase.getByLabel('A gift or inherited, cost not known').check();
+    await purchase.getByRole('button', { name: 'Record', exact: true }).click();
+    await expect(page.getByText(/A gift’s cost is not known/)).toBeVisible();
+    await expect(page.getByTestId('gold-purchases').locator('li')).toHaveCount(1);
+  } finally {
+    await archiveByName(page, name);
+  }
+});

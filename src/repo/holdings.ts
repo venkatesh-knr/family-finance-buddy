@@ -227,6 +227,7 @@ export async function addHolding(input: NewHolding): Promise<{ readonly holdingI
       ...(input.instrument.retirementType === undefined ? {} : { retirement_type: input.instrument.retirementType }),
       ...(input.instrument.goldForm === undefined ? {} : { gold_form: input.instrument.goldForm }),
       ...(input.instrument.goldPurity === undefined ? {} : { gold_purity: input.instrument.goldPurity }),
+      ...(input.instrument.taxAssetClass === undefined ? {} : { tax_asset_class: input.instrument.taxAssetClass }),
       ...(input.instrument.isin === undefined || input.instrument.isin === null ? {} : { isin: input.instrument.isin }),
       ...(input.instrument.priceSource === undefined || input.instrument.priceSource === null
         ? {}

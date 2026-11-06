@@ -26,6 +26,7 @@ const holding = (over: Partial<CorpusHolding> & { id: string }): CorpusHolding =
   kind: 'mutual_fund',
   currency: 'INR',
   earmark: 'none',
+  goldForm: null,
   scheme: null,
   carriesPolicy: false,
   isArchived: false,

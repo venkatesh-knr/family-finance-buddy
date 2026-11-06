@@ -17,7 +17,7 @@ import { money } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { GOLD_PURITIES, type GoldForm, type GoldPurity, type HoldingListing, type Member, type NewGold } from '../../repo/types.ts';
 import { Button, Field, Problem } from '../../ui/primitives.tsx';
-import { amountOf, GOLD_CURRENCY as CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
+import { amountOf, costNoteOf, GOLD_CURRENCY as CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
 
 export function AddGold({
   listing,
@@ -88,6 +88,7 @@ export function AddGold({
         boughtOn,
         cost: money(costMinor, CURRENCY),
         isGift: gift,
+        ...(physical ? { costNote: costNoteOf({ costBy, typed, grams }) } : {}),
         ...(physical || isin.trim() === '' ? {} : { isin: isin.trim().toUpperCase() }),
         ...(worthMinor === null ? {} : { worth: money(worthMinor, CURRENCY) }),
         ...(earmark === 'none' ? {} : { earmark }),
@@ -269,6 +270,7 @@ export function AddGold({
                 label="ISIN"
                 placeholder="INF846K01W80"
                 maxLength={12}
+                required
                 hint="It is what prices it every day."
                 value={isin}
                 onChange={(event) => {

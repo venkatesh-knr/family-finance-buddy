@@ -499,6 +499,8 @@ export interface NewHolding {
     /** Which driver prices it and what that driver calls it; both or neither. */
     readonly priceSource?: string | null;
     readonly priceExternalId?: string | null;
+    /** Which capital-gains rules apply, where the form decides it. Left out, it is not classified. */
+    readonly taxAssetClass?: 'gold';
   };
   readonly quantity: Quantity;
   readonly cost?: Money | null;
@@ -918,6 +920,8 @@ export interface NewGold {
   readonly cost: Money;
   /** Received, not bought: the lot is a gift and what it cost is not known. */
   readonly isGift?: boolean;
+  /** How the cost was typed, for the lot's note: the price paid, or the rate per gram that day. */
+  readonly costNote?: string | null;
   /** A gold ETF or fund: its ISIN, which is also what the price driver finds it by. */
   readonly isin?: string | null;
   /** A gold ETF or fund: what a unit is worth today, where the household has it. Recorded as the first reading. */

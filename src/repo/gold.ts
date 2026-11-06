@@ -175,9 +175,11 @@ function checkGold(input: NewGold): void {
     if (input.isGift !== true && input.cost.minor === 0n) throw new Error('What it cost is above nothing. If it was a gift, say so.');
   } else {
     if (input.purity !== undefined && input.purity !== null) throw new Error('A gold ETF or fund has no purity: it is whatever the fund holds.');
-    if (input.isin !== undefined && input.isin !== null && input.isin !== '' && !ISIN.test(input.isin)) {
-      throw new Error('An ISIN is twelve letters and digits, such as INF846K01W80.');
+    // The ISIN is what the price driver finds a fund by, and a fund no driver prices is not valued as one (GD-I9): so it is needed.
+    if (input.isin === undefined || input.isin === null || input.isin.trim() === '') {
+      throw new Error('The ISIN is needed: it is what prices the fund every day. It is on the fund’s factsheet or the AMFI list.');
     }
+    if (!ISIN.test(input.isin.trim().toUpperCase())) throw new Error('An ISIN is twelve letters and digits, such as INF846K01W80.');
   }
 }
 
@@ -199,6 +201,9 @@ export async function addGold(input: NewGold, on: IsoDate): Promise<{ readonly h
       kind: 'gold',
       goldForm: input.form,
       ...(physical && input.purity !== undefined && input.purity !== null ? { goldPurity: input.purity } : {}),
+      // The form decides the class of physical gold: it is `gold`, whose rows carry 24 months (gold.md section 5). A gift is left without
+      // one: its cost is not known, and a gain on it must not be worked out as if it were nil (see decisions.md, Gold).
+      ...(physical && input.isGift !== true ? { taxAssetClass: 'gold' as const } : {}),
       ...(isin === null ? {} : { isin, priceSource: 'amfi', priceExternalId: isin }),
       currency: CURRENCY,
       exposureCurrency: CURRENCY,
@@ -218,7 +223,7 @@ export async function addGold(input: NewGold, on: IsoDate): Promise<{ readonly h
       quantity: input.quantity.trim(),
       cost: input.cost,
       kind: input.isGift === true ? 'gift' : 'purchase',
-      note: input.isGift === true ? 'A gift: what it cost is not known.' : physical ? 'Price paid.' : null,
+      note: input.isGift === true ? 'A gift: what it cost is not known.' : (input.costNote ?? null),
     });
   } catch (error) {
     await archiveHolding(holdingId).catch(() => undefined);
