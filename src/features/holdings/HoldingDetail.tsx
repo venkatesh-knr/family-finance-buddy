@@ -6,6 +6,7 @@ import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { formatGrams } from '../../domain/gold.ts';
 import { quantityToNumeric } from '../../lib/quantity.ts';
+import { revalueGold } from '../../repo/gold.ts';
 import { updateDisposal, updateLot } from '../../repo/lots.ts';
 import type { HouseholdKind } from '../../repo/types.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
@@ -422,6 +423,17 @@ export function HoldingDetail({
           canWrite={canWrite}
           onLot={recordLot}
           onSale={recordSale}
+          // The grams or the cost may have changed, so the value is worked out again and recorded before the screen reads it.
+          onEditLot={async (id, patch) => {
+            await updateLot(id, patch);
+            await revalueGold(listing.household.id, today, null, holding.id);
+            await reload();
+          }}
+          onEditSale={async (id, patch) => {
+            await updateDisposal(id, patch);
+            await revalueGold(listing.household.id, today, null, holding.id);
+            await reload();
+          }}
           onChanged={async () => {
             await reload();
           }}

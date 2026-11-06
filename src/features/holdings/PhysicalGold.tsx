@@ -16,11 +16,12 @@
 import { useMemo, useState } from 'react';
 import { formatGrams, gramsHeld, physicalGoldValue, ratePerGram, rateIsStale } from '../../domain/gold.ts';
 import { formatIsoDate, isIsoDate, type IsoDate } from '../../lib/dates.ts';
-import { formatMoney, money, parseAmountToMinor } from '../../lib/money.ts';
+import { formatMoney, minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
 import { parseQuantity } from '../../lib/quantity.ts';
 import { recordGoldRate, revalueGold } from '../../repo/gold.ts';
-import type { GoldPurity, HoldingListing, NewDisposal, NewLot } from '../../repo/types.ts';
-import { Button, Caveat, Delta, Field, Problem } from '../../ui/primitives.tsx';
+import type { Disposal, GoldPurity, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
+import { Button, Caveat, Delta, EditButton, Field, Problem } from '../../ui/primitives.tsx';
+import { minorToMajorText } from '../../domain/export/cells.ts';
 import { amountOf, costNoteOf, GOLD_CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
 import type { GoldData } from './useGold.ts';
 import type { HoldingRow } from './useHoldings.ts';
@@ -300,7 +301,7 @@ function RateForm({
           numeric
           inputMode="decimal"
           required
-          hint="From IBJA's published rate."
+          hint="From IBJA's published rate. To correct one, type the right rate for the same day: the later one is used."
           value={rate}
           onChange={(event) => {
             setRate(event.target.value);
@@ -331,10 +332,20 @@ function RateForm({
 }
 
 /** Below the value card: the purchases, and a way to add one or record a sale; then what the screen is given (purpose, archive). */
-export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot) => Promise<void>; readonly onSale: (sale: NewDisposal) => Promise<void>; readonly children?: React.ReactNode }) {
-  const { row, listing, privacy, today, canWrite, onLot, onSale, children } = props;
+export function PhysicalGoldCards(
+  props: Shared & {
+    readonly onLot: (lot: NewLot) => Promise<void>;
+    readonly onSale: (sale: NewDisposal) => Promise<void>;
+    /** Correct a purchase or a sale in place. The value is worked out again after, because the grams may have changed. */
+    readonly onEditLot: (id: string, patch: { acquiredOn: string; quantity: string; costMinor?: bigint; note?: string }) => Promise<void>;
+    readonly onEditSale: (id: string, patch: { disposedOn: string; quantity: string; proceedsMinor: bigint }) => Promise<void>;
+    readonly children?: React.ReactNode;
+  },
+) {
+  const { row, listing, privacy, today, canWrite, onLot, onSale, onEditLot, onEditSale, children } = props;
   const worked = useWorked(props);
   const [adding, setAdding] = useState<'purchase' | 'sale' | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const currency = row.holding.instrument.currency;
   const { lots } = worked;
   const sales = listing.disposals.filter((sale) => sale.holdingId === row.holding.id);
@@ -354,6 +365,28 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
               .sort((a, b) => (a.acquiredOn < b.acquiredOn ? 1 : -1))
               .map((lot) => {
                 const perGram = lot.cost.minor === 0n ? null : ratePerGram(lot.cost.minor, parseQuantity(lot.quantity));
+                if (editing === lot.id) {
+                  return (
+                    <li key={lot.id} className="py-2">
+                      <LotEditForm
+                        lot={lot}
+                        others={gramsHeld(
+                          lots.filter((other) => other.id !== lot.id).map((other) => parseQuantity(other.quantity)),
+                          [],
+                        )}
+                        sold={gramsHeld(sales.map((sale) => parseQuantity(sale.quantity)), [])}
+                        today={today}
+                        onCancel={() => {
+                          setEditing(null);
+                        }}
+                        onSave={async (patch) => {
+                          await onEditLot(lot.id, patch);
+                          setEditing(null);
+                        }}
+                      />
+                    </li>
+                  );
+                }
                 return (
                   <li key={lot.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                     <span>
@@ -369,6 +402,14 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
                           {perGram !== null && <span className="note"> · {formatMoney(money(perGram, currency), { privacy })}/g</span>}
                         </>
                       )}
+                      {canWrite && (
+                        <EditButton
+                          label={`Edit the ${formatIsoDate(lot.acquiredOn)} purchase`}
+                          onClick={() => {
+                            setEditing(lot.id);
+                          }}
+                        />
+                      )}
                     </span>
                   </li>
                 );
@@ -381,15 +422,46 @@ export function PhysicalGoldCards(props: Shared & { readonly onLot: (lot: NewLot
             <ul className="row-separated mt-1" data-testid="gold-sales">
               {[...sales]
                 .sort((a, b) => (a.disposedOn < b.disposedOn ? 1 : -1))
-                .map((sale) => (
-                  <li key={sale.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
-                    <span>
-                      {formatIsoDate(sale.disposedOn)}
-                      <span className="note"> · {formatGrams(parseQuantity(sale.quantity))} g</span>
-                    </span>
-                    <span className="tabular-nums">{formatMoney(sale.proceeds, { privacy })}</span>
-                  </li>
-                ))}
+                .map((sale) =>
+                  editing === sale.id ? (
+                    <li key={sale.id} className="py-2">
+                      <SaleEditForm
+                        sale={sale}
+                        bought={gramsHeld(lots.map((lot) => parseQuantity(lot.quantity)), [])}
+                        soldElsewhere={gramsHeld(
+                          sales.filter((other) => other.id !== sale.id).map((other) => parseQuantity(other.quantity)),
+                          [],
+                        )}
+                        today={today}
+                        onCancel={() => {
+                          setEditing(null);
+                        }}
+                        onSave={async (patch) => {
+                          await onEditSale(sale.id, patch);
+                          setEditing(null);
+                        }}
+                      />
+                    </li>
+                  ) : (
+                    <li key={sale.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                      <span>
+                        {formatIsoDate(sale.disposedOn)}
+                        <span className="note"> · {formatGrams(parseQuantity(sale.quantity))} g</span>
+                      </span>
+                      <span className="tabular-nums">
+                        {formatMoney(sale.proceeds, { privacy })}
+                        {canWrite && (
+                          <EditButton
+                            label={`Edit the ${formatIsoDate(sale.disposedOn)} sale`}
+                            onClick={() => {
+                              setEditing(sale.id);
+                            }}
+                          />
+                        )}
+                      </span>
+                    </li>
+                  ),
+                )}
             </ul>
           </>
         )}
@@ -649,6 +721,214 @@ function SaleForm({
       </div>
       <Button type="submit" disabled={busy}>
         {busy ? 'Recording…' : 'Record'}
+      </Button>
+      {problem !== null && (
+        <div className="w-full">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+    </form>
+  );
+}
+
+/**
+ * Correcting a purchase in place: its date, its weight and its cost, which can be typed as the price paid or the rate per gram, as it was
+ * when the purchase was added (GD-I8). There is no delete on a purchase, so editing is the only way out of a typo. A gift keeps its nil cost.
+ */
+function LotEditForm({
+  lot,
+  others,
+  sold,
+  today,
+  onCancel,
+  onSave,
+}: {
+  lot: Lot;
+  /** The grams in the other purchases. */
+  others: bigint;
+  /** The grams sold, which the purchases must still cover. */
+  sold: bigint;
+  today: IsoDate;
+  onCancel: () => void;
+  onSave: (patch: { acquiredOn: string; quantity: string; costMinor?: bigint; note?: string }) => Promise<void>;
+}) {
+  const gift = lot.kind === 'gift';
+  const [date, setDate] = useState<string>(lot.acquiredOn);
+  const [weight, setWeight] = useState(formatGrams(parseQuantity(lot.quantity)));
+  const [costBy, setCostBy] = useState<CostBy>('price');
+  const [typed, setTyped] = useState(minorToMajorText(lot.cost.minor, minorUnitExponent(lot.cost.currency)));
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const grams = gramsOf(weight);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setProblem(null);
+    try {
+      if (!isIsoDate(date) || Number(date.slice(0, 4)) < 1990) throw new Error('That date is not one this can be: check the year.');
+      if (date > today) throw new Error('A purchase cannot be dated after today.');
+      if (grams === null) throw new Error('The weight is in grams, above nothing, to three decimals at most.');
+      if (others + grams < sold) throw new Error('That would leave less gold bought than has been sold.');
+      const cost = workedCost({ gift, costBy, typed, grams });
+      if (cost === null) throw new Error(costBy === 'rate' ? 'The rate per gram is needed.' : 'What it cost is needed.');
+      if (!gift && cost === 0n) throw new Error('What it cost is above nothing.');
+      setBusy(true);
+      await onSave({
+        acquiredOn: date,
+        quantity: weight.trim(),
+        ...(gift ? {} : { costMinor: cost, note: costNoteOf({ costBy, typed, grams }) }),
+      });
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'Could not save that.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="inset-form flex flex-wrap items-end gap-3"
+      aria-label={`Edit the ${formatIsoDate(lot.acquiredOn)} purchase`}
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
+      <div className="w-full sm:w-[9.375rem] sm:shrink-0">
+        <Field
+          label="Bought on"
+          type="date"
+          required
+          value={date}
+          onChange={(event) => {
+            setDate(event.target.value);
+          }}
+        />
+      </div>
+      <div className="w-full sm:w-[8rem] sm:shrink-0">
+        <Field
+          label="Weight (g)"
+          numeric
+          inputMode="decimal"
+          required
+          value={weight}
+          onChange={(event) => {
+            setWeight(event.target.value);
+          }}
+        />
+      </div>
+      {gift ? (
+        <p className="note w-full">A gift: what it cost is not known, so there is no cost to change.</p>
+      ) : (
+        <GoldCost grams={grams} gift={false} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} />
+      )}
+      <Button type="submit" disabled={busy}>
+        {busy ? 'Saving…' : 'Save'}
+      </Button>
+      <Button type="button" variant="quiet" onClick={onCancel}>
+        Cancel
+      </Button>
+      {problem !== null && (
+        <div className="w-full">
+          <Problem>{problem}</Problem>
+        </div>
+      )}
+    </form>
+  );
+}
+
+/** Correcting a sale in place: its date, its weight and what it sold for. */
+function SaleEditForm({
+  sale,
+  bought,
+  soldElsewhere,
+  today,
+  onCancel,
+  onSave,
+}: {
+  sale: Disposal;
+  /** The grams bought in all. */
+  bought: bigint;
+  /** The grams in the other sales. */
+  soldElsewhere: bigint;
+  today: IsoDate;
+  onCancel: () => void;
+  onSave: (patch: { disposedOn: string; quantity: string; proceedsMinor: bigint }) => Promise<void>;
+}) {
+  const [date, setDate] = useState<string>(sale.disposedOn);
+  const [weight, setWeight] = useState(formatGrams(parseQuantity(sale.quantity)));
+  const [proceeds, setProceeds] = useState(minorToMajorText(sale.proceeds.minor, minorUnitExponent(sale.proceeds.currency)));
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setProblem(null);
+    try {
+      if (!isIsoDate(date) || Number(date.slice(0, 4)) < 1990) throw new Error('That date is not one this can be: check the year.');
+      if (date > today) throw new Error('A sale cannot be dated after today.');
+      const grams = gramsOf(weight);
+      if (grams === null) throw new Error('The weight is in grams, above nothing, to three decimals at most.');
+      if (soldElsewhere + grams > bought) throw new Error(`Only ${formatGrams(bought - soldElsewhere)} g is left to sell, so more than that cannot be sold.`);
+      if (proceeds.trim() === '') throw new Error('What it sold for is needed.');
+      const minor = parseAmountToMinor(proceeds, GOLD_CURRENCY);
+      if (minor < 0n) throw new Error('Proceeds are not negative.');
+      setBusy(true);
+      await onSave({ disposedOn: date, quantity: weight.trim(), proceedsMinor: minor });
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'Could not save that.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="inset-form flex flex-wrap items-end gap-3"
+      aria-label={`Edit the ${formatIsoDate(sale.disposedOn)} sale`}
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
+      <div className="w-full sm:w-[9.375rem] sm:shrink-0">
+        <Field
+          label="Sold on"
+          type="date"
+          required
+          value={date}
+          onChange={(event) => {
+            setDate(event.target.value);
+          }}
+        />
+      </div>
+      <div className="w-full sm:w-[8rem] sm:shrink-0">
+        <Field
+          label="Weight sold (g)"
+          numeric
+          inputMode="decimal"
+          required
+          value={weight}
+          onChange={(event) => {
+            setWeight(event.target.value);
+          }}
+        />
+      </div>
+      <div className="w-full sm:w-[10rem] sm:shrink-0">
+        <Field
+          label={`Sold for (${GOLD_CURRENCY})`}
+          numeric
+          inputMode="decimal"
+          required
+          value={proceeds}
+          onChange={(event) => {
+            setProceeds(event.target.value);
+          }}
+        />
+      </div>
+      <Button type="submit" disabled={busy}>
+        {busy ? 'Saving…' : 'Save'}
+      </Button>
+      <Button type="button" variant="quiet" onClick={onCancel}>
+        Cancel
       </Button>
       {problem !== null && (
         <div className="w-full">

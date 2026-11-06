@@ -255,3 +255,52 @@ test('a gift cannot be added to gold that has a tax class, and a purchase says h
     await archiveByName(page, name);
   }
 });
+
+test('a purchase’s date, weight and rate, and a sale, can be corrected, and the value follows', async ({ page }) => {
+  test.setTimeout(180_000);
+  const name = `e2e-edit-${Date.now()}`;
+  const form = await openAddGold(page);
+  await form.getByLabel('What it is').fill(name);
+  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await form.getByLabel('Weight (g)').fill('10');
+  await form.getByLabel('Bought on').fill('2024-03-01');
+  await form.getByLabel('Price paid (INR)').fill('60000');
+  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  try {
+    await openHolding(page, name);
+    await typeRate(page, '8000');
+    await expect(detailValue(page)).toContainText('80,000');
+
+    // Correct the purchase: its date, its weight (twelve grams) and its rate per gram (six thousand five hundred).
+    await page.getByRole('button', { name: /^Edit the .* purchase$/ }).click();
+    const edit = page.getByRole('form', { name: /^Edit the .* purchase$/ });
+    await edit.getByLabel('Bought on').fill('2024-04-02');
+    await edit.getByLabel('Weight (g)').fill('12');
+    await edit.getByRole('button', { name: 'Rate per gram' }).click();
+    await edit.getByLabel('Rate per gram (INR)').fill('6500');
+    await expect(edit.getByTestId('gold-other-way')).toContainText('78,000 in all');
+    await edit.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(edit).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.getByTestId('gold-purchases')).toContainText('2 Apr 2024');
+    await expect(page.getByTestId('gold-purchases')).toContainText('12.000 g');
+    await expect(page.getByTestId('gold-paid')).toContainText('78,000');
+    // Twelve grams at eight thousand a gram.
+    await expect(detailValue(page)).toContainText('96,000');
+
+    // A sale, then its correction.
+    await page.getByRole('button', { name: 'Record a sale' }).click();
+    const sale = page.getByRole('form', { name: 'Record a sale' });
+    await sale.getByLabel('Weight sold (g)').fill('2');
+    await sale.getByLabel('Sold for (INR)').fill('15000');
+    await sale.getByRole('button', { name: 'Record', exact: true }).click();
+    await expect(detailValue(page)).toContainText('80,000');
+    await page.getByRole('button', { name: /^Edit the .* sale$/ }).click();
+    const fix = page.getByRole('form', { name: /^Edit the .* sale$/ });
+    await fix.getByLabel('Weight sold (g)').fill('4');
+    await fix.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(fix).toHaveCount(0, { timeout: 20_000 });
+    await expect(detailValue(page)).toContainText('64,000');
+  } finally {
+    await archiveByName(page, name);
+  }
+});
