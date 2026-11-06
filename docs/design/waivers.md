@@ -60,4 +60,4 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## gold.md
 - GD-I11 — not built: physical gold is built, but the month's invested view it is asserted against is slice S5 (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
-- GD-I13 — not built: the listed-gold-ETF tax class is open until the owner agrees its holding period (gold.md §5, §8 item 4) — 2026-11-06
+- GD-I13 — not built, and not to be: the owner decided on 6 November 2026 that no listed-gold-ETF tax class is added (docs/decisions.md, Gold); gold.md §5 and this invariant are for the owner to retire — 2026-11-06
