@@ -60,7 +60,7 @@ const HOLDING_COLUMNS =
   'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, archived_at, visibility, earmark, stated_quantity::text, stated_as_at, stated_source_batch_id';
 
 const INSTRUMENT_COLUMNS =
-  'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, scheme, status, tax_asset_class, price_source, price_external_id, retirement_type, gold_form';
+  'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, scheme, status, tax_asset_class, price_source, price_external_id, retirement_type, gold_form, gold_purity';
 
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
@@ -226,6 +226,11 @@ export async function addHolding(input: NewHolding): Promise<{ readonly holdingI
       ...(input.instrument.scheme === undefined ? {} : { scheme: input.instrument.scheme }),
       ...(input.instrument.retirementType === undefined ? {} : { retirement_type: input.instrument.retirementType }),
       ...(input.instrument.goldForm === undefined ? {} : { gold_form: input.instrument.goldForm }),
+      ...(input.instrument.goldPurity === undefined ? {} : { gold_purity: input.instrument.goldPurity }),
+      ...(input.instrument.isin === undefined || input.instrument.isin === null ? {} : { isin: input.instrument.isin }),
+      ...(input.instrument.priceSource === undefined || input.instrument.priceSource === null
+        ? {}
+        : { price_source: input.instrument.priceSource, price_external_id: input.instrument.priceExternalId ?? null }),
     })
     .select('id')
     .single();

@@ -202,3 +202,27 @@ describe('sort — a class that holds more than one currency', () => {
     expect(result.groups[0]?.holdings.map((h) => h.id)).toEqual(['inr-big', 'inr-small', 'usd-big', 'usd-small']);
   });
 });
+
+describe('GD-I9 — a gold ETF or fund is valued as a fund, and is in the Gold group and the gold slice', () => {
+  it('lists a gold ETF under Gold and not under ETFs, beside physical gold', () => {
+    const result = groupHoldings({
+      holdings: [
+        holding({ id: 'etf', kind: 'gold', latest: inr(5931.31) }),
+        holding({ id: 'neck', kind: 'gold', latest: inr(231000) }),
+        holding({ id: 'real-etf', kind: 'etf', latest: inr(1000) }),
+      ],
+      base: 'INR',
+      filter: {},
+    });
+    const gold = result.groups.find((g) => g.kind === 'gold');
+    expect(gold?.holdings.map((row) => row.id).sort()).toEqual(['etf', 'neck']);
+    expect(result.groups.find((g) => g.kind === 'etf')?.holdings.map((row) => row.id)).toEqual(['real-etf']);
+    expect(gold?.subtotals.find((s) => s.currency === 'INR')?.minor).toBe(23_693_131n);
+  });
+
+  it('values 50 units at a NAV of 118.6261 as units times NAV, as a fund is: ₹5,931.31', async () => {
+    const { valueOf } = await import('../../domain/pricing.ts');
+    const { parseQuantity } = await import('../../lib/quantity.ts');
+    expect(valueOf(parseQuantity('50'), '118.6261', 'INR').minor).toBe(593_131n);
+  });
+});

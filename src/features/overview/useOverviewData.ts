@@ -530,6 +530,7 @@ export function useOverviewData({
         .map((h) => ({
           id: h.id,
           kind: h.instrument.kind,
+          goldForm: h.instrument.goldForm,
           currency: h.instrument.currency,
           earmark: h.earmark,
           scheme: h.instrument.scheme,

@@ -1,22 +1,23 @@
 /**
- * Adding a jeweller's gold savings scheme (docs/design/gold.md section 3; docs/decisions.md, Gold).
+ * Adding gold (docs/design/gold.md sections 2 and 4; the AddGold board of docs/design/vibrant-canvas.html).
  *
- * Every term is asked for, whatever the detail level (detail-level.md section 4): the jeweller, whether it is by amount or by weight,
- * the instalment and how many, the day the first falls due (which fixes the day of the month, 1 to 28), the bonus as the jeweller
- * states it and what it is worth if it is a sum, the purity if it is by weight, and the last four of the scheme number. No
- * instalment is recorded here: the first is a separate act on the scheme's own screen, and a scheme says what is paid so far as none.
+ * Two things are added here. Physical gold is asked for in full, whatever the detail level (detail-level.md section 4): what it is,
+ * whose, its purity, its weight in grams, the day it was bought, and its cost, which is typed either as the price paid or as the rate per
+ * gram that day, with the other worked out beside it (GD-I8). A gold ETF or fund is a fund: its units, its cost and its ISIN, which is
+ * what the price driver finds it by.
+ *
+ * Whatever way a cost is typed, one figure is stored: the cost of the lot, in paise. A rate typed is multiplied by the grams here, on the
+ * device, and not kept (gold.md section 2).
  */
 
 import { useMemo, useState } from 'react';
 import { EARMARKS, EARMARK_LABELS, isEarmark, type Earmark } from '../../domain/earmark.ts';
 import { isIsoDate, type IsoDate } from '../../lib/dates.ts';
-import { money, parseAmountToMinor } from '../../lib/money.ts';
-import { GOLD_PURITIES, type GoldPurity, type GoldVariant, type HoldingListing, type Member, type NewGoldScheme } from '../../repo/types.ts';
+import { money } from '../../lib/money.ts';
+import { parseQuantity } from '../../lib/quantity.ts';
+import { GOLD_PURITIES, type GoldForm, type GoldPurity, type HoldingListing, type Member, type NewGold } from '../../repo/types.ts';
 import { Button, Field, Problem } from '../../ui/primitives.tsx';
-
-const ONE_INSTALMENT = /^\s*(one|1)\s+instal+ment/i;
-
-const CURRENCY = 'INR';
+import { amountOf, GOLD_CURRENCY as CURRENCY, GoldCost, gramsOf, workedCost, type CostBy } from './GoldCost.tsx';
 
 export function AddGold({
   listing,
@@ -26,7 +27,7 @@ export function AddGold({
 }: {
   listing: HoldingListing;
   today: IsoDate;
-  onAdd: (input: NewGoldScheme) => Promise<void>;
+  onAdd: (input: NewGold) => Promise<unknown>;
   onDone: () => void;
 }) {
   // The same rule as everywhere: a contributor records only against their own.
@@ -38,58 +39,57 @@ export function AddGold({
     [listing.members, listing.viewer.canFileForOthers, listing.viewer.memberId],
   );
 
+  const [what, setWhat] = useState<'physical' | 'fund'>('physical');
+  const [fundForm, setFundForm] = useState<Exclude<GoldForm, 'physical'>>('etf');
   const [name, setName] = useState('');
   const [memberId, setMemberId] = useState(listing.viewer.memberId);
-  const [jeweller, setJeweller] = useState('');
-  const [variant, setVariant] = useState<GoldVariant>('amount');
   const [purity, setPurity] = useState<GoldPurity>('22k');
-  const [instalment, setInstalment] = useState('');
-  const [count, setCount] = useState('11');
-  const [start, setStart] = useState<string>(today);
-  const [bonusText, setBonusText] = useState('');
-  const [bonusWorth, setBonusWorth] = useState('');
-  const [last4, setLast4] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [boughtOn, setBoughtOn] = useState<string>(today);
+  const [costBy, setCostBy] = useState<CostBy>('price');
+  const [typed, setTyped] = useState('');
+  const [gift, setGift] = useState(false);
+  const [isin, setIsin] = useState('');
+  const [worth, setWorth] = useState('');
   const [earmark, setEarmark] = useState<Earmark>('none');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+
+  const physical = what === 'physical';
+  const grams = physical ? gramsOf(quantity) : null;
+
+  // The cost is one figure, whichever way it was typed (GD-I8): a fund's is the total typed, a physical purchase's is worked out.
+  const costMinor: bigint | null = physical ? workedCost({ gift, costBy, typed, grams }) : amountOf(typed);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setProblem(null);
     try {
-      if (jeweller.trim() === '') throw new Error('The jeweller the scheme is with is needed.');
-      if (instalment.trim() === '') throw new Error('The instalment is needed.');
-      const instalmentMinor = parseAmountToMinor(instalment, CURRENCY);
-      if (instalmentMinor <= 0n) throw new Error('An instalment is above nothing.');
-      const instalments = Number(count);
-      if (!Number.isInteger(instalments) || instalments < 1 || instalments > 120) throw new Error('A scheme has between 1 and 120 instalments.');
-      if (!isIsoDate(start) || Number(start.slice(0, 4)) < 2000) throw new Error('The day the first instalment falls due is not a date this can be: check the year.');
-      const dueDay = Number(start.slice(8, 10));
-      if (dueDay > 28) throw new Error('Instalments fall due on a day from 1 to 28, so that the day exists in every month. Choose the first due day within them.');
-      if (bonusWorth.trim() !== '' && parseAmountToMinor(bonusWorth, CURRENCY) < 0n) throw new Error('A bonus is not a negative sum.');
-      if (last4.trim() !== '' && !/^[0-9A-Za-z]{4}$/.test(last4.trim())) throw new Error('Keep only the last four characters of the scheme number, and nothing more.');
+      if (name.trim() === '') throw new Error(physical ? 'Say what it is: a necklace, a coin, a bar.' : 'The name of the fund is needed.');
+      if (!isIsoDate(boughtOn) || Number(boughtOn.slice(0, 4)) < 1990) throw new Error('That is not a date this can be: check the year.');
+      if (boughtOn > today) throw new Error('It cannot be bought after today.');
+      if (physical) {
+        if (grams === null) throw new Error('The weight is in grams, above nothing, to three decimals at most.');
+      } else if (quantity.trim() === '' || parseQuantity(quantity) <= 0n) {
+        throw new Error('The units are above nothing.');
+      }
+      if (costMinor === null) throw new Error(costBy === 'rate' && physical ? 'The rate per gram is needed.' : 'What it cost is needed. If it was a gift, say so.');
+      const worthMinor = physical || worth.trim() === '' ? null : amountOf(worth);
+      if (!physical && worth.trim() !== '' && worthMinor === null) throw new Error('What it is worth today is above nothing, or left out.');
 
       setBusy(true);
       await onAdd({
         householdId: listing.household.id,
         memberId,
-        name: name.trim() === '' ? `Gold savings (${jeweller.trim()})` : name.trim(),
-        jeweller: jeweller.trim(),
-        variant,
-        instalment: money(instalmentMinor, CURRENCY),
-        instalments,
-        startDate: start,
-        dueDay,
-        bonusText: bonusText.trim() === '' ? null : bonusText.trim(),
-        // "One instalment" is a known sum, so it is worked out from the instalment and not left as words (gold.md section 3).
-        bonus:
-          bonusWorth.trim() !== ''
-            ? money(parseAmountToMinor(bonusWorth, CURRENCY), CURRENCY)
-            : ONE_INSTALMENT.test(bonusText)
-              ? money(instalmentMinor, CURRENCY)
-              : null,
-        purity: variant === 'weight' ? purity : null,
-        schemeLast4: last4.trim() === '' ? null : last4.trim(),
+        name: name.trim(),
+        form: physical ? 'physical' : fundForm,
+        ...(physical ? { purity } : {}),
+        quantity: quantity.trim(),
+        boughtOn,
+        cost: money(costMinor, CURRENCY),
+        isGift: gift,
+        ...(physical || isin.trim() === '' ? {} : { isin: isin.trim().toUpperCase() }),
+        ...(worthMinor === null ? {} : { worth: money(worthMinor, CURRENCY) }),
         ...(earmark === 'none' ? {} : { earmark }),
       });
       onDone();
@@ -103,19 +103,43 @@ export function AddGold({
   return (
     <form
       className="inset-form flex flex-col gap-3"
-      aria-label="Add a gold savings scheme"
+      aria-label="Add gold"
       onSubmit={(event) => {
         void submit(event);
       }}
     >
+      <div className="segmented w-fit" role="group" aria-label="Which gold">
+        <button
+          type="button"
+          aria-pressed={physical}
+          onClick={() => {
+            setWhat('physical');
+            // Physical gold is never the emergency fund (GD-I10), so a choice made for a fund is not carried over to it.
+            if (earmark === 'emergency') setEarmark('none');
+          }}
+        >
+          Physical gold
+        </button>
+        <button
+          type="button"
+          aria-pressed={!physical}
+          onClick={() => {
+            setWhat('fund');
+          }}
+        >
+          ETF or fund
+        </button>
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-full sm:w-[220px] sm:shrink-0">
           <Field
-            label="Jeweller"
-            value={jeweller}
+            label={physical ? 'What it is' : 'Fund or ETF'}
+            placeholder={physical ? 'Necklace' : 'Axis Gold ETF'}
             required
+            value={name}
             onChange={(event) => {
-              setJeweller(event.target.value);
+              setName(event.target.value);
             }}
           />
         </div>
@@ -135,6 +159,27 @@ export function AddGold({
             ))}
           </select>
         </label>
+        {!physical && (
+          <div className="flex flex-col gap-1.5">
+            <span className="label" id="gold-fund-form">
+              It is
+            </span>
+            <div className="segmented" role="group" aria-labelledby="gold-fund-form">
+              {(['etf', 'fund'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={fundForm === option}
+                  onClick={() => {
+                    setFundForm(option);
+                  }}
+                >
+                  {option === 'etf' ? 'A gold ETF' : 'A gold fund'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0">
           <span className="label">Set aside for</span>
           <select
@@ -144,8 +189,8 @@ export function AddGold({
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
             }}
           >
-            {/* Jewellery is not emergency cover: a gold scheme is never offered the emergency fund. */}
-            {EARMARKS.filter((option) => option !== 'emergency').map((option) => (
+            {/* Jewellery and coin are not emergency cover (GD-I10); a gold ETF or fund is, as any fund is. */}
+            {EARMARKS.filter((option) => !physical || option !== 'emergency').map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>
@@ -155,125 +200,121 @@ export function AddGold({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex w-full flex-col gap-1.5 sm:w-[260px] sm:shrink-0">
-          <span className="label">Kind</span>
-          <select
-            className="field"
-            value={variant}
-            onChange={(event) => {
-              setVariant(event.target.value === 'weight' ? 'weight' : 'amount');
-            }}
-          >
-            <option value="amount">By amount (the instalments paid)</option>
-            <option value="weight">By weight (grams at the day&rsquo;s rate)</option>
-          </select>
-        </label>
-        {variant === 'weight' && (
-          <label className="flex w-full flex-col gap-1.5 sm:w-[110px] sm:shrink-0">
-            <span className="label">Purity</span>
-            <select
-              className="field"
-              value={purity}
-              onChange={(event) => {
-                if ((GOLD_PURITIES as readonly string[]).includes(event.target.value)) setPurity(event.target.value as GoldPurity);
-              }}
-            >
+        {physical && (
+          <div className="flex flex-col gap-1.5">
+            <span className="label" id="gold-purity">
+              Purity
+            </span>
+            <div className="segmented" role="group" aria-labelledby="gold-purity">
               {GOLD_PURITIES.map((option) => (
-                <option key={option} value={option}>
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={purity === option}
+                  onClick={() => {
+                    setPurity(option);
+                  }}
+                >
                   {option.toUpperCase()}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
         )}
-        <div className="w-full sm:w-[140px] sm:shrink-0">
+        <div className="w-full sm:w-[130px] sm:shrink-0">
           <Field
-            label={`Instalment (${CURRENCY})`}
+            label={physical ? 'Weight (g)' : 'Units'}
             numeric
             inputMode="decimal"
-            value={instalment}
             required
+            value={quantity}
             onChange={(event) => {
-              setInstalment(event.target.value);
-            }}
-          />
-        </div>
-        <div className="w-full sm:w-[110px] sm:shrink-0">
-          <Field
-            label="Instalments"
-            numeric
-            inputMode="numeric"
-            value={count}
-            onChange={(event) => {
-              setCount(event.target.value);
+              setQuantity(event.target.value);
             }}
           />
         </div>
         <div className="w-full sm:w-[150px] sm:shrink-0">
           <Field
-            label="First falls due"
+            label="Bought on"
             type="date"
             required
-            hint="Its day is the day each month."
-            value={start}
+            value={boughtOn}
             onChange={(event) => {
-              setStart(event.target.value);
+              setBoughtOn(event.target.value);
             }}
           />
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-[240px] sm:shrink-0">
-          <Field
-            label="Bonus, as the jeweller says it"
-            hint="For example: one instalment, at maturity."
-            value={bonusText}
-            onChange={(event) => {
-              setBonusText(event.target.value);
-            }}
-          />
-        </div>
-        <div className="w-full sm:w-[140px] sm:shrink-0">
-          <Field
-            label={`Bonus worth (${CURRENCY})`}
-            numeric
-            inputMode="decimal"
-            hint="If it is a sum. Left blank, one instalment is worked out."
-            value={bonusWorth}
-            onChange={(event) => {
-              setBonusWorth(event.target.value);
-            }}
-          />
-        </div>
-        <div className="w-full sm:w-[120px] sm:shrink-0">
-          <Field
-            label="Scheme number, last four"
-            maxLength={4}
-            value={last4}
-            onChange={(event) => {
-              setLast4(event.target.value);
-            }}
-          />
-        </div>
-        <div className="w-full sm:w-[220px] sm:shrink-0">
-          <Field
-            label="Name in the list (optional)"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-          />
-        </div>
+        {physical ? (
+          <GoldCost grams={grams} gift={gift} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} />
+        ) : (
+          <div className="w-full sm:w-[170px] sm:shrink-0">
+            <Field
+              label={`Total cost (${CURRENCY})`}
+              numeric
+              inputMode="decimal"
+              value={typed}
+              onChange={(event) => {
+                setTyped(event.target.value);
+              }}
+            />
+          </div>
+        )}
+        {!physical && (
+          <>
+            <div className="w-full sm:w-[170px] sm:shrink-0">
+              <Field
+                label="ISIN"
+                placeholder="INF846K01W80"
+                maxLength={12}
+                hint="It is what prices it every day."
+                value={isin}
+                onChange={(event) => {
+                  setIsin(event.target.value);
+                }}
+              />
+            </div>
+            <div className="w-full sm:w-[170px] sm:shrink-0">
+              <Field
+                label={`Worth today (${CURRENCY})`}
+                numeric
+                inputMode="decimal"
+                hint="Optional: its first value."
+                value={worth}
+                onChange={(event) => {
+                  setWorth(event.target.value);
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      <p className="note">
-        Held by a jeweller, not a bank, and redeemable only as jewellery. Not counted in your emergency fund or liquid money.
-      </p>
+      {physical && (
+        <>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={gift}
+              onChange={(event) => {
+                setGift(event.target.checked);
+              }}
+            />
+            <span>A gift or inherited, cost not known</span>
+          </label>
+          <p className="note">
+            For jewellery the price includes making charges and GST, so its value at the gold rate starts below what you paid. Not counted
+            in your emergency fund or liquid money.
+          </p>
+        </>
+      )}
+      {!physical && <p className="note">An ETF or fund is priced every day by its ISIN, like any fund.</p>}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>
-          {busy ? 'Adding…' : 'Add the scheme'}
+          {busy ? 'Adding…' : 'Add'}
         </Button>
         <Button type="button" variant="quiet" onClick={onDone}>
           Cancel

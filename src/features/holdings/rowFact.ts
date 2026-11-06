@@ -20,15 +20,15 @@ export function rowFact(options: {
   readonly institution: string | null;
   /** An EPF, an NPS or a PPF, for a retirement holding. */
   readonly retirementType?: 'epf' | 'nps' | 'ppf' | null;
-  /** Who a gold scheme is with and how far through it is, for a gold holding (`goldRowLine`). */
+  /** What physical gold is, its purity and weight, and whether it is valued (`goldRowLine`). A gold ETF or fund has none: it reads as a fund. */
   readonly goldLine?: string | null;
   /** Privacy mode removes an amount from the page, and a coupon on a row is one. */
   readonly privacy?: boolean;
 }): string {
   const { kind, symbol, unitsText, position, view, institution, retirementType = null, goldLine = null, privacy = false } = options;
 
-  // A gold scheme has one unit and no symbol: it says who it is with and how many instalments are paid.
-  if (kind === 'gold') return goldLine ?? 'Gold';
+  // Physical gold says what it is, its purity and its weight; a gold ETF or fund falls through to the fund's units.
+  if (kind === 'gold' && goldLine !== null) return goldLine;
 
   // What it is, and for an NPS the units it is held in: an EPF and a PPF have none to say.
   if (kind === 'retirement') {

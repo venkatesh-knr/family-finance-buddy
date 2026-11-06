@@ -17,7 +17,7 @@ import { daysPhrase } from './fixedIncomeRows.ts';
 import { barTerm } from './rowFact.ts';
 import { RETIREMENT_LABEL } from './AddRetirement.tsx';
 import { RetirementCards, RetirementValue } from './RetirementDetail.tsx';
-import { GoldCards, GoldValue } from './GoldDetail.tsx';
+import { PhysicalGoldCards, PhysicalGoldValue } from './PhysicalGold.tsx';
 import { useGold } from './useGold.ts';
 import { usePpf } from './usePpf.ts';
 import { kindColour } from '../../ui/labels.ts';
@@ -67,7 +67,10 @@ export function HoldingDetail({
   // A PPF is worked out from its account, its payments and the notified rate, read only while one is on screen. A hook, so before the
   // early returns.
   const ppfData = usePpf(listing?.household.id ?? null, row?.holding.instrument.retirementType === 'ppf');
-  const goldData = useGold(listing?.household.id ?? null, row?.holding.instrument.kind === 'gold');
+  const goldData = useGold(
+    listing?.household.id ?? null,
+    row?.holding.instrument.kind === 'gold' && row.holding.instrument.goldForm === 'physical',
+  );
   if (listing === null) return null;
 
   if (row === undefined) {
@@ -89,7 +92,8 @@ export function HoldingDetail({
   const kind = holding.instrument.kind;
   const isFixed = kind === 'deposit' || kind === 'bond';
   const isRetirement = kind === 'retirement';
-  const isGold = kind === 'gold';
+  // Physical gold has its own screen; a gold ETF or fund reads as the fund it is.
+  const isGold = kind === 'gold' && holding.instrument.goldForm === 'physical';
   const name = splitFundName(holding.instrument.name);
   const facts = fixed.get(holdingId);
   // Paid out, or sold out: left out of the totals from the day it was, as net worth leaves it out.
@@ -214,7 +218,8 @@ export function HoldingDetail({
       </section>
       <div className="flex flex-wrap items-center gap-2">
         {isFixed && <Pill tone="neutral">{kind === 'deposit' ? 'Fixed deposit' : 'Bond'}</Pill>}
-        {isGold && <Pill tone="neutral">Gold savings</Pill>}
+        {isGold && <Pill tone="neutral">Physical gold</Pill>}
+        {kind === 'gold' && !isGold && <Pill tone="neutral">{holding.instrument.goldForm === 'fund' ? 'Gold fund' : 'Gold ETF'}</Pill>}
         {isRetirement && holding.instrument.retirementType !== null && (
           <Pill tone="neutral">{RETIREMENT_LABEL[holding.instrument.retirementType]}</Pill>
         )}
@@ -319,10 +324,10 @@ export function HoldingDetail({
         )}
 
         {isGold && (
-          <GoldValue
+          <PhysicalGoldValue
             row={row}
+            listing={listing}
             gold={goldData}
-            householdId={listing.household.id}
             today={today}
             privacy={privacy}
             canWrite={canWrite}
@@ -401,20 +406,22 @@ export function HoldingDetail({
           }}
         />
       ) : isGold ? (
-        <GoldCards
+        <PhysicalGoldCards
           row={row}
+          listing={listing}
           gold={goldData}
-          householdId={listing.household.id}
           today={today}
           privacy={privacy}
           canWrite={canWrite}
+          onLot={recordLot}
+          onSale={recordSale}
           onChanged={async () => {
             await reload();
           }}
         >
           {purpose}
           <div>{archive}</div>
-        </GoldCards>
+        </PhysicalGoldCards>
       ) : isRetirement ? (
         <RetirementCards
           row={row}

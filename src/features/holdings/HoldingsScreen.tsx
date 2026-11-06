@@ -21,7 +21,7 @@ import { groupHoldings, matchesFilter, type Filter, type ListHolding, type Sort 
 import { AddHolding, RefreshPrices } from './holdingParts.tsx';
 import { AddGold } from './AddGold.tsx';
 import { AddRetirement } from './AddRetirement.tsx';
-import { goldRowLine } from './goldFacts.ts';
+import { goldRowLine } from './goldRow.ts';
 import { useGold } from './useGold.ts';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
@@ -39,7 +39,7 @@ const A: Record<string, string> = {
   bond: 'a bond',
   deposit: 'a deposit',
   retirement: 'a retirement account',
-  gold: 'a gold scheme',
+  gold: 'gold',
   other: 'a holding',
 };
 
@@ -62,8 +62,12 @@ export function HoldingsScreen({
   const hook = useHoldings(householdId);
   const { listing, rows, loading, problem, today, paidOut, paidOutFailed } = hook;
   const fixed = useFixedIncomeFacts(listing, today);
-  // Read once for the list, so a gold scheme's row can say how far through it is.
-  const goldData = useGold(listing?.household.id ?? null, rows.some((row) => row.holding.instrument.kind === 'gold'));
+  // Read once for the list, so a physical gold row can say whether its purity has a rate (gold.md section 3).
+  const goldData = useGold(
+    listing?.household.id ?? null,
+    rows.some((row) => row.holding.instrument.kind === 'gold' && row.holding.instrument.goldForm === 'physical'),
+  );
+  const isPhysicalGold = (row: HoldingRow): boolean => row.holding.instrument.kind === 'gold' && row.holding.instrument.goldForm === 'physical';
   const [panel, setPanel] = useState<'add' | 'import' | null>(null);
   const [sort, setSort] = useState<Sort>('largest');
   const [fetchSaid, setFetchSaid] = useState<string | null>(null);
@@ -146,7 +150,9 @@ export function HoldingsScreen({
 
   /** What is earmarked as an emergency fund and still held, per currency, for the card under a list of deposits. */
   const emergency = useMemo(() => {
-    const live = listHoldings.filter((h) => h.earmark === 'emergency' && h.kind !== 'gold' && h.paidOutOn === null && h.unitsHeld !== 0n);
+    // Physical gold is never the emergency fund (GD-I10); a gold ETF or fund is, as any fund is.
+    const physical = new Set(rows.filter(isPhysicalGold).map((row) => row.holding.id));
+    const live = listHoldings.filter((h) => h.earmark === 'emergency' && !physical.has(h.id) && h.paidOutOn === null && h.unitsHeld !== 0n);
     const by = new Map<string, bigint>();
     for (const h of live) if (h.latest !== null) by.set(h.latest.currency, (by.get(h.latest.currency) ?? 0n) + h.latest.minor);
     return {
@@ -154,7 +160,7 @@ export function HoldingsScreen({
       unvalued: live.filter((h) => h.latest === null).length,
       held: [...by.entries()].map(([currency, minor]) => money(minor, currency)),
     };
-  }, [listHoldings]);
+  }, [listHoldings, rows]);
 
   const modelOf = useMemo(() => {
     const byId = new Map<string, HoldingRow>(rows.map((row) => [row.holding.id, row]));
@@ -170,7 +176,7 @@ export function HoldingsScreen({
         holding.instrument.kind === 'deposit' ||
         holding.instrument.kind === 'bond' ||
         holding.instrument.kind === 'retirement' ||
-        holding.instrument.kind === 'gold';
+        isPhysicalGold(row);
       const value = row.latest === null ? null : money(row.latest.amountMinor, currency);
 
       let gain: RowModel['gain'] = { kind: 'none' };
@@ -200,10 +206,9 @@ export function HoldingsScreen({
           view: facts?.view ?? null,
           institution: facts?.institution ?? null,
           retirementType: holding.instrument.retirementType,
-          goldLine:
-            holding.instrument.kind === 'gold'
-              ? goldRowLine(goldData.gold?.schemes.find((scheme) => scheme.holdingId === id), goldData.gold?.instalments ?? [], today)
-              : null,
+          goldLine: isPhysicalGold(row)
+            ? goldRowLine({ purity: holding.instrument.goldPurity, grams: row.unitsHeld, rates: goldData.rates, today })
+            : null,
           privacy,
         }),
         value,
@@ -212,7 +217,7 @@ export function HoldingsScreen({
         gain,
       };
     };
-  }, [rows, fixed, privacy, goldData.gold, today]);
+  }, [rows, fixed, privacy, goldData.rates, today]);
 
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
   if (problem !== null && listing === null) {
@@ -417,7 +422,7 @@ function AddPanel({
           <option value="holding">A fund, an ETF, a share or something else</option>
           <option value="fixed">A deposit or a bond</option>
           <option value="retirement">A retirement account: EPF, NPS or PPF</option>
-          <option value="gold">Gold savings with a jeweller</option>
+          <option value="gold">Gold: physical, or an ETF or fund</option>
         </select>
       </label>
       {what === 'retirement' ? (

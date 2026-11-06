@@ -3330,6 +3330,12 @@
     margin-left: auto;
   }
 
+  /* A gold rate older than thirty days still values the gold, and its date turns amber so the person can put it right (gold.md section 3).
+     The words "over 30 days ago" say it too: the colour is never the only thing that does. */
+  .rate-stale {
+    color: var(--brass);
+  }
+
   .worked-out {
     border-top: 1px solid var(--line);
     display: flex;

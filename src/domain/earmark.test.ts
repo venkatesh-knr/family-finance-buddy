@@ -193,22 +193,36 @@ describe('the liquid corpus — the other named output of the one classification
     },
   );
 
-  it('GD-I4 — leaves a gold holding out of the liquid corpus: jewellery is not money that can be had in an emergency at its face value, though it is in the corpus', () => {
+  it('GD-I10 — leaves physical gold out of the liquid corpus: jewellery is not money that can be had in an emergency at its rate, though it is in the corpus', () => {
     const [total] = fireCorpus({
-      holdings: [holding({ id: 'gold', kind: 'gold' }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
+      holdings: [holding({ id: 'gold', kind: 'gold', goldForm: 'physical' }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
       valuations: [reading('gold', inr(100)), reading('fd', inr(40))],
     });
     expect(total?.included.minor).toBe(14000n);
     expect(total?.liquid.minor).toBe(4000n);
   });
 
-  it('GD-I4 — never counts gold toward the emergency goal, even one earmarked so already: it stays in the corpus', () => {
+  it('GD-I10 — never counts physical gold toward the emergency goal, even one earmarked so already: it stays in the corpus', () => {
     const [total] = fireCorpus({
-      holdings: [holding({ id: 'gold', kind: 'gold', earmark: 'emergency' })],
+      holdings: [holding({ id: 'gold', kind: 'gold', goldForm: 'physical', earmark: 'emergency' })],
       valuations: [reading('gold', inr(100))],
     });
     expect(total?.excluded.emergency.minor).toBe(0n);
     expect(total?.included.minor).toBe(10000n);
+  });
+
+  it.each(['etf', 'fund'])('GD-I10 — counts a gold %s in the liquid corpus, as any fund is, and lets it be the emergency fund', (form) => {
+    const [liquid] = fireCorpus({
+      holdings: [holding({ id: 'gold', kind: 'gold', goldForm: form }), holding({ id: 'fd', kind: 'deposit', scheme: 'fd' })],
+      valuations: [reading('gold', inr(100)), reading('fd', inr(40))],
+    });
+    expect(liquid?.liquid.minor).toBe(14000n);
+
+    const [emergency] = fireCorpus({
+      holdings: [holding({ id: 'gold', kind: 'gold', goldForm: form, earmark: 'emergency' })],
+      valuations: [reading('gold', inr(100))],
+    });
+    expect(emergency?.excluded.emergency.minor).toBe(10000n);
   });
 
   it('counts a retirement holding in the corpus whether it is earmarked retirement or not earmarked at all', () => {
