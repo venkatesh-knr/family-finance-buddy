@@ -155,6 +155,26 @@ begin
      and p.renewal_on between (now() at time zone 'Asia/Kolkata')::date and (now() at time zone 'Asia/Kolkata')::date + 30;
   if n = 0 then raise exception 'no policy renewing within thirty days'; end if;
 
+  -- Gold (20261106120000, docs/design/gold.md): physical gold of two purities, one bought for a price and one a gift with no cost, a gold
+  -- ETF with the ISIN read from AMFI's list, and a typed rate for each purity the physical gold has. No jeweller's scheme.
+  select count(*) into n from public.instrument i
+   where i.household_id = v_household and i.kind = 'gold' and i.gold_form = 'physical' and i.gold_purity is not null;
+  if n < 2 then raise exception 'expected two physical gold holdings with a purity, found %', n; end if;
+
+  select count(*) into n from public.lot l join public.holding h on h.id = l.holding_id join public.instrument i on i.id = h.instrument_id
+   where l.household_id = v_household and i.gold_form = 'physical' and l.kind = 'gift' and l.cost_minor = 0;
+  if n = 0 then raise exception 'no gift of physical gold with no cost'; end if;
+
+  select count(*) into n from public.instrument i
+   where i.household_id = v_household and i.kind = 'gold' and i.gold_form = 'etf' and i.isin = 'INF846K01W80';
+  if n = 0 then raise exception 'no gold ETF with its ISIN'; end if;
+
+  select count(distinct r.purity) into n from public.gold_rate r where r.household_id = v_household;
+  if n < 2 then raise exception 'expected a typed rate for 22K and 24K, found % purities', n; end if;
+
+  select count(*) into n from public.instrument i where i.household_id = v_household and i.gold_form = 'jeweller_scheme';
+  if n <> 0 then raise exception 'the jeweller''s scheme is withdrawn, but the seed made %', n; end if;
+
   raise notice 'every edge case present';
 end;
 $assert$;
