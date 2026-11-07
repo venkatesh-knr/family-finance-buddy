@@ -442,6 +442,19 @@ Written down so they are not lost, and **decided by nobody**: each is the mainta
 **Gold, `docs/design/gold.md`** (answered on 6 November 2026, below): the cost basis of physical gold after a scheme's redemption is moot, because the scheme is withdrawn; the demo's seed values are replaced by those of the physical-gold seed. The listed-gold-ETF tax class was decided against (see *Gold, physical gold and gold ETFs*).
 
 
+## Open: selling the app (6 November 2026)
+
+Written down so they are not lost, and **decided by nobody**: each is the owner's to answer. The design document is `docs/design/commercial-launch.md` (prefix CL, CL-I1 to CL-I10), **proposed and not scheduled**; its section 12 is the list below. `CLAUDE.md` is unchanged: its "No public sign-up" line stands until the owner decides item 1.
+
+1. **Public sign-up for the first person in a household** (section 2), and the matching edit to `CLAUDE.md`'s "Out of scope". Today an account is made only by accepting a single-use, expiring invite.
+2. **Plans and prices** (section 1): what is free and what is paid, the member limit, the trial length, and the monthly and yearly prices.
+3. **The household hard delete** (section 5) as a third exception to "deletes are soft everywhere", beside `reset_demo_household` and `reverse_template_batch`, and what happens to a leaving member's private entries.
+4. **The retention period** after a subscription expires (section 4; 12 months is proposed).
+5. **Support access** (section 7): the two levels (a diagnostics report the person sends, and an owner's time-limited grant) and the 24-hour cap.
+6. **The no-commission, no-ads line** (section 10) as a standing rule.
+7. **The business entity** and when a paid beta starts (sections 9 and 11).
+
+
 ## Gold, the first slice (November 2026): superseded
 
 **Superseded on 6 November 2026: the owner withdrew the jeweller's savings scheme, and every item below about the scheme, its instalments, its redemption and its bonus is history. What replaces it is the next section.** Built from the first version of `docs/design/gold.md`: `supabase/migrations/20261102120000_gold.sql` with `supabase/tests/gold_scheme.test.sql`. What was chosen where the design left room, and what is still open:
