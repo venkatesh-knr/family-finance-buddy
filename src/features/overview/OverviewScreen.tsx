@@ -177,6 +177,7 @@ export function OverviewScreen({
     load,
     holdings,
     shortPositions,
+    othersHold,
     valuations,
     totals,
     allocation,
@@ -670,6 +671,11 @@ export function OverviewScreen({
             </p>
           )}
         </Card>
+        {othersHold !== null && (
+          <p className="note mt-3" data-testid="others-hold">
+            {othersHold}
+          </p>
+        )}
 
       </div>
 

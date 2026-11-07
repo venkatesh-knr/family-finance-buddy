@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { householdSwitcher } from './created.ts';
 
 /**
  * Holdings as tabs, All first, and whose figures: Mine first (docs/design/simple-layout.md sections 2 and 2a).
@@ -124,4 +125,27 @@ test('SL-I8 — the emergency fund and protection say Household, and do not chan
   await switcher.getByRole('button', { name: 'Household' }).click();
   await expect(page.getByRole('heading', { name: 'Household net worth' })).toBeVisible();
   expect(await page.getByRole('region', { name: 'Household emergency fund' }).innerText()).toBe(onMine);
+});
+
+test('SL-I8 — Mine says what other members hold, and Household, which shows it, does not', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/#/overview');
+  await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  // The Demo household: the signed-in member holds only gold there, and the other members hold the rest.
+  await householdSwitcher(page).selectOption({ label: 'Demo household (demo)' });
+  const switcher = page.getByRole('group', { name: 'Whose figures' });
+  await expect(switcher).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('others-hold')).toContainText(/Other members hold .*deposits/i, { timeout: 20_000 });
+  await expect(page.getByTestId('others-hold')).toContainText('choose Household');
+
+  // Holdings opens on All and says it too, where a class the member does not hold has no tab.
+  await page.goto('/#/holdings');
+  await expect(page.getByTestId('others-hold')).toContainText(/Other members hold/, { timeout: 20_000 });
+
+  // Household shows all of it, so there is nothing left out to say.
+  await switcher.getByRole('button', { name: 'Household' }).click();
+  await expect(page.getByTestId('others-hold')).toHaveCount(0);
+  await page.goto('/#/overview');
+  await expect(page.getByRole('heading', { name: 'Household net worth' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('others-hold')).toHaveCount(0);
 });

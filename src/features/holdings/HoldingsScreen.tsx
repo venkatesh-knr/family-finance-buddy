@@ -28,6 +28,7 @@ import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
 import { EmergencyCard, FixedExtras, GroupSection, Summary, type RowModel } from './HoldingsList.tsx';
 import { ByClass, ClassHeader, FloatingAdd, GoldFacts, SetAside, TabStrip, type SetAsideItem } from './HoldingsTabs.tsx';
+import { othersHoldNote } from '../../app/otherMembers.ts';
 import { ScopeSwitch, useScope, whose } from '../../app/scope.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
 import { rowFact } from './rowFact.ts';
@@ -259,6 +260,19 @@ export function HoldingsScreen({
     };
   }, [rows, fixed, privacy, goldData.rates, today]);
 
+  // What Mine leaves out, said on All, where the classes are listed: a class held under another member has no row and no tab here.
+  const othersHold = useMemo(
+    () =>
+      scope === 'mine' && listing !== null
+        ? othersHoldNote(
+            allRows.filter((row) => !row.holding.isArchived && !paidOut.has(row.holding.id) && row.unitsHeld !== 0n).map((row) => ({ memberId: row.holding.member.id, kind: row.holding.instrument.kind })),
+            listing.viewer.memberId,
+            kindLabel,
+          )
+        : null,
+    [scope, listing, allRows, paidOut],
+  );
+
   if (loading) return <p className="note px-4.5 py-4.5">Loading…</p>;
   if (problem !== null && listing === null) {
     return (
@@ -362,6 +376,12 @@ export function HoldingsScreen({
       {allRows.length > 0 && <TabStrip kinds={tabKinds} current={earmarkFilter !== '' ? null : kind} />}
 
       {summary}
+
+      {kind === '' && earmarkFilter === '' && rows.length > 0 && othersHold !== null && (
+        <p className="note" data-testid="others-hold">
+          {othersHold}
+        </p>
+      )}
 
       {canWrite && panel === 'add' && (
         <AddPanel
