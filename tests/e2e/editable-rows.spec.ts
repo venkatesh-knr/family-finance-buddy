@@ -183,7 +183,8 @@ test.describe('A holding\u2019s own screen', () => {
   });
 
   test('the list has no per-row action at all: a row is one link', async ({ page }) => {
-    await page.goto('/#/holdings');
+    // Rows are on a class's tab, since All has a row for each class and no holding.
+    await page.goto('/#/holdings?kind=deposit');
     await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
     const rows = page.locator('.holding-row');
     for (let i = 0; i < (await rows.count()); i += 1) {

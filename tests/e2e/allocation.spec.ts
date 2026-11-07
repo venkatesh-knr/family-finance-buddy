@@ -46,9 +46,10 @@ test('pressing anywhere on a row opens Holdings filtered to its class, and Back 
 
   await expect(page).toHaveURL((url) => url.hash.startsWith(`#/holdings?kind=${kind ?? ''}`));
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-  // The class's chip is the one pressed, and the list is only that class.
-  await expect(page.locator('.chips a[aria-current="true"]')).toHaveCount(1, { timeout: 20_000 });
-  await expect(page.locator('.chips a[aria-current="true"]')).not.toHaveText(/^All/);
+  // The class's tab is the one current, and the list is only that class.
+  const current = page.locator('nav[aria-label="Holdings by class"] [aria-current="page"]');
+  await expect(current).toHaveCount(1, { timeout: 20_000 });
+  await expect(current).not.toHaveText('All');
 
   await page.goBack();
   // The hash the page was opened with, with or without the slash the shell writes.

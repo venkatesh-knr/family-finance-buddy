@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { EARMARK_LABELS, type Earmark } from '../../domain/earmark.ts';
 import { hashFor } from '../../app/route.ts';
 import { formatIsoDate } from '../../lib/dates.ts';
@@ -7,7 +7,7 @@ import { AssetTile } from '../../ui/AssetTile.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
 import { Amount, Caveat, Delta, Pill, Stat, Unit } from '../../ui/primitives.tsx';
 import type { FixedIncomeView } from '../../domain/fixed-income.ts';
-import { type Filter, type GroupedHoldings, type Sort } from './holdingGroups.ts';
+import { type Filter, type GroupedHoldings } from './holdingGroups.ts';
 import { IMPORT_THE_FULL_STATEMENT, RECORD_THE_COST } from './history.ts';
 
 /**
@@ -48,68 +48,6 @@ const EARMARK_SHORT: Record<Earmark, string> = {
   none: '',
 };
 
-/**
- * One row of chips that scrolls sideways (docs/design/vibrant-canvas.html): All, a chip for each class, and, past a
- * hairline, a chip for each earmark (the owner's call on the mock-vs-build review, item 10). The row scrolls inside
- * itself and the page never does, with a fade at the edge that says there is more.
- */
-export function Chips({ chips, filter }: { chips: GroupedHoldings['chips']; filter: Filter }) {
-  const all = (filter.kind ?? '') === '' && (filter.earmark ?? '') === '';
-  const row = useRef<HTMLElement | null>(null);
-
-  // A filter reached by a link (an allocation row on the Overview) can be a chip far along the row: bring it into view
-  // inside the row, without moving the page.
-  useEffect(() => {
-    const nav = row.current;
-    const pressed = nav?.querySelector<HTMLElement>('[aria-current="true"]');
-    if (nav === null || nav === undefined || pressed === null || pressed === undefined) return;
-    if (pressed.offsetLeft + pressed.offsetWidth > nav.clientWidth) nav.scrollLeft = pressed.offsetLeft - 24;
-  }, [filter.kind, filter.earmark]);
-
-  return (
-    <nav className="chips" aria-label="Filter holdings" ref={row}>
-      <a className="chip" href={hashFor('holdings')} aria-current={all ? 'true' : undefined}>
-        All
-      </a>
-      {chips.kinds.map(({ kind, count }) => (
-        <a
-          key={kind}
-          className="chip"
-          href={hashFor('holdings', { kind })}
-          aria-current={filter.kind === kind ? 'true' : undefined}
-        >
-          {kindLabel(kind)} <span className="chip-count">{count}</span>
-        </a>
-      ))}
-      {chips.earmarks.length > 0 && <span className="chip-divider" aria-hidden="true" />}
-      {chips.earmarks.map(({ earmark, count }) => (
-        <a
-          key={earmark}
-          className="chip"
-          href={hashFor('holdings', { earmark })}
-          aria-current={filter.earmark === earmark ? 'true' : undefined}
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
-            <circle cx="7.5" cy="7.5" r="1" />
-          </svg>
-          {EARMARK_LABELS[earmark as Earmark]} <span className="chip-count">{count}</span>
-        </a>
-      ))}
-    </nav>
-  );
-}
-
 /** One currency's figures, as the screen adds them up: a holding nobody has read is absent, not zero. */
 export interface CurrencyTotals {
   readonly currency: string;
@@ -141,8 +79,11 @@ export function Summary({
   action,
   status,
   extra,
+  heading,
 }: {
   grouped: GroupedHoldings;
+  /** The label above the figure, which says whose it is: "Your holdings", "Household gold". */
+  heading: string;
   base: string;
   filter: Filter;
   privacy: boolean;
@@ -159,11 +100,7 @@ export function Summary({
   const own = grouped.totals.find((t) => t.currency === base);
   const abroad = grouped.totals.filter((t) => t.currency !== base);
   const lead = own ?? abroad[0];
-  const title = filtered
-    ? (filter.kind ?? '') !== ''
-      ? kindLabel(filter.kind ?? '')
-      : EARMARK_LABELS[(filter.earmark ?? 'none') as Earmark]
-    : 'Portfolio';
+  const title = heading;
   // Only the groups shown are summed, so a filtered summary describes the filter; the caveats follow the same set.
   const mine = totals.find((t) => t.currency === (lead?.currency ?? base));
   const whole = lead === undefined ? undefined : grouped.portfolio.find((p) => p.currency === lead.currency);
@@ -219,7 +156,7 @@ export function Summary({
       </div>
       {filtered && <p className="note mt-1">latest readings</p>}
 
-      {!filtered && (
+      {(filter.earmark ?? '') === '' && (
         <p className="summary-line">
           {own !== undefined && abroad.length > 0 ? (
             <span className="note tabular-nums">
@@ -236,11 +173,13 @@ export function Summary({
             <span />
           )}
           {mine !== undefined && mine.invested > 0n && mine.short === 0 && mine.missing === 0 && (
-            <Delta direction={mine.comparable - mine.invested > 0n ? 'up' : mine.comparable - mine.invested < 0n ? 'down' : 'flat'}>
-              {privacy
-                ? formatMoney(money(mine.comparable - mine.invested, mine.currency), { privacy })
-                : `${percentOfCost(mine.comparable - mine.invested, mine.invested) ?? ''} on cost`}
-            </Delta>
+            <span className="note tabular-nums" data-testid="invested-line">
+              invested {formatMoney(money(mine.invested, mine.currency), { privacy })} ·{' '}
+              <Delta direction={mine.comparable - mine.invested > 0n ? 'up' : mine.comparable - mine.invested < 0n ? 'down' : 'flat'}>
+                {formatMoney(money(mine.comparable - mine.invested < 0n ? mine.invested - mine.comparable : mine.comparable - mine.invested, mine.currency), { privacy })}
+                {privacy ? '' : ` (${percentOfCost(mine.comparable - mine.invested, mine.invested) ?? ''})`}
+              </Delta>
+            </span>
           )}
         </p>
       )}
@@ -368,108 +307,6 @@ export function FixedExtras({
         </p>
       ))}
     </>
-  );
-}
-
-/**
- * The list's own header (docs/design/vibrant-canvas.html): the title and the count, the sort, an icon to import a
- * statement and the one Add. One Add on the screen (HD-I5), naming the class when the list is filtered to one.
- */
-export function ListHeader({
-  title,
-  count,
-  sort,
-  onSort,
-  canWrite,
-  addLabel,
-  panel,
-  onPanel,
-  forClass = false,
-}: {
-  title: string;
-  count: number;
-  sort: Sort;
-  onSort: (sort: Sort) => void;
-  /** Filtered to a class, the header is the board's: the title, the count and the Add; sort and import are on All. */
-  forClass?: boolean;
-  canWrite: boolean;
-  addLabel: string;
-  panel: 'add' | 'import' | null;
-  onPanel: (panel: 'add' | 'import' | null) => void;
-}) {
-  return (
-    <div className="list-head">
-      <h2 className="list-title">{title}</h2>
-      <span className="list-count tabular-nums">{count}</span>
-      <span className="flex-1" />
-      {!forClass && (
-        <button
-          type="button"
-          className="quiet-button"
-          aria-label={sort === 'largest' ? 'Sorted largest first. Sort by name.' : 'Sorted by name. Sort largest first.'}
-          onClick={() => {
-            onSort(sort === 'largest' ? 'name' : 'largest');
-          }}
-        >
-          <span aria-hidden="true">{sort === 'largest' ? '↓ Largest' : 'A–Z Name'}</span>
-        </button>
-      )}
-      {canWrite && (
-        <>
-          {!forClass && (
-          <button
-            type="button"
-            className="iconbtn list-icon"
-            aria-label="Import a statement"
-            aria-expanded={panel === 'import'}
-            onClick={() => {
-              onPanel(panel === 'import' ? null : 'import');
-            }}
-          >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 16V4" />
-              <path d="m7 9 5-5 5 5" />
-              <path d="M5 21h14" />
-            </svg>
-          </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary add-button"
-            aria-expanded={panel === 'add'}
-            onClick={() => {
-              onPanel(panel === 'add' ? null : 'add');
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 5v14" />
-              <path d="M5 12h14" />
-            </svg>
-            {addLabel}
-          </button>
-        </>
-      )}
-    </div>
   );
 }
 

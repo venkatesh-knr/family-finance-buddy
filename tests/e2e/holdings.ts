@@ -16,14 +16,56 @@ export async function openList(page: Page, hash = '#/holdings') {
   await expect(page.getByText('latest readings')).toBeVisible({ timeout: 20_000 });
 }
 
-/** The row of the holding with this name, opening the Ended group if that is where it is. */
-export async function rowFor(page: Page, name: string): Promise<Locator> {
-  const row = page.locator('.holding-row').filter({ hasText: name });
-  if ((await row.count()) === 0) {
+const strip = (page: Page) => page.locator('nav[aria-label="Holdings by class"]');
+
+/** The hash of every tab, All first. */
+async function tabHashes(page: Page): Promise<string[]> {
+  return strip(page).locator('a').evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
+}
+
+/** Go to a tab of the Holdings screen without reloading it, and wait for it to be the current one. */
+async function goToTab(page: Page, hash: string) {
+  await page.evaluate((to) => {
+    window.location.hash = to;
+  }, hash);
+  await expect(strip(page).locator(`a[href="${hash}"]`)).toHaveAttribute('aria-current', 'page', { timeout: 20_000 });
+}
+
+/** The rows with this name on the tab that is open, the Ended group opened first if it is folded. */
+async function namedHere(page: Page, name: string | RegExp): Promise<Locator> {
+  const rows = page.locator('.holding-row').filter({ hasText: name });
+  if ((await rows.count()) === 0) {
     const ended = page.getByRole('button', { name: /^Ended/ });
     if ((await ended.count()) > 0 && (await ended.getAttribute('aria-expanded')) === 'false') await ended.click();
   }
+  return page.locator('.holding-row').filter({ hasText: name });
+}
+
+/**
+ * The row of the holding with this name. All has a row for each class and no holdings, so the holding is looked for on the tab that is
+ * open and then on each class tab in turn (a holding is on the tab of its kind), the Ended group opened where it is folded.
+ */
+export async function rowFor(page: Page, name: string | RegExp): Promise<Locator> {
+  const here = await namedHere(page, name);
+  if ((await here.count()) > 0) return here.first();
+  for (const hash of (await tabHashes(page)).slice(1)) {
+    await goToTab(page, hash);
+    await page.locator('.holding-row').first().waitFor({ timeout: 4000 }).catch(() => undefined);
+    const found = await namedHere(page, name);
+    if ((await found.count()) > 0) return found.first();
+  }
   return page.locator('.holding-row').filter({ hasText: name }).first();
+}
+
+/** How many rows carry this name across every tab, which is what "it is gone from the list" means now that All has no rows. */
+export async function rowsNamed(page: Page, name: string | RegExp): Promise<number> {
+  let total = (await (await namedHere(page, name)).count());
+  for (const hash of (await tabHashes(page)).slice(1)) {
+    await goToTab(page, hash);
+    await page.locator('.holding-row').first().waitFor({ timeout: 2000 }).catch(() => undefined);
+    total += await (await namedHere(page, name)).count();
+  }
+  return total;
 }
 
 /** Open a holding's own screen from the list. */
@@ -82,7 +124,7 @@ export async function archiveOpenHolding(page: Page, name: string) {
   await page.getByRole('button', { name: 'Yes, archive it' }).click();
   await expect(page.getByTestId('detail-value')).toHaveCount(0, { timeout: 20_000 });
   await openList(page);
-  await expect(page.locator('.holding-row').filter({ hasText: name })).toHaveCount(0);
+  expect(await rowsNamed(page, name), `${name} is still on a tab of the list`).toBe(0);
 }
 
 export async function archiveByName(page: Page, name: string) {

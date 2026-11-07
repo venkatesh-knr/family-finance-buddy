@@ -525,8 +525,9 @@ export function useOverviewData({
   );
   const corpusHoldings = useMemo<readonly CorpusHolding[]>(
     () =>
+      // Always the household's: the emergency fund, protection and the FIRE read-out are only ever the household's, and do not follow the
+      // Mine | Household switch (docs/design/simple-layout.md section 2a).
       (listing === null ? [] : listing.holdings)
-        .filter((h) => scope === 'household' || h.member.id === mine)
         .map((h) => ({
           id: h.id,
           kind: h.instrument.kind,
@@ -537,7 +538,7 @@ export function useOverviewData({
           carriesPolicy: carriers.has(h.id),
           isArchived: h.isArchived || paidOut.has(h.id),
         })),
-    [listing, scope, mine, paidOut, carriers],
+    [listing, paidOut, carriers],
   );
 
   const fire = useMemo(() => {

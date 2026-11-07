@@ -73,10 +73,10 @@ test('a holdings filter does not survive the household it was set in', async ({ 
   await page.getByRole('group', { name: 'Screen' }).first().getByText('Overview', { exact: true }).click();
   await page.getByRole('group', { name: 'Screen' }).first().getByText('Holdings', { exact: true }).click();
 
-  // Asking for Holdings means all of them: no class in the address, and the All chip is the one pressed.
+  // Asking for Holdings means all of them: no class in the address, and the All tab is the one current.
   await expect(page).toHaveURL((url) => !url.hash.includes('kind='));
   await expect(
-    page.locator('.chips a[aria-current="true"]'),
+    page.locator('nav[aria-label="Holdings by class"] [aria-current="page"]'),
     'a class filter survived navigating away and back',
-  ).toHaveText(/^All/, { timeout: 20_000 });
+  ).toHaveText('All', { timeout: 20_000 });
 });

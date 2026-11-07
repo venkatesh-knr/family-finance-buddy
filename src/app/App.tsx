@@ -34,6 +34,7 @@ import { useScreen, type Screen } from './useScreen.ts';
 import { allowedScreen, moreFor, screensFor } from '../domain/access.ts';
 import { SummaryScreen } from '../features/summary/SummaryScreen.tsx';
 import { HouseholdProvider, HouseholdSwitcher, useHouseholdChoice } from './household.tsx';
+import { ScopeProvider } from './scope.tsx';
 import { useTheme, type ThemeChoice } from './theme.tsx';
 import {
   DISPLAY_CURRENCY,
@@ -136,6 +137,7 @@ export function App() {
 
   return (
     <HouseholdProvider>
+      <ScopeProvider>
       <SignedIn
         privacy={privacy}
         setPrivacy={setPrivacy}
@@ -150,6 +152,7 @@ export function App() {
         displayCurrency={displayCurrency}
         onDisplayCurrency={setDisplayCurrency}
       />
+      </ScopeProvider>
     </HouseholdProvider>
   );
 }

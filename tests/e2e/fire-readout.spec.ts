@@ -51,6 +51,9 @@ test('the corpus starts from the Overview net worth and never exceeds it, and sa
 }) => {
   await page.goto('/#overview');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  // The corpus is the household's, so it is measured against the household's net worth: the switch opens on Mine (SL-I8), so it is turned.
+  const whoseFigures = page.getByRole('group', { name: 'Whose figures' });
+  if ((await whoseFigures.count()) > 0) await whoseFigures.getByRole('button', { name: 'Household' }).click();
   // Until the exchange rates have been read the Overview shows its refusal (the per-currency figures with a
   // mark on them) and then the total, so wait for the total: a single figure, not a sum of two.
   const heroText = async (): Promise<string> =>

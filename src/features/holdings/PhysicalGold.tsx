@@ -252,7 +252,7 @@ function PhysicalGoldRate(props: Shared) {
   );
 }
 
-function RateForm({
+export function RateForm({
   householdId,
   purity,
   today,

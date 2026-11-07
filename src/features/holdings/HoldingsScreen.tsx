@@ -2,7 +2,7 @@
  * Holdings: a list that is one glance a holding, and a screen for each holding (docs/design/holdings.md).
  *
  * Eight holdings took about 6.7 phone screens when every one rendered its full detail inline. The list is a
- * summary, filter chips that live in the URL, and holdings grouped by class with an Ended group last; a row opens
+ * summary, tabs that live in the URL (All first, then a tab for each class held), and holdings grouped by class; a row opens
  * the holding, whose own screen takes the shape of its kind. Recording a value is still the thing this screen is
  * for — it takes seconds and cannot be done retrospectively — so it is on the detail, one tap from the row.
  */
@@ -10,7 +10,7 @@
 import { Select } from '../../ui/Select.tsx';
 import { useMemo, useState } from 'react';
 import { isQualified } from '../../domain/position.ts';
-import type { Earmark } from '../../domain/earmark.ts';
+import { EARMARK_LABELS, type Earmark } from '../../domain/earmark.ts';
 import type { IsoDate } from '../../lib/dates.ts';
 import { money, percentOfCost } from '../../lib/money.ts';
 import { formatQuantityGrouped } from '../../lib/quantity.ts';
@@ -26,7 +26,9 @@ import { goldRowLine } from './goldRow.ts';
 import { useGold } from './useGold.ts';
 import { TermsForm } from './FixedIncomeForms.tsx';
 import { HoldingDetail } from './HoldingDetail.tsx';
-import { Chips, EmergencyCard, FixedExtras, GroupSection, ListHeader, Summary, type RowModel } from './HoldingsList.tsx';
+import { EmergencyCard, FixedExtras, GroupSection, Summary, type RowModel } from './HoldingsList.tsx';
+import { ByClass, ClassHeader, FloatingAdd, GoldFacts, SetAside, TabStrip, type SetAsideItem } from './HoldingsTabs.tsx';
+import { ScopeSwitch, useScope, whose } from '../../app/scope.tsx';
 import { ImportStatement } from './ImportStatement.tsx';
 import { rowFact } from './rowFact.ts';
 import { useFixedIncomeFacts } from './useFixedIncomeFacts.ts';
@@ -61,7 +63,13 @@ export function HoldingsScreen({
   holdingId: string | null;
 }) {
   const hook = useHoldings(householdId);
-  const { listing, rows, loading, problem, today, paidOut, paidOutFailed } = hook;
+  const { listing, rows: allRows, loading, problem, today, paidOut, paidOutFailed } = hook;
+  // Whose figures: Mine first, and one state with the Overview (src/app/scope.tsx). Mine is the holdings recorded under the signed-in member.
+  const { scope } = useScope();
+  const rows = useMemo(
+    () => (scope === 'mine' && listing !== null ? allRows.filter((row) => row.holding.member.id === listing.viewer.memberId) : allRows),
+    [allRows, scope, listing],
+  );
   const fixed = useFixedIncomeFacts(listing, today);
   // Read once for the list, so a physical gold row can say whether its purity has a rate (gold.md section 3).
   const goldData = useGold(
@@ -147,6 +155,26 @@ export function HoldingsScreen({
   const grouped = useMemo(
     () => groupHoldings({ holdings: listHoldings, base, filter, sort }),
     [listHoldings, base, filter, sort],
+  );
+
+  // The tab strip draws a tab for each class held, whatever tab is open, in the order of their value.
+  const tabKinds = useMemo(
+    () => groupHoldings({ holdings: listHoldings, base, filter: {}, sort: 'largest' }).groups.map((group) => group.kind),
+    [listHoldings, base],
+  );
+
+  // What is set aside, per earmark: how many holdings and what they are worth, for the rows of All's Set aside section.
+  const setAside = useMemo<readonly SetAsideItem[]>(
+    () =>
+      grouped.chips.earmarks.map(({ earmark, count }) => {
+        const held = new Map<string, bigint>();
+        for (const h of listHoldings) {
+          if (h.earmark !== earmark || h.paidOutOn !== null || h.unitsHeld === 0n || h.latest === null) continue;
+          held.set(h.latest.currency, (held.get(h.latest.currency) ?? 0n) + h.latest.minor);
+        }
+        return { earmark: earmark as Earmark, count, held: [...held.entries()].map(([currency, minor]) => money(minor, currency)) };
+      }),
+    [grouped.chips.earmarks, listHoldings],
   );
 
   /** What is earmarked as an emergency fund and still held, per currency, for the card under a list of deposits. */
@@ -247,19 +275,26 @@ export function HoldingsScreen({
     );
   }
 
-  const filtered = (filter.kind ?? '') !== '' || (filter.earmark ?? '') !== '';
-  const addLabel = (filter.kind ?? '') !== '' ? `Add ${A[filter.kind ?? ''] ?? 'a holding'}` : 'Add';
+  const kind = filter.kind ?? '';
+  const earmarkFilter = filter.earmark ?? '';
+  const filtered = kind !== '' || earmarkFilter !== '';
+  const memberCount = listing.members.filter((member) => !member.isArchived).length;
+  const mayTypeRate = listing.viewer.role === 'owner' || listing.viewer.role === 'partner';
+  const addLabel = kind !== '' ? `Add ${A[kind] ?? 'a holding'}` : 'Add a holding';
   const count = grouped.groups.reduce((sum, g) => sum + g.holdings.length, 0);
-  const title = filtered
-    ? (filter.kind ?? '') !== ''
-      ? kindLabel(filter.kind ?? '')
-      : 'Holdings'
-    : 'Holdings';
+  // The label above the figure says whose it is and of what (docs/design/simple-layout.md section 2a): "Your holdings", "Household gold".
+  const heading =
+    kind !== ''
+      ? `${whose(scope)} ${kindLabel(kind).toLowerCase()} · current value`
+      : earmarkFilter !== ''
+        ? `${EARMARK_LABELS[earmarkFilter as Earmark]} · current value`
+        : `${whose(scope)} holdings · current value`;
+  const listTitle = kind !== '' ? kindLabel(kind) : earmarkFilter !== '' ? EARMARK_LABELS[earmarkFilter as Earmark] : 'Holdings';
 
-  const chips = listHoldings.length > 0 ? <Chips chips={grouped.chips} filter={filter} /> : null;
   const summary = (
     <Summary
       grouped={grouped}
+      heading={heading}
       base={base}
       filter={filter}
       privacy={privacy}
@@ -268,7 +303,7 @@ export function HoldingsScreen({
       action={canWrite ? <RefreshPrices onRefresh={hook.refresh} onSaid={setFetchSaid} /> : null}
       status={fetchSaid}
       extra={
-        (filter.kind ?? '') === 'deposit' ? (
+        kind === 'deposit' ? (
           <FixedExtras
             privacy={privacy}
             held={grouped.groups.filter((g) => g.kind === 'deposit').reduce((n, g) => n + g.holdings.length, 0)}
@@ -287,31 +322,33 @@ export function HoldingsScreen({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* On a class the filter is the context for everything below, so the chips come first. */}
-      {filtered && chips}
-      {summary}
+      {/* Whose figures, and Import: the top of the screen (simple-layout.md section 2). */}
+      <div className="holdings-top">
+        <ScopeSwitch members={memberCount} />
+        <span className="flex-1" />
+        {canWrite && (
+          <button
+            type="button"
+            className="quiet-button"
+            aria-expanded={panel === 'import'}
+            onClick={() => {
+              setPanel(panel === 'import' ? null : 'import');
+            }}
+          >
+            Import
+          </button>
+        )}
+      </div>
 
-      {/* One Add on the screen (HD-I5), naming the class when the list is filtered to one, and one Import. */}
-      <ListHeader
-        title={title}
-        count={count}
-        sort={sort}
-        onSort={setSort}
-        canWrite={canWrite}
-        addLabel={addLabel}
-        panel={panel}
-        onPanel={setPanel}
-        forClass={(filter.kind ?? '') !== ''}
-      />
-      {!filtered && chips}
-      {(filter.kind ?? '') === 'deposit' && (
-        <p className="note list-helper">FD, RD, SSY, NSC, KVP, SCSS and post office deposits all live here. A PPF is under Retirement.</p>
-      )}
+      {/* All first, then a tab for each class held. An earmark opens from All's Set aside, and is no tab. */}
+      {listHoldings.length > 0 && <TabStrip kinds={tabKinds} current={earmarkFilter !== '' ? null : kind} />}
+
+      {summary}
 
       {canWrite && panel === 'add' && (
         <AddPanel
           listing={listing}
-          initialKind={filter.kind ?? ''}
+          initialKind={kind}
           onAdd={hook.add}
           onAddRetirement={hook.addRetirement}
           onAddGold={hook.addGold}
@@ -338,11 +375,44 @@ export function HoldingsScreen({
           Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is the only
           way the year&rsquo;s peak can ever be known.
         </p>
+      ) : !filtered ? (
+        <>
+          <ByClass grouped={grouped} base={base} privacy={privacy} />
+          <SetAside items={setAside} privacy={privacy} />
+          {grouped.ended.length > 0 && (
+            <GroupSection
+              kind="ended"
+              label="Ended"
+              count={grouped.ended.length}
+              subtotals={[]}
+              shares={[]}
+              rows={grouped.ended.flatMap((h) => modelOf(h.id) ?? [])}
+              privacy={privacy}
+              base={base}
+              open={false}
+            />
+          )}
+        </>
       ) : (
         <>
-          {grouped.groups.length === 0 && grouped.ended.length === 0 && (
-            <p className="note">Nothing here matches that filter.</p>
+          {kind === 'gold' && (
+            <GoldFacts
+              rows={rows}
+              rates={goldData.rates}
+              today={today}
+              householdId={listing.household.id}
+              mayTypeRate={mayTypeRate}
+              onChanged={async () => {
+                await goldData.reload();
+                await hook.reload();
+              }}
+            />
           )}
+          <ClassHeader title={listTitle} count={count} sort={sort} onSort={setSort} />
+          {kind === 'deposit' && (
+            <p className="note list-helper">FD, RD, SSY, NSC, KVP, SCSS and post office deposits all live here. A PPF is under Retirement.</p>
+          )}
+          {grouped.groups.length === 0 && grouped.ended.length === 0 && <p className="note">Nothing here matches that filter.</p>}
           {grouped.groups.map((group) => (
             <GroupSection
               key={group.kind}
@@ -353,7 +423,7 @@ export function HoldingsScreen({
               rows={group.holdings.flatMap((h) => modelOf(h.id) ?? [])}
               privacy={privacy}
               base={base}
-              bare={(filter.kind ?? '') !== '' && grouped.groups.length === 1}
+              bare={kind !== '' && grouped.groups.length === 1}
             />
           ))}
           {grouped.ended.length > 0 && (
@@ -369,10 +439,21 @@ export function HoldingsScreen({
               open={false}
             />
           )}
-          {((filter.kind ?? '') === 'deposit' || filter.earmark === 'emergency') && (
+          {(kind === 'deposit' || earmarkFilter === 'emergency') && (
             <EmergencyCard held={emergency.held} count={emergency.count} unvalued={emergency.unvalued} privacy={privacy} />
           )}
         </>
+      )}
+
+      {/* The one Add on the screen (HD-I5), a pill above the bottom bar, named for the tab. */}
+      {canWrite && (
+        <FloatingAdd
+          label={addLabel}
+          expanded={panel === 'add'}
+          onClick={() => {
+            setPanel(panel === 'add' ? null : 'add');
+          }}
+        />
       )}
     </div>
   );
