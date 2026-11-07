@@ -43,6 +43,9 @@ When two documents disagree, this is the order. Say which one you applied.
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
    holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9) and
+   `docs/design/simple-layout.md` (the simpler layout decided on 7 November 2026: tabs per class on Holdings with All first, flat
+   sections, underline fields in steps, Mine first; **its section 4a decides which board each screen follows**, and its section 5 says
+   which parts of `holdings.md` and `tokens.md` it supersedes; colours and themes do not change),
    `docs/design/commercial-launch.md` (selling the app: sign-up, billing, data protection and support; **proposed, decided by
    nobody, not scheduled and not built**, so nothing is expected of the code, and it reverses a line of `CLAUDE.md` that stands until
    the owner decides its section 12: never report the code for not following it, nor `CLAUDE.md` for disagreeing with it). Each is
@@ -50,7 +53,7 @@ When two documents disagree, this is the order. Say which one you applied.
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`, `SL-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
