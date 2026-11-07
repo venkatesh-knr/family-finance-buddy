@@ -253,7 +253,8 @@
   }
 
   .card-lift .field:focus,
-  .card-lift .field:focus-visible {
+  .card-lift .field:focus-visible,
+  .card-lift .field[aria-invalid='true'] {
     border-bottom-color: var(--brass);
   }
 
@@ -3110,6 +3111,7 @@
   /* The years of cover: two quiet buttons and a figure in the line, no box (FlatInsurance; simple-layout.md section 3). */
   .stepper {
     align-items: center;
+    border-bottom: 1px solid var(--muted);
     display: inline-flex;
     vertical-align: middle;
   }

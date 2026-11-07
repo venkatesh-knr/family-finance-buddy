@@ -196,6 +196,7 @@ test('a retirement account’s figures say what is wrong under the field, and th
   // A day after today is said on the date, and right it and the marks go.
   await form.getByLabel('Balance from the passbook', { exact: true }).fill('100000');
   await form.getByLabel('As at').fill('2999-01-01');
+  await form.getByLabel('As at').blur();
   await expect(form.getByText('It cannot be as at a day after today.')).toBeVisible();
   await expect(form.getByRole('button', { name: 'Add the EPF' })).toBeDisabled();
   await form.getByLabel('As at').fill('2026-01-01');

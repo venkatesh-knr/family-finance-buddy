@@ -233,6 +233,9 @@ test('a field that is wrong says so under itself, and the step does not go on un
   await form.getByLabel('Principal').fill('abc');
   await expect(form.getByText('The principal is an amount above nothing, such as 1,00,000.')).toBeVisible();
   await expect(form.getByLabel('Principal')).toHaveAttribute('aria-invalid', 'true');
+  // Typing "7." on the way to "7.25" is unfinished and not wrong: nothing is said, and the step still waits.
+  await form.getByLabel('Rate %', { exact: true }).fill('7.');
+  await expect(form.getByText('The rate is a percentage up to 100, such as 7.25.')).toHaveCount(0);
   await form.getByLabel('Rate %', { exact: true }).fill('120');
   await expect(form.getByText('The rate is a percentage up to 100, such as 7.25.')).toBeVisible();
   await form.getByLabel('Starts').fill('2026-01-01');
@@ -247,9 +250,12 @@ test('a field that is wrong says so under itself, and the step does not go on un
 
   // A maturity that is not after the start, and a year that cannot be: each said on the date.
   await form.getByLabel('Matures').fill('2025-01-01');
+  // A date is marked once it has been left, so a year typed digit by digit is not called wrong on the way.
+  await form.getByLabel('Matures').blur();
   await expect(form.getByText('It has to mature after it starts.')).toBeVisible();
   await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
   await form.getByLabel('Matures').fill('0001-01-01');
+  await form.getByLabel('Matures').blur();
   await expect(form.getByText('That is not a date this can be: check the year.')).toBeVisible();
   await expect(form.getByLabel('Matures')).toHaveAttribute('aria-invalid', 'true');
 

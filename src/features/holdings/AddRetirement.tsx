@@ -76,6 +76,10 @@ export function AddRetirement({
   const [added, setAdded] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [show, setShow] = useState<{ step: number; key: number } | null>(null);
+  // A date is marked wrong once it has lost focus, or a step has been tried, and a number that ends in a point is unfinished and not wrong
+  // (the same rule as the deposit form): a right entry is not called wrong, or announced as an alert, while it is still being typed.
+  const [dateTouched, setDateTouched] = useState(false);
+  const unfinished = (text: string): boolean => /^\d+\.$/.test(text.trim());
 
   // The notified rate, for the offer to record a PPF's first reading. Not being able to read it only withdraws the offer.
   useEffect(() => {
@@ -124,7 +128,7 @@ export function AddRetirement({
   // Every field is checked as it is typed, and what is wrong is said on the field, in words (docs/design/simple-layout.md section 3). A step's
   // Next waits for its fields to be right, so a problem is never found on the last step about a field on an earlier one.
   const errors: Partial<Record<'balance' | 'units' | 'nav' | 'asAt' | 'last4', string>> = {};
-  if (type !== 'nps' && balance.trim() !== '') {
+  if (type !== 'nps' && balance.trim() !== '' && !unfinished(balance)) {
     let minor: bigint | null = null;
     try {
       minor = parseAmountToMinor(balance, CURRENCY);
@@ -132,15 +136,15 @@ export function AddRetirement({
       minor = null;
     }
     if (minor === null) errors.balance = 'The balance is an amount, such as 12,34,567.';
-    else if (type === 'epf' && minor <= 0n) errors.balance = 'The balance is above nothing.';
+    else if (type === 'epf' && minor <= 0n) errors.balance = 'The balance is an amount above nothing, such as 12,34,567.';
     else if (type === 'ppf' && minor < 0n) errors.balance = 'An opening balance cannot be negative.';
   }
   if (type === 'nps') {
-    if (units.trim() !== '') {
+    if (units.trim() !== '' && !unfinished(units)) {
       const worked = npsValue(units, '1', CURRENCY);
       if (!worked.ok && worked.reason === 'invalid-units') errors.units = 'The units are a number, such as 1234.5678.';
     }
-    if (nav.trim() !== '' && !npsValue('1', nav, CURRENCY).ok) errors.nav = 'The NAV is a number above nothing, to four decimal places, such as 45.6789.';
+    if (nav.trim() !== '' && !unfinished(nav) && !npsValue('1', nav, CURRENCY).ok) errors.nav = 'The NAV is a number above nothing, to four decimal places, such as 45.6789.';
   }
   if (asAt !== '' && (!isIsoDate(asAt) || Number(asAt.slice(0, 4)) < 1990)) errors.asAt = 'That is not a date this can be: check the year.';
   else if (isIsoDate(asAt) && asAt > today) errors.asAt = 'It cannot be as at a day after today.';
@@ -237,7 +241,9 @@ export function AddRetirement({
 
   // Two steps of five fields or fewer (docs/design/simple-layout.md section 4): what it is, then what it holds; a PPF has a third.
   const figuresReady =
-    (type === 'nps' ? units.trim() !== '' && nav.trim() !== '' && asAt !== '' : balance.trim() !== '' && asAt !== '') &&
+    (type === 'nps'
+      ? units.trim() !== '' && nav.trim() !== '' && !unfinished(units) && !unfinished(nav) && asAt !== ''
+      : balance.trim() !== '' && !unfinished(balance) && asAt !== '') &&
     errors.balance === undefined && errors.units === undefined && errors.nav === undefined && errors.asAt === undefined;
 
   return (
@@ -300,7 +306,7 @@ export function AddRetirement({
                   }}
                 />
               )}
-              <Field label="As at" type="date" required error={errors.asAt ?? null} value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
+              <Field label="As at" type="date" required error={dateTouched || show !== null ? (errors.asAt ?? null) : null} onBlur={() => { setDateTouched(true); }} value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
               {type === 'ppf' && (
                 <>
                   <p className="note">

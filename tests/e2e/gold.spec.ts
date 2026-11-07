@@ -335,9 +335,11 @@ test('a field that is wrong says so under itself, and the step does not go on un
 
   // A date after today, and a year that cannot be: each said on the date.
   await form.getByLabel('Bought on').fill('2999-01-01');
+  await form.getByLabel('Bought on').blur();
   await expect(form.getByText('It cannot be bought after today.')).toBeVisible();
   await expect(form.getByRole('button', { name: 'Add gold', exact: true })).toBeDisabled();
   await form.getByLabel('Bought on').fill('0001-01-01');
+  await form.getByLabel('Bought on').blur();
   await expect(form.getByText('That is not a date this can be: check the year.')).toBeVisible();
   await expect(form.getByLabel('Bought on')).toHaveAttribute('aria-invalid', 'true');
 });

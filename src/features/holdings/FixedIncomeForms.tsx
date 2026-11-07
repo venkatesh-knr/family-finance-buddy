@@ -149,6 +149,14 @@ export function TermsForm({
   // Added, but its first reading could not be recorded: the holding exists, so the form must not add it twice.
   const [added, setAdded] = useState(false);
   const [show, setShow] = useState<{ step: number; key: number } | null>(null);
+  // A date is marked wrong once it has lost focus, or a step has been tried: typing a year digit by digit passes through years that are not
+  // wrong yet, and a mark (read aloud as an alert) for each would tell a person their right entry was wrong. A number that ends in a point
+  // is unfinished and not wrong, but the step does not go on until it is whole.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
+  const touch = (field: string) => {
+    setTouched((was) => (was.has(field) ? was : new Set(was).add(field)));
+  };
+  const unfinished = (text: string): boolean => /^\d+\.$/.test(text.trim());
 
   // Every field is checked as it is typed, and what is wrong is said on the field, in words (docs/design/simple-layout.md section 3). A step's
   // Next waits for its fields to be right, so a problem is never found on the last step about a field on an earlier one.
@@ -164,14 +172,14 @@ export function TermsForm({
       errors.amount = `${kind === 'deposit' ? 'The principal' : 'The face value'} is an amount above nothing, such as 1,00,000.`;
     }
   }
-  if (rate.trim() !== '' && (!RATE.test(rate.trim()) || Number(rate) > 100)) {
+  if (rate.trim() !== '' && !unfinished(rate) && (!RATE.test(rate.trim()) || Number(rate) > 100)) {
     errors.rate = 'The rate is a percentage up to 100, such as 7.25.';
   }
   const badYear = (date: string): boolean => !isIsoDate(date) || Number(date.slice(0, 4)) < 1990;
   if (start !== '' && badYear(start)) errors.start = 'That is not a date this can be: check the year.';
   if (maturity !== '' && badYear(maturity)) errors.maturity = 'That is not a date this can be: check the year.';
   else if (maturity !== '' && start !== '' && !badYear(start) && maturity <= start) errors.maturity = 'It has to mature after it starts.';
-  if (autoRenew && renewalRate.trim() !== '' && (!RATE.test(renewalRate.trim()) || Number(renewalRate) > 100)) {
+  if (autoRenew && renewalRate.trim() !== '' && !unfinished(renewalRate) && (!RATE.test(renewalRate.trim()) || Number(renewalRate) > 100)) {
     errors.renewalRate = 'The rate to project renewals at is a percentage such as 7.25, or leave it empty.';
   }
   if (last4.trim() !== '' && !/^[0-9A-Za-z]{4}$/.test(last4.trim())) {
@@ -179,6 +187,10 @@ export function TermsForm({
   }
   // Which step each field is on, for a form in steps.
   const STEP_OF = { amount: 1, rate: 1, start: 1, maturity: 1, renewalRate: 2, last4: 3 } as const;
+  const rateWhole = RATE.test(rate.trim()) && Number(rate) <= 100;
+  const renewalWhole = !autoRenew || renewalRate.trim() === '' || (RATE.test(renewalRate.trim()) && Number(renewalRate) <= 100);
+  /** A date's mark: once the field has been left, or a step has been tried. */
+  const dateMark = (field: 'start' | 'maturity'): string | null => (touched.has(field) || show !== null ? (errors[field] ?? null) : null);
 
   /**
    * What the terms say it is worth today, worked out the way its own screen does, for a new one only. Nothing when
@@ -222,6 +234,7 @@ export function TermsForm({
     if (wrong.length > 0) {
       // The fields say what is wrong. In steps, the first step with something wrong is shown; a correction is one form and shows them all.
       if (mode.kind === 'new') setShow({ step: Math.min(...wrong), key: Date.now() });
+      else setProblem('Check the fields marked above.');
       return;
     }
     if (!RATE.test(rate.trim()) || Number(rate) > 100) {
@@ -396,7 +409,10 @@ export function TermsForm({
           label="Starts"
           type="date"
           required
-          error={errors.start ?? null}
+          error={dateMark('start')}
+          onBlur={() => {
+            touch('start');
+          }}
           value={start}
           onChange={(event) => {
             setStart(event.target.value);
@@ -409,7 +425,10 @@ export function TermsForm({
           label="Matures"
           type="date"
           required
-          error={errors.maturity ?? null}
+          error={dateMark('maturity')}
+          onBlur={() => {
+            touch('maturity');
+          }}
           value={maturity}
           onChange={(event) => {
             setMaturity(event.target.value);
@@ -595,13 +614,13 @@ export function TermsForm({
           {
             name: 'Amount and dates',
             ready:
-              amount.trim() !== '' && rate.trim() !== '' && start !== '' && maturity !== '' &&
+              amount.trim() !== '' && rateWhole && start !== '' && maturity !== '' &&
               errors.amount === undefined && errors.rate === undefined && errors.start === undefined && errors.maturity === undefined,
             content: figureFields,
           },
           {
             name: kind === 'deposit' ? 'How it earns' : 'How it pays',
-            ready: errors.renewalRate === undefined,
+            ready: errors.renewalRate === undefined && renewalWhole,
             content: termFields,
           },
           {
