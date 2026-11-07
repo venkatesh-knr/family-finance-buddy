@@ -829,6 +829,8 @@ a percentage carries no units to check it against.
 
 Create the real household and enter the opening position. The demo stays as a permanent sandbox. Then the roadmap's later phases — currencies and the Global screen, imports, the tax engine — with real figures to test against.
 
+> **Selling the app is designed and not scheduled.** `docs/design/commercial-launch.md` (sign-up, billing, data protection, support; invariants CL-I1 to CL-I10) exists and is **proposed**. It adds no step here and is not scheduled until its section 12 is decided (`docs/decisions.md`, Open: selling the app). It reverses `CLAUDE.md`'s "No public sign-up" only if the owner decides so.
+
 ## 03. Working with Claude Code
 
 Six practices that matter more on this project than on a typical one, because it is long-lived, single-maintainer, and carries arithmetic that must be right.

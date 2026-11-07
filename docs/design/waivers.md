@@ -61,3 +61,16 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 ## gold.md
 - GD-I11 — not built: physical gold is built, but the month's invested view it is asserted against is slice S5 (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
 - GD-I13 — not built, and not to be: the owner decided on 6 November 2026 that no listed-gold-ETF tax class is added (docs/decisions.md, Gold); gold.md §5 and this invariant are for the owner to retire — 2026-11-06
+
+## commercial-launch.md
+
+- CL-I1 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I2 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I3 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I4 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I5 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I6 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I7 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I8 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I9 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+- CL-I10 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06

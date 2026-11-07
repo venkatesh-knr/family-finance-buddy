@@ -42,12 +42,15 @@ When two documents disagree, this is the order. Say which one you applied.
    not built), `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
-   holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9). Each is
+   holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9) and
+   `docs/design/commercial-launch.md` (selling the app: sign-up, billing, data protection and support; **proposed, decided by
+   nobody, not scheduled and not built**, so nothing is expected of the code, and it reverses a line of `CLAUDE.md` that stands until
+   the owner decides its section 12: never report the code for not following it, nor `CLAUDE.md` for disagreeing with it). Each is
    authoritative for the feature it specifies and for nothing else, and sits below
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
