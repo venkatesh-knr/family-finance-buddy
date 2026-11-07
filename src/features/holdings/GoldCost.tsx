@@ -71,7 +71,10 @@ export function GoldCost({
   typed,
   onCostBy,
   onTyped,
+  error = null,
 }: {
+  /** What is wrong with the cost typed, in words, under the field. */
+  error?: string | null;
   grams: bigint | null;
   gift: boolean;
   costBy: CostBy;
@@ -82,11 +85,11 @@ export function GoldCost({
   const other = gift ? null : otherWay({ costBy, typed, grams });
   return (
     <>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         <span className="label" id="gold-cost-by">
-          Cost
+          Cost, entered as
         </span>
-        <div className="segmented" role="group" aria-labelledby="gold-cost-by">
+        <div className="text-tabs" role="group" aria-labelledby="gold-cost-by">
           {(['price', 'rate'] as const).map((option) => (
             <button
               key={option}
@@ -103,12 +106,13 @@ export function GoldCost({
           ))}
         </div>
       </div>
-      <div className="w-full sm:w-[170px] sm:shrink-0">
+      <div className="w-full">
         <Field
           label={costBy === 'price' ? `Price paid (${GOLD_CURRENCY})` : `Rate per gram (${GOLD_CURRENCY})`}
           numeric
           inputMode="decimal"
           disabled={gift}
+          error={gift ? null : error}
           value={gift ? '' : typed}
           onChange={(event) => {
             onTyped(event.target.value);
@@ -116,7 +120,7 @@ export function GoldCost({
         />
       </div>
       {other !== null && (
-        <p className="note pb-2.5 tabular-nums" data-testid="gold-other-way">
+        <p className="field-help tabular-nums" data-testid="gold-other-way">
           {other}
         </p>
       )}

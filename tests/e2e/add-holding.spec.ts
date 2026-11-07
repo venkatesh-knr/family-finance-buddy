@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { choiceField, choose, next, stepper } from './fields.ts';
 import { archiveByName, openFixedForm, openHolding, openList, rowFor } from './holdings.ts';
 
 /**
@@ -7,25 +8,34 @@ import { archiveByName, openFixedForm, openHolding, openList, rowFor } from './h
  * It was added with a quantity alone and listed as "not valued" until somebody opened it and recorded a reading, and
  * its earmark could be set only by editing it afterwards. Both are said on the Add form now. It writes to the demo
  * household like the other holdings specs and archives what it made.
+ *
+ * Add a holding is a form in steps (docs/design/simple-layout.md section 4): what it is, then what it is priced in, then how much.
  */
 
 test.use({ actionTimeout: 15_000 });
+
+/** A fund, through its first two steps, left on the third: priced in rupees and not a foreign asset. */
+async function fillFundToHowMuch(page: import('@playwright/test').Page, name: string) {
+  await openList(page);
+  await page.getByRole('button', { name: /^Add\b/ }).click();
+  const add = stepper(page);
+  await add.getByLabel('What it is').fill(name);
+  await next(page);
+  await choose(page, 'Priced in', 'INR');
+  await choose(page, 'Tracks', 'INR');
+  await page.getByLabel(/Foreign asset for disclosure/).uncheck();
+  await next(page);
+  return add;
+}
 
 test('a fund added with what it is worth today is valued at once, and carries its earmark', async ({ page }) => {
   test.setTimeout(90_000);
   const name = `e2e-add-${Date.now()}`;
 
-  await openList(page);
-  await page.getByRole('button', { name: /^Add\b/ }).click();
-
-  const add = page.locator('form').filter({ hasText: 'Priced in' });
-  await add.getByLabel('Name', { exact: true }).fill(name);
-  await add.locator('select').nth(1).selectOption('INR');
-  await add.locator('select').nth(2).selectOption('INR');
-  await page.getByLabel(/Foreign asset for disclosure/).uncheck();
+  const add = await fillFundToHowMuch(page, name);
   await add.getByLabel('Quantity').fill('10');
   await add.getByLabel('Worth today').fill('12345.5');
-  await add.getByLabel('Set aside for').selectOption({ label: "Child's savings" });
+  await choose(page, 'Set aside for', "Child's savings");
   await add.getByRole('button', { name: 'Add', exact: true }).click();
 
   try {
@@ -43,14 +53,7 @@ test('a fund added without a value is still listed as not valued, and nothing is
   test.setTimeout(90_000);
   const name = `e2e-add-bare-${Date.now()}`;
 
-  await openList(page);
-  await page.getByRole('button', { name: /^Add\b/ }).click();
-
-  const add = page.locator('form').filter({ hasText: 'Priced in' });
-  await add.getByLabel('Name', { exact: true }).fill(name);
-  await add.locator('select').nth(1).selectOption('INR');
-  await add.locator('select').nth(2).selectOption('INR');
-  await page.getByLabel(/Foreign asset for disclosure/).uncheck();
+  const add = await fillFundToHowMuch(page, name);
   await add.getByLabel('Quantity').fill('3');
   await add.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -61,21 +64,30 @@ test('a fund added without a value is still listed as not valued, and nothing is
   }
 });
 
+/** A deposit, through its first three steps, left on the fourth: where it is held and what it is for. */
+async function fillDepositToWhere(page: import('@playwright/test').Page, fields: { name: string; principal: string; rate: string; starts: string; matures: string }) {
+  const form = await openFixedForm(page);
+  await form.getByLabel('Name', { exact: true }).fill(fields.name);
+  await next(page);
+  await form.getByLabel('Principal').fill(fields.principal);
+  await form.getByLabel('Rate %', { exact: true }).fill(fields.rate);
+  await form.getByLabel('Starts').fill(fields.starts);
+  await form.getByLabel('Matures').fill(fields.matures);
+  await next(page);
+  await next(page);
+  return form;
+}
+
 test('a running deposit offers its worked-out value as its first reading, and is valued once added', async ({ page }) => {
   test.setTimeout(90_000);
   const name = `e2e-add-fd-${Date.now()}`;
 
-  const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
-  await form.getByLabel('Starts').fill('2026-01-01');
-  await form.getByLabel('Matures').fill('2031-01-01');
+  const form = await fillDepositToWhere(page, { name, principal: '100000', rate: '7.5', starts: '2026-01-01', matures: '2031-01-01' });
 
   // Said before it is added, with the figure, and on unless somebody turns it off.
   const offer = form.getByLabel(/Record today.s value/);
   await expect(offer).toBeChecked();
-  await form.getByLabel('Set aside for').selectOption({ label: 'Emergency fund' });
+  await choose(page, 'Set aside for', 'Emergency fund');
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   try {
@@ -89,11 +101,8 @@ test('a running deposit offers its worked-out value as its first reading, and is
 });
 
 test('a deposit that has already paid out is not offered a first reading', async ({ page }) => {
-  const form = await openFixedForm(page);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
-  await form.getByLabel('Starts').fill('2024-01-01');
-  await form.getByLabel('Matures').fill('2025-01-01');
+  // The form is not finished, so nothing is added: it is only read.
+  const form = await fillDepositToWhere(page, { name: 'e2e-never-added', principal: '100000', rate: '7.5', starts: '2024-01-01', matures: '2025-01-01' });
 
   // What it would be worth is a payout, money in an account and not a holding, so it is not recorded as one.
   await expect(form.getByLabel(/Record today.s value/)).toHaveCount(0);
@@ -103,20 +112,15 @@ test('a deposit is given its scheme when it is added, and a bond is not offered 
   test.setTimeout(90_000);
   const name = `e2e-add-ssy-${Date.now()}`;
 
-  const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.1');
-  await form.getByLabel('Starts').fill('2026-01-01');
-  await form.getByLabel('Matures').fill('2041-01-01');
-  await form.getByLabel('Scheme').selectOption({ label: 'Sukanya Samriddhi' });
+  const form = await fillDepositToWhere(page, { name, principal: '100000', rate: '7.1', starts: '2026-01-01', matures: '2041-01-01' });
+  await choose(page, 'Scheme', 'Sukanya Samriddhi');
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   try {
     // It is the holding's own, so editing it shows what was said when it was added.
     await openHolding(page, name);
     await page.getByRole('button', { name: /^Edit / }).first().click();
-    await expect(page.getByLabel('Scheme')).toHaveValue('ssy');
+    await expect(choiceField(page, 'Scheme')).toContainText('Sukanya Samriddhi');
   } finally {
     await archiveByName(page, name);
   }

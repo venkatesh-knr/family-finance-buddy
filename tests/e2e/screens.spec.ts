@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { goTo } from './holdings.ts';
+import { choose, next } from './fields.ts';
+import { goTo, openList } from './holdings.ts';
 
 /**
  * Screenshots of every screen, at both widths, in both themes.
@@ -24,14 +25,52 @@ import { goTo } from './holdings.ts';
  * excludes it. Run it when you want to look: `npm run test:screens`.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'reports', 'more', 'profile', 'settings'] as const;
+const SCREENS = [
+  'overview',
+  'expenses',
+  'holdings',
+  'holding',
+  'tax',
+  'fire',
+  'insurance',
+  'reports',
+  'more',
+  'profile',
+  'settings',
+  // The forms in steps, which are screens of their own (docs/design/simple-layout.md section 4): the AddStep1 and AddStep2 boards.
+  'add-holding-1',
+  'add-holding-2',
+  'add-property-1',
+] as const;
+
+/** A stepped form, opened and filled as far as the screen is to show, and not finished: nothing is written. */
+async function openStep(page: import('@playwright/test').Page, screen: string) {
+  if (screen === 'add-property-1') {
+    await page.goto('/#/property');
+    await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+    await page.getByRole('button', { name: 'Add a property' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('House');
+    return;
+  }
+  await openList(page);
+  await page.getByRole('button', { name: /^Add\b/ }).click();
+  await choose(page, 'Type', /^Gold/);
+  await page.getByLabel('What it is', { exact: true }).fill('Necklace');
+  if (screen === 'add-holding-2') {
+    await next(page);
+    await page.getByLabel('Weight (g)').fill('20');
+    await page.getByRole('button', { name: 'Rate per gram' }).click();
+    await page.getByLabel('Rate per gram (INR)').fill('5820');
+  }
+}
 
 async function capture(page: import('@playwright/test').Page, screen: string, theme: string) {
   const project = test.info().project.name.replace('screens-', '');
   const dir = `screenshots/${theme}/${project}`;
   mkdirSync(dir, { recursive: true });
 
-  await goTo(page, screen);
+  if (screen.startsWith('add-')) await openStep(page, screen);
+  else await goTo(page, screen);
 
   // The shell, not the network: a screenshot taken before the chrome renders is
   // a picture of nothing, and networkidle is a worse signal than the thing you

@@ -74,3 +74,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - CL-I8 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
 - CL-I9 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
 - CL-I10 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
+
+## simple-layout.md
+

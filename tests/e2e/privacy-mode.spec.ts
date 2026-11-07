@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { openCard } from './fire.ts';
 import { ledgerEntry } from './ledger.ts';
 import { setEarmark } from './earmark.ts';
@@ -114,7 +114,8 @@ test('no figure from the Holdings list or a holding\u2019s screen is left in the
   // move from the list to a holding and back.
   await page.goto('/#/holdings');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  // All: the total and a row for each class, with its figure.
+  await expect(page.getByTestId('by-class')).toBeVisible({ timeout: 20_000 });
 
   const figuresOf = async (): Promise<string[]> => {
     const shown = await page.evaluate(() => document.body.innerText);
@@ -128,6 +129,9 @@ test('no figure from the Holdings list or a holding\u2019s screen is left in the
   const onList = await figuresOf();
   expect(onList.length, 'currency figures on the Holdings list to look for').toBeGreaterThan(5);
 
+  // A fund, from its class's tab.
+  await page.goto('/#/holdings?kind=mutual_fund');
+  await expect(page.locator('.holding-row').filter({ hasText: 'units' }).first()).toBeVisible({ timeout: 20_000 });
   await page.locator('.holding-row').filter({ hasText: 'units' }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
   const onHolding = await figuresOf();
@@ -142,8 +146,8 @@ test('no figure from the Holdings list or a holding\u2019s screen is left in the
   let left = onHolding.filter((f) => markup.includes(f));
   expect(left, 'figures still on the holding\u2019s screen, under privacy mode').toEqual([]);
 
-  await page.getByRole('link', { name: /Holdings$/ }).first().click();
-  await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
+  await page.goto('/#/holdings');
+  await expect(page.getByTestId('by-class')).toBeVisible({ timeout: 20_000 });
   markup = await page.evaluate(() => document.documentElement.outerHTML);
   left = onList.filter((f) => markup.includes(f));
   expect(left, 'figures still on the Holdings list, under privacy mode').toEqual([]);

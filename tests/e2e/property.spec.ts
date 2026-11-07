@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { choose, next } from './fields.ts';
 
 /**
  * Property: a property is filed with what it cost, valued with how that was arrived at, and its work is recorded, from
@@ -26,9 +27,11 @@ test('a property is filed, valued, worked on and archived, and every figure foll
 
   const form = page.getByRole('form', { name: 'Add a property' });
   await form.getByLabel('Name', { exact: true }).fill(name);
+  await next(page);
   await form.getByLabel('Bought on').fill('2019-03-01');
   await form.getByLabel('Price paid').fill('4200000');
   await form.getByLabel('Stamp duty').fill('294000');
+  await next(page);
   await form.getByLabel(/Household.s share/).fill('50');
   await form.getByRole('button', { name: 'Add the property' }).click();
 
@@ -45,7 +48,7 @@ test('a property is filed, valued, worked on and archived, and every figure foll
     // A valuation, and how it was arrived at.
     const valuation = card.getByRole('form', { name: `Record a valuation of ${name}` });
     await valuation.getByLabel('Worth').fill('6400000');
-    await valuation.getByLabel('How you arrived at it').selectOption({ label: 'A broker’s view' });
+    await choose(page, 'How you arrived at it', 'A broker’s view', valuation);
     await valuation.getByRole('button', { name: 'Record valuation' }).click();
     await expect(card).toContainText('Valued at');
     await expect(card).toContainText('64,00,000');
@@ -62,7 +65,7 @@ test('a property is filed, valued, worked on and archived, and every figure foll
     await expect(card).toContainText('47,74,000');
 
     await work.getByLabel('Work').fill('Repainting');
-    await work.getByLabel('Type').selectOption('repair');
+    await choose(page, 'Type', 'Repair', work);
     await work.getByLabel('Cost').fill('45000');
     await work.getByRole('button', { name: 'Record work' }).click();
     await expect(card).toContainText('of repairs are recorded and not counted');
@@ -96,8 +99,10 @@ test('the form refuses a share outside 0 to 100, and a missing price, in a sente
   await page.getByRole('button', { name: 'Add a property' }).click();
   const form = page.getByRole('form', { name: 'Add a property' });
   await form.getByLabel('Name', { exact: true }).fill('never saved');
+  await next(page);
   await form.getByLabel('Bought on').fill('2019-03-01');
   await form.getByLabel('Price paid').fill('100');
+  await next(page);
   await form.getByLabel(/Household.s share/).fill('150');
   await form.getByRole('button', { name: 'Add the property' }).click();
   await expect(form).toContainText('a percentage above 0 and up to 100');

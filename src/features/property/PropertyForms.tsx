@@ -6,6 +6,8 @@
  * inheritance; a blank price is not allowed, because it is what everything else is measured against.
  */
 
+import { Select } from '../../ui/Select.tsx';
+import { Stepper } from '../../ui/Stepper.tsx';
 import { useState } from 'react';
 import { isIsoDate, type IsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor, type Money } from '../../lib/money.ts';
@@ -148,16 +150,11 @@ export function PropertyForm({
 
   const loans = listing.loans.filter((loan) => !loan.isClosed || loan.id === existing?.linkedLiabilityId);
 
-  return (
-    <form
-      className="inset-form flex flex-col gap-3"
-      aria-label={editing ? `Correct ${existing.label}` : 'Add a property'}
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-auto sm:min-w-[170px] sm:flex-1">
+  // A new property is filed in steps and a correction stays one form (docs/design/simple-layout.md section 4).
+  const aboutIt = (
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="w-full">
           <Field
             label="Name"
             placeholder="House"
@@ -168,62 +165,49 @@ export function PropertyForm({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-          <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
+        <Select label="Kind" className="flex w-full flex-col gap-1.5" value={kind} onChange={(event) => {
               setKind(event.target.value as PropertyKind);
-            }}
-          >
-            {PROPERTY_KINDS.map((option) => (
+            }}>{PROPERTY_KINDS.map((option) => (
               <option key={option} value={option}>
                 {KIND_LABEL[option]}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         {!editing && (
-          <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-            <span className="label">Held by</span>
-            <select
-              className="field"
-              value={memberId}
-              onChange={(event) => {
+          <Select label="Held by" className="flex w-full flex-col gap-1.5" value={memberId} onChange={(event) => {
                 setMemberId(event.target.value);
-              }}
-            >
-              {members.map((member) => (
+              }}>{members.map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.displayName}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
         )}
-        <label className="flex w-full flex-col gap-1.5 sm:w-[110px] sm:shrink-0">
-          <span className="label">Priced in</span>
-          {editing ? (
+        {editing ? (
+          <div className="flex w-full flex-col gap-1.5">
+            <span className="label">Priced in</span>
             <span className="field" aria-label="Priced in" style={{ color: 'var(--ink-2)' }}>
               {currency}
             </span>
-          ) : (
-            <select
-              className="field"
-              value={currency}
-              onChange={(event) => {
-                setCurrency(event.target.value);
-              }}
-            >
-              <CurrencyOptions />
-            </select>
-          )}
-        </label>
+          </div>
+        ) : (
+          <Select
+            label="Priced in"
+            className="w-full"
+            value={currency}
+            onChange={(event) => {
+              setCurrency(event.target.value);
+            }}
+          >
+            <CurrencyOptions />
+          </Select>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-[160px] sm:shrink-0">
+    </>
+  );
+  const whatItCost = (
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="w-full">
           <Field
             label="Bought on"
             type="date"
@@ -234,7 +218,7 @@ export function PropertyForm({
             }}
           />
         </div>
-        <div className="w-full sm:w-[150px] sm:shrink-0">
+        <div className="w-full">
           <Field
             label="Price paid"
             numeric
@@ -247,7 +231,7 @@ export function PropertyForm({
             }}
           />
         </div>
-        <div className="w-full sm:w-[150px] sm:shrink-0">
+        <div className="w-full">
           <Field
             label="Stamp duty"
             numeric
@@ -259,7 +243,7 @@ export function PropertyForm({
             }}
           />
         </div>
-        <div className="w-full sm:w-[150px] sm:shrink-0">
+        <div className="w-full">
           <Field
             label="Registration"
             numeric
@@ -273,8 +257,21 @@ export function PropertyForm({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-[190px] sm:shrink-0">
+      <div className="note">
+        Stamp duty and registration are part of what it cost, which is what a future gain is measured against.
+        <Caveat tone="info" label="Why these are three figures">
+          They are kept apart, and not folded into one cost, because nobody reconstructs them fifteen years later from
+          memory, and a property bought before 23 July 2024 may be taxed with indexation, which needs each by the year
+          it was paid.
+        </Caveat>
+      </div>
+
+    </>
+  );
+  const shareAndLoan = (
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="w-full">
           <Field
             label="Household’s share, %"
             numeric
@@ -285,23 +282,13 @@ export function PropertyForm({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[230px] sm:shrink-0">
-          <span className="label">Home loan</span>
-          <select
-            className="field"
-            value={loanId}
-            onChange={(event) => {
+        <Select label="Home loan" className="flex w-full flex-col gap-1.5" value={loanId} onChange={(event) => {
               setLoanId(event.target.value);
-            }}
-          >
-            <option value="">None</option>
-            {loans.map((loan) => (
+            }}><option value="">None</option>{loans.map((loan) => (
               <option key={loan.id} value={loan.id}>
                 {loan.name}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         <label className="flex items-center gap-2.5 pb-2.5">
           <input
             type="checkbox"
@@ -314,7 +301,7 @@ export function PropertyForm({
         </label>
       </div>
 
-      <div className="w-full sm:max-w-[28rem]">
+      <div className="w-full">
         <Field
           label="Note"
           maxLength={500}
@@ -325,14 +312,38 @@ export function PropertyForm({
         />
       </div>
 
-      <div className="note">
-        Stamp duty and registration are part of what it cost, which is what a future gain is measured against.
-        <Caveat tone="info" label="Why these are three figures">
-          They are kept apart, and not folded into one cost, because nobody reconstructs them fifteen years later from
-          memory, and a property bought before 23 July 2024 may be taxed with indexation, which needs each by the year
-          it was paid.
-        </Caveat>
-      </div>
+    </>
+  );
+
+  if (!editing) {
+    return (
+      <Stepper
+        title="Add a property"
+        finishLabel="Add the property"
+        busy={busy}
+        problem={problem}
+        onCancel={onCancel}
+        onFinish={() => submit({ preventDefault() {} } as React.FormEvent)}
+        steps={[
+          { name: 'What it is', ready: label.trim() !== '', content: aboutIt },
+          { name: 'What it cost', ready: boughtOn !== '' && price.trim() !== '', content: whatItCost },
+          { name: 'Share and loan', ready: sharePct.trim() !== '', content: shareAndLoan },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <form
+      className="inset-form flex flex-col gap-3"
+      aria-label={editing ? `Correct ${existing.label}` : 'Add a property'}
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
+      {aboutIt}
+      {whatItCost}
+      {shareAndLoan}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>
@@ -430,19 +441,9 @@ export function ImprovementForm({
           }}
         />
       </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[130px] sm:shrink-0">
-        <span className="label">Type</span>
-        <select
-          className="field"
-          value={type}
-          onChange={(event) => {
+      <Select label="Type" className="flex w-full flex-col gap-1.5 sm:w-[130px] sm:shrink-0" value={type} onChange={(event) => {
             setType(event.target.value === 'repair' ? 'repair' : 'capital');
-          }}
-        >
-          <option value="capital">Capital</option>
-          <option value="repair">Repair</option>
-        </select>
-      </label>
+          }}><option value="capital">Capital</option><option value="repair">Repair</option></Select>
       <div className="w-full sm:w-[140px] sm:shrink-0">
         <Field
           label="Cost"
@@ -541,22 +542,13 @@ export function ValuationForm({
           }}
         />
       </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[220px] sm:shrink-0">
-        <span className="label">How you arrived at it</span>
-        <select
-          className="field"
-          value={basis}
-          onChange={(event) => {
+      <Select label="How you arrived at it" className="flex w-full flex-col gap-1.5 sm:w-[220px] sm:shrink-0" value={basis} onChange={(event) => {
             setBasis(event.target.value as ValuationBasis);
-          }}
-        >
-          {VALUATION_BASES.map((option) => (
+          }}>{VALUATION_BASES.map((option) => (
             <option key={option} value={option}>
               {BASIS_LABEL[option]}
             </option>
-          ))}
-        </select>
-      </label>
+          ))}</Select>
       <div className="w-full sm:w-auto sm:min-w-[150px] sm:flex-1">
         <Field
           label="Note"

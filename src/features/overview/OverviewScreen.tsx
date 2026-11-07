@@ -61,6 +61,7 @@ import { AssetTile } from '../../ui/AssetTile.tsx';
 import { hashFor } from '../../app/route.ts';
 import { kindLabel } from '../../ui/labels.ts';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import { ScopeSwitch, useScope, whose } from '../../app/scope.tsx';
 
 /** "Sep 2026" for a date in September 2026. */
 function monthYear(date: string): string {
@@ -156,7 +157,8 @@ export function OverviewScreen({
    * find out, not on a preference, and a remembered scope is how somebody
    * reads a personal figure believing it is the household one.
    */
-  const [scope, setScope] = useState<'household' | 'mine'>('household');
+  // One state with Holdings, Mine first, and not remembered (docs/design/simple-layout.md section 2a; src/app/scope.tsx).
+  const { scope } = useScope();
 
   const {
     listing,
@@ -209,7 +211,8 @@ export function OverviewScreen({
     return entry !== undefined && entry.amount.ok ? entry.amount.amount : null;
   }, [fire.excluded]);
   const cover = useMonthsOfCover({
-    householdId: scope === 'household' ? householdId : null,
+    // The household's, whichever way the switch is set: its spending is the household's.
+    householdId,
     today,
     display,
     rates,
@@ -221,7 +224,8 @@ export function OverviewScreen({
   // the figures above it (PF-C3). Household scope only: a member's own share of a household's cover is
   // not a number about anything.
   const protection = useMemo(() => {
-    if (scope !== 'household' || planListing === null) return null;
+    // Protection is the household's, and does not follow the switch.
+    if (planListing === null) return null;
     const active = planListing.policies.filter((policy) => !policy.isLapsed);
     if (active.length === 0) return null;
     const surrenderValues = new Map<string, Money>();
@@ -245,7 +249,7 @@ export function OverviewScreen({
         today,
       }),
     };
-  }, [scope, planListing, valuations, fire.liquid, rates, today]);
+  }, [planListing, valuations, fire.liquid, rates, today]);
 
   const privateLeftOut = scope === 'household' && hiddenAssets.length > 0;
   const privateSums = hiddenAssets.map((entry) => formatMoney(entry.total, { privacy })).join(' + ');
@@ -484,7 +488,7 @@ export function OverviewScreen({
       <div className="lg:col-start-1 lg:row-start-1">
         <Card
           lift
-          title="Net worth"
+          title={`${whose(scope)} net worth`}
           aside={
             <span className="flex items-center">
               {/*
@@ -494,20 +498,7 @@ export function OverviewScreen({
                 panel, and an incomplete tab pattern announces a promise it does
                 not keep.
               */}
-              <span className="segmented" role="group" aria-label="Whose figures">
-                {(['household', 'mine'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={scope === option}
-                    onClick={() => {
-                      setScope(option);
-                    }}
-                  >
-                    {option === 'household' ? 'Household' : 'Mine'}
-                  </button>
-                ))}
-              </span>
+              <ScopeSwitch members={listing === null ? 0 : listing.members.filter((member) => !member.isArchived).length} />
             </span>
           }
         >
@@ -825,9 +816,9 @@ export function OverviewScreen({
             there whenever a holding is earmarked emergency, even if no amount can be shown, because a card that
             vanished would read as no emergency fund.
           */}
-          {scope === 'household' && fire.earmarked.count.emergency > 0 && (
-            <section className="card stat-card" aria-label="Emergency fund" data-testid="months-of-cover">
-              <h3 className="stat-card-label">Emergency fund</h3>
+          {fire.earmarked.count.emergency > 0 && (
+            <section className="card stat-card" aria-label="Household emergency fund" data-testid="months-of-cover">
+              <h3 className="stat-card-label">Household emergency fund</h3>
               <div className="stat-card-value">
                 {fire.earmarked.unvaluedBy.emergency === fire.earmarked.count.emergency ? (
                   <Absent label="Why there is no months of cover">
@@ -986,8 +977,8 @@ export function OverviewScreen({
         */}
         {protection !== null && (
           <div className="stat-cards">
-            <section className="card stat-card" aria-label="Protection" data-testid="protection-line">
-              <h3 className="stat-card-label">Protection</h3>
+            <section className="card stat-card" aria-label="Household protection" data-testid="protection-line">
+              <h3 className="stat-card-label">Household protection</h3>
               <div className="stat-card-value">
                 {protection.facts.termCover !== null &&
                 protection.facts.termCount > 0 &&

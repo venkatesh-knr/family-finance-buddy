@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { archiveByName, openFixedForm, openHolding, openList } from './holdings.ts';
+import { choiceField, choose, next, stepper } from './fields.ts';
+import { archiveByName, openFixedForm, openHolding, openList, typeTerms } from './holdings.ts';
 
 /**
  * A deposit is entered as its terms and valued from them.
@@ -25,11 +26,7 @@ test('a deposit is valued from its terms, and a matured one says so', async ({ p
   const name = `e2e-fd-${Date.now()}`;
 
   const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
-  await form.getByLabel('Starts').fill('2024-01-01');
-  await form.getByLabel('Matures').fill('2025-01-01');
+  await typeTerms(page, form, { name, amount: '100000', rate: '7.5', starts: '2024-01-01', matures: '2025-01-01' });
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   // A deposit that has paid out is an ended holding: it is in the folded group, and opens like any other.
@@ -44,11 +41,18 @@ test('a deposit is valued from its terms, and a matured one says so', async ({ p
 });
 
 test('a bond is asked for a coupon and not for a compounding', async ({ page }) => {
-  await openFixedForm(page);
+  const form = await openFixedForm(page);
   await page.getByRole('button', { name: 'Bond', exact: true }).click();
+  await form.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+  await next(page);
+  await form.getByLabel('Face value').fill('100000');
+  await form.getByLabel('Coupon %', { exact: true }).fill('8');
+  await form.getByLabel('Starts').fill('2026-01-01');
+  await form.getByLabel('Matures').fill('2030-01-01');
+  await next(page);
 
   // A bond pays coupons and does not compound, so the form offers the one and not the other.
-  await expect(page.getByLabel('Coupon paid')).toBeVisible();
+  await expect(choiceField(page, 'Coupon paid')).toBeVisible();
   await expect(page.getByLabel(/Compounds/)).toHaveCount(0);
 });
 
@@ -59,12 +63,14 @@ test('a deposit held without terms is given them, not entered a second time', as
   await page.getByRole('button', { name: /^Add\b/ }).click();
 
   // The way deposits were entered before there were terms: a holding of kind deposit.
-  const add = page.locator('form').filter({ hasText: 'Priced in' });
-  await add.getByLabel('Name', { exact: true }).fill(name);
-  await add.locator('select').nth(0).selectOption('deposit');
-  await add.locator('select').nth(1).selectOption('INR');
-  await add.locator('select').nth(2).selectOption('INR');
+  const add = stepper(page);
+  await choose(page, 'Kind', 'deposit');
+  await add.getByLabel('What it is').fill(name);
+  await next(page);
+  await choose(page, 'Priced in', 'INR');
+  await choose(page, 'Tracks', 'INR');
   await page.getByLabel(/Foreign asset for disclosure/).uncheck();
+  await next(page);
   await add.getByLabel('Quantity').fill('1');
   await add.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -91,11 +97,7 @@ test('the terms of a deposit can be corrected in place, and every figure follows
   const name = `e2e-edit-${Date.now()}`;
 
   const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
-  await form.getByLabel('Starts').fill('2024-01-01');
-  await form.getByLabel('Matures').fill('2025-01-01');
+  await typeTerms(page, form, { name, amount: '100000', rate: '7.5', starts: '2024-01-01', matures: '2025-01-01' });
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   await openHolding(page, name);
@@ -123,11 +125,7 @@ test('a deposit maturing within a month is called out, with the decision named',
   };
 
   const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7');
-  await form.getByLabel('Starts').fill(day(-300));
-  await form.getByLabel('Matures').fill(day(10));
+  await typeTerms(page, form, { name, amount: '100000', rate: '7', starts: day(-300), matures: day(10) });
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   await openHolding(page, name);
@@ -141,13 +139,7 @@ test('a cumulative bond pays everything at maturity, with no coupon along the wa
   const name = `e2e-cumulative-${Date.now()}`;
 
   const form = await openFixedForm(page);
-  await form.getByRole('button', { name: 'Bond', exact: true }).click();
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Face value').fill('100000');
-  await form.getByLabel('Coupon %').fill('8');
-  await form.getByLabel('Starts').fill('2024-01-01');
-  await form.getByLabel('Matures').fill('2026-01-01');
-  await form.getByRole('combobox', { name: 'Repay mode' }).selectOption('cumulative');
+  await typeTerms(page, form, { name, bond: true, amount: '100000', rate: '8', starts: '2024-01-01', matures: '2026-01-01', repay: 'Cumulative: paid at maturity' });
   await form.getByRole('button', { name: 'Add the bond' }).click();
 
   await openHolding(page, name);
@@ -165,13 +157,7 @@ test('a downgrade is logged, shown on the bond, and called out on the Overview',
   const name = `e2e-rated-${Date.now()}`;
 
   const form = await openFixedForm(page);
-  await form.getByRole('button', { name: 'Bond', exact: true }).click();
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Face value').fill('100000');
-  await form.getByLabel('Coupon %').fill('10');
-  await form.getByLabel('Starts').fill('2026-01-01');
-  await form.getByLabel('Matures').fill('2030-01-01');
-  await form.getByLabel('Rating').fill('CRISIL AA');
+  await typeTerms(page, form, { name, bond: true, amount: '100000', rate: '10', starts: '2026-01-01', matures: '2030-01-01', rating: 'CRISIL AA' });
   await form.getByRole('button', { name: 'Add the bond' }).click();
 
   await openHolding(page, name);
@@ -219,13 +205,8 @@ test('closing the month writes a deposit its month-end reading from the terms', 
   const maturity = `${String(Number(start.slice(0, 4)) + 2)}${start.slice(4)}`;
 
   const form = await openFixedForm(page);
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Principal').fill('100000');
-  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
-  await form.getByLabel('Starts').fill(start);
-  await form.getByLabel('Matures').fill(maturity);
   // This is the path with no reading, which the close is for, so the offer to record one when it is added is declined.
-  await form.getByLabel(/Record today.s value/).uncheck();
+  await typeTerms(page, form, { name, amount: '100000', rate: '7.5', starts: start, matures: maturity, declineFirstReading: true });
   await form.getByRole('button', { name: 'Add the deposit' }).click();
 
   // Nobody has recorded a reading: it is worked out on its own screen and nowhere else.

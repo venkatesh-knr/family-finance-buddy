@@ -5,6 +5,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from '@playwright/test';
+import { choose, next, stepper } from './fields.ts';
 import { archiveByName, openHolding, openList } from './holdings.ts';
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -20,18 +21,25 @@ for (const scheme of ['light', 'dark'] as const) {
 
     await openList(page);
     await page.getByRole('button', { name: /^Add\b/ }).click();
-    await page.getByLabel('What are you adding').selectOption('retirement');
-    const form = page.getByRole('form', { name: 'Add a retirement account' });
-    for (const type of ['EPF: a balance from the passbook', 'NPS: units and the NAV']) {
-      await form.getByLabel('Which').selectOption({ label: type });
-      await scan(`add form, ${type.slice(0, 3)}`);
+    await choose(page, 'Type', /^A retirement account/);
+    const form = stepper(page);
+    await form.getByLabel('What it is', { exact: true }).fill(name);
+    for (const type of [/^EPF/, /^NPS/]) {
+      await choose(page, 'Which', type);
+      await scan(`add form, step one, ${String(type).slice(2, 5)}`);
+      await next(page);
+      await scan(`add form, step two, ${String(type).slice(2, 5)}`);
+      await page.getByRole('button', { name: 'Back' }).click();
     }
-    await form.getByLabel('Which').selectOption({ label: 'PPF: worked out from what is paid in and the notified rate' });
-    await form.getByLabel('Name', { exact: true }).fill(name);
+    await choose(page, 'Which', /^PPF/);
+    await next(page);
     await form.getByLabel('Opening balance', { exact: true }).fill('100000');
     await form.getByLabel('As at', { exact: true }).fill('2026-03-31');
     await expect(form.getByLabel(/Record today.s value/)).toBeChecked({ timeout: 20_000 });
-    await scan('add form, PPF');
+    await scan('add form, PPF, figures');
+    await next(page);
+    await form.getByLabel('Bank or post office').fill('SBI');
+    await scan('add form, PPF, where it is held');
     await form.getByRole('button', { name: 'Add the PPF' }).click();
 
     try {

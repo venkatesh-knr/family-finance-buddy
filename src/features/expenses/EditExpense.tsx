@@ -14,6 +14,7 @@
  * app cannot decide for you. It offers both and says what each one means.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useCallback, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { minorUnitExponent, money, parseAmountToMinor } from '../../lib/money.ts';
@@ -147,23 +148,13 @@ export function EditExpense({
             />
           </div>
 
-          <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-            <span className="label">Category</span>
-            <select
-              className="field"
-              value={categoryId}
-              onChange={(event) => {
+          <Select label="Category" className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0" value={categoryId} onChange={(event) => {
                 setCategoryId(event.target.value);
-              }}
-            >
-              <option value="">Uncategorised</option>
-              {listing.categories.map((category) => (
+              }}><option value="">Uncategorised</option>{listing.categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
 
           <Button type="button" disabled={busy} onClick={() => void save()}>
             {busy ? 'Saving…' : 'Save'}

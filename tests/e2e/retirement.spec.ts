@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { choose, next, stepper } from './fields.ts';
 import { archiveByName, openHolding, openList, rowFor } from './holdings.ts';
 
 /**
@@ -14,13 +15,16 @@ test.use({ actionTimeout: 15_000 });
 
 const detailValue = (page: Page) => page.getByTestId('detail-value');
 
-async function addRetirement(page: Page, which: 'EPF' | 'NPS' | 'PPF') {
+/** Add a retirement account: its first step (what it is, which of the three, whose) filled and gone past, the form left on its figures. */
+async function addRetirement(page: Page, which: 'EPF' | 'NPS' | 'PPF', name: string) {
   await openList(page);
   await page.getByRole('button', { name: /^Add\b/ }).click();
-  await page.getByLabel('What are you adding').selectOption('retirement');
-  const form = page.getByRole('form', { name: 'Add a retirement account' });
+  await choose(page, 'Type', /^A retirement account/);
+  const form = stepper(page);
   await expect(form).toBeVisible();
-  await form.getByLabel('Which').selectOption({ label: { EPF: 'EPF: a balance from the passbook', NPS: 'NPS: units and the NAV', PPF: 'PPF: worked out from what is paid in and the notified rate' }[which] });
+  await choose(page, 'Which', { EPF: /^EPF/, NPS: /^NPS/, PPF: /^PPF/ }[which]);
+  await form.getByLabel('What it is', { exact: true }).fill(name);
+  await next(page);
   return form;
 }
 
@@ -35,8 +39,7 @@ test('an EPF is added with its passbook balance, valued at once, and a new balan
   test.setTimeout(150_000);
   const name = `e2e-epf-${Date.now()}`;
 
-  const form = await addRetirement(page, 'EPF');
-  await form.getByLabel('Name', { exact: true }).fill(name);
+  const form = await addRetirement(page, 'EPF', name);
   await form.getByLabel('Balance from the passbook', { exact: true }).fill('1234567');
   await form.getByRole('button', { name: 'Add the EPF' }).click();
 
@@ -47,7 +50,8 @@ test('an EPF is added with its passbook balance, valued at once, and a new balan
     await expect(row).toContainText('EPF');
     await expect(row).toContainText('12,34,567');
     await expect(row).not.toContainText('not valued');
-    await expect(page.getByRole('heading', { name: /^Retirement/ }).or(page.getByText(/^Retirement\b/).first())).toBeVisible();
+    // It is on the Retirement tab, which is the one current (a class is a tab of the list, not a group).
+    await expect(page.locator('nav[aria-label="Holdings by class"]').getByRole('link', { name: 'Retirement' })).toHaveAttribute('aria-current', 'page');
 
     // Its own screen: the value, and a passbook balance to record.
     await openHolding(page, name);
@@ -67,8 +71,7 @@ test('an NPS is units and the NAV: the value is worked out, never typed', async 
   test.setTimeout(150_000);
   const name = `e2e-nps-${Date.now()}`;
 
-  const form = await addRetirement(page, 'NPS');
-  await form.getByLabel('Name', { exact: true }).fill(name);
+  const form = await addRetirement(page, 'NPS', name);
   await form.getByLabel('Units', { exact: true }).fill('1000.5');
   await form.getByLabel('NAV', { exact: true }).fill('45.6789');
   // 1,000.5 x 45.6789 = 45,701.73945, which is 45,701.74: said before it is added.
@@ -98,15 +101,16 @@ test('a PPF is worked out from its account and payments, offered as a reading, a
   test.setTimeout(180_000);
   const name = `e2e-ppf-${Date.now()}`;
 
-  const form = await addRetirement(page, 'PPF');
-  await form.getByLabel('Name', { exact: true }).fill(name);
-  await form.getByLabel('Bank or post office').fill('SBI');
-  await form.getByLabel('Last four').fill('1234');
+  const form = await addRetirement(page, 'PPF', name);
   await form.getByLabel('Opening balance', { exact: true }).fill('100000');
   await form.getByLabel('As at', { exact: true }).fill(lastCreditDay());
   // The value on the day, worked out from the opening balance, offered as its first reading and ticked.
   const offer = form.getByLabel(/Record today.s value/);
   await expect(offer).toBeChecked({ timeout: 20_000 });
+  // Where it is held is the step after the figures.
+  await next(page);
+  await form.getByLabel('Bank or post office').fill('SBI');
+  await form.getByLabel('Last four').fill('1234');
   await form.getByRole('button', { name: 'Add the PPF' }).click();
 
   try {
@@ -157,8 +161,7 @@ test('a retirement holding is a row of the allocation, under its own name', asyn
   test.setTimeout(150_000);
   const name = `e2e-epf-alloc-${Date.now()}`;
 
-  const form = await addRetirement(page, 'EPF');
-  await form.getByLabel('Name', { exact: true }).fill(name);
+  const form = await addRetirement(page, 'EPF', name);
   await form.getByLabel('Balance from the passbook', { exact: true }).fill('2500000');
   await form.getByRole('button', { name: 'Add the EPF' }).click();
 

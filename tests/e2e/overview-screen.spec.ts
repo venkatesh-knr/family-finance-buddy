@@ -34,7 +34,7 @@ test('the currency cards fill their row, and the emergency fund is a card of the
   const emergency = page.getByTestId('months-of-cover');
   if ((await emergency.count()) > 0) {
     await expect(emergency).toHaveClass(/stat-card/);
-    await expect(emergency.locator('h3')).toHaveText('Emergency fund');
+    await expect(emergency.locator('h3')).toHaveText('Household emergency fund');
     expect(await grid.getByTestId('months-of-cover').count(), 'outside the currency cards\' grid, so they keep their row').toBe(0);
   }
 });

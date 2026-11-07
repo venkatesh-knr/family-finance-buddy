@@ -74,6 +74,31 @@ for (const scheme of ['dark', 'light'] as const) {
   });
 }
 
+test('SL-I7 — a screen has at most one lifted surface, and Holdings has exactly one on every tab', async ({ page }) => {
+  // docs/design/simple-layout.md section 1: one lifted surface per screen, the answer at the top; everything else is flat. Counted by
+  // the class that draws it, and, as the existing check does, by the gradient that is its signature.
+  test.setTimeout(150_000);
+  const lifted = async () =>
+    page.evaluate(() => ({
+      byClass: document.querySelectorAll('.card-lift').length,
+      byGradient: Array.from(document.querySelectorAll('*')).filter((el) => getComputedStyle(el).backgroundImage.includes('gradient') && el.getBoundingClientRect().height > 60).length,
+    }));
+
+  for (const screen of [...SCREENS, 'property', 'insurance', 'reports', 'more']) {
+    await ready(page, screen);
+    const found = await lifted();
+    expect(found.byClass, `${screen} has ${String(found.byClass)} elements of the lifted class`).toBeLessThanOrEqual(1);
+    expect(found.byGradient, `${screen} has ${String(found.byGradient)} gradient surfaces`).toBeLessThanOrEqual(1);
+  }
+
+  for (const hash of ['#/holdings', '#/holdings?kind=deposit', '#/holdings?kind=gold']) {
+    await page.goto(`/${hash}`);
+    await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.getByRole('navigation', { name: 'Holdings by class' })).toBeVisible({ timeout: 20_000 });
+    expect((await lifted()).byClass, `${hash} has one lifted surface`).toBe(1);
+  }
+});
+
 test('--muted is a neutral grey, not a blue-grey', async ({ page }) => {
   await ready(page, 'settings');
 

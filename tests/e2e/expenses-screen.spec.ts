@@ -125,11 +125,9 @@ test('moving an entry to another member takes the private tick off it', async ({
 
   // Somebody else: the tick goes, and the line says shared again. Private is the filer's own choice on their own
   // entry; left on, the form filed it private under a member who never chose that.
-  const others = await member.locator('option').evaluateAll((options) =>
-    options.map((option) => (option as HTMLOptionElement).value),
-  );
-  const current = await member.inputValue();
-  await member.selectOption(others.find((value) => value !== current) ?? current);
+  // Another member, from the sheet of options: the one that is not selected.
+  await member.click();
+  await page.getByRole('dialog').getByRole('option', { selected: false }).first().click();
   await expect(page.getByLabel(/Keep this private/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: /· shared$/ })).toBeVisible();
 });

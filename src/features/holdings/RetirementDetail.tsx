@@ -8,6 +8,7 @@
  * calculation is the person's to record. Nothing is worked out here that `src/domain/ppf.ts` and `src/domain/nps.ts` do not.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useMemo, useState } from 'react';
 import { npsValue } from '../../domain/nps.ts';
 import { ppfBalance, type PpfView } from '../../domain/ppf.ts';
@@ -709,19 +710,9 @@ function PpfEntryForm({
           }}
         />
       </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[9rem] sm:shrink-0">
-        <span className="label">Type</span>
-        <select
-          className="field"
-          value={kind}
-          onChange={(event) => {
+      <Select label="Type" className="flex w-full flex-col gap-1.5 sm:w-[9rem] sm:shrink-0" value={kind} onChange={(event) => {
             setKind(event.target.value === 'withdrawal' ? 'withdrawal' : 'payment');
-          }}
-        >
-          <option value="payment">Payment in</option>
-          <option value="withdrawal">Withdrawal</option>
-        </select>
-      </label>
+          }}><option value="payment">Payment in</option><option value="withdrawal">Withdrawal</option></Select>
       <div className="w-full sm:w-[9.375rem] sm:shrink-0">
         <Field
           label="Amount"

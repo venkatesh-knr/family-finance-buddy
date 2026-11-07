@@ -1,44 +1,57 @@
 import { test, expect, type Page } from '@playwright/test';
+import { next } from './fields.ts';
 
 /**
- * The Holdings list and a holding's own screen (docs/design/holdings.md). Read-only: nothing here writes.
+ * The Holdings list and a holding's own screen (docs/design/holdings.md), as tabs (docs/design/simple-layout.md section 2).
+ * Read-only: nothing here writes.
  *
  * HD-I1 to HD-I6, each named in a title so `check:invariants` counts them. The arithmetic behind HD-I2 is a unit
  * test (`holdingGroups.test.ts`), where the figures are exact; the compact figures on a screen are not.
+ *
+ * All is the whole picture (the total, one row per class, what is set aside) and has no holding rows; a class tab is that class's
+ * holdings. So the tests that read a row go to a class tab, and the ones about the strip go to All.
  */
 
 async function onHoldings(page: Page, hash = '#/holdings') {
   await page.goto(`/${hash}`);
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByRole('navigation', { name: 'Holdings by class' })).toBeVisible({ timeout: 20_000 });
+}
+
+/** A class tab with holdings on it, ready to be read. */
+async function onClass(page: Page, kind: string) {
+  await onHoldings(page, `#/holdings?kind=${kind}`);
   await expect(page.locator('.holding-row').first()).toBeVisible({ timeout: 20_000 });
 }
 
-test('HD-I5 — exactly one control named Add on the list, and no per-row purchase or sale', async ({ page }) => {
+const currentTab = (page: Page) => page.locator('nav[aria-label="Holdings by class"] [aria-current="page"]');
+
+test('HD-I5 — exactly one control named Add on the list, named for the tab, and no per-row purchase or sale', async ({ page }) => {
   await onHoldings(page);
+  await expect(page.getByRole('button', { name: /^Add\b/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Add a holding', exact: true })).toBeVisible();
+  await onClass(page, 'mutual_fund');
   await expect(page.getByRole('button', { name: /^Add\b/ })).toHaveCount(1);
   await expect(page.getByRole('button', { name: /purchase or sale/i })).toHaveCount(0);
 });
 
-test('HD-I4 — the filter is in the URL: only deposits, the chip pressed, and Back returns to All', async ({ page }) => {
+test('HD-I4 — the filter is in the URL: only deposits, the tab current, and Back returns to All', async ({ page }) => {
   await onHoldings(page);
-  const all = await page.locator('.holding-row').count();
+  await expect(page.locator('.holding-row')).toHaveCount(0);
 
-  await onHoldings(page, '#/holdings?kind=deposit');
-  const rows = page.locator('.holding-row');
-  const count = await rows.count();
-  expect(count).toBeGreaterThan(0);
-  expect(count).toBeLessThan(all);
-  await expect(page.getByRole('link', { name: /^Deposits\b/ })).toHaveAttribute('aria-current', 'true');
-  await expect(page.getByRole('link', { name: /^All\b/ })).not.toHaveAttribute('aria-current', 'true');
-  // The summary card describes the filter, and the list's Add names the class.
+  await onClass(page, 'deposit');
+  expect(await page.locator('.holding-row').count()).toBeGreaterThan(0);
+  await expect(currentTab(page)).toHaveText('Deposits');
+  await expect(page.getByRole('link', { name: 'All', exact: true })).not.toHaveAttribute('aria-current', 'page');
+  // The summary card describes the filter, and the Add names the class.
   await expect(page.getByRole('button', { name: 'Add a deposit' })).toBeVisible();
 
   await page.goBack();
-  await expect(page.locator('.holding-row')).toHaveCount(all, { timeout: 20_000 });
+  await expect(currentTab(page)).toHaveText('All', { timeout: 20_000 });
 });
 
 test('HD-I3 — a holding whose return is refused keeps its mark and its reason on the row', async ({ page }) => {
-  await onHoldings(page);
+  await onClass(page, 'mutual_fund');
   const refused = page.locator('.holding-row').filter({ hasText: /return not shown|no cost recorded/ });
   // The demo household has positions resting on a partial statement; if it has none, say so and not pass.
   expect(await refused.count(), 'a row with a refused return in the demo household').toBeGreaterThan(0);
@@ -46,7 +59,7 @@ test('HD-I3 — a holding whose return is refused keeps its mark and its reason 
 });
 
 test('HD-I1 — a row shows the latest recorded reading, and the holding opens on the same figure', async ({ page }) => {
-  await onHoldings(page);
+  await onClass(page, 'mutual_fund');
   const row = page.locator('.holding-row').filter({ has: page.locator('.holding-value') }).first();
   const rowText = (await row.locator('.holding-value').innerText()).replace(/\s+/g, '');
   await row.locator('a.holding-link').click();
@@ -66,7 +79,7 @@ test('HD-I1 — a row shows the latest recorded reading, and the holding opens o
 });
 
 test('HD-I6 — a deposit opens on its terms, with no units, purchases or realised figure', async ({ page }) => {
-  await onHoldings(page, '#/holdings?kind=deposit');
+  await onClass(page, 'deposit');
   // The largest is first, and a deposit entered before there were terms has none to show: open one that has.
   await page.locator('.holding-row').filter({ hasText: /matures/ }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('term-progress')).toBeVisible({ timeout: 20_000 });
@@ -79,7 +92,7 @@ test('HD-I6 — a deposit opens on its terms, with no units, purchases or realis
 });
 
 test('a fund opens on units, cost and its transactions, and Back returns to the list', async ({ page }) => {
-  await onHoldings(page, '#/holdings?kind=mutual_fund');
+  await onClass(page, 'mutual_fund');
   await page.locator('.holding-row').first().locator('a.holding-link').click();
   await expect(page.getByText(/units/i).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('link', { name: /Holdings$/ }).first()).toBeVisible();
@@ -88,7 +101,7 @@ test('a fund opens on units, cost and its transactions, and Back returns to the 
 });
 
 test('a row is compact: about a glance, and a screen of eight holdings is not seven', async ({ page }) => {
-  await onHoldings(page);
+  await onClass(page, 'deposit');
   const first = await page.locator('.holding-row').first().boundingBox();
   // A row is a glance, not a card: about a hundred pixels. Measured at 412px on the seeded household, the first row
   // (a deposit whose terms wrap to a second line, under an earmark pill) is 103px; a fund's is under 96. 112 is room
@@ -103,7 +116,7 @@ test('a row is compact: about a glance, and a screen of eight holdings is not se
 test('a filtered summary describes the filter: its share of the portfolio, and none of another class\'s caveat', async ({
   page,
 }) => {
-  await onHoldings(page, '#/holdings?kind=deposit');
+  await onClass(page, 'deposit');
   const summary = page.locator('section.card-lift');
   // Its share, and of what: "70.2% of ₹15.98L", the portfolio the class is a part of.
   await expect(page.getByTestId('filter-share')).toContainText(/\d+\.\d% of [₹$]/);
@@ -114,7 +127,7 @@ test('a filtered summary describes the filter: its share of the portfolio, and n
 });
 
 test('HD-I6 — a deposit shows what was lent, and a bond filter opens Add as a bond', async ({ page }) => {
-  await onHoldings(page, '#/holdings?kind=deposit');
+  await onClass(page, 'deposit');
   // The largest is first, and a deposit entered before there were terms has none to show: open one that has.
   await page.locator('.holding-row').filter({ hasText: /matures/ }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('term-progress')).toBeVisible({ timeout: 20_000 });
@@ -122,36 +135,36 @@ test('HD-I6 — a deposit shows what was lent, and a bond filter opens Add as a 
 
   await onHoldings(page, '#/holdings?kind=bond');
   await page.getByRole('button', { name: 'Add a bond' }).click();
+  // The form opens as a bond: the Bond tab is the one pressed, and its figures come on the next step.
+  await expect(page.getByRole('button', { name: 'Bond', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+  await next(page);
   await expect(page.getByLabel('Face value')).toBeVisible();
 });
 
-test('the chips are one row that scrolls sideways: All, the classes, then past a hairline the earmarks', async ({ page }) => {
+test('the tabs are one row that scrolls sideways: All, then the classes held, and no earmark among them', async ({ page }) => {
   await onHoldings(page);
-  const chips = page.locator('nav.chips');
-  const box = await chips.evaluate((el) => ({ scrolls: el.scrollWidth > el.clientWidth, wraps: getComputedStyle(el).flexWrap }));
+  const strip = page.locator('nav[aria-label="Holdings by class"]');
+  const box = await strip.evaluate((el) => ({ scrolls: el.scrollWidth > el.clientWidth, wraps: getComputedStyle(el).flexWrap }));
   expect(box.wraps, 'one row, not several').toBe('nowrap');
-  // The first is All, the classes follow, and the earmarks come after the divider.
-  await expect(chips.locator('a.chip').first()).toHaveText('All');
-  const order = await chips.locator('a.chip, .chip-divider').evaluateAll((els) =>
-    els.map((el) => (el.classList.contains('chip-divider') ? '|' : (el.textContent ?? '').trim())),
-  );
-  const divider = order.indexOf('|');
-  if (divider >= 0) {
-    expect(order.slice(divider + 1).join(' ')).toMatch(/Emergency fund|Child.s savings|House deposit|Retirement/);
-    expect(order.slice(0, divider).join(' ')).not.toMatch(/Emergency fund/);
-  }
+  // The first is All, and the classes follow; the earmarks are rows of All's Set aside, never tabs.
+  const names = await strip.getByRole('link').allInnerTexts();
+  expect(names[0]).toBe('All');
+  expect(names.length).toBeGreaterThan(1);
+  expect(names.join(' ')).not.toMatch(/Emergency fund|Child.s savings|House deposit/);
   // The page does not scroll sideways because of it.
   const page_ = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
   expect(page_).toBe(true);
   void box.scrolls;
 });
 
-test('a class is its own card with a chevron, and the sort puts the largest first or goes A to Z', async ({ page }) => {
+test('All has a row for each class with a chevron, and a class’s sort puts the largest first or goes A to Z', async ({ page }) => {
   await onHoldings(page);
-  const groups = page.locator('section.holding-group');
-  expect(await groups.count()).toBeGreaterThan(1);
-  await expect(groups.first().locator('.group-chevron')).toBeVisible();
+  const rows = page.getByTestId('by-class').getByRole('link');
+  expect(await rows.count()).toBeGreaterThan(1);
+  await expect(rows.first().locator('.flat-row-chevron')).toBeVisible();
 
+  await onClass(page, 'deposit');
   const sort = page.getByRole('button', { name: /Sorted largest first/ });
   await expect(sort).toBeVisible();
   const names = async () => page.locator('.holding-row .holding-name').allInnerTexts();
@@ -160,18 +173,12 @@ test('a class is its own card with a chevron, and the sort puts the largest firs
   await expect(page.getByRole('button', { name: /Sorted by name/ })).toBeVisible();
   const byName = await names();
   expect(new Set(byName)).toEqual(new Set(largest));
-  // Within a class, A to Z: compare each group's rows to their own sorted copy.
-  const eachGroupSorted = await page.locator('section.holding-group').evaluateAll((all) =>
-    all.every((g) => {
-      const rows = [...g.querySelectorAll('.holding-name')].map((n) => (n.textContent ?? '').trim());
-      return rows.every((name, i) => i === 0 || (rows[i - 1] ?? '').localeCompare(name) <= 0);
-    }),
-  );
-  expect(eachGroupSorted, 'rows A to Z inside each class').toBe(true);
+  // A to Z: the rows against their own sorted copy.
+  expect(byName.every((name, i) => i === 0 || (byName[i - 1] ?? '').localeCompare(name) <= 0), 'rows A to Z').toBe(true);
 });
 
 test('a row has what the money is for beside its name, a figure in full, and units with separators', async ({ page }) => {
-  await onHoldings(page);
+  await onClass(page, 'deposit');
   const earmarked = page.locator('.holding-row').filter({ has: page.locator('.holding-title .pill') }).first();
   if ((await earmarked.count()) > 0) {
     // On the name's own line, not under the row.
@@ -186,25 +193,29 @@ test('a row has what the money is for beside its name, a figure in full, and uni
   expect(units).not.toMatch(/\b\d{4,},?\d* units/);
 });
 
-test('the price fetch is an icon on the summary, and the one Add and the import icon are in the list header', async ({ page }) => {
+test('the price fetch is an icon on the summary, Import is at the top, and the one Add floats named for the tab', async ({ page }) => {
   await onHoldings(page);
   await expect(page.getByRole('button', { name: 'Fetch prices' })).toBeVisible();
-  const header = page.locator('.list-head');
-  await expect(header.getByRole('button', { name: /Sorted/ })).toBeVisible();
-  await expect(header.getByRole('button', { name: 'Import a statement' })).toBeVisible();
-  await expect(header.getByRole('button', { name: /^Add\b/ })).toHaveCount(1);
+  const top = page.locator('.holdings-top');
+  await expect(top.getByRole('button', { name: 'Import', exact: true })).toBeVisible();
+  await expect(page.locator('.floating-add')).toHaveCount(1);
+  await expect(page.locator('.floating-add')).toHaveText(/Add a holding/);
+  // The sort belongs to a class's list, where there are rows to sort.
+  await expect(page.getByRole('button', { name: /Sorted/ })).toHaveCount(0);
+  await onClass(page, 'deposit');
+  await expect(page.getByRole('button', { name: /Sorted/ })).toBeVisible();
 });
 
-test('filtered to deposits: the chips come first, the summary has the interest and what matures, and the emergency fund is under the list', async ({
+test('filtered to deposits: the tabs come first, the summary has the interest and what matures, and the emergency fund is under the list', async ({
   page,
 }) => {
-  await onHoldings(page, '#/holdings?kind=deposit');
+  await onClass(page, 'deposit');
   const order = await page.evaluate(() => {
-    const chips = document.querySelector('nav.chips')?.getBoundingClientRect().top ?? 0;
+    const tabs = document.querySelector('nav[aria-label="Holdings by class"]')?.getBoundingClientRect().top ?? 0;
     const summary = document.querySelector('section.card-lift')?.getBoundingClientRect().top ?? 0;
-    return { chips, summary };
+    return { tabs, summary };
   });
-  expect(order.chips, 'the chips are above the summary').toBeLessThan(order.summary);
+  expect(order.tabs, 'the tabs are above the summary').toBeLessThan(order.summary);
 
   const summary = page.locator('section.card-lift');
   await expect(summary.getByText('Interest so far')).toBeVisible();
@@ -218,7 +229,7 @@ test('filtered to deposits: the chips come first, the summary has the interest a
 test('on deposits, the worked-out figures say which deposits they cover, and the summary keeps its caveat about the totals', async ({
   page,
 }) => {
-  await onHoldings(page, '#/holdings?kind=deposit');
+  await onClass(page, 'deposit');
   const summary = page.locator('section.card-lift');
   // The warning about how the totals are put together does not go quiet on a narrower view of the same figure.
   await expect(summary.getByRole('button', { name: 'How these totals are put together' })).toBeVisible();
@@ -231,27 +242,27 @@ test('on deposits, the worked-out figures say which deposits they cover, and the
   }
 });
 
-test('on All the header comes before the chips, and a class\'s header is only its title, its count and its Add', async ({ page }) => {
+test('the top comes first, then the tabs, then the figure; and a class’s list header is its title, its count and its sort', async ({ page }) => {
   await onHoldings(page);
   const all = await page.evaluate(() => ({
-    header: document.querySelector('.list-head')?.getBoundingClientRect().top ?? 0,
-    chips: document.querySelector('nav.chips')?.getBoundingClientRect().top ?? 0,
+    top: document.querySelector('.holdings-top')?.getBoundingClientRect().top ?? 0,
+    tabs: document.querySelector('nav[aria-label="Holdings by class"]')?.getBoundingClientRect().top ?? 0,
+    figure: document.querySelector('section.card-lift')?.getBoundingClientRect().top ?? 0,
   }));
-  expect(all.header, 'the list header is above the chips').toBeLessThan(all.chips);
+  expect(all.top, 'Import is above the tabs').toBeLessThan(all.tabs);
+  expect(all.tabs, 'the tabs are above the figure').toBeLessThan(all.figure);
 
-  await onHoldings(page, '#/holdings?kind=deposit');
-  const header = page.locator('.list-head');
-  await expect(header.getByRole('button', { name: /^Add\b/ })).toBeVisible();
-  await expect(header.getByRole('button', { name: /Sorted/ })).toHaveCount(0);
-  await expect(header.getByRole('button', { name: 'Import a statement' })).toHaveCount(0);
+  await onClass(page, 'deposit');
+  await expect(page.getByRole('button', { name: /Sorted/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Deposits/ })).toBeVisible();
 });
 
-test('the icons on the list are a thumb\'s size on a touch screen', async ({ page }, testInfo) => {
+test('the icons and the Add on the list are a thumb\'s size on a touch screen', async ({ page }, testInfo) => {
   await onHoldings(page);
   const phone = (page.viewportSize()?.width ?? 1000) < 640;
   test.skip(!phone, `a touch screen's rule; ${testInfo.project.name} uses a mouse`);
-  for (const name of ['Fetch prices', 'Import a statement']) {
-    const box = await page.getByRole('button', { name }).boundingBox();
+  for (const name of ['Fetch prices', 'Import', 'Add a holding']) {
+    const box = await page.getByRole('button', { name, exact: true }).boundingBox();
     expect(box?.width, `${name} width`).toBeGreaterThanOrEqual(43.5);
     expect(box?.height, `${name} height`).toBeGreaterThanOrEqual(43.5);
   }
