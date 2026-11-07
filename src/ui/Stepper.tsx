@@ -29,6 +29,7 @@ export function Stepper({
   busy = false,
   problem = null,
   done = false,
+  show = null,
   onFinish,
   onCancel,
 }: {
@@ -41,12 +42,18 @@ export function Stepper({
   problem?: string | null;
   /** The form has written what it was asked to, though something is still to be said (a value that could not be recorded): the button closes it. */
   done?: boolean;
+  /**
+   * Ask for a step to be shown, with the first field that is marked wrong on it focused: for a problem found on a later step about a field on
+   * an earlier one, which must not leave the person to go back and look for it. `key` changes for each request, so the same step can be asked for twice.
+   */
+  show?: { readonly step: number; readonly key: number } | null;
   onFinish: () => void | Promise<void>;
   /** Back from the first step, and Escape: closes the form, having written nothing. */
   onCancel: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const last = index === steps.length - 1;
   const step = steps[index] as Step;
 
@@ -54,6 +61,21 @@ export function Stepper({
   useEffect(() => {
     heading.current?.focus();
   }, [index]);
+
+  const asked = show === null ? null : show.key;
+  useEffect(() => {
+    if (show === null) return;
+    setIndex(Math.min(Math.max(show.step, 0), steps.length - 1));
+    // After the step has shown, so the field is on screen to be focused.
+    const frame = requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+    // Only a new request moves the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked]);
 
   // The form has the screen: what is behind it does not scroll.
   useEffect(() => {
@@ -80,6 +102,7 @@ export function Stepper({
       }}
     >
       <form
+        ref={formRef}
         aria-label={title}
         // The steps check themselves (Next waits for the required fields), and a required field on a step that is hidden would stop the form.
         noValidate

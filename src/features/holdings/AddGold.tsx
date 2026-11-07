@@ -61,18 +61,47 @@ export function AddGold({
   const [earmark, setEarmark] = useState<Earmark>('none');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [show, setShow] = useState<{ step: number; key: number } | null>(null);
 
   const physical = form === 'physical';
   const grams = physical ? gramsOf(quantity) : null;
-  // Said on the field, in words, as soon as there is something wrong to say (docs/design/simple-layout.md section 3).
-  const weightError = physical && quantity.trim() !== '' && grams === null ? 'The weight is in grams, above nothing, to three decimals at most.' : null;
-  const dateError = isIsoDate(boughtOn) && boughtOn > today ? 'It cannot be bought after today.' : null;
 
   // The cost is one figure, whichever way it was typed (GD-I8): a fund's is the total typed, a physical purchase's is worked out.
   const costMinor: bigint | null = physical ? workedCost({ gift, costBy, typed, grams }) : amountOf(typed);
 
+  // Every field is checked as it is typed, and what is wrong is said on the field, in words (docs/design/simple-layout.md section 3). A step's
+  // Next waits for its fields to be right, so a problem is never found on the last step about a field on an earlier one.
+  const unitsOk = (): boolean => {
+    try {
+      return quantity.trim() !== '' && parseQuantity(quantity) > 0n;
+    } catch {
+      return false;
+    }
+  };
+  const errors: Partial<Record<'quantity' | 'boughtOn' | 'cost' | 'isin' | 'worth', string>> = {};
+  if (quantity.trim() !== '' && (physical ? grams === null : !unitsOk())) {
+    errors.quantity = physical ? 'The weight is in grams, above nothing, to three decimals at most.' : 'The units are a number above nothing, such as 50 or 12.5.';
+  }
+  if (boughtOn !== '' && (!isIsoDate(boughtOn) || Number(boughtOn.slice(0, 4)) < 1990)) errors.boughtOn = 'That is not a date this can be: check the year.';
+  else if (isIsoDate(boughtOn) && boughtOn > today) errors.boughtOn = 'It cannot be bought after today.';
+  if (!gift && typed.trim() !== '' && costMinor === null) {
+    errors.cost = physical && costBy === 'rate' ? 'The rate per gram is an amount above nothing.' : 'What it cost is an amount above nothing.';
+  }
+  if (!physical && isin.trim() !== '' && !/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin.trim().toUpperCase())) {
+    errors.isin = 'An ISIN is twelve letters and digits, such as INF846K01W80.';
+  }
+  if (!physical && worth.trim() !== '' && amountOf(worth) === null) errors.worth = 'What it is worth today is an amount above nothing, or left out.';
+  const weightError = errors.quantity ?? null;
+  const dateError = errors.boughtOn ?? null;
+  const STEP_OF = { quantity: 1, boughtOn: 1, cost: 1, isin: 2, worth: 2 } as const;
+
   const submit = async () => {
     setProblem(null);
+    const wrong = (Object.keys(errors) as (keyof typeof errors)[]).map((field) => STEP_OF[field]);
+    if (wrong.length > 0) {
+      setShow({ step: Math.min(...wrong), key: Date.now() });
+      return;
+    }
     try {
       if (name.trim() === '') throw new Error(physical ? 'Say what it is: a necklace, a coin, a bar.' : 'The name of the fund is needed.');
       if (!isIsoDate(boughtOn) || Number(boughtOn.slice(0, 4)) < 1990) throw new Error('That is not a date this can be: check the year.');
@@ -193,12 +222,12 @@ export function AddGold({
   const figures = physical
     ? {
         name: 'Weight and cost',
-        ready: grams !== null && costMinor !== null && isIsoDate(boughtOn) && dateError === null,
+        ready: grams !== null && costMinor !== null && isIsoDate(boughtOn) && Object.keys(errors).length === 0,
         content: (
           <>
             <Field label="Weight (g)" numeric inputMode="decimal" required hint="grams" error={weightError} value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
             <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
-            <GoldCost grams={grams} gift={gift} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} />
+            <GoldCost grams={grams} gift={gift} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} error={errors.cost ?? null} />
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={gift} onChange={(event) => { setGift(event.target.checked); }} />
               <span>A gift or inherited, cost not known</span>
@@ -213,12 +242,12 @@ export function AddGold({
       }
     : {
         name: 'Units and cost',
-        ready: quantity.trim() !== '' && costMinor !== null && isIsoDate(boughtOn) && dateError === null,
+        ready: unitsOk() && costMinor !== null && isIsoDate(boughtOn) && Object.keys(errors).length === 0,
         content: (
           <>
-            <Field label="Units" numeric inputMode="decimal" required value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
+            <Field label="Units" numeric inputMode="decimal" required error={errors.quantity ?? null} value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
             <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
-            <Field label={`Total cost (${CURRENCY})`} numeric inputMode="decimal" required value={typed} onChange={(event) => { setTyped(event.target.value); }} />
+            <Field label={`Total cost (${CURRENCY})`} numeric inputMode="decimal" required error={errors.cost ?? null} value={typed} onChange={(event) => { setTyped(event.target.value); }} />
           </>
         ),
       };
@@ -230,11 +259,11 @@ export function AddGold({
         figures,
         {
           name: 'Priced by',
-          ready: isin.trim() !== '',
+          ready: isin.trim() !== '' && errors.isin === undefined && errors.worth === undefined,
           content: (
             <>
-              <Field label="ISIN" placeholder="INF846K01W80" maxLength={12} required hint="It is what prices it every day, like any fund." value={isin} onChange={(event) => { setIsin(event.target.value); }} />
-              <Field label={`Worth today (${CURRENCY})`} numeric inputMode="decimal" hint="Optional: its first value." value={worth} onChange={(event) => { setWorth(event.target.value); }} />
+              <Field label="ISIN" placeholder="INF846K01W80" maxLength={12} required hint="It is what prices it every day, like any fund." error={errors.isin ?? null} value={isin} onChange={(event) => { setIsin(event.target.value); }} />
+              <Field label={`Worth today (${CURRENCY})`} numeric inputMode="decimal" hint="Optional: its first value." error={errors.worth ?? null} value={worth} onChange={(event) => { setWorth(event.target.value); }} />
               {setAside}
             </>
           ),
@@ -247,6 +276,7 @@ export function AddGold({
       finishLabel={physical ? 'Add gold' : `Add the gold ${form === 'etf' ? 'ETF' : 'fund'}`}
       busy={busy}
       problem={problem}
+      show={show}
       onCancel={onDone}
       onFinish={submit}
       steps={steps}

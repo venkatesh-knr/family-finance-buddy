@@ -71,7 +71,10 @@ export function GoldCost({
   typed,
   onCostBy,
   onTyped,
+  error = null,
 }: {
+  /** What is wrong with the cost typed, in words, under the field. */
+  error?: string | null;
   grams: bigint | null;
   gift: boolean;
   costBy: CostBy;
@@ -109,6 +112,7 @@ export function GoldCost({
           numeric
           inputMode="decimal"
           disabled={gift}
+          error={gift ? null : error}
           value={gift ? '' : typed}
           onChange={(event) => {
             onTyped(event.target.value);

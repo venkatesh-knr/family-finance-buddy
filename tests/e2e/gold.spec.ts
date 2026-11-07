@@ -314,3 +314,47 @@ test('a purchase’s date, weight and rate, and a sale, can be corrected, and th
     await archiveByName(page, name);
   }
 });
+
+test('a field that is wrong says so under itself, and the step does not go on until it is right', async ({ page }) => {
+  test.setTimeout(120_000);
+  const form = await openAddGold(page);
+  await form.getByLabel('What it is').fill('e2e-never-added');
+  await next(page);
+
+  // A weight that is not a weight: the reason is under the field, the field is marked, and the form does not go on.
+  await form.getByLabel('Weight (g)').fill('abc');
+  await expect(form.getByText('The weight is in grams, above nothing, to three decimals at most.')).toBeVisible();
+  await expect(form.getByLabel('Weight (g)')).toHaveAttribute('aria-invalid', 'true');
+  await form.getByLabel('Price paid (INR)').fill('1000');
+  await expect(form.getByRole('button', { name: 'Add gold', exact: true })).toBeDisabled();
+
+  // Right it, and the mark goes and the form can go on.
+  await form.getByLabel('Weight (g)').fill('2');
+  await expect(form.getByLabel('Weight (g)')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Add gold', exact: true })).toBeEnabled();
+
+  // A date after today, and a year that cannot be: each said on the date.
+  await form.getByLabel('Bought on').fill('2999-01-01');
+  await expect(form.getByText('It cannot be bought after today.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Add gold', exact: true })).toBeDisabled();
+  await form.getByLabel('Bought on').fill('0001-01-01');
+  await expect(form.getByText('That is not a date this can be: check the year.')).toBeVisible();
+  await expect(form.getByLabel('Bought on')).toHaveAttribute('aria-invalid', 'true');
+});
+
+test('an ETF or fund: units that are not units, and an ISIN that is not one, are marked on their own fields', async ({ page }) => {
+  test.setTimeout(120_000);
+  const form = await openAddGold(page);
+  await form.getByLabel('What it is').fill('e2e-never-added');
+  await choose(page, 'Form', 'A gold ETF');
+  await next(page);
+  await form.getByLabel('Units').fill('0');
+  await expect(form.getByText('The units are a number above nothing, such as 50 or 12.5.')).toBeVisible();
+  await form.getByLabel('Total cost (INR)').fill('5200');
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await form.getByLabel('Units').fill('50');
+  await next(page);
+  await form.getByLabel('ISIN').fill('not-an-isin');
+  await expect(form.getByText('An ISIN is twelve letters and digits, such as INF846K01W80.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Add the gold ETF' })).toBeDisabled();
+});
