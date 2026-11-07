@@ -392,19 +392,15 @@
   }
 
   /*
-   * An item in a list that wants attention (docs/tokens.md §4: spend the fill
-   * by role). One line, and the rest behind it. `gap` is a quiet surface with a
-   * brass mark; `due` keeps the coral fill, because it is the one that cannot
-   * be put right later.
+   * An item in a list that wants attention, a row of a flat list (docs/design/simple-layout.md section 1): one line with a
+   * chevron, the rest behind it, and a hairline between rows. The mark carries the kind: brass for a gap, coral for what
+   * cannot be put right later, and the `!` in it and the words are what say so, not the hue.
    */
   .attention {
-    border: 1px solid transparent;
-    border-radius: var(--radius);
+    border-top: 1px solid var(--line);
   }
 
   .attention-gap {
-    background: var(--surface-2);
-    border-color: var(--line);
     color: var(--ink-2);
   }
 
@@ -413,8 +409,10 @@
   }
 
   .attention-due {
-    background: var(--coral-soft);
-    border-color: color-mix(in srgb, var(--coral) 30%, var(--coral-soft));
+    color: var(--ink);
+  }
+
+  .attention-due .notice-mark {
     color: var(--coral);
   }
 
@@ -424,7 +422,8 @@
     display: flex;
     gap: 8px;
     list-style: none;
-    padding: 9px 11px;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.25rem;
   }
 
   .attention-line::-webkit-details-marker {
@@ -453,8 +452,9 @@
    */
   .attention-action {
     background: transparent;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
     color: var(--ink-2);
     cursor: pointer;
     display: block;
@@ -465,7 +465,6 @@
   }
 
   .attention-action:hover:not(:disabled) {
-    border-color: var(--muted);
     color: var(--ink);
   }
 
@@ -489,7 +488,7 @@
   }
 
   .attention-body {
-    padding: 0 11px 10px 34px;
+    padding: 0 0.25rem 0.75rem 1.75rem;
   }
 
   /*
@@ -1537,6 +1536,11 @@
     display: grid;
     gap: 0.35rem;
     padding: 14px 16px;
+  }
+
+  /* A currency's figures, or the emergency fund or protection, on the page and not in a box: the same grid and the same steps. */
+  .stat-flat {
+    padding: 0.125rem 0.25rem 0;
   }
 
   .stat-card-label {

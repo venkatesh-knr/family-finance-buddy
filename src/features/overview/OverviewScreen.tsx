@@ -689,7 +689,7 @@ export function OverviewScreen({
       */}
       <div className="lg:col-start-1 lg:row-start-2">
         {totals.length === 0 ? (
-          <Card title="Assets">
+          <Card flat title="Assets">
             <p className="note">
               No holdings yet. Add one on the Holdings screen and record what it is worth; the figures
               here follow from those readings and from nothing else.
@@ -706,7 +706,7 @@ export function OverviewScreen({
             {totals.map((total, index) => (
               <section
                 key={total.currency}
-                className="card stat-card"
+                className="stat-card stat-flat"
                 aria-label={`Assets in ${total.currency}`}
               >
                 <h3 className="stat-card-label">
@@ -817,7 +817,7 @@ export function OverviewScreen({
             vanished would read as no emergency fund.
           */}
           {fire.earmarked.count.emergency > 0 && (
-            <section className="card stat-card" aria-label="Household emergency fund" data-testid="months-of-cover">
+            <section className="stat-card stat-flat" aria-label="Household emergency fund" data-testid="months-of-cover">
               <h3 className="stat-card-label">Household emergency fund</h3>
               <div className="stat-card-value">
                 {fire.earmarked.unvaluedBy.emergency === fire.earmarked.count.emergency ? (
@@ -871,6 +871,7 @@ export function OverviewScreen({
         */}
         {allocation.map((group, groupIndex) => (
           <Card
+            flat
             key={group.currency}
             title="Allocation"
             aside={
@@ -977,7 +978,7 @@ export function OverviewScreen({
         */}
         {protection !== null && (
           <div className="stat-cards">
-            <section className="card stat-card" aria-label="Household protection" data-testid="protection-line">
+            <section className="stat-card stat-flat" aria-label="Household protection" data-testid="protection-line">
               <h3 className="stat-card-label">Household protection</h3>
               <div className="stat-card-value">
                 {protection.facts.termCover !== null &&
@@ -1032,6 +1033,7 @@ export function OverviewScreen({
 
       <div className="lg:col-start-2 lg:row-start-3">
         <Card
+          flat
           title="Needs attention"
           aside={
             canClose && (

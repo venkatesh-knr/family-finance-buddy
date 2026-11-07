@@ -40,6 +40,7 @@ export function Card({
   defaultOpen = true,
   summary,
   lift = false,
+  flat = false,
   children,
 }: {
   title?: string;
@@ -50,6 +51,11 @@ export function Card({
    * once (docs/tokens.md §1, Depth).
    */
   lift?: boolean;
+  /**
+   * A section that is not a box: a small title and the content on the page's own ground, with space around it
+   * (docs/design/simple-layout.md section 1). Everything on a screen but its one lifted surface is flat.
+   */
+  flat?: boolean;
   /**
    * Whether the card can be folded away.
    *
@@ -68,9 +74,9 @@ export function Card({
   const shown = !collapsible || open;
 
   return (
-    <section className={lift ? 'card card-lift' : 'card'}>
+    <section className={lift ? 'card card-lift' : flat ? 'flat-section' : 'card'}>
       {title !== undefined && (
-        <header className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
+        <header className={flat ? 'flat-head flex-wrap gap-2' : 'mb-3.5 flex flex-wrap items-baseline justify-between gap-2'}>
           {collapsible ? (
             <button
               type="button"
