@@ -10,9 +10,9 @@ file is the authority where the two differ.
 
 Eight holdings took about 6.7 phone screens, because every holding rendered its
 full detail inline — ten figures and four controls a card. Tabs per class were
-considered and rejected: they hide the whole-portfolio picture that is Holdings'
-main job, the class list grows past what a tab strip holds at 375px, and an
-earmark (the emergency fund) cuts across classes, which a tab cannot express.
+first considered and rejected. **Superseded, 7 November 2026:** the owner chose tabs
+per class with All first; `docs/design/simple-layout.md` §2 answers each objection and
+is the authority for the list's layout. The rules below (HD-I1 to HD-I6) stand.
 
 ## The list
 
@@ -42,6 +42,8 @@ into the rupee figure — the same refusal the Overview makes.
 shows the ⓘ and the reason in the row's second line, not a blank. See DL-I4.
 
 ## Filters
+
+*Superseded by `simple-layout.md` §2: the chips become a tab strip, and earmarks move to a Set aside section on the All tab. HD-I4 holds for the tabs.*
 
 Chips: **All** first and default, then one per class that has holdings, then a
 divider and the earmarks that are in use. A chip is a filter, not a tab:
