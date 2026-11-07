@@ -139,29 +139,32 @@ export function QuickAdd({
       >
         <div className="qa-top">
           <label className="qa-amount">
-            <span aria-hidden="true">{symbol}</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              aria-label={`Amount (${currency})`}
-              placeholder="0"
-              required
-              value={amount}
-              onChange={(event) => {
-                setAmount(event.target.value);
-              }}
-            />
+            <span className="label">Amount ({currency})</span>
+            <span className="qa-row">
+              <span aria-hidden="true">{symbol}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                required
+                value={amount}
+                onChange={(event) => {
+                  setAmount(event.target.value);
+                }}
+              />
+            </span>
           </label>
           <label className="qa-payee">
-            <input
-              type="text"
-              aria-label="Payee"
-              placeholder="Payee (optional)"
-              value={payee}
-              onChange={(event) => {
-                setPayee(event.target.value);
-              }}
-            />
+            <span className="label">Payee (optional)</span>
+            <span className="qa-row">
+              <input
+                type="text"
+                value={payee}
+                onChange={(event) => {
+                  setPayee(event.target.value);
+                }}
+              />
+            </span>
           </label>
         </div>
 

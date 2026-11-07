@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { next } from './fields.ts';
 
 /**
  * The Holdings list and a holding's own screen (docs/design/holdings.md). Read-only: nothing here writes.
@@ -122,6 +123,10 @@ test('HD-I6 — a deposit shows what was lent, and a bond filter opens Add as a 
 
   await onHoldings(page, '#/holdings?kind=bond');
   await page.getByRole('button', { name: 'Add a bond' }).click();
+  // The form opens as a bond: the Bond tab is the one pressed, and its figures come on the next step.
+  await expect(page.getByRole('button', { name: 'Bond', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+  await next(page);
   await expect(page.getByLabel('Face value')).toBeVisible();
 });
 

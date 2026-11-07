@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { choiceField, choose } from './fields.ts';
 import { openList } from './holdings.ts';
 
 /**
@@ -13,10 +14,9 @@ export async function setEarmark(page: Page, name: RegExp, label: string) {
   await page.locator('.holding-row').filter({ hasText: name }).first().locator('a.holding-link').click();
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: /^Edit / }).first().click();
-  const select = page.locator('label', { hasText: /^Set aside for/ }).locator('select');
-  await select.selectOption({ label });
+  await choose(page, 'Set aside for', label);
   await page.getByRole('button', { name: /^Save$/ }).click();
-  await expect(select).toHaveCount(0, { timeout: 20_000 });
+  await expect(choiceField(page, 'Set aside for')).toHaveCount(0, { timeout: 20_000 });
   // The form closes only once the screen has what was saved, so this is read at once and not retried: a form that
   // closed first would show the old earmark here for as long as the read took.
   if (label !== 'No earmark') expect(await page.locator('.purpose-value').innerText()).toBe(label);

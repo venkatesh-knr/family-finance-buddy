@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { choose, stepper } from './fields.ts';
+import { choose, next, stepper } from './fields.ts';
 
 /**
  * Getting around the Holdings list and a holding's own screen, for the specs that write to the demo household
@@ -41,6 +41,39 @@ export async function openFixedForm(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: /^Add\b/ }).click();
   await choose(page, 'Type', /^A deposit or a bond/);
   return stepper(page);
+}
+
+/**
+ * Fill the stepped form for a new deposit or bond through its steps, and leave it on the last one with its button to press: what it is, its
+ * amount and dates, how it earns or pays (a bond's repay mode and rating), and where it is held and what it is for.
+ */
+export async function typeTerms(
+  page: Page,
+  form: Locator,
+  terms: {
+    name: string;
+    bond?: boolean;
+    amount: string;
+    rate: string;
+    starts: string;
+    matures: string;
+    repay?: string;
+    rating?: string;
+    declineFirstReading?: boolean;
+  },
+): Promise<void> {
+  if (terms.bond === true) await form.getByRole('button', { name: 'Bond', exact: true }).click();
+  await form.getByLabel('Name', { exact: true }).fill(terms.name);
+  await next(page);
+  await form.getByLabel(terms.bond === true ? 'Face value' : 'Principal').fill(terms.amount);
+  await form.getByLabel(terms.bond === true ? 'Coupon %' : 'Rate %', { exact: true }).fill(terms.rate);
+  await form.getByLabel('Starts').fill(terms.starts);
+  await form.getByLabel('Matures').fill(terms.matures);
+  await next(page);
+  if (terms.repay !== undefined) await choose(page, 'Repay mode', terms.repay);
+  if (terms.rating !== undefined) await form.getByLabel('Rating').fill(terms.rating);
+  await next(page);
+  if (terms.declineFirstReading === true) await form.getByLabel(/Record today.s value/).uncheck();
 }
 
 /** Archive the holding whose screen is open, and land back on the list without it. */

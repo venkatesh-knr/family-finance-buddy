@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { choose, next } from './fields.ts';
 
 /**
  * A property is in net worth, the allocation and the history, at the household's share (docs/decisions.md, Property).
@@ -25,8 +26,10 @@ test('a valued property is a row of the allocation at the household share, and a
   await page.getByRole('button', { name: 'Add a property' }).click();
   const form = page.getByRole('form', { name: 'Add a property' });
   await form.getByLabel('Name', { exact: true }).fill(name);
+  await next(page);
   await form.getByLabel('Bought on').fill('2019-03-01');
   await form.getByLabel('Price paid').fill('9000000');
+  await next(page);
   await form.getByLabel(/Household.s share/).fill('50');
   await form.getByRole('button', { name: 'Add the property' }).click();
 
@@ -87,8 +90,10 @@ test('a property valued long ago is counted and marked on the Overview, and says
   await page.getByRole('button', { name: 'Add a property' }).click();
   const form = page.getByRole('form', { name: 'Add a property' });
   await form.getByLabel('Name', { exact: true }).fill(name);
+  await next(page);
   await form.getByLabel('Bought on').fill('2019-03-01');
   await form.getByLabel('Price paid').fill('5000000');
+  await next(page);
   await form.getByRole('button', { name: 'Add the property' }).click();
 
   const card = page.getByRole('region', { name });
@@ -129,8 +134,10 @@ for (const livedIn of [true, false]) {
     await page.getByRole('button', { name: 'Add a property' }).click();
     const form = page.getByRole('form', { name: 'Add a property' });
     await form.getByLabel('Name', { exact: true }).fill(name);
+    await next(page);
     await form.getByLabel('Bought on').fill('2019-03-01');
     await form.getByLabel('Price paid').fill('5000000');
+    await next(page);
     if (livedIn) await form.getByLabel('Lived in by the family').check();
     await form.getByRole('button', { name: 'Add the property' }).click();
 

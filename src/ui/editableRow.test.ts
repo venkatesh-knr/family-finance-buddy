@@ -10,38 +10,34 @@ import { ratio, resolve, ruleFor } from './contrastKit.ts';
  * text on a real page; this is where the ground itself, the field edges and the target sizes are pinned.
  */
 
-describe.each(['light', 'dark'] as const)('the inset ground, in the %s theme', (theme) => {
-  const inset = resolve(theme, '--inset');
-  const surface = resolve(theme, '--surface');
+// The ground of an editable row is the page's own since docs/design/simple-layout.md section 3: the --inset fill and the box are gone, and
+// the row is a record and its inputs divided from the next by a hairline. So the row's text and its fields are measured on the grounds a
+// row can now stand on, which are the page and the card, and the box assertions give way to the underline ones in fieldStyle.test.ts.
+describe.each(['light', 'dark'] as const)('the grounds of an editable row, in the %s theme', (theme) => {
+  const grounds = [resolve(theme, '--bg'), resolve(theme, '--surface')];
 
-  it('is darker than the card it sits on, which is what makes it recede', () => {
-    // Contrast against the card is not the point; which is darker is. White against a luminance
-    // comparison: the lower of the two reads as the hollow.
-    const lum = (hex: string): number => {
-      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-      const lin = (v: number): number => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-      return 0.2126 * lin(c[0] as number) + 0.7152 * lin(c[1] as number) + 0.0722 * lin(c[2] as number);
-    };
-    expect(lum(inset)).toBeLessThan(lum(surface));
+  it.each(['--ink', '--ink-2', '--muted'])('holds %s text at 4.5:1 on each', (token) => {
+    for (const ground of grounds) expect(ratio(resolve(theme, token), ground), token).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('is darker than --surface-2 as well, because a holding card is on that and a form opens inside it', () => {
-    const lum = (hex: string): number => {
-      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-      const lin = (v: number): number => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-      return 0.2126 * lin(c[0] as number) + 0.7152 * lin(c[1] as number) + 0.0722 * lin(c[2] as number);
-    };
-    expect(lum(inset)).toBeLessThan(lum(resolve(theme, '--surface-2')));
+  it('holds the underline of a field on each at 3:1, since that line is what marks the field', () => {
+    for (const ground of grounds) expect(ratio(resolve(theme, '--line-strong'), ground)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('the editable row has no ground and no box of its own', () => {
+  it('is divided by a hairline and not filled or boxed', () => {
+    const rule = ruleFor('.edit-row');
+    expect(rule).not.toMatch(/background:/);
+    expect(rule).not.toMatch(/border-radius:/);
+    expect(rule).toMatch(/border-bottom:\s*1px solid var\(--line\)/);
   });
 
-  it.each(['--ink', '--ink-2', '--muted'])('holds %s text at 4.5:1 on it', (token) => {
-    expect(ratio(resolve(theme, token), inset), token).toBeGreaterThanOrEqual(4.5);
+  it('gives a form that opens to change a record the same flat ground', () => {
+    const rule = ruleFor('.inset-form');
+    expect(rule).not.toMatch(/background:/);
+    expect(rule).toMatch(/border-bottom:\s*1px solid var\(--line\)/);
   });
-
-  it('holds the border of a field on it at 3:1, since that edge is what marks the field', () => {
-    expect(ratio(resolve(theme, '--line-strong'), inset)).toBeGreaterThanOrEqual(3);
-  });
-
 });
 
 describe('the row action', () => {

@@ -6,6 +6,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from '@playwright/test';
+import { choose, next } from './fields.ts';
 
 for (const scheme of ['light', 'dark'] as const) {
   test(`the property screen has no accessibility violations in the ${scheme} theme`, async ({ page }) => {
@@ -17,8 +18,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Add a property' }).click();
     const form = page.getByRole('form', { name: 'Add a property' });
     await form.getByLabel('Name', { exact: true }).fill(name);
+    await next(page);
     await form.getByLabel('Bought on').fill('2019-03-01');
     await form.getByLabel('Price paid').fill('4200000');
+    await next(page);
     await form.getByLabel(/Household.s share/).fill('50');
     await form.getByRole('button', { name: 'Add the property' }).click();
     const card = page.getByRole('region', { name });

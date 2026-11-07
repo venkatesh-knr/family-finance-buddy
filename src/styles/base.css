@@ -222,6 +222,16 @@
     color: var(--muted);
   }
 
+  /* On the lifted surface the ground is darker in the dark theme, where --line-strong falls under 3:1, so the underline there is --muted. */
+  .card-lift .field {
+    border-bottom-color: var(--muted);
+  }
+
+  .card-lift .field:focus,
+  .card-lift .field:focus-visible {
+    border-bottom-color: var(--brass);
+  }
+
   .field::placeholder {
     color: var(--muted);
   }
@@ -2364,28 +2374,25 @@
   }
 
   /* Quick add. */
+  /*
+   * Quick add keeps its arrangement, an amount and a payee side by side, with underline fields (docs/design/simple-layout.md section 3): a
+   * label above each, and one underline under the value that is 2px in the accent while it has focus.
+   */
   .qa-top {
+    align-items: flex-end;
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
   }
 
   .qa-amount,
   .qa-payee {
-    align-items: center;
-    border-bottom: 1px solid var(--line-strong);
     display: flex;
-    gap: 0.375rem;
-    min-height: 3rem;
-    padding: 0 0.75rem;
+    flex-direction: column;
+    gap: 0.125rem;
   }
 
   .qa-amount {
     flex: 0 0 8.25rem;
-  }
-
-  .qa-amount > span {
-    color: var(--muted);
-    font-size: 1.125rem;
   }
 
   .qa-payee {
@@ -2393,8 +2400,20 @@
     min-width: 0;
   }
 
-  .qa-amount input,
-  .qa-payee input {
+  .qa-row {
+    align-items: center;
+    border-bottom: 1px solid var(--line-strong);
+    display: flex;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+  }
+
+  .qa-row > span {
+    color: var(--muted);
+    font-size: 1.125rem;
+  }
+
+  .qa-row input {
     background: transparent;
     border: 0;
     color: var(--ink);
@@ -2410,14 +2429,13 @@
 
   .qa-payee input {
     font: inherit;
-    font-size: 0.875rem;
+    font-size: 1rem;
   }
 
-  /* The focus ring (docs/tokens.md section 5): 2px brass, 2px off, around the box the input sits in. */
-  .qa-amount:focus-within,
-  .qa-payee:focus-within {
-    outline: 2px solid var(--brass);
-    outline-offset: 2px;
+  /* Focus is the underline going to 2px in the accent, as in every field; nothing around the box. */
+  .qa-row:focus-within {
+    border-bottom-color: var(--brass);
+    box-shadow: 0 1px 0 0 var(--brass);
   }
 
   /* A chip is a thumb target on a touch screen, as the other quiet controls are. */

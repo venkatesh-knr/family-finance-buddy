@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { testName } from './created.ts';
+import { choose, next, stepper } from './fields.ts';
 import { archiveByName, openHolding, openList } from './holdings.ts';
 
 /**
@@ -127,13 +128,16 @@ test('a sale appears as a row: its tile, its name, its gain with a sign, when, h
   const name = testName('tax');
   await openList(page);
   await page.getByRole('button', { name: /^Add\b/ }).click();
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByRole('combobox', { name: 'Kind' }).selectOption('mutual_fund');
-  await page.getByRole('combobox', { name: 'Priced in' }).selectOption('INR');
-  await page.getByRole('combobox', { name: 'Tracks', exact: true }).selectOption('INR');
-  await page.getByRole('checkbox').uncheck();
-  await page.getByLabel('Quantity').fill('10');
-  await page.locator('form').getByRole('button', { name: 'Add', exact: true }).click();
+  const add = stepper(page);
+  await choose(page, 'Kind', 'mutual fund');
+  await add.getByLabel('What it is').fill(name);
+  await next(page);
+  await choose(page, 'Priced in', 'INR');
+  await choose(page, 'Tracks', 'INR');
+  await add.getByRole('checkbox').uncheck();
+  await next(page);
+  await add.getByLabel('Quantity').fill('10');
+  await add.getByRole('button', { name: 'Add', exact: true }).click();
 
   try {
     await openHolding(page, name);
@@ -163,10 +167,7 @@ test('a sale appears as a row: its tile, its name, its gain with a sign, when, h
     // Classified, it is in the figures and says its term.
     await openHolding(page, name);
     await page.getByRole('button', { name: `Edit ${name}` }).click();
-    await page
-      .locator('select')
-      .filter({ has: page.locator('option[value="equity_fund"]') })
-      .selectOption('equity_fund');
+    await choose(page, 'Taxed as', 'Equity mutual fund');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('button', { name: `Edit ${name}` })).toBeVisible({ timeout: 20_000 });
 

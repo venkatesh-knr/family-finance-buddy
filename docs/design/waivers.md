@@ -79,9 +79,5 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 - SL-I1 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
 - SL-I2 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
-- SL-I3 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
-- SL-I4 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
-- SL-I5 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
-- SL-I6 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
 - SL-I7 — not built: the simpler layout is designed (simple-layout.md, 7 November 2026) and not yet built — 2026-11-07
 - SL-I8 — not built: Mine as the default is decided (simple-layout.md §2a, 7 November 2026) and not yet built — 2026-11-07
