@@ -46,15 +46,20 @@ async function namedHere(page: Page, name: string | RegExp): Promise<Locator> {
  * open and then on each class tab in turn (a holding is on the tab of its kind), the Ended group opened where it is folded.
  */
 export async function rowFor(page: Page, name: string | RegExp): Promise<Locator> {
-  const here = await namedHere(page, name);
-  if ((await here.count()) > 0) return here.first();
-  for (const hash of (await tabHashes(page)).slice(1)) {
-    await goToTab(page, hash);
-    await page.locator('.holding-row').first().waitFor({ timeout: 4000 }).catch(() => undefined);
-    const found = await namedHere(page, name);
-    if ((await found.count()) > 0) return found.first();
+  // A holding that has only just been added is not on the list until the list has read again, which it does after the add and not before the
+  // spec has looked, so the tabs are looked through again until it is there or the time is up.
+  const deadline = Date.now() + 25_000;
+  for (;;) {
+    const here = await namedHere(page, name);
+    if ((await here.count()) > 0) return here.first();
+    for (const hash of (await tabHashes(page)).slice(1)) {
+      await goToTab(page, hash);
+      await page.locator('.holding-row').first().waitFor({ timeout: 2000 }).catch(() => undefined);
+      const found = await namedHere(page, name);
+      if ((await found.count()) > 0) return found.first();
+    }
+    if (Date.now() > deadline) return page.locator('.holding-row').filter({ hasText: name }).first();
   }
-  return page.locator('.holding-row').filter({ hasText: name }).first();
 }
 
 /** How many rows carry this name across every tab, which is what "it is gone from the list" means now that All has no rows. */

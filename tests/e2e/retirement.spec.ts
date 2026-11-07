@@ -50,7 +50,8 @@ test('an EPF is added with its passbook balance, valued at once, and a new balan
     await expect(row).toContainText('EPF');
     await expect(row).toContainText('12,34,567');
     await expect(row).not.toContainText('not valued');
-    await expect(page.getByRole('heading', { name: /^Retirement/ }).or(page.getByText(/^Retirement\b/).first())).toBeVisible();
+    // It is on the Retirement tab, which is the one current (a class is a tab of the list, not a group).
+    await expect(page.locator('nav[aria-label="Holdings by class"]').getByRole('link', { name: 'Retirement' })).toHaveAttribute('aria-current', 'page');
 
     // Its own screen: the value, and a passbook balance to record.
     await openHolding(page, name);
