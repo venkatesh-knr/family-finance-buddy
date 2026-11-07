@@ -75,6 +75,7 @@ export function AddRetirement({
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [show, setShow] = useState<{ step: number; key: number } | null>(null);
 
   // The notified rate, for the offer to record a PPF's first reading. Not being able to read it only withdraws the offer.
   useEffect(() => {
@@ -120,8 +121,41 @@ export function AddRetirement({
     return view.ok ? view.value : null;
   }, [type, balance, asAt, rates, today]);
 
+  // Every field is checked as it is typed, and what is wrong is said on the field, in words (docs/design/simple-layout.md section 3). A step's
+  // Next waits for its fields to be right, so a problem is never found on the last step about a field on an earlier one.
+  const errors: Partial<Record<'balance' | 'units' | 'nav' | 'asAt' | 'last4', string>> = {};
+  if (type !== 'nps' && balance.trim() !== '') {
+    let minor: bigint | null = null;
+    try {
+      minor = parseAmountToMinor(balance, CURRENCY);
+    } catch {
+      minor = null;
+    }
+    if (minor === null) errors.balance = 'The balance is an amount, such as 12,34,567.';
+    else if (type === 'epf' && minor <= 0n) errors.balance = 'The balance is above nothing.';
+    else if (type === 'ppf' && minor < 0n) errors.balance = 'An opening balance cannot be negative.';
+  }
+  if (type === 'nps') {
+    if (units.trim() !== '') {
+      const worked = npsValue(units, '1', CURRENCY);
+      if (!worked.ok && worked.reason === 'invalid-units') errors.units = 'The units are a number, such as 1234.5678.';
+    }
+    if (nav.trim() !== '' && !npsValue('1', nav, CURRENCY).ok) errors.nav = 'The NAV is a number above nothing, to four decimal places, such as 45.6789.';
+  }
+  if (asAt !== '' && (!isIsoDate(asAt) || Number(asAt.slice(0, 4)) < 1990)) errors.asAt = 'That is not a date this can be: check the year.';
+  else if (isIsoDate(asAt) && asAt > today) errors.asAt = 'It cannot be as at a day after today.';
+  if (type === 'ppf' && last4.trim() !== '' && !/^[0-9A-Za-z]{4}$/.test(last4.trim())) {
+    errors.last4 = 'Keep only the last four characters of the account, and nothing more.';
+  }
+  const STEP_OF = { balance: 1, units: 1, nav: 1, asAt: 1, last4: 2 } as const;
+
   const submit = async () => {
     setProblem(null);
+    const wrong = (Object.keys(errors) as (keyof typeof errors)[]).map((field) => STEP_OF[field]);
+    if (wrong.length > 0) {
+      setShow({ step: Math.min(...wrong), key: Date.now() });
+      return;
+    }
     try {
       const date = asAt;
       if (!isIsoDate(date) || Number(date.slice(0, 4)) < 1990) throw new Error('The date it is as at is not a date this can be: check the year.');
@@ -203,7 +237,8 @@ export function AddRetirement({
 
   // Two steps of five fields or fewer (docs/design/simple-layout.md section 4): what it is, then what it holds; a PPF has a third.
   const figuresReady =
-    type === 'nps' ? units.trim() !== '' && nav.trim() !== '' && asAt !== '' : balance.trim() !== '' && asAt !== '';
+    (type === 'nps' ? units.trim() !== '' && nav.trim() !== '' && asAt !== '' : balance.trim() !== '' && asAt !== '') &&
+    errors.balance === undefined && errors.units === undefined && errors.nav === undefined && errors.asAt === undefined;
 
   return (
     <Stepper
@@ -212,6 +247,7 @@ export function AddRetirement({
       busy={busy}
       problem={problem}
       done={added}
+      show={show}
       onCancel={onDone}
       onFinish={submit}
       steps={[
@@ -247,8 +283,8 @@ export function AddRetirement({
             <>
               {type === 'nps' ? (
                 <>
-                  <Field label="Units" numeric inputMode="decimal" placeholder="1234.5678" required value={units} onChange={(event) => { setUnits(event.target.value); }} />
-                  <Field label="NAV" numeric inputMode="decimal" placeholder="45.6789" required value={nav} onChange={(event) => { setNav(event.target.value); }} />
+                  <Field label="Units" numeric inputMode="decimal" placeholder="1234.5678" required error={errors.units ?? null} value={units} onChange={(event) => { setUnits(event.target.value); }} />
+                  <Field label="NAV" numeric inputMode="decimal" placeholder="45.6789" required error={errors.nav ?? null} value={nav} onChange={(event) => { setNav(event.target.value); }} />
                 </>
               ) : (
                 <Field
@@ -257,13 +293,14 @@ export function AddRetirement({
                   inputMode="decimal"
                   placeholder="0.00"
                   required
+                  error={errors.balance ?? null}
                   value={balance}
                   onChange={(event) => {
                     setBalance(event.target.value);
                   }}
                 />
               )}
-              <Field label="As at" type="date" required value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
+              <Field label="As at" type="date" required error={errors.asAt ?? null} value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
               {type === 'ppf' && (
                 <>
                   <p className="note">
@@ -304,11 +341,11 @@ export function AddRetirement({
           ? [
               {
                 name: 'Where it is held',
-                ready: true,
+                ready: errors.last4 === undefined,
                 content: (
                   <>
                     <Field label="Bank or post office" maxLength={80} value={institution} onChange={(event) => { setInstitution(event.target.value); }} />
-                    <Field label="Last four" maxLength={4} value={last4} onChange={(event) => { setLast4(event.target.value); }} />
+                    <Field label="Last four" maxLength={4} error={errors.last4 ?? null} value={last4} onChange={(event) => { setLast4(event.target.value); }} />
                     {setAside}
                   </>
                 ),

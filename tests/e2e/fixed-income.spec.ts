@@ -222,3 +222,37 @@ test('closing the month writes a deposit its month-end reading from the terms', 
 
   await archiveByName(page, name);
 });
+
+test('a field that is wrong says so under itself, and the step does not go on until it is right', async ({ page }) => {
+  test.setTimeout(120_000);
+  const form = await openFixedForm(page);
+  await form.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+  await next(page);
+
+  // An amount that is not an amount, and a rate over a hundred: each said on its own field, and the step does not go on.
+  await form.getByLabel('Principal').fill('abc');
+  await expect(form.getByText('The principal is an amount above nothing, such as 1,00,000.')).toBeVisible();
+  await expect(form.getByLabel('Principal')).toHaveAttribute('aria-invalid', 'true');
+  await form.getByLabel('Rate %', { exact: true }).fill('120');
+  await expect(form.getByText('The rate is a percentage up to 100, such as 7.25.')).toBeVisible();
+  await form.getByLabel('Starts').fill('2026-01-01');
+  await form.getByLabel('Matures').fill('2031-01-01');
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+
+  // Right them, and the marks go and the step can go on.
+  await form.getByLabel('Principal').fill('100000');
+  await form.getByLabel('Rate %', { exact: true }).fill('7.5');
+  await expect(form.getByLabel('Principal')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+
+  // A maturity that is not after the start, and a year that cannot be: each said on the date.
+  await form.getByLabel('Matures').fill('2025-01-01');
+  await expect(form.getByText('It has to mature after it starts.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await form.getByLabel('Matures').fill('0001-01-01');
+  await expect(form.getByText('That is not a date this can be: check the year.')).toBeVisible();
+  await expect(form.getByLabel('Matures')).toHaveAttribute('aria-invalid', 'true');
+
+  // Nothing was written: the form is not finished.
+});
+

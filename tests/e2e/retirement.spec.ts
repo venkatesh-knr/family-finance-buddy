@@ -184,3 +184,32 @@ test('Retirement is not a kind a fund can be given, and an EPF is not offered th
   const fund = page.locator('form').filter({ hasText: 'Priced in' });
   await expect(fund.getByLabel('Kind').locator('option', { hasText: 'retirement' })).toHaveCount(0);
 });
+
+test('a retirement account’s figures say what is wrong under the field, and the step does not go on until it is right', async ({ page }) => {
+  test.setTimeout(120_000);
+  const form = await addRetirement(page, 'EPF', 'e2e-never-added');
+  await form.getByLabel('Balance from the passbook', { exact: true }).fill('abc');
+  await expect(form.getByText('The balance is an amount, such as 12,34,567.')).toBeVisible();
+  await expect(form.getByLabel('Balance from the passbook', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Next', exact: true }).or(form.getByRole('button', { name: 'Add the EPF' }))).toBeDisabled();
+
+  // A day after today is said on the date, and right it and the marks go.
+  await form.getByLabel('Balance from the passbook', { exact: true }).fill('100000');
+  await form.getByLabel('As at').fill('2999-01-01');
+  await expect(form.getByText('It cannot be as at a day after today.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Add the EPF' })).toBeDisabled();
+  await form.getByLabel('As at').fill('2026-01-01');
+  await expect(form.getByLabel('As at')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Add the EPF' })).toBeEnabled();
+});
+
+test('an NPS: units that are not units, and a NAV that is not one, are marked on their own fields', async ({ page }) => {
+  test.setTimeout(120_000);
+  const form = await addRetirement(page, 'NPS', 'e2e-never-added');
+  await form.getByLabel('Units', { exact: true }).fill('many');
+  await expect(form.getByText('The units are a number, such as 1234.5678.')).toBeVisible();
+  await form.getByLabel('NAV', { exact: true }).fill('0');
+  await expect(form.getByText('The NAV is a number above nothing, to four decimal places, such as 45.6789.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Add the NPS' })).toBeDisabled();
+});
+

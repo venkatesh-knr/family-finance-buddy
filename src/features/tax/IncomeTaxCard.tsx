@@ -31,7 +31,7 @@ import { useState } from 'react';
 import type { IncomeTaxComputation, Refusal } from '../../domain/income-tax.ts';
 import type { Regime } from '../../domain/tax-rules.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
-import { Absent, Problem } from '../../ui/primitives.tsx';
+import { Absent, Field } from '../../ui/primitives.tsx';
 import { MutedNote } from '../../ui/MutedNote.tsx';
 
 export const REFUSAL_TEXT: Record<Refusal, string> = {
@@ -269,27 +269,20 @@ export function IncomeTaxCard({
   );
 }
 
-/** An amount typed in, on one line with its name: the board's row, a box with the label at the left. */
+/** An amount typed in: the underline field, its name above and what is wrong with it said under it (simple-layout.md section 3). */
 function IncomeRow({ label, input }: { label: string; input: IncomeInput }) {
   return (
-    <>
-      <label className="tax-input">
-        <span>{label}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          className="field-num"
-          aria-label={label}
-          aria-invalid={input.error !== null}
-          placeholder="0"
-          value={input.text}
-          onChange={(event) => {
-            input.onChange(event.target.value);
-          }}
-        />
-      </label>
-      {input.error !== null && <Problem>{input.error}</Problem>}
-    </>
+    <Field
+      label={label}
+      numeric
+      inputMode="decimal"
+      placeholder="0"
+      value={input.text}
+      error={input.error}
+      onChange={(event) => {
+        input.onChange(event.target.value);
+      }}
+    />
   );
 }
 
