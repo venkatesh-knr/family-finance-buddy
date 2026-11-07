@@ -30,9 +30,9 @@ describe.each(['light', 'dark'] as const)('SL-I4 — a field’s underline holds
     }
   });
 
-  it('holds the error underline (amber) at 3:1 against the same grounds and the lifted surface', () => {
+  it('holds the error underline (the attention amber, --brass) at 3:1 against the same grounds and the lifted surface', () => {
     for (const ground of [...grounds(theme), ...lifted(theme)]) {
-      expect(ratio(resolve(theme, '--c7'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
+      expect(ratio(resolve(theme, '--brass'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
     }
   });
 });
@@ -57,8 +57,8 @@ describe('SL-I4 — the shipped rule is an underline and not a box', () => {
 
   it('is 2px amber in error', () => {
     const error = ruleFor(".field[aria-invalid='true']");
-    expect(error).toMatch(/border-bottom-color:\s*var\(--c7\)/);
-    expect(error).toMatch(/box-shadow:\s*0 1px 0 0 var\(--c7\)/);
+    expect(error).toMatch(/border-bottom-color:\s*var\(--brass\)/);
+    expect(error).toMatch(/box-shadow:\s*0 1px 0 0 var\(--brass\)/);
   });
 });
 

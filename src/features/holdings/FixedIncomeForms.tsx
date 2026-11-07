@@ -532,7 +532,8 @@ export function TermsForm({
       <Stepper
         title="Add a holding"
         finishLabel={`Add the ${kind}`}
-        busy={busy || added}
+        busy={busy}
+        done={added}
         problem={problem}
         onCancel={onCancel ?? onDone}
         onFinish={() => submit({ preventDefault() {} } as React.FormEvent)}

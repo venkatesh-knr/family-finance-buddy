@@ -13,10 +13,12 @@
 import { Children, Fragment, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-interface ParsedOption {
+export interface ParsedOption {
   readonly value: string;
   readonly label: string;
   readonly disabled: boolean;
+  /** The label of the `<optgroup>` it is in, if any: shown above the group in the sheet. */
+  readonly group: string | null;
 }
 
 function textOf(node: ReactNode): string {
@@ -25,26 +27,28 @@ function textOf(node: ReactNode): string {
     .join('');
 }
 
-/** The `<option>` elements among some children, flattening fragments and arrays. */
-function optionsOf(children: ReactNode): ParsedOption[] {
+/** The `<option>` elements among some children, flattening fragments, arrays and `<optgroup>`s, whose options keep the group's label. */
+export function optionsOf(children: ReactNode): ParsedOption[] {
   const found: ParsedOption[] = [];
-  const walk = (node: ReactNode): void => {
+  const walk = (node: ReactNode, group: string | null): void => {
     Children.forEach(node, (child) => {
       if (!isValidElement(child)) return;
-      const element = child as ReactElement<{ value?: string | number; disabled?: boolean; children?: ReactNode }>;
+      const element = child as ReactElement<{ value?: string | number; disabled?: boolean; label?: string; children?: ReactNode }>;
       if (element.type === Fragment) {
-        walk(element.props.children);
+        walk(element.props.children, group);
+      } else if (element.type === 'optgroup') {
+        walk(element.props.children, element.props.label ?? null);
       } else if (element.type === 'option') {
         const label = textOf(element.props.children);
-        found.push({ value: element.props.value === undefined ? label : String(element.props.value), label, disabled: element.props.disabled === true });
+        found.push({ value: element.props.value === undefined ? label : String(element.props.value), label, disabled: element.props.disabled === true, group });
       } else if (typeof element.type === 'function') {
         // A component that renders options (CurrencyOptions): called, since it has no hooks, to read what it makes.
         const render = element.type as (props: unknown) => ReactNode;
-        walk(render(element.props));
+        walk(render(element.props), group);
       }
     });
   };
-  walk(children);
+  walk(children, null);
   return found;
 }
 
@@ -174,7 +178,13 @@ export function Select({
                 {label}
               </div>
               <div role="listbox" aria-label={label}>
-                {options.map((option) => (
+                {options.map((option, at) => (
+                  <Fragment key={option.value}>
+                    {option.group !== null && option.group !== options[at - 1]?.group && (
+                      <div className="sheet-group" aria-hidden="true">
+                        {option.group}
+                      </div>
+                    )}
                   <button
                     key={option.value}
                     type="button"
@@ -190,6 +200,7 @@ export function Select({
                     <span>{option.label}</span>
                     {option.value === value && <span aria-hidden="true">✓</span>}
                   </button>
+                  </Fragment>
                 ))}
               </div>
             </div>

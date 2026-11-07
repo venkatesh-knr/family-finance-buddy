@@ -103,7 +103,7 @@ export function GoldCost({
           ))}
         </div>
       </div>
-      <div className="w-full sm:w-[170px] sm:shrink-0">
+      <div className="w-full">
         <Field
           label={costBy === 'price' ? `Price paid (${GOLD_CURRENCY})` : `Rate per gram (${GOLD_CURRENCY})`}
           numeric
@@ -116,7 +116,7 @@ export function GoldCost({
         />
       </div>
       {other !== null && (
-        <p className="note pb-2.5 tabular-nums" data-testid="gold-other-way">
+        <p className="field-help tabular-nums" data-testid="gold-other-way">
           {other}
         </p>
       )}

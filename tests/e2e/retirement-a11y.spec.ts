@@ -36,7 +36,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await form.getByLabel('Opening balance', { exact: true }).fill('100000');
     await form.getByLabel('As at', { exact: true }).fill('2026-03-31');
     await expect(form.getByLabel(/Record today.s value/)).toBeChecked({ timeout: 20_000 });
-    await scan('add form, PPF');
+    await scan('add form, PPF, figures');
+    await next(page);
+    await form.getByLabel('Bank or post office').fill('SBI');
+    await scan('add form, PPF, where it is held');
     await form.getByRole('button', { name: 'Add the PPF' }).click();
 
     try {

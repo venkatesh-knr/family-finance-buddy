@@ -339,7 +339,7 @@ room inside the card does not.
 | **Stepper** | A form of more than five fields is split into steps of five or fewer on a screen of its own, with no bottom bar (`docs/design/simple-layout.md` section 4): a top bar with back and the form's name, the step's name, *Step n of m* and a segmented progress line; one full-width button at the bottom, enabled when the step's required fields are filled. Back keeps every value, and nothing is written before the last step. |
 | **Bar / progress** | 6–9px height, radius 3, `--surface-3` track. Over-target bars flip to `--coral`. |
 | **Quick-add** | An amount and a payee side by side, **underline fields** (`docs/design/simple-layout.md` section 3: a label above, the value, one underline; the earlier boxed amount with its symbol inside a 132px box is superseded). The amount is in the mono face with the currency symbol before it, the underline 132px wide. Category chips under it, a disclosure line ("Today · you · shared") that opens the date, the member and the private tick, and the primary button `--brass` with light text. Focus is the field's 2px accent underline. |
-| **Focus ring** | `2px solid var(--brass)`, `outline-offset:2px`. Visible on every interactive element. |
+| **Focus ring** | `2px solid var(--brass)`, `outline-offset:2px`. Visible on every interactive element. **One exception: an underline field** (above), whose focus is its underline going to 2px in the accent, as `docs/design/simple-layout.md` section 3 draws it; in forced-colours mode it takes this outline in the system colour, because a shadow does not survive that mode. |
 
 ---
 

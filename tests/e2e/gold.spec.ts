@@ -44,7 +44,7 @@ test('physical gold is added with a price paid, is valued at the typed rate for 
 
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');
@@ -83,7 +83,7 @@ test('a rate per gram typed instead of a price stores the same cost, and a purch
 
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');
@@ -126,7 +126,7 @@ test('a gift is added with no cost, and the screen says its cost is not known ra
 
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('4');
   await form.getByLabel('Bought on').fill('2023-11-12');
@@ -149,7 +149,7 @@ test('the IBJA link is a plain link to the site, in a new tab, and carries nothi
   const name = `e2e-link-${Date.now()}`;
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('1');
   await form.getByLabel('Price paid (INR)').fill('6000');
@@ -221,7 +221,7 @@ for (const scheme of ['light', 'dark'] as const) {
     const form = await openAddGold(page);
     await scan('add gold, step one');
     await form.getByLabel('What it is').fill(name);
-    await form.getByRole('button', { name: '18K', exact: true }).click();
+    await choose(page, 'Purity', '18K');
     await next(page);
     await form.getByLabel('Weight (g)').fill('2');
     await form.getByLabel('Price paid (INR)').fill('12000');
@@ -246,7 +246,7 @@ test('a gift cannot be added to gold that has a tax class, and a purchase says h
   const name = `e2e-mixed-${Date.now()}`;
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('2');
   await form.getByLabel('Price paid (INR)').fill('12000');
@@ -270,7 +270,7 @@ test('a purchase’s date, weight and rate, and a sale, can be corrected, and th
   const name = `e2e-edit-${Date.now()}`;
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '18K', exact: true }).click();
+  await choose(page, 'Purity', '18K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');

@@ -190,7 +190,18 @@ export function AddRetirement({
     }
   };
 
-  // Two steps (docs/design/simple-layout.md section 4): what it is, then what it holds.
+  // What a retirement holding is set aside for: never the emergency fund, since locked money is not emergency cover.
+  const setAside = (
+    <Select label="Set aside for" value={earmark} onChange={(event) => {
+      if (isEarmark(event.target.value)) setEarmark(event.target.value);
+    }}>{EARMARKS.filter((option) => option !== 'emergency').map((option) => (
+      <option key={option} value={option}>
+        {EARMARK_LABELS[option]}
+      </option>
+    ))}</Select>
+  );
+
+  // Two steps of five fields or fewer (docs/design/simple-layout.md section 4): what it is, then what it holds; a PPF has a third.
   const figuresReady =
     type === 'nps' ? units.trim() !== '' && nav.trim() !== '' && asAt !== '' : balance.trim() !== '' && asAt !== '';
 
@@ -255,8 +266,6 @@ export function AddRetirement({
               <Field label="As at" type="date" required value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
               {type === 'ppf' && (
                 <>
-                  <Field label="Bank or post office" maxLength={80} value={institution} onChange={(event) => { setInstitution(event.target.value); }} />
-                  <Field label="Last four" maxLength={4} value={last4} onChange={(event) => { setLast4(event.target.value); }} />
                   <p className="note">
                     The opening balance should be as at a 31 March credit, or the day the account opened.
                     <Caveat tone="info" label="Why the opening balance is as at a 31 March credit">
@@ -267,13 +276,7 @@ export function AddRetirement({
                   </p>
                 </>
               )}
-              <Select label="Set aside for" value={earmark} onChange={(event) => {
-                if (isEarmark(event.target.value)) setEarmark(event.target.value);
-              }}>{/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}{EARMARKS.filter((option) => option !== 'emergency').map((option) => (
-                <option key={option} value={option}>
-                  {EARMARK_LABELS[option]}
-                </option>
-              ))}</Select>
+              {type !== 'ppf' && setAside}
               {type === 'nps' && npsWorked !== null && (
                 <p className="note">
                   {units.trim()} units at {nav.trim()} is <strong>{formatMoney(npsWorked)}</strong>, recorded as its first reading.
@@ -296,6 +299,22 @@ export function AddRetirement({
             </>
           ),
         },
+        // A PPF is also an account somewhere, which is a step of its own: the figures are two, and this is three (docs/design/simple-layout.md section 4).
+        ...(type === 'ppf'
+          ? [
+              {
+                name: 'Where it is held',
+                ready: true,
+                content: (
+                  <>
+                    <Field label="Bank or post office" maxLength={80} value={institution} onChange={(event) => { setInstitution(event.target.value); }} />
+                    <Field label="Last four" maxLength={4} value={last4} onChange={(event) => { setLast4(event.target.value); }} />
+                    {setAside}
+                  </>
+                ),
+              },
+            ]
+          : []),
       ]}
     />
   );

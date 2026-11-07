@@ -64,6 +64,9 @@ export function AddGold({
 
   const physical = form === 'physical';
   const grams = physical ? gramsOf(quantity) : null;
+  // Said on the field, in words, as soon as there is something wrong to say (docs/design/simple-layout.md section 3).
+  const weightError = physical && quantity.trim() !== '' && grams === null ? 'The weight is in grams, above nothing, to three decimals at most.' : null;
+  const dateError = isIsoDate(boughtOn) && boughtOn > today ? 'It cannot be bought after today.' : null;
 
   // The cost is one figure, whichever way it was typed (GD-I8): a fund's is the total typed, a physical purchase's is worked out.
   const costMinor: bigint | null = physical ? workedCost({ gift, costBy, typed, grams }) : amountOf(typed);
@@ -169,25 +172,19 @@ export function AddGold({
           ))}
         </Select>
         {physical && (
-          <div className="flex flex-col gap-1">
-            <span className="label" id="gold-purity">
-              Purity
-            </span>
-            <div className="text-tabs" role="group" aria-labelledby="gold-purity">
-              {GOLD_PURITIES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={purity === option}
-                  onClick={() => {
-                    setPurity(option);
-                  }}
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Select
+            label="Purity"
+            value={purity}
+            onChange={(event) => {
+              setPurity(event.target.value as GoldPurity);
+            }}
+          >
+            {GOLD_PURITIES.map((option) => (
+              <option key={option} value={option}>
+                {option.toUpperCase()}
+              </option>
+            ))}
+          </Select>
         )}
       </>
     ),
@@ -196,11 +193,11 @@ export function AddGold({
   const figures = physical
     ? {
         name: 'Weight and cost',
-        ready: grams !== null && costMinor !== null && isIsoDate(boughtOn),
+        ready: grams !== null && costMinor !== null && isIsoDate(boughtOn) && dateError === null,
         content: (
           <>
-            <Field label="Weight (g)" numeric inputMode="decimal" required hint="grams" value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
-            <Field label="Bought on" type="date" required value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
+            <Field label="Weight (g)" numeric inputMode="decimal" required hint="grams" error={weightError} value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
+            <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
             <GoldCost grams={grams} gift={gift} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} />
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={gift} onChange={(event) => { setGift(event.target.checked); }} />
@@ -216,11 +213,11 @@ export function AddGold({
       }
     : {
         name: 'Units and cost',
-        ready: quantity.trim() !== '' && costMinor !== null && isIsoDate(boughtOn),
+        ready: quantity.trim() !== '' && costMinor !== null && isIsoDate(boughtOn) && dateError === null,
         content: (
           <>
             <Field label="Units" numeric inputMode="decimal" required value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
-            <Field label="Bought on" type="date" required value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
+            <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
             <Field label={`Total cost (${CURRENCY})`} numeric inputMode="decimal" required value={typed} onChange={(event) => { setTyped(event.target.value); }} />
           </>
         ),

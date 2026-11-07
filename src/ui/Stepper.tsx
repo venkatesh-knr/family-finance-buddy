@@ -101,15 +101,17 @@ export function Stepper({
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
-          <span className="text-[1.0625rem] font-semibold">{title}</span>
+          <span className="step-form-title">{title}</span>
         </div>
         <div className="step-form-body">
-          <h2 ref={heading} tabIndex={-1} className="text-[1.375rem] font-semibold outline-none">
-            {step.name}
-          </h2>
-          <p className="note mt-0.5" data-testid="step-count">
-            Step {index + 1} of {steps.length}
-          </p>
+          <div className="step-form-stepline">
+            <h2 ref={heading} tabIndex={-1} className="text-[0.78rem] font-semibold outline-none">
+              {step.name}
+            </h2>
+            <p className="note" data-testid="step-count">
+              Step {index + 1} of {steps.length}
+            </p>
+          </div>
           <div className="step-form-progress" role="progressbar" aria-label="Progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={index + 1}>
             {steps.map((_, at) => (
               <i key={at} data-done={at <= index} />

@@ -214,12 +214,37 @@
   }
 
   .field[aria-invalid='true'] {
-    border-bottom-color: var(--c7);
-    box-shadow: 0 1px 0 0 var(--c7);
+    border-bottom-color: var(--brass);
+    box-shadow: 0 1px 0 0 var(--brass);
   }
 
   .field:disabled {
     color: var(--muted);
+  }
+
+  /* A native select that is still on a screen (the household switcher in the header) keeps its chevron: appearance is off, so it is drawn. */
+  select.field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a94a3' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.125rem center;
+    background-repeat: no-repeat;
+    padding-right: 1.5rem;
+  }
+
+  /*
+   * Forced-colours mode drops a shadow and recolours a border to the system colour, so focus on a field would not show: a real outline is
+   * painted there instead (docs/tokens.md section 2: a border survives, a shadow does not).
+   */
+  @media (forced-colors: active) {
+    .field:focus,
+    .field:focus-visible,
+    .qa-row:focus-within {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+
+    .field {
+      border-bottom-color: CanvasText;
+    }
   }
 
   /* On the lifted surface the ground is darker in the dark theme, where --line-strong falls under 3:1, so the underline there is --muted. */
@@ -3758,8 +3783,29 @@
     align-items: center;
     display: flex;
     gap: 0.5rem;
+    margin: 0 auto;
+    max-width: 32rem;
     min-height: 3.25rem;
     padding: 0 0.5rem;
+    position: relative;
+    width: 100%;
+  }
+
+  .step-form-title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    left: 0;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    text-align: center;
+  }
+
+  .step-form-stepline {
+    align-items: baseline;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
   }
 
   .step-form-back {
@@ -3807,6 +3853,7 @@
   }
 
   .step-form-foot > .btn {
+    display: block;
     margin: 0 auto;
     max-width: 32rem;
     min-height: 2.75rem;
@@ -3837,13 +3884,19 @@
     font-weight: 600;
   }
 
+  .sheet-group {
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 0.75rem 1rem 0.25rem;
+  }
+
   .field-help {
     color: var(--ink-2);
     font-size: 0.8125rem;
   }
 
   .field-error {
-    color: var(--c7);
+    color: var(--brass);
     font-size: 0.8125rem;
   }
 }

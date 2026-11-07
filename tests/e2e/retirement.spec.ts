@@ -101,13 +101,15 @@ test('a PPF is worked out from its account and payments, offered as a reading, a
   const name = `e2e-ppf-${Date.now()}`;
 
   const form = await addRetirement(page, 'PPF', name);
-  await form.getByLabel('Bank or post office').fill('SBI');
-  await form.getByLabel('Last four').fill('1234');
   await form.getByLabel('Opening balance', { exact: true }).fill('100000');
   await form.getByLabel('As at', { exact: true }).fill(lastCreditDay());
   // The value on the day, worked out from the opening balance, offered as its first reading and ticked.
   const offer = form.getByLabel(/Record today.s value/);
   await expect(offer).toBeChecked({ timeout: 20_000 });
+  // Where it is held is the step after the figures.
+  await next(page);
+  await form.getByLabel('Bank or post office').fill('SBI');
+  await form.getByLabel('Last four').fill('1234');
   await form.getByRole('button', { name: 'Add the PPF' }).click();
 
   try {

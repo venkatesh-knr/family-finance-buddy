@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Page } from '@playwright/test';
-import { choose, next, stepper } from './fields.ts';
+import { choiceField, choose, next, stepper } from './fields.ts';
 import { openList, rowFor } from './holdings.ts';
 
 /**
@@ -139,14 +139,14 @@ test('SL-I6 — going back keeps every value, and closing the form half-way writ
 
   // Step one, then step two, then back, then forward: nothing typed is lost.
   await form.getByLabel('What it is').fill(name);
-  await form.getByRole('button', { name: '24K', exact: true }).click();
+  await choose(page, 'Purity', '24K');
   await next(page);
   await form.getByLabel('Weight (g)').fill('7.5');
   await form.getByRole('button', { name: 'Rate per gram' }).click();
   await form.getByLabel('Rate per gram (INR)').fill('7000');
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(form.getByLabel('What it is')).toHaveValue(name);
-  await expect(form.getByRole('button', { name: '24K', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(choiceField(page, 'Purity')).toContainText('24K');
   await next(page);
   await expect(form.getByLabel('Weight (g)')).toHaveValue('7.5');
   await expect(form.getByLabel('Rate per gram (INR)')).toHaveValue('7000');
