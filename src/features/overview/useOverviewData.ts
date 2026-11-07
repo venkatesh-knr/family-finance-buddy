@@ -10,6 +10,8 @@
  * Which holdings are in view is the caller's `scope`: the household's, or one member's own.
  */
 
+import { othersHoldNote } from '../../app/otherMembers.ts';
+import { kindLabel } from '../../ui/labels.ts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   allocationByKind,
@@ -284,6 +286,21 @@ export function useOverviewData({
           ];
         }),
     [listing, scope, mine, histories],
+  );
+
+  /** Under Mine, what the household holds under other members, said: it is in nobody's figures here and would otherwise read as missing. */
+  const othersHold = useMemo(
+    () =>
+      scope === 'mine' && listing !== null
+        ? othersHoldNote(
+            listing.holdings
+              .filter((h) => !h.isArchived && !paidOut.has(h.id))
+              .map((h) => ({ memberId: h.member.id, kind: h.instrument.kind })),
+            mine,
+            kindLabel,
+          )
+        : null,
+    [scope, listing, mine, paidOut],
   );
 
   const fundValuations = useMemo<readonly ValuationInput[]>(
@@ -683,6 +700,7 @@ export function useOverviewData({
     today,
     load,
     mine,
+    othersHold,
     paidOut,
     holdings,
     shortPositions,
