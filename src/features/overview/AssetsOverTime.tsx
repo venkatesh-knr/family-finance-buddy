@@ -106,6 +106,7 @@ export function AssetsOverTime({
 
   return (
     <Card
+      flat
       title="Assets over time"
       aside={
         <span className="flex items-center gap-2.5">

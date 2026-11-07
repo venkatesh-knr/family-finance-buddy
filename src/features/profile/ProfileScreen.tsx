@@ -213,7 +213,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
       </section>
 
       {/* How many of your entries are private, and which. */}
-      <section className="card" aria-label="Your privacy">
+      <section className="flat-section" aria-label="Your privacy">
         {loading ? (
           <p className="note">Reading…</p>
         ) : counts === null ? (
@@ -282,7 +282,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
       </section>
 
       {/* What has been done in this household, in plain words. */}
-      <section className="card" aria-label="Recent activity">
+      <section className="flat-section" aria-label="Recent activity">
         <header className="mb-1 flex items-baseline justify-between gap-2">
           <h2 className="card-title font-sans">Recent activity</h2>
           <span className="note">this household</span>

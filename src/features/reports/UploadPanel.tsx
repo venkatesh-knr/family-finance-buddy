@@ -163,9 +163,9 @@ export function UploadPanel({ householdId, privacy }: { householdId: string; pri
   };
 
   return (
-    <section className="card mt-3" aria-label="Bring a workbook back">
+    <section className="flat-section mt-3" aria-label="Bring a workbook back">
       <div className="label">Bring a workbook back</div>
-      <h2 className="card-title mt-1.5 text-[1.1875rem] leading-snug">Upload what you edited</h2>
+      <h2 className="card-title mt-1.5">Upload what you edited</h2>
       <p className="note mt-1.5">
         Choose the workbook you exported and changed. You see what it would do before anything is written, and it is all or none. Rows
         you leave out are left alone: an upload never deletes.

@@ -38,7 +38,7 @@ export function RatesCard({ applied, id }: { applied: RatesApplied; id?: string 
   const regime = applied.regime === 'new' ? 'new regime' : 'old regime';
 
   return (
-    <section className="card" id={id} aria-label="Rates applied">
+    <section className="flat-section" id={id} aria-label="Rates applied">
       <h2 className="card-title font-sans">
         Rates applied for {years}, {regime}
       </h2>

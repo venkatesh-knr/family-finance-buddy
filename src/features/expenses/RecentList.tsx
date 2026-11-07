@@ -102,7 +102,7 @@ export function RecentList({
   }, [shown]);
 
   return (
-    <section className="card" aria-label="Recent expenses">
+    <section className="flat-section" aria-label="Recent expenses">
       <header className="mb-1 flex items-baseline justify-between gap-2">
         <h2 ref={heading} tabIndex={-1} className="card-title font-sans">
           {onlyUncategorised ? 'Not filed yet' : 'Recent'}

@@ -43,11 +43,11 @@ describe('the privacy switch on a phone', () => {
 });
 
 describe('a Needs attention row', () => {
-  const rule = ruleFor('.attention');
+  const between = ruleFor('.attention + .attention');
 
-  it('takes the card radius from the token and a hairline border', () => {
-    expect(rule).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(rule).toMatch(/border:\s*1px solid/);
+  it('is a flat row: a hairline between rows, from the token, and no box of its own (simple-layout.md section 1)', () => {
+    expect(between).toMatch(/border-top:\s*1px solid var\(--line\)/);
+    expect(between).not.toMatch(/border-radius|background|box-shadow/);
   });
 
   it('draws its chevron as a stroked glyph and not a text character', () => {
