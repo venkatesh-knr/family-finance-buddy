@@ -137,7 +137,7 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
 function ValueCard({ total, many, privacy, lift }: { total: CurrencyTotals; many: boolean; privacy: boolean; lift: boolean }) {
   return (
     // The first is the screen's one lifted surface (FlatProperty); a second currency's is flat beside the cost basis.
-    <div className={lift ? 'card card-lift stat-card' : 'stat-card stat-flat'}>
+    <div className={lift ? 'card card-lift stat-card' : 'stat-card stat-flat'} style={lift ? { gridColumn: '1 / -1' } : undefined}>
       <h3 className="stat-card-label">Estimated value{many ? ` · ${total.currency}` : ''}</h3>
       <div className="stat-card-value" title={exactMoney(total.value, privacy) ?? undefined}>
         <Amount value={total.value} privacy={privacy} />

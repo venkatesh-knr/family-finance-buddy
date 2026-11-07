@@ -85,7 +85,8 @@ export function Card({
               onClick={() => {
                 setOpen((was) => !was);
               }}
-              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--ink)' }}
+              // A row that opens something is a 44px target (simple-layout.md section 1): the title takes the row's width and its height.
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--ink)', flex: '1 1 auto', minHeight: '2.75rem', textAlign: 'left' }}
             >
               <span
                 aria-hidden="true"

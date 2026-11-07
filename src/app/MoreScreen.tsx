@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AppScreen } from '../domain/access.ts';
 import { formatMoney } from '../lib/money.ts';
-import { GLYPHS as GLYPH_PATHS } from '../ui/assetClass.ts';
+import { GLYPHS as GLYPH_PATHS, PROPERTY_TILE } from '../ui/assetClass.ts';
 import { hashFor } from './route.ts';
 import { formatIsoDate, istCalendarDate } from '../lib/dates.ts';
 import { readLastExport } from '../features/reports/exportFile.ts';
@@ -163,7 +163,7 @@ export function MoreScreen({
                   onOpen(id);
                 }}
               >
-                <span className="asset-tile" aria-hidden="true" style={{ ['--tile' as string]: 'var(--muted)' }}>
+                <span className="asset-tile" aria-hidden="true" style={{ ['--tile' as string]: id === 'property' ? PROPERTY_TILE.colour : 'var(--muted)' }}>
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"

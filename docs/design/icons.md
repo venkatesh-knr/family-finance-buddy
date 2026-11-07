@@ -151,22 +151,25 @@ Measure every kind in both themes and record the numbers. Gold and coral over a
 light surface are where this is expected to fail first, and a tint that works for
 five hues and fails for two is a per-hue tint, not a broken rule.
 
-Measured for the shipped 16% fill and 76% border (`src/ui/tileContrast.test.ts`
+Measured for the shipped 16% fill and 78% border (`src/ui/tileContrast.test.ts`
 holds every pair at 3:1; these are the figures it computes), glyph against its own
-fill, then border against `--surface`:
+fill, then border against `--surface`. The border was 76% until a tile sat on the page
+in a flat list (simple layout, slice C): Retirement's lime measured 2.94:1 against
+`--bg` in light, 77% gave 2.98, and 78% is the least that holds every kind at 3:1 on
+both grounds, which the test now measures:
 
 | hue | token | light glyph | light border | dark glyph | dark border |
 | --- | --- | --- | --- | --- | --- |
-| periwinkle | `--c1` | 4.53 | 3.54 | 5.22 | 4.45 |
-| emerald | `--c2` | 4.28 | 3.41 | 6.78 | 5.83 |
-| gold | `--c3` | 4.15 | 3.26 | 6.94 | 5.98 |
-| violet | `--c4` | 5.01 | 3.85 | 4.68 | 3.94 |
-| coral | `--c5` | 4.34 | 3.59 | 5.18 | 4.22 |
-| cyan | `--c6` | 4.29 | 3.41 | 6.43 | 5.55 |
-| neutral | `--muted` | 4.42 | 3.31 | 5.34 | 4.57 |
+| periwinkle | `--c1` | 4.79 | 3.86 | 5.22 | 4.63 |
+| emerald | `--c2` | 4.51 | 3.69 | 6.78 | 6.10 |
+| gold | `--c3` | 4.56 | 3.62 | 6.94 | 6.22 |
+| violet | `--c4` | 5.15 | 4.14 | 4.68 | 4.08 |
+| coral | `--c5` | 4.56 | 3.91 | 5.18 | 4.39 |
+| cyan | `--c6` | 4.54 | 3.70 | 6.43 | 5.82 |
+| neutral | `--muted` | 4.55 | 3.52 | 5.34 | 4.72 |
 
-Gold and neutral over a light surface have the least margin on the border (3.26 and
-3.31). Every pair passes, so neither needed its own percentage.
+Neutral and gold over a light surface have the least margin on the border (3.52 and
+3.62). Every pair passes, so neither needed its own percentage.
 
 Those are the colours of a solid stroke. A thin stroke is rasterised, not solid, so
 `tests/e2e/asset-tile.spec.ts` also renders every kind at device pixel ratio 1, the

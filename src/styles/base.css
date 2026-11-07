@@ -1932,13 +1932,13 @@
    * without a colour written here: --tile is set from the class. In rem, so it grows with the
    * reader's text size. The border is the same reasoning as the pressed segment's: forced-colours
    * mode drops a tint and keeps a border. It is held to 3:1 against the card (docs/design/icons.md §5),
-   * which in light takes a 76% tint, nearly the glyph colour; tileContrast.test.ts reads this rule and
+   * which in light takes a 78% tint, nearly the glyph colour (over the page's ground in a flat list, `--tile-ground`); tileContrast.test.ts reads this rule and
    * measures it, in both themes, for every kind.
    */
   .asset-tile {
     align-items: center;
-    background: color-mix(in srgb, var(--tile) 16%, var(--surface));
-    border: 1px solid color-mix(in srgb, var(--tile) 76%, var(--surface));
+    background: color-mix(in srgb, var(--tile) 16%, var(--tile-ground, var(--surface)));
+    border: 1px solid color-mix(in srgb, var(--tile) 78%, var(--tile-ground, var(--surface)));
     border-radius: var(--radius);
     box-sizing: border-box;
     color: var(--tile);
@@ -1947,6 +1947,18 @@
     height: 2.5rem;
     justify-content: center;
     width: 2.5rem;
+  }
+
+  /*
+   * A tile in a flat list sits on the page and not on a card, so it is tinted over the page's ground and its border is held to 3:1
+   * against that (docs/design/icons.md IC-R2; src/ui/tileContrast.test.ts measures both grounds).
+   */
+  .more-card,
+  .policy-card,
+  .flat-section,
+  .flat-group,
+  .flat-rows {
+    --tile-ground: var(--bg);
   }
 
   .asset-tile svg {
@@ -3912,6 +3924,7 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
+    margin-bottom: 0.5rem;
     padding: 0.25rem 0;
   }
 
