@@ -146,7 +146,7 @@ export function MoreScreen({
   };
 
   return (
-    <nav aria-label="More" className="card more-card">
+    <nav aria-label="More" className="more-card">
       {/* The board draws no title: the bar says where you are. A screen still has a heading to be found by. */}
       <h2 className="sr-only">More</h2>
       <ul className="more-list">

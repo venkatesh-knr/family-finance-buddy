@@ -733,11 +733,8 @@
    * choice. A row says what it is for in a line under its name only where that is the thing to know; the rest of
    * what used to sit under every row is gone, because a setting nobody can act on is not a row.
    */
+  /* A group of rows on the page, divided by hairlines and not drawn as a box (docs/design/simple-layout.md section 1). */
   .setgrp {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
     overflow: hidden;
   }
 
@@ -751,7 +748,7 @@
     font: inherit;
     gap: 0.25rem 0.625rem;
     min-height: 3.25rem;
-    padding: 0.375rem 1rem;
+    padding: 0.375rem 0.25rem;
     position: relative;
     text-align: left;
     width: 100%;
@@ -764,15 +761,15 @@
     background: var(--line);
     content: '';
     height: 1px;
-    left: 1rem;
+    left: 0;
     position: absolute;
-    right: 1rem;
+    right: 0;
     top: 0;
   }
 
   /* A member's divider starts under the name, past the ring. */
   .setgrp > .member-list > li + li::before {
-    left: 3.625rem;
+    left: 2.875rem;
   }
 
   .setrow-button {
@@ -2763,7 +2760,7 @@
   .setpanel {
     border-top: 1px solid var(--line);
     font-size: 0.875rem;
-    padding: 0.875rem 1rem;
+    padding: 0.875rem 0.25rem;
   }
 
   .profile-actions {

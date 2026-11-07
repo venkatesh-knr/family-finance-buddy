@@ -40,13 +40,13 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
         <>
           <h2 className="sr-only">What the property is worth, and cost</h2>
           <div className="stat-cards">
-            {facts.totals.map((total) => (
-              <ValueCard key={`value-${total.currency}`} total={total} many={facts.totals.length > 1} privacy={privacy} />
+            {facts.totals.map((total, index) => (
+              <ValueCard key={`value-${total.currency}`} total={total} many={facts.totals.length > 1} privacy={privacy} lift={index === 0} />
             ))}
             {facts.totals.map((total) => (
               <CostCard key={`cost-${total.currency}`} total={total} many={facts.totals.length > 1} privacy={privacy} />
             ))}
-            <div className="card stat-card">
+            <div className="stat-card stat-flat">
               <h3 className="stat-card-label">Oldest valuation</h3>
               <div className="stat-card-value">{facts.oldest === null ? '—' : monthsPhrase(facts.oldest.months)}</div>
               <div className="stat-card-sub">
@@ -134,9 +134,10 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
 }
 
 /** Estimated value in one currency, with the equity after loans where it can be said. */
-function ValueCard({ total, many, privacy }: { total: CurrencyTotals; many: boolean; privacy: boolean }) {
+function ValueCard({ total, many, privacy, lift }: { total: CurrencyTotals; many: boolean; privacy: boolean; lift: boolean }) {
   return (
-    <div className="card stat-card">
+    // The first is the screen's one lifted surface (FlatProperty); a second currency's is flat beside the cost basis.
+    <div className={lift ? 'card card-lift stat-card' : 'stat-card stat-flat'}>
       <h3 className="stat-card-label">Estimated value{many ? ` · ${total.currency}` : ''}</h3>
       <div className="stat-card-value" title={exactMoney(total.value, privacy) ?? undefined}>
         <Amount value={total.value} privacy={privacy} />
@@ -156,7 +157,7 @@ function ValueCard({ total, many, privacy }: { total: CurrencyTotals; many: bool
 /** What the properties in one currency cost, with the duty and the capital work inside it. */
 function CostCard({ total, many, privacy }: { total: CurrencyTotals; many: boolean; privacy: boolean }) {
   return (
-    <div className="card stat-card">
+    <div className="stat-card stat-flat">
       <h3 className="stat-card-label">Cost basis{many ? ` · ${total.currency}` : ''}</h3>
       <div className="stat-card-value" title={exactMoney(total.cost, privacy) ?? undefined}>
         <Amount value={total.cost} privacy={privacy} />
