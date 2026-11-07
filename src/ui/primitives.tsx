@@ -40,6 +40,7 @@ export function Card({
   defaultOpen = true,
   summary,
   lift = false,
+  flat = false,
   children,
 }: {
   title?: string;
@@ -50,6 +51,11 @@ export function Card({
    * once (docs/tokens.md §1, Depth).
    */
   lift?: boolean;
+  /**
+   * A section that is not a box: a small title and the content on the page's own ground, with space around it
+   * (docs/design/simple-layout.md section 1). Everything on a screen but its one lifted surface is flat.
+   */
+  flat?: boolean;
   /**
    * Whether the card can be folded away.
    *
@@ -68,9 +74,9 @@ export function Card({
   const shown = !collapsible || open;
 
   return (
-    <section className={lift ? 'card card-lift' : 'card'}>
+    <section className={lift ? 'card card-lift' : flat ? 'flat-section' : 'card'}>
       {title !== undefined && (
-        <header className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
+        <header className={flat ? 'flat-head flex-wrap gap-2' : 'mb-3.5 flex flex-wrap items-baseline justify-between gap-2'}>
           {collapsible ? (
             <button
               type="button"
@@ -79,7 +85,8 @@ export function Card({
               onClick={() => {
                 setOpen((was) => !was);
               }}
-              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--ink)' }}
+              // A row that opens something is a 44px target (simple-layout.md section 1): the title takes the row's width and its height.
+              style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--ink)', flex: '1 1 auto', minHeight: '2.75rem', textAlign: 'left' }}
             >
               <span
                 aria-hidden="true"
@@ -686,9 +693,9 @@ export function Notice({
  * incident report. So an item is one line, the count and what follows from it
  * in a clause, and the explanation and the names are behind it.
  *
- * Two weights, and only two. `gap` sits on a quiet surface with a brass mark,
- * for something unplanned. `due` is coral and is reserved for the item that
- * cannot be put right later. A native <details>, for the reasons `Notice` gives.
+ * Two weights, and only two. `gap` is a row with a brass ring mark, for something
+ * unplanned. `due` is the same mark filled in coral, and says "cannot be put right later" to a screen reader, and is reserved for
+ * the item that cannot be: the shape and the words carry it as well as the hue. A native <details>, for the reasons `Notice` gives.
  */
 export function Attention({
   tone = 'gap',
@@ -712,7 +719,10 @@ export function Attention({
         <span className="notice-mark" aria-hidden="true">
           !
         </span>
-        <span className="min-w-0">{headline}</span>
+        <span className="min-w-0">
+          {tone === 'due' && <span className="sr-only">Cannot be put right later. </span>}
+          {headline}
+        </span>
         <span className="attention-chevron" aria-hidden="true">
           <Chevron />
         </span>

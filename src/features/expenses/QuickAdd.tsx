@@ -131,7 +131,7 @@ export function QuickAdd({
   ].join(' · ');
 
   return (
-    <section className="card qa" aria-label="Add an expense">
+    <section className="flat-section qa" aria-label="Add an expense">
       <form
         onSubmit={(event) => {
           void submit(event);

@@ -392,19 +392,16 @@
   }
 
   /*
-   * An item in a list that wants attention (docs/tokens.md §4: spend the fill
-   * by role). One line, and the rest behind it. `gap` is a quiet surface with a
-   * brass mark; `due` keeps the coral fill, because it is the one that cannot
-   * be put right later.
+   * An item in a list that wants attention, a row of a flat list (docs/design/simple-layout.md section 1): one line with a
+   * chevron, the rest behind it, and a hairline between rows. The kind is told by the mark's shape as well as its hue: a gap
+   * is a ring with a `!` in brass, and what cannot be put right later is the same mark filled in coral, with words for a
+   * screen reader (`Attention` says so), because nothing means anything by colour alone (docs/tokens.md section 2).
    */
-  .attention {
-    border: 1px solid transparent;
-    border-radius: var(--radius);
+  .attention + .attention {
+    border-top: 1px solid var(--line);
   }
 
   .attention-gap {
-    background: var(--surface-2);
-    border-color: var(--line);
     color: var(--ink-2);
   }
 
@@ -413,9 +410,13 @@
   }
 
   .attention-due {
-    background: var(--coral-soft);
-    border-color: color-mix(in srgb, var(--coral) 30%, var(--coral-soft));
-    color: var(--coral);
+    color: var(--ink);
+  }
+
+  .attention-due .notice-mark {
+    background: var(--coral);
+    border-color: var(--coral);
+    color: var(--surface);
   }
 
   .attention-line {
@@ -424,7 +425,8 @@
     display: flex;
     gap: 8px;
     list-style: none;
-    padding: 9px 11px;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.25rem;
   }
 
   .attention-line::-webkit-details-marker {
@@ -453,8 +455,9 @@
    */
   .attention-action {
     background: transparent;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
     color: var(--ink-2);
     cursor: pointer;
     display: block;
@@ -465,7 +468,6 @@
   }
 
   .attention-action:hover:not(:disabled) {
-    border-color: var(--muted);
     color: var(--ink);
   }
 
@@ -489,7 +491,7 @@
   }
 
   .attention-body {
-    padding: 0 11px 10px 34px;
+    padding: 0 0.25rem 0.75rem 1.75rem;
   }
 
   /*
@@ -731,11 +733,8 @@
    * choice. A row says what it is for in a line under its name only where that is the thing to know; the rest of
    * what used to sit under every row is gone, because a setting nobody can act on is not a row.
    */
+  /* A group of rows on the page, divided by hairlines and not drawn as a box (docs/design/simple-layout.md section 1). */
   .setgrp {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
     overflow: hidden;
   }
 
@@ -749,7 +748,7 @@
     font: inherit;
     gap: 0.25rem 0.625rem;
     min-height: 3.25rem;
-    padding: 0.375rem 1rem;
+    padding: 0.375rem 0.25rem;
     position: relative;
     text-align: left;
     width: 100%;
@@ -762,15 +761,15 @@
     background: var(--line);
     content: '';
     height: 1px;
-    left: 1rem;
+    left: 0;
     position: absolute;
-    right: 1rem;
+    right: 0;
     top: 0;
   }
 
   /* A member's divider starts under the name, past the ring. */
   .setgrp > .member-list > li + li::before {
-    left: 3.625rem;
+    left: 2.875rem;
   }
 
   .setrow-button {
@@ -1524,7 +1523,7 @@
   }
 
   /*
-   * What is held, one card per currency (docs/design/vibrant-canvas.html): a label, the figure at the stat step, what was put in, and what it did. They sit two
+   * What is held, one column per currency (docs/design/vibrant-canvas.html): a label, the figure at the stat step, what was put in, and what it did. They sit two
    * across where they fit and stack where they do not, so the row never forces the page wider.
    */
   .stat-cards {
@@ -1537,6 +1536,11 @@
     display: grid;
     gap: 0.35rem;
     padding: 14px 16px;
+  }
+
+  /* A currency's figures, or the emergency fund or protection, on the page and not in a box: the same grid and the same steps. */
+  .stat-flat {
+    padding: 0.125rem 0 0;
   }
 
   .stat-card-label {
@@ -1928,13 +1932,13 @@
    * without a colour written here: --tile is set from the class. In rem, so it grows with the
    * reader's text size. The border is the same reasoning as the pressed segment's: forced-colours
    * mode drops a tint and keeps a border. It is held to 3:1 against the card (docs/design/icons.md §5),
-   * which in light takes a 76% tint, nearly the glyph colour; tileContrast.test.ts reads this rule and
+   * which in light takes a 78% tint, nearly the glyph colour (over the page's ground in a flat list, `--tile-ground`); tileContrast.test.ts reads this rule and
    * measures it, in both themes, for every kind.
    */
   .asset-tile {
     align-items: center;
-    background: color-mix(in srgb, var(--tile) 16%, var(--surface));
-    border: 1px solid color-mix(in srgb, var(--tile) 76%, var(--surface));
+    background: color-mix(in srgb, var(--tile) 16%, var(--tile-ground, var(--surface)));
+    border: 1px solid color-mix(in srgb, var(--tile) 78%, var(--tile-ground, var(--surface)));
     border-radius: var(--radius);
     box-sizing: border-box;
     color: var(--tile);
@@ -1943,6 +1947,18 @@
     height: 2.5rem;
     justify-content: center;
     width: 2.5rem;
+  }
+
+  /*
+   * A tile in a flat list sits on the page and not on a card, so it is tinted over the page's ground and its border is held to 3:1
+   * against that (docs/design/icons.md IC-R2; src/ui/tileContrast.test.ts measures both grounds).
+   */
+  .more-card,
+  .policy-card,
+  .flat-section,
+  .flat-group,
+  .flat-rows {
+    --tile-ground: var(--bg);
   }
 
   .asset-tile svg {
@@ -2756,7 +2772,7 @@
   .setpanel {
     border-top: 1px solid var(--line);
     font-size: 0.875rem;
-    padding: 0.875rem 1rem;
+    padding: 0.875rem 0.25rem;
   }
 
   .profile-actions {
@@ -3200,11 +3216,11 @@
     margin: 0 0.25rem 0.375rem;
   }
 
+  /* The policies of one kind: rows divided by hairlines on the page, not a box (docs/design/simple-layout.md section 1). */
   .policy-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .policy-item {
@@ -3908,6 +3924,7 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
+    margin-bottom: 0.5rem;
     padding: 0.25rem 0;
   }
 

@@ -522,7 +522,7 @@ export function PlanCard({
 
   if (!anySpending && totals.planned.minor === 0n) {
     return (
-      <section className="card" aria-label="Plan">
+      <section className="flat-section" aria-label="Plan">
         <h2 className="card-title font-sans mb-3.5">Plan</h2>
         <p className="note">
           Nothing to compare yet. Set some figures in the spending plan on FIRE, then file a spend against a
@@ -533,7 +533,7 @@ export function PlanCard({
   }
 
   return (
-    <section className="card" aria-label="Plan">
+    <section className="flat-section" aria-label="Plan">
       <header className="mb-1.5 flex items-baseline justify-between gap-2">
         <h2 className="card-title font-sans">Plan</h2>
         {overCount > 0 ? (

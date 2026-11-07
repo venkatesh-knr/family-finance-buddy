@@ -147,7 +147,7 @@ function AnnualSummary({
 
   if (annual === null) {
     return (
-      <Card title="Annual expense">
+      <Card flat title="Annual expense">
         <Problem>
           The plan mixes currencies, so there is no single total. Convert each figure at its own
           date first.
@@ -157,7 +157,7 @@ function AnnualSummary({
   }
 
   return (
-    <Card
+    <Card flat
       title="Annual expense"
       // A figure you consult, not one you work in — and five cards of
       // consulting sat between quick add and the ledger on a phone. Folded, it
@@ -277,7 +277,7 @@ function FireCard({
       );
 
   return (
-    <Card
+    <Card flat
       collapsible
       defaultOpen={false}
       summary={
@@ -479,7 +479,7 @@ function Categories({
   if (listing === null) return null;
 
   return (
-    <Card
+    <Card flat
       title="Spending plan"
       collapsible
       // Folded, like the other planning cards (the owner's call on the mock-vs-build review, item 7): the board ends
@@ -896,7 +896,7 @@ function Commitments({
   const count = listing.liabilities.length + listing.policies.length;
 
   return (
-    <Card
+    <Card flat
       title="Loans and policies"
       aside={
         <Caveat tone="info" label="What these count toward, and what they do not">

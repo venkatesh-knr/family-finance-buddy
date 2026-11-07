@@ -31,31 +31,21 @@ for (const scheme of ['light', 'dark'] as const) {
   test.describe(`${scheme} theme`, () => {
     test.use({ colorScheme: scheme });
 
-    test('a spending-plan row is a recessed row with mono inputs and an icon action', async ({ page }) => {
+    test('a spending-plan row is a flat row with mono inputs and an icon action', async ({ page }) => {
       await ready(page, 'fire', 'Spending plan');
       const rows = page.locator('.edit-row');
       expect(await rows.count(), 'the spending plan has rows').toBeGreaterThan(0);
 
       const first = rows.first();
 
-      // Recessed: the row's ground is darker than the card it sits in.
-      const grounds = await first.evaluate((el) => {
-        const lum = (css: string): number => {
-          const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
-          if (m === null) return NaN;
-          const lin = (v: number): number => {
-            const s = v / 255;
-            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-          };
-          return 0.2126 * lin(Number(m[1])) + 0.7152 * lin(Number(m[2])) + 0.0722 * lin(Number(m[3]));
-        };
-        const card = el.closest('.card');
-        return {
-          row: lum(getComputedStyle(el).backgroundColor),
-          card: card === null ? NaN : lum(getComputedStyle(card).backgroundColor),
-        };
+      // Flat (docs/design/simple-layout.md section 3): the row has no ground and no border of its own, it is on the page's.
+      const box = await first.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return { ground: style.backgroundColor, border: style.borderTopWidth, shadow: style.boxShadow };
       });
-      expect(grounds.row, 'the row is darker than its card').toBeLessThan(grounds.card);
+      expect(box.ground, 'the row has no ground of its own').toMatch(/^rgba\(0, 0, 0, 0\)$|^transparent$/);
+      expect(box.border, 'and no border').toBe('0px');
+      expect(box.shadow, 'and no shadow').toBe('none');
 
       // Mono in the inputs, where a person types and compares figures down a column.
       const inputs = first.locator('input');
