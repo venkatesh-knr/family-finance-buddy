@@ -692,9 +692,9 @@ export function Notice({
  * incident report. So an item is one line, the count and what follows from it
  * in a clause, and the explanation and the names are behind it.
  *
- * Two weights, and only two. `gap` sits on a quiet surface with a brass mark,
- * for something unplanned. `due` is coral and is reserved for the item that
- * cannot be put right later. A native <details>, for the reasons `Notice` gives.
+ * Two weights, and only two. `gap` is a row with a brass ring mark, for something
+ * unplanned. `due` is the same mark filled in coral, and says "cannot be put right later" to a screen reader, and is reserved for
+ * the item that cannot be: the shape and the words carry it as well as the hue. A native <details>, for the reasons `Notice` gives.
  */
 export function Attention({
   tone = 'gap',
@@ -718,7 +718,10 @@ export function Attention({
         <span className="notice-mark" aria-hidden="true">
           !
         </span>
-        <span className="min-w-0">{headline}</span>
+        <span className="min-w-0">
+          {tone === 'due' && <span className="sr-only">Cannot be put right later. </span>}
+          {headline}
+        </span>
         <span className="attention-chevron" aria-hidden="true">
           <Chevron />
         </span>

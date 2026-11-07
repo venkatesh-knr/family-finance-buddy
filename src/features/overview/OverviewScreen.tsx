@@ -1027,9 +1027,11 @@ export function OverviewScreen({
                   may be higher.
                 </>
               )}{' '}
-              <button type="button" className="note underline" onClick={onOpenInsurance}>
-                Open Insurance
-              </button>
+              <div>
+                <button type="button" className="flat-link" onClick={onOpenInsurance}>
+                  Open Insurance
+                </button>
+              </div>
               </div>
             </section>
           </div>
@@ -1068,12 +1070,12 @@ export function OverviewScreen({
               makes the year&rsquo;s peak a figure rather than a lower bound.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               {/*
                 Three things, three lines. The two months with no reading are the
                 one that cannot be put right later — a peak cannot be rebuilt from
-                a year-end statement — so it keeps the coral fill and the others
-                sit on a quiet surface. Everything else is behind the line.
+                a year-end statement — so its mark is filled in coral and the others
+                are rings. Everything else is behind the line.
               */}
               {gaps.peak.missingMonths.length > 0 && (
                 <Attention

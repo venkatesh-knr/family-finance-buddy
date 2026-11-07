@@ -87,7 +87,7 @@ export function SalesCard({
           </MutedNote>
         ))}
 
-      <section className="card" aria-label={heading}>
+      <section className="flat-section" aria-label={heading}>
         <header className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="card-title font-sans">{heading}</h2>
           <span className="note tabular-nums">{salesIn(lots)}</span>

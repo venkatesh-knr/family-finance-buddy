@@ -240,7 +240,7 @@ export function FireReadout({
         warnings={warnings}
       />
 
-      <section className="card" aria-label="How far along">
+      <section className="flat-section" aria-label="How far along">
         {progress === null || corpus === null ? (
           <div className="note">
             <Absent label="Why there is no progress yet">{noCorpus}</Absent>
@@ -610,7 +610,7 @@ function CostBar({ annual, privacy }: { annual: NonNullable<Plan['annual']>; pri
   const share = (v: Money): number => Number((v.minor * 1000n) / total) / 10;
 
   return (
-    <Card
+    <Card flat
       title="What a year costs"
       aside={
         <span className="fire-cost-total">
@@ -663,7 +663,7 @@ function Assumptions({
   };
 
   return (
-    <Card
+    <Card flat
       title="What the projection assumes"
       aside={
         <Caveat tone="info" label="Why these are the household's to set">

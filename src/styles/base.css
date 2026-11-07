@@ -393,10 +393,11 @@
 
   /*
    * An item in a list that wants attention, a row of a flat list (docs/design/simple-layout.md section 1): one line with a
-   * chevron, the rest behind it, and a hairline between rows. The mark carries the kind: brass for a gap, coral for what
-   * cannot be put right later, and the `!` in it and the words are what say so, not the hue.
+   * chevron, the rest behind it, and a hairline between rows. The kind is told by the mark's shape as well as its hue: a gap
+   * is a ring with a `!` in brass, and what cannot be put right later is the same mark filled in coral, with words for a
+   * screen reader (`Attention` says so), because nothing means anything by colour alone (docs/tokens.md section 2).
    */
-  .attention {
+  .attention + .attention {
     border-top: 1px solid var(--line);
   }
 
@@ -413,7 +414,9 @@
   }
 
   .attention-due .notice-mark {
-    color: var(--coral);
+    background: var(--coral);
+    border-color: var(--coral);
+    color: var(--surface);
   }
 
   .attention-line {
@@ -1523,7 +1526,7 @@
   }
 
   /*
-   * What is held, one card per currency (docs/design/vibrant-canvas.html): a label, the figure at the stat step, what was put in, and what it did. They sit two
+   * What is held, one column per currency (docs/design/vibrant-canvas.html): a label, the figure at the stat step, what was put in, and what it did. They sit two
    * across where they fit and stack where they do not, so the row never forces the page wider.
    */
   .stat-cards {
@@ -1540,7 +1543,7 @@
 
   /* A currency's figures, or the emergency fund or protection, on the page and not in a box: the same grid and the same steps. */
   .stat-flat {
-    padding: 0.125rem 0.25rem 0;
+    padding: 0.125rem 0 0;
   }
 
   .stat-card-label {
@@ -3204,11 +3207,11 @@
     margin: 0 0.25rem 0.375rem;
   }
 
+  /* The policies of one kind: rows divided by hairlines on the page, not a box (docs/design/simple-layout.md section 1). */
   .policy-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .policy-item {

@@ -106,7 +106,7 @@ export function EditExpense({
     // Where the person is taken when they press the pencil on a row that may be a
     // screen away: the caret goes into the first field and the form scrolls to it.
     <div ref={focusRef}>
-      <Card
+      <Card flat
         title="Edit an entry"
         aside={
           <span className="note">
