@@ -7,6 +7,7 @@
  * for — it takes seconds and cannot be done retrospectively — so it is on the detail, one tap from the row.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useMemo, useState } from 'react';
 import { isQualified } from '../../domain/position.ts';
 import type { Earmark } from '../../domain/earmark.ts';
@@ -407,46 +408,45 @@ function AddPanel({
           ? 'gold'
           : 'holding',
   );
-  return (
-    <div className="mb-3.5 flex flex-col gap-3">
-      <label className="flex w-full flex-col gap-1.5 sm:w-[260px]">
-        <span className="label">What are you adding</span>
-        <select
-          className="field"
-          value={what}
-          onChange={(event) => {
-            const value = event.target.value;
-            setWhat(value === 'fixed' || value === 'retirement' || value === 'gold' ? value : 'holding');
-          }}
-        >
-          <option value="holding">A fund, an ETF, a share or something else</option>
-          <option value="fixed">A deposit or a bond</option>
-          <option value="retirement">A retirement account: EPF, NPS or PPF</option>
-          <option value="gold">Gold: physical, or an ETF or fund</option>
-        </select>
-      </label>
-      {what === 'retirement' ? (
-        <AddRetirement listing={listing} today={today} onAdd={onAddRetirement} onDone={onDone} />
-      ) : what === 'gold' ? (
-        <AddGold listing={listing} today={today} onAdd={onAddGold} onDone={onDone} />
-      ) : what === 'holding' ? (
-        <AddHolding
-          listing={listing}
-          onAdd={onAdd}
-          {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' || initialKind === 'retirement' || initialKind === 'gold'
-            ? {}
-            : { initialKind: initialKind as InstrumentKind })}
-        />
-      ) : (
-        <TermsForm
-          listing={listing}
-          mode={{ kind: 'new' }}
-          today={today}
-          {...(initialKind === 'bond' ? { initialKind: 'bond' as const } : {})}
-          onCancel={onDone}
-          onDone={onDone}
-        />
-      )}
-    </div>
+  // What is being added is the first field of the form's first step, and it decides the form (HD-I5; docs/design/simple-layout.md section 4).
+  const typeField = (
+    <Select
+      label="Type"
+      value={what}
+      onChange={(event) => {
+        const value = event.target.value;
+        setWhat(value === 'fixed' || value === 'retirement' || value === 'gold' ? value : 'holding');
+      }}
+    >
+      <option value="holding">A fund, an ETF, a share or something else</option>
+      <option value="fixed">A deposit or a bond</option>
+      <option value="retirement">A retirement account: EPF, NPS or PPF</option>
+      <option value="gold">Gold: physical, or an ETF or fund</option>
+    </Select>
+  );
+  return what === 'retirement' ? (
+    <AddRetirement listing={listing} today={today} onAdd={onAddRetirement} onDone={onDone} typeField={typeField} />
+  ) : what === 'gold' ? (
+    <AddGold listing={listing} today={today} onAdd={onAddGold} onDone={onDone} typeField={typeField} />
+  ) : what === 'holding' ? (
+    <AddHolding
+      listing={listing}
+      onAdd={onAdd}
+      onClose={onDone}
+      typeField={typeField}
+      {...(initialKind === '' || initialKind === 'deposit' || initialKind === 'bond' || initialKind === 'retirement' || initialKind === 'gold'
+        ? {}
+        : { initialKind: initialKind as InstrumentKind })}
+    />
+  ) : (
+    <TermsForm
+      listing={listing}
+      mode={{ kind: 'new' }}
+      today={today}
+      typeField={typeField}
+      {...(initialKind === 'bond' ? { initialKind: 'bond' as const } : {})}
+      onCancel={onDone}
+      onDone={onDone}
+    />
   );
 }

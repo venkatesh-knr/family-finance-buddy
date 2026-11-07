@@ -4,6 +4,8 @@
  * unchanged when the list and the detail view became two components.
  */
 
+import { Select } from '../../ui/Select.tsx';
+import { Stepper } from '../../ui/Stepper.tsx';
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, isKnownCurrency, knownCurrencyCodes, money, parseAmountToMinor } from '../../lib/money.ts';
@@ -21,7 +23,7 @@ import {
 } from '../../domain/earmark.ts';
 import type { HoldingListing, InstrumentKind } from '../../repo/types.ts';
 import { INSTRUMENT_KINDS } from '../../repo/types.ts';
-import { Button, Card, Caveat, Field, Problem, RowAction } from '../../ui/primitives.tsx';
+import { Button, Caveat, Field, Problem, RowAction } from '../../ui/primitives.tsx';
 import { archiveHolding } from '../../repo/holdings.ts';
 import { type HoldingRow, type useHoldings } from './useHoldings.ts';
 
@@ -154,10 +156,16 @@ export function RecordReading({
 export function AddHolding({
   listing,
   onAdd,
+  onClose,
+  typeField,
   initialKind = 'etf',
 }: {
   listing: HoldingListing;
   onAdd: ReturnType<typeof useHoldings>['add'];
+  /** Closes the form, from its first step or when it is done. Nothing has been written unless it was added. */
+  onClose: () => void;
+  /** The Add panel's choice of what is being added, which sits first on the first step. */
+  typeField: React.ReactNode;
   /** The class the list was filtered to, so Add starts where the person already is. */
   initialKind?: InstrumentKind;
 }) {
@@ -186,10 +194,10 @@ export function AddHolding({
   const [memberId, setMemberId] = useState(listing.viewer.memberId);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
 
   const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
+    async () => {
       setProblem(null);
 
       if (!/^\d+(\.\d+)?$/.test(quantity.trim())) {
@@ -234,15 +242,12 @@ export function AddHolding({
           },
           worthToday,
         );
-        setName('');
-        setSymbol('');
-        setQuantity('');
-        setWorth('');
-        setEarmark('none');
-        setScheme('');
-        // It is added, so the form is clear; only the value is missing, and the holding is where to record it.
+        // It is added. If only its value is missing, the form says so and stays to be read; otherwise it closes.
         if (valueProblem !== null) {
+          setAdded(true);
           setProblem(`Added, but its value could not be recorded: ${valueProblem} Record it on the holding.`);
+        } else {
+          onClose();
         }
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not add that.');
@@ -250,221 +255,115 @@ export function AddHolding({
         setBusy(false);
       }
     },
-    [currency, earmark, exposure, isForeign, kind, listing.household.id, memberId, name, onAdd, quantity, scheme, symbol, worth],
+    [currency, earmark, exposure, isForeign, kind, listing.household.id, memberId, name, onAdd, onClose, quantity, scheme, symbol, worth],
   );
 
+  // Three steps of five fields or fewer (docs/design/simple-layout.md section 4): what it is, what it is priced in, how much.
   return (
-    <Card title="Add a holding" aside={<span className="note">{listing.household.name}</span>}>
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          void submit(event);
-        }}
-      >
-        <div className="w-full sm:w-auto sm:min-w-[180px] sm:flex-1">
-          <Field
-            label="Name"
-            placeholder="Vanguard S&P 500 ETF"
-            required
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-[110px] sm:shrink-0">
-          <Field
-            label="Symbol"
-            placeholder="VOO"
-            value={symbol}
-            onChange={(event) => {
-              setSymbol(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full sm:w-[130px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value as InstrumentKind);
-            }}
-          >
-            {/* Retirement is added by its own form, which asks for its type: a fund cannot be made one here. */}
-            {INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
-              <option key={option} value={option}>
-                {option.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/*
-          Chosen, not typed. These were free-text three-character boxes, and a
-          testing round put "ABC" in one: three capitals is what the shape test
-          asks for, and the field asked for three capitals. A list cannot
-          produce a currency that does not exist.
-        */}
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Priced in</span>
-          <select
-            className="field"
-            value={currency}
-            onChange={(event) => {
-              setCurrency(event.target.value);
-            }}
-          >
-            <CurrencyOptions />
-          </select>
-        </label>
-
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Tracks
-            {/*
-              The distinction that made the two boxes look broken beside each
-              other: an Indian feeder fund is priced in rupees and moves with
-              the dollar, so these are genuinely two answers and neither
-              follows from the other.
-            */}
-            <Caveat tone="info" label="What Tracks means, and how it differs from Priced in">
-              What the value actually follows. An Indian fund tracking a US index is priced in INR
-              and tracks USD — its rupee value moves when the dollar does. A US stock bought
-              directly is USD and USD. Leave it the same as the currency unless the two genuinely
-              differ.
-            </Caveat>
-          </span>
-          <select
-            className="field"
-            aria-label="Tracks"
-            value={exposure}
-            onChange={(event) => {
-              setExposure(event.target.value);
-            }}
-          >
-            <CurrencyOptions />
-          </select>
-        </label>
-
-        <div className="w-full sm:w-[120px] sm:shrink-0">
-          <Field
-            label="Quantity"
-            numeric
-            inputMode="decimal"
-            placeholder="12.5"
-            required
-            value={quantity}
-            onChange={(event) => {
-              setQuantity(event.target.value);
-            }}
-          />
-        </div>
-
-        <div className="w-full sm:w-[150px] sm:shrink-0">
-          <Field
-            label="Worth today"
-            numeric
-            inputMode="decimal"
-            placeholder="optional"
-            hint={`all units, in ${currency}`}
-            value={worth}
-            onChange={(event) => {
-              setWorth(event.target.value);
-            }}
-          />
-        </div>
-
-        <label className="flex w-full sm:w-[190px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Set aside for</span>
-          <select
-            className="field"
-            value={earmark}
-            onChange={(event) => {
-              if (isEarmark(event.target.value)) setEarmark(event.target.value);
-            }}
-          >
-            {EARMARKS.map((option) => (
-              <option key={option} value={option}>
-                {EARMARK_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {schemeAllowedFor(kind) && (
-          <label className="flex w-full sm:w-[230px] sm:shrink-0 flex-col gap-1.5">
-            <span className="label">Scheme</span>
-            <select
-              className="field"
-              value={scheme}
-              onChange={(event) => {
-                setScheme(isScheme(event.target.value) ? event.target.value : '');
-              }}
-            >
-              <option value="">Not set</option>
-              {SCHEMES.map((option) => (
+    <Stepper
+      title="Add a holding"
+      finishLabel="Add"
+      busy={busy}
+      problem={problem}
+      done={added}
+      onCancel={onClose}
+      onFinish={submit}
+      steps={[
+        {
+          name: 'What it is',
+          ready: name.trim() !== '',
+          content: (
+            <>
+              {typeField}
+              <Select label="Kind" value={kind} onChange={(event) => {
+                setKind(event.target.value as InstrumentKind);
+              }}>{/* Retirement is added by its own form, which asks for its type: a fund cannot be made one here. */}{INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
                 <option key={option} value={option}>
-                  {SCHEME_LABELS[option]}
+                  {option.replace('_', ' ')}
                 </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label className="flex w-full sm:w-[9.375rem] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Member</span>
-          <select
-            className="field"
-            value={memberId}
-            onChange={(event) => {
-              setMemberId(event.target.value);
-            }}
-          >
-            {selectableMembers.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" disabled={busy || name.trim() === '' || quantity.trim() === ''}>
-          {busy ? 'Adding…' : 'Add'}
-        </Button>
-
-        {problem !== null && (
-          <div className="w-full">
-            <Problem>{problem}</Problem>
-          </div>
-        )}
-      </form>
-
-      <label className="mt-3 flex items-start gap-2.5">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={isForeign}
-          onChange={(event) => {
-            setIsForeign(event.target.checked);
-          }}
-        />
-        <span className="note">
-          <strong>Foreign asset for disclosure.</strong>
-          {/*
-            Four sentences beside a checkbox, every time. The first one is the
-            decision; the rest is why, which is worth reading once.
-          */}
-          <Caveat tone="info" label="Which holdings count as a foreign asset">
-            A US stock or ETF bought through a US broker is. An Indian fund that merely tracks a US
-            index is not — it is an Indian asset for tax, even though its value moves with the
-            dollar. This is a tax question, not a currency one, so the app will not guess it.
-          </Caveat>
-        </span>
-      </label>
-    </Card>
+              ))}</Select>
+              <Field label="What it is" placeholder="Vanguard S&P 500 ETF" required value={name} onChange={(event) => { setName(event.target.value); }} />
+              <Select label="Whose" value={memberId} onChange={(event) => {
+                setMemberId(event.target.value);
+              }}>{selectableMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}
+                </option>
+              ))}</Select>
+              {schemeAllowedFor(kind) && (
+                <Select label="Scheme" value={scheme} onChange={(event) => {
+                  setScheme(isScheme(event.target.value) ? event.target.value : '');
+                }}><option value="">Not set</option>{SCHEMES.map((option) => (
+                  <option key={option} value={option}>
+                    {SCHEME_LABELS[option]}
+                  </option>
+                ))}</Select>
+              )}
+            </>
+          ),
+        },
+        {
+          name: 'Priced in',
+          ready: true,
+          content: (
+            <>
+              <Field label="Symbol" placeholder="VOO" value={symbol} onChange={(event) => { setSymbol(event.target.value); }} />
+              {/*
+                Chosen, not typed. These were free-text three-character boxes, and a testing round put "ABC" in one: three capitals is
+                what the shape test asks for, and the field asked for three capitals. A list cannot produce a currency that does not exist.
+              */}
+              <Select label="Priced in" value={currency} onChange={(event) => {
+                setCurrency(event.target.value);
+              }}><CurrencyOptions /></Select>
+              <Select label="Tracks" labelExtra={<><Caveat tone="info" label="What Tracks means, and how it differs from Priced in">
+                What the value actually follows. An Indian fund tracking a US index is priced in INR
+                and tracks USD — its rupee value moves when the dollar does. A US stock bought
+                directly is USD and USD. Leave it the same as the currency unless the two genuinely
+                differ.
+              </Caveat></>} value={exposure} onChange={(event) => {
+                setExposure(event.target.value);
+              }}><CurrencyOptions /></Select>
+              <label className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={isForeign}
+                  onChange={(event) => {
+                    setIsForeign(event.target.checked);
+                  }}
+                />
+                <span className="note">
+                  <strong>Foreign asset for disclosure.</strong>
+                  {/* Four sentences beside a checkbox, every time. The first one is the decision; the rest is why, which is worth reading once. */}
+                  <Caveat tone="info" label="Which holdings count as a foreign asset">
+                    A US stock or ETF bought through a US broker is. An Indian fund that merely tracks a US
+                    index is not — it is an Indian asset for tax, even though its value moves with the
+                    dollar. This is a tax question, not a currency one, so the app will not guess it.
+                  </Caveat>
+                </span>
+              </label>
+            </>
+          ),
+        },
+        {
+          name: 'How much',
+          ready: quantity.trim() !== '',
+          content: (
+            <>
+              <Field label="Quantity" numeric inputMode="decimal" placeholder="12.5" required value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
+              <Field label="Worth today" numeric inputMode="decimal" placeholder="optional" hint={`all units, in ${currency}`} value={worth} onChange={(event) => { setWorth(event.target.value); }} />
+              <Select label="Set aside for" value={earmark} onChange={(event) => {
+                if (isEarmark(event.target.value)) setEarmark(event.target.value);
+              }}>{EARMARKS.map((option) => (
+                <option key={option} value={option}>
+                  {EARMARK_LABELS[option]}
+                </option>
+              ))}</Select>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 

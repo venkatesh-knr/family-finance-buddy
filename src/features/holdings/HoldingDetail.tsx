@@ -1,3 +1,4 @@
+import { Select } from '../../ui/Select.tsx';
 import { useState } from 'react';
 import { EARMARK_LABELS } from '../../domain/earmark.ts';
 import { DemoBadge } from '../../app/household.tsx';
@@ -501,22 +502,13 @@ export function HoldingDetail({
                   </>
                 )}
               </span>
-              <label className="peak-for">
-                <span className="label">Peak for</span>
-                <select
-                  className="field w-[92px]"
-                  value={year}
-                  onChange={(event) => {
+              <Select label="Peak for" className="peak-for w-[92px]" value={String(year)} onChange={(event) => {
                     setYear(Number(event.target.value));
-                  }}
-                >
-                  {yearsAround(today).map((option) => (
+                  }}>{yearsAround(today).map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
-                  ))}
-                </select>
-              </label>
+                  ))}</Select>
             </div>
           </Card>
           <section className="card transactions-card" aria-label="Transactions">

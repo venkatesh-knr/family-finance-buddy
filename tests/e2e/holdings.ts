@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { choose, stepper } from './fields.ts';
 
 /**
  * Getting around the Holdings list and a holding's own screen, for the specs that write to the demo household
@@ -38,8 +39,8 @@ export async function openHolding(page: Page, name: string) {
 export async function openFixedForm(page: Page): Promise<Locator> {
   await openList(page);
   await page.getByRole('button', { name: /^Add\b/ }).click();
-  await page.getByLabel('What are you adding').selectOption('fixed');
-  return page.locator('form').filter({ hasText: 'Fixed deposit' });
+  await choose(page, 'Type', /^A deposit or a bond/);
+  return stepper(page);
 }
 
 /** Archive the holding whose screen is open, and land back on the list without it. */

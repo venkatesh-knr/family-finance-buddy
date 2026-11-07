@@ -9,6 +9,7 @@
  * believed.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { exactMoney, formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { convert } from '../../domain/fx.ts';
@@ -870,19 +871,9 @@ function NewCategory({
           }}
         />
       </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-        <span className="label">Nature</span>
-        <select
-          className="field"
-          value={nature}
-          onChange={(event) => {
+      <Select label="Nature" className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0" value={nature} onChange={(event) => {
             setNature(event.target.value as 'fixed' | 'variable');
-          }}
-        >
-          <option value="fixed">compulsory</option>
-          <option value="variable">as needed</option>
-        </select>
-      </label>
+          }}><option value="fixed">compulsory</option><option value="variable">as needed</option></Select>
       <Button type="submit" disabled={busy || name.trim() === ''}>
         Add a category
       </Button>
@@ -1053,22 +1044,13 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
         />
       </div>
 
-      <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-        <span className="label">Kind</span>
-        <select
-          className="field"
-          value={kind}
-          onChange={(event) => {
+      <Select label="Kind" className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0" value={kind} onChange={(event) => {
             setKind(event.target.value);
-          }}
-        >
-          {kinds.map((option) => (
+          }}>{kinds.map((option) => (
             <option key={option} value={option}>
               {option.replace(/_/g, ' ')}
             </option>
-          ))}
-        </select>
-      </label>
+          ))}</Select>
 
       <div className="w-full sm:w-[130px] sm:shrink-0">
         <Field
@@ -1084,22 +1066,13 @@ function NewCommitment({ plan }: { plan: ReturnType<typeof usePlan> }) {
         />
       </div>
 
-      <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-        <span className="label">Every</span>
-        <select
-          className="field"
-          value={cadence}
-          onChange={(event) => {
+      <Select label="Every" className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0" value={cadence} onChange={(event) => {
             setCadence(event.target.value as CommitmentCadence);
-          }}
-        >
-          {COMMITMENT_CADENCES.map((option) => (
+          }}>{COMMITMENT_CADENCES.map((option) => (
             <option key={option} value={option}>
               {option.replace(/_/g, ' ')}
             </option>
-          ))}
-        </select>
-      </label>
+          ))}</Select>
 
       <Button type="submit" disabled={busy || name.trim() === '' || amount.trim() === ''}>
         Add a loan

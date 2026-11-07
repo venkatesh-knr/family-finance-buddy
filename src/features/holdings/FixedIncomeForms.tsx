@@ -8,6 +8,8 @@
  * input beneath it on the next; a hint hangs below and moves nothing.
  */
 
+import { Select } from '../../ui/Select.tsx';
+import { Stepper } from '../../ui/Stepper.tsx';
 import { useMemo, useState } from 'react';
 import {
   EARMARKS,
@@ -82,8 +84,8 @@ export type TermsMode =
   | { readonly kind: 'existing'; readonly holding: Holding }
   | { readonly kind: 'edit'; readonly holding: Holding; readonly terms: FixedIncomeTerms };
 
-const FORM_CLASS = 'grid items-start gap-3 rounded p-3.5 sm:grid-cols-2 lg:grid-cols-4';
-const FORM_STYLE = { background: 'var(--inset)', border: '1px solid var(--line)' } as const;
+const FORM_CLASS = 'grid items-start gap-3 py-3.5 sm:grid-cols-2 lg:grid-cols-4';
+const FORM_STYLE = { borderBottom: '1px solid var(--line)' } as const;
 
 export function TermsForm({
   listing,
@@ -92,11 +94,14 @@ export function TermsForm({
   onCancel,
   initialKind,
   today,
+  typeField,
 }: {
   listing: HoldingListing;
   mode: TermsMode;
   onDone: () => void;
   onCancel?: () => void;
+  /** A new deposit or bond is added in steps, and the first asks what is being added: the Add panel's choice, handed in to sit first. */
+  typeField?: React.ReactNode;
   /** Today in IST. Given to a new one, which can then offer to record what it is worth as its first reading. */
   today?: IsoDate;
   /** A new one starts as a bond when the list was filtered to bonds, so Add preselects what the filter is. */
@@ -275,24 +280,11 @@ export function TermsForm({
     }
   };
 
-  return (
-    <form
-      className={`mb-4 ${FORM_CLASS}`}
-      style={FORM_STYLE}
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      {held !== undefined && (
-        <p className="col-span-full" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-          {mode.kind === 'edit' ? 'Correct the terms of' : 'Terms for'} {held.instrument.name}{' '}
-          <span className="note">{held.member.displayName}</span>
-        </p>
-      )}
+  // The pieces of the form, so that a new deposit or bond is added in steps and a correction stays one form (docs/design/simple-layout.md section 4).
+  const identityFields = (
 
-      {mode.kind === 'new' && (
         <>
-          <div className="segmented col-span-full w-fit" role="group" aria-label="What is being added">
+          <div className="text-tabs col-span-full" role="group" aria-label="What is being added">
             {(['deposit', 'bond'] as const).map((option) => (
               <button
                 key={option}
@@ -319,39 +311,21 @@ export function TermsForm({
             />
           </div>
 
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">Whose</span>
-            <select
-              className="field"
-              value={memberId}
-              onChange={(event) => {
+          <Select label="Whose" className="flex min-w-0 flex-col gap-1.5" value={memberId} onChange={(event) => {
                 setMemberId(event.target.value);
-              }}
-            >
-              {members.map((member) => (
+              }}>{members.map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.displayName}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
 
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">Currency</span>
-            <select
-              className="field"
-              value={currency}
-              onChange={(event) => {
+          <Select label="Currency" className="flex min-w-0 flex-col gap-1.5" value={currency} onChange={(event) => {
                 setCurrency(event.target.value);
-              }}
-            >
-              <option value="INR">INR</option>
-              <option value="USD">USD</option>
-            </select>
-          </label>
+              }}><option value="INR">INR</option><option value="USD">USD</option></Select>
         </>
-      )}
-
+  );
+  const figureFields = (
+    <>
       <div className="min-w-0">
         <Field
           label={kind === 'deposit' ? 'Principal' : 'Face value'}
@@ -402,32 +376,23 @@ export function TermsForm({
         />
       </div>
 
+    </>
+  );
+  const termFields = (
+    <>
       {kind === 'deposit' ? (
         <>
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">
-              Compounds
-              <Caveat tone="info" label="Why compounding is asked for">
+          <Select label="Compounds" labelExtra={<><Caveat tone="info" label="Why compounding is asked for">
                 It differs between banks and between deposits, so it is never assumed. Yearly is
                 offered because it is what this household’s deposits do; the bank’s receipt says
                 which.
-              </Caveat>
-            </span>
-            <select
-              className="field"
-              aria-label="Compounds"
-              value={compounding}
-              onChange={(event) => {
+              </Caveat></>} className="flex min-w-0 flex-col gap-1.5" aria-label="Compounds" value={compounding} onChange={(event) => {
                 setCompounding(event.target.value as CompoundingKind);
-              }}
-            >
-              {COMPOUNDINGS.map((option) => (
+              }}>{COMPOUNDINGS.map((option) => (
                 <option key={option} value={option}>
                   {COMPOUNDING_LABEL[option]}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
 
           {/* Level with the inputs beside it: a label's height of space above the box. */}
           <label className="flex min-w-0 items-center gap-2 sm:mt-7">
@@ -458,47 +423,25 @@ export function TermsForm({
         </>
       ) : (
         <>
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">
-              Repay mode
-              <Caveat tone="info" label="What repay mode means">
+          <Select label="Repay mode" labelExtra={<><Caveat tone="info" label="What repay mode means">
                 A bond either pays its interest out on each coupon date, or lets it build up and pays
                 it with the face at maturity (a cumulative bond). The bond’s papers say which. A
                 cumulative bond is valued as interest that keeps compounding at the frequency below,
                 which is how often it is credited, not how often it is paid.
-              </Caveat>
-            </span>
-            <select
-              className="field"
-              aria-label="Repay mode"
-              value={repayMode}
-              onChange={(event) => {
+              </Caveat></>} className="flex min-w-0 flex-col gap-1.5" aria-label="Repay mode" value={repayMode} onChange={(event) => {
                 setRepayMode(event.target.value as RepayMode);
-              }}
-            >
-              {REPAY_MODES.map((option) => (
+              }}>{REPAY_MODES.map((option) => (
                 <option key={option} value={option}>
                   {REPAY_LABEL[option]}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="label">{repayMode === 'cumulative' ? 'Interest credited' : 'Coupon paid'}</span>
-            <select
-              className="field"
-              value={frequency}
-              onChange={(event) => {
+              ))}</Select>
+          <Select label={repayMode === 'cumulative' ? 'Interest credited' : 'Coupon paid'} className="flex min-w-0 flex-col gap-1.5" value={frequency} onChange={(event) => {
                 setFrequency(event.target.value as CouponFrequencyKind);
-              }}
-            >
-              {COUPON_FREQUENCIES.map((option) => (
+              }}>{COUPON_FREQUENCIES.map((option) => (
                 <option key={option} value={option}>
                   {FREQUENCY_LABEL[option]}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
           <div className="min-w-0">
             <Field
               label="Rating"
@@ -514,45 +457,30 @@ export function TermsForm({
         </>
       )}
 
-      {mode.kind === 'new' && (
-        <label className="flex min-w-0 flex-col gap-1.5">
-          <span className="label">Set aside for</span>
-          <select
-            className="field"
-            value={earmark}
-            onChange={(event) => {
+    </>
+  );
+  const setAsideField = (
+
+        <Select label="Set aside for" className="flex min-w-0 flex-col gap-1.5" value={earmark} onChange={(event) => {
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
-            }}
-          >
-            {EARMARKS.map((option) => (
+            }}>{EARMARKS.map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>
-            ))}
-          </select>
-        </label>
-      )}
+            ))}</Select>
+  );
+  const schemeField = (
 
-      {mode.kind === 'new' && kind === 'deposit' && (
-        <label className="flex min-w-0 flex-col gap-1.5">
-          <span className="label">Scheme</span>
-          <select
-            className="field"
-            value={scheme}
-            onChange={(event) => {
+        <Select label="Scheme" className="flex min-w-0 flex-col gap-1.5" value={scheme} onChange={(event) => {
               setScheme(isScheme(event.target.value) ? event.target.value : '');
-            }}
-          >
-            <option value="">Not set</option>
-            {SCHEMES.map((option) => (
+            }}><option value="">Not set</option>{SCHEMES.map((option) => (
               <option key={option} value={option}>
                 {SCHEME_LABELS[option]}
               </option>
-            ))}
-          </select>
-        </label>
-      )}
-
+            ))}</Select>
+  );
+  const issuerFields = (
+    <>
       <div className="min-w-0 sm:col-span-2">
         <Field
           label="Bank or issuer"
@@ -575,6 +503,10 @@ export function TermsForm({
         />
       </div>
 
+    </>
+  );
+  const firstReadingField = (
+    <>
       {firstReading !== null && (
         <label className="col-span-full flex items-start gap-2.5">
           <input
@@ -592,14 +524,82 @@ export function TermsForm({
         </label>
       )}
 
+    </>
+  );
+
+  if (mode.kind === 'new') {
+    return (
+      <Stepper
+        title="Add a holding"
+        finishLabel={`Add the ${kind}`}
+        busy={busy || added}
+        problem={problem}
+        onCancel={onCancel ?? onDone}
+        onFinish={() => submit({ preventDefault() {} } as React.FormEvent)}
+        steps={[
+          {
+            name: 'What it is',
+            ready: name.trim() !== '',
+            content: (
+              <>
+                {typeField}
+{identityFields}
+              </>
+            ),
+          },
+          {
+            name: 'Amount and dates',
+            ready: amount.trim() !== '' && rate.trim() !== '' && start !== '' && maturity !== '',
+            content: figureFields,
+          },
+          {
+            name: kind === 'deposit' ? 'How it earns' : 'How it pays',
+            ready: true,
+            content: termFields,
+          },
+          {
+            name: 'Where, and what for',
+            ready: true,
+            content: (
+              <>
+{kind === 'deposit' && schemeField}
+{setAsideField}
+{issuerFields}
+{firstReadingField}
+              </>
+            ),
+          },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <form
+      className={`mb-4 ${FORM_CLASS}`}
+      style={FORM_STYLE}
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
+      {held !== undefined && (
+        <p className="col-span-full" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+          {mode.kind === 'edit' ? 'Correct the terms of' : 'Terms for'} {held.instrument.name}{' '}
+          <span className="note">{held.member.displayName}</span>
+        </p>
+      )}
+
+      {figureFields}
+      {termFields}
+      {issuerFields}
+      {firstReadingField}
+
       <div className="col-span-full flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || added}>
           {busy
             ? 'Saving…'
             : added
               ? 'Added'
-              : mode.kind === 'new'
-              ? `Add the ${kind}`
               : mode.kind === 'existing'
                 ? 'Save the terms'
                 : 'Save the corrections'}
@@ -738,22 +738,13 @@ export function RenewalForm({
           }}
         />
       </div>
-      <label className="flex min-w-0 flex-col gap-1.5">
-        <span className="label">Compounds</span>
-        <select
-          className="field"
-          value={compounding}
-          onChange={(event) => {
+      <Select label="Compounds" className="flex min-w-0 flex-col gap-1.5" value={compounding} onChange={(event) => {
             setCompounding(event.target.value as CompoundingKind);
-          }}
-        >
-          {COMPOUNDINGS.map((option) => (
+          }}>{COMPOUNDINGS.map((option) => (
             <option key={option} value={option}>
               {COMPOUNDING_LABEL[option]}
             </option>
-          ))}
-        </select>
-      </label>
+          ))}</Select>
       <div className="col-span-full flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>
           {busy ? 'Saving…' : editing === undefined ? 'Record the renewal' : 'Save the corrections'}

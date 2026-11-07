@@ -10,6 +10,7 @@
  * (docs/design/conformance.md).
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useMemo, useState } from 'react';
 import { minorToMajorText } from '../../domain/export/cells.ts';
 import { perYear, resumeFrom } from '../../domain/recurring.ts';
@@ -422,22 +423,13 @@ function RuleForm({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0">
-          <span className="label">Repeats</span>
-          <select
-            className="field"
-            value={cadence}
-            onChange={(event) => {
+        <Select label="Repeats" className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0" value={cadence} onChange={(event) => {
               if (isCadence(event.target.value)) setCadence(event.target.value);
-            }}
-          >
-            {RECURRING_CADENCES.map((option) => (
+            }}>{RECURRING_CADENCES.map((option) => (
               <option key={option} value={option}>
                 {CADENCE_LABELS[option]}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         <div className="w-full sm:w-[160px] sm:shrink-0">
           <Field
             label={rule === undefined ? 'First falls due' : 'Next falls due'}
@@ -453,38 +445,20 @@ function RuleForm({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0">
-          <span className="label">Category</span>
-          <select
-            className="field"
-            value={categoryId}
-            onChange={(event) => {
+        <Select label="Category" className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0" value={categoryId} onChange={(event) => {
               setCategoryId(event.target.value);
-            }}
-          >
-            {categories.map((category) => (
+            }}>{categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-          <span className="label">Whose</span>
-          <select
-            className="field"
-            value={memberId}
-            onChange={(event) => {
+            ))}</Select>
+        <Select label="Whose" className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0" value={memberId} onChange={(event) => {
               setMemberId(event.target.value);
-            }}
-          >
-            {members.map((member) => (
+            }}>{members.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.displayName}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         <div className="w-full sm:w-[200px] sm:shrink-0">
           <Field
             label="Payee (optional)"
@@ -495,23 +469,13 @@ function RuleForm({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-          <span className="label">Paid by (optional)</span>
-          <select
-            className="field"
-            value={method}
-            onChange={(event) => {
+        <Select label="Paid by (optional)" className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0" value={method} onChange={(event) => {
               setMethod(event.target.value === '' ? '' : isMethod(event.target.value) ? event.target.value : '');
-            }}
-          >
-            <option value="">Not said</option>
-            {PAYMENT_METHODS.map((option) => (
+            }}><option value="">Not said</option>{PAYMENT_METHODS.map((option) => (
               <option key={option} value={option}>
                 {METHOD_LABELS[option]}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
       </div>
 
       <p className="note">

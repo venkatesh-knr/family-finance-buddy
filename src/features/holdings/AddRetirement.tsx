@@ -8,6 +8,8 @@
  * same reason: a value that is a calculation is offered and ticked, a value that is a judgement is left for the person.
  */
 
+import { Select } from '../../ui/Select.tsx';
+import { Stepper } from '../../ui/Stepper.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { EARMARKS, EARMARK_LABELS, isEarmark, type Earmark } from '../../domain/earmark.ts';
 import { npsValue } from '../../domain/nps.ts';
@@ -16,7 +18,7 @@ import { isIsoDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { listPpf } from '../../repo/retirement.ts';
 import type { HoldingListing, Member, RetirementType, SchemeRate } from '../../repo/types.ts';
-import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
+import { Caveat, Field } from '../../ui/primitives.tsx';
 import type { useHoldings } from './useHoldings.ts';
 
 export const RETIREMENT_LABEL: Record<RetirementType, string> = {
@@ -38,11 +40,15 @@ export function AddRetirement({
   today,
   onAdd,
   onDone,
+  typeField,
 }: {
   listing: HoldingListing;
   today: IsoDate;
   onAdd: ReturnType<typeof useHoldings>['addRetirement'];
+  /** Closes the form: from its first step, or when it is done. Nothing has been written unless it was added. */
   onDone: () => void;
+  /** The Add panel's choice of what is being added, which sits first on the first step. */
+  typeField: React.ReactNode;
 }) {
   // The same rule as everywhere: a contributor records only against their own.
   const members: readonly Member[] = useMemo(
@@ -67,6 +73,7 @@ export function AddRetirement({
   const [recordFirst, setRecordFirst] = useState(true);
   const [rates, setRates] = useState<readonly SchemeRate[]>([]);
   const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   // The notified rate, for the offer to record a PPF's first reading. Not being able to read it only withdraws the offer.
@@ -113,8 +120,7 @@ export function AddRetirement({
     return view.ok ? view.value : null;
   }, [type, balance, asAt, rates, today]);
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const submit = async () => {
     setProblem(null);
     try {
       const date = asAt;
@@ -172,6 +178,7 @@ export function AddRetirement({
       setEarmark('none');
       if (result.valueProblem !== null) {
         // Added; only its value is missing, and the holding is where to record it.
+        setAdded(true);
         setProblem(`Added, but its value could not be recorded: ${result.valueProblem} Record it on the holding.`);
       } else {
         onDone();
@@ -183,204 +190,113 @@ export function AddRetirement({
     }
   };
 
+  // Two steps (docs/design/simple-layout.md section 4): what it is, then what it holds.
+  const figuresReady =
+    type === 'nps' ? units.trim() !== '' && nav.trim() !== '' && asAt !== '' : balance.trim() !== '' && asAt !== '';
+
   return (
-    <form
-      className="inset-form flex flex-col gap-3"
-      aria-label="Add a retirement account"
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex w-full flex-col gap-1.5 sm:w-[330px] sm:shrink-0">
-          <span className="label">Which</span>
-          <select
-            className="field"
-            value={type}
-            onChange={(event) => {
-              setType(event.target.value as RetirementType);
-              setProblem(null);
-            }}
-          >
-            {(Object.keys(TYPE_CHOICE) as RetirementType[]).map((option) => (
-              <option key={option} value={option}>
-                {TYPE_CHOICE[option]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="w-full sm:w-auto sm:min-w-[170px] sm:flex-1">
-          <Field
-            label="Name"
-            placeholder={type === 'nps' ? 'NPS Tier I' : heading}
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-          />
-        </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[150px] sm:shrink-0">
-          <span className="label">Held by</span>
-          <select
-            className="field"
-            value={memberId}
-            onChange={(event) => {
-              setMemberId(event.target.value);
-            }}
-          >
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        {type === 'nps' ? (
-          <>
-            <div className="w-full sm:w-[160px] sm:shrink-0">
-              <Field
-                label="Units"
-                numeric
-                inputMode="decimal"
-                placeholder="1234.5678"
-                required
-                value={units}
-                onChange={(event) => {
-                  setUnits(event.target.value);
-                }}
-              />
-            </div>
-            <div className="w-full sm:w-[140px] sm:shrink-0">
-              <Field
-                label="NAV"
-                numeric
-                inputMode="decimal"
-                placeholder="45.6789"
-                required
-                value={nav}
-                onChange={(event) => {
-                  setNav(event.target.value);
-                }}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="w-full sm:w-[190px] sm:shrink-0">
-            <Field
-              label={type === 'ppf' ? 'Opening balance' : 'Balance from the passbook'}
-              numeric
-              inputMode="decimal"
-              placeholder="0.00"
-              required
-              value={balance}
-              onChange={(event) => {
-                setBalance(event.target.value);
-              }}
-            />
-          </div>
-        )}
-        <div className="w-full sm:w-[160px] sm:shrink-0">
-          <Field
-            label="As at"
-            type="date"
-            required
-            value={asAt}
-            onChange={(event) => {
-              setAsAt(event.target.value);
-            }}
-          />
-        </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[190px] sm:shrink-0">
-          <span className="label">Set aside for</span>
-          <select
-            className="field"
-            value={earmark}
-            onChange={(event) => {
-              if (isEarmark(event.target.value)) setEarmark(event.target.value);
-            }}
-          >
-            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}
-            {EARMARKS.filter((option) => option !== 'emergency').map((option) => (
-              <option key={option} value={option}>
-                {EARMARK_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {type === 'ppf' && (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-full sm:w-[220px] sm:shrink-0">
-            <Field
-              label="Bank or post office"
-              maxLength={80}
-              value={institution}
-              onChange={(event) => {
-                setInstitution(event.target.value);
-              }}
-            />
-          </div>
-          <div className="w-full sm:w-[140px] sm:shrink-0">
-            <Field
-              label="Last four"
-              maxLength={4}
-              value={last4}
-              onChange={(event) => {
-                setLast4(event.target.value);
-              }}
-            />
-          </div>
-          <p className="note w-full">
-            The opening balance should be as at a 31 March credit, or the day the account opened.
-            <Caveat tone="info" label="Why the opening balance is as at a 31 March credit">
-              A PPF&rsquo;s interest is credited once a year, on 31 March, and the passbook balance on any other day leaves out
-              what has accrued since. The app works the balance out from here, but it cannot know interest it was not told
-              about, so an opening balance as at a credit (or the day the account opened) is the one it can be exact from.
-            </Caveat>
-          </p>
-        </div>
-      )}
-
-      {type === 'nps' && npsWorked !== null && (
-        <p className="note">
-          {units.trim()} units at {nav.trim()} is <strong>{formatMoney(npsWorked)}</strong>, recorded as its first reading.
-        </p>
-      )}
-      {type === 'epf' && (
-        <p className="note">
-          Typed from the passbook once the interest is credited, and again each quarter. Nothing is estimated between.
-        </p>
-      )}
-      {type === 'ppf' && ppfWorked !== null && (
-        <label className="flex items-start gap-2.5">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={recordFirst}
-            onChange={(event) => {
-              setRecordFirst(event.target.checked);
-            }}
-          />
-          <span className="note">
-            Record today&rsquo;s value, <strong>{formatMoney(ppfWorked)}</strong>, as its first reading, so it is counted
-            from the start. Worked out from the opening balance.
-          </span>
-        </label>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={busy}>
-          {busy ? 'Adding…' : `Add the ${heading}`}
-        </Button>
-        <Button type="button" variant="quiet" onClick={onDone}>
-          Cancel
-        </Button>
-      </div>
-      {problem !== null && <Problem>{problem}</Problem>}
-    </form>
+    <Stepper
+      title="Add a holding"
+      finishLabel={`Add the ${heading}`}
+      busy={busy}
+      problem={problem}
+      done={added}
+      onCancel={onDone}
+      onFinish={submit}
+      steps={[
+        {
+          name: 'What it is',
+          ready: true,
+          content: (
+            <>
+              {typeField}
+              <Select label="Which" value={type} onChange={(event) => {
+                setType(event.target.value as RetirementType);
+                setProblem(null);
+              }}>{(Object.keys(TYPE_CHOICE) as RetirementType[]).map((option) => (
+                <option key={option} value={option}>
+                  {TYPE_CHOICE[option]}
+                </option>
+              ))}</Select>
+              <Field label="What it is" placeholder={type === 'nps' ? 'NPS Tier I' : heading} value={name} onChange={(event) => { setName(event.target.value); }} />
+              <Select label="Held by" value={memberId} onChange={(event) => {
+                setMemberId(event.target.value);
+              }}>{members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}
+                </option>
+              ))}</Select>
+            </>
+          ),
+        },
+        {
+          name: type === 'nps' ? 'Units and NAV' : 'Balance',
+          ready: figuresReady,
+          content: (
+            <>
+              {type === 'nps' ? (
+                <>
+                  <Field label="Units" numeric inputMode="decimal" placeholder="1234.5678" required value={units} onChange={(event) => { setUnits(event.target.value); }} />
+                  <Field label="NAV" numeric inputMode="decimal" placeholder="45.6789" required value={nav} onChange={(event) => { setNav(event.target.value); }} />
+                </>
+              ) : (
+                <Field
+                  label={type === 'ppf' ? 'Opening balance' : 'Balance from the passbook'}
+                  numeric
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  required
+                  value={balance}
+                  onChange={(event) => {
+                    setBalance(event.target.value);
+                  }}
+                />
+              )}
+              <Field label="As at" type="date" required value={asAt} onChange={(event) => { setAsAt(event.target.value); }} />
+              {type === 'ppf' && (
+                <>
+                  <Field label="Bank or post office" maxLength={80} value={institution} onChange={(event) => { setInstitution(event.target.value); }} />
+                  <Field label="Last four" maxLength={4} value={last4} onChange={(event) => { setLast4(event.target.value); }} />
+                  <p className="note">
+                    The opening balance should be as at a 31 March credit, or the day the account opened.
+                    <Caveat tone="info" label="Why the opening balance is as at a 31 March credit">
+                      A PPF&rsquo;s interest is credited once a year, on 31 March, and the passbook balance on any other day leaves out
+                      what has accrued since. The app works the balance out from here, but it cannot know interest it was not told
+                      about, so an opening balance as at a credit (or the day the account opened) is the one it can be exact from.
+                    </Caveat>
+                  </p>
+                </>
+              )}
+              <Select label="Set aside for" value={earmark} onChange={(event) => {
+                if (isEarmark(event.target.value)) setEarmark(event.target.value);
+              }}>{/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund. */}{EARMARKS.filter((option) => option !== 'emergency').map((option) => (
+                <option key={option} value={option}>
+                  {EARMARK_LABELS[option]}
+                </option>
+              ))}</Select>
+              {type === 'nps' && npsWorked !== null && (
+                <p className="note">
+                  {units.trim()} units at {nav.trim()} is <strong>{formatMoney(npsWorked)}</strong>, recorded as its first reading.
+                </p>
+              )}
+              {type === 'epf' && (
+                <p className="note">
+                  Typed from the passbook once the interest is credited, and again each quarter. Nothing is estimated between.
+                </p>
+              )}
+              {type === 'ppf' && ppfWorked !== null && (
+                <label className="flex items-start gap-2.5">
+                  <input type="checkbox" className="mt-1" checked={recordFirst} onChange={(event) => { setRecordFirst(event.target.checked); }} />
+                  <span className="note">
+                    Record today&rsquo;s value, <strong>{formatMoney(ppfWorked)}</strong>, as its first reading, so it is counted
+                    from the start. Worked out from the opening balance.
+                  </span>
+                </label>
+              )}
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

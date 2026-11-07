@@ -32,6 +32,7 @@
  * right.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useMemo, useState } from 'react';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { unitsText } from './history.ts';
@@ -420,22 +421,13 @@ export function ImportStatement({
                 </p>
               )}
 
-              <label className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="label">Whose holding</span>
-                <select
-                  className="field w-auto"
-                  value={memberOf[entry.folio.folio] ?? viewerMemberId}
-                  onChange={(event) => {
+              <Select label="Whose holding" className="mt-2 flex flex-wrap items-center gap-2 w-auto" value={memberOf[entry.folio.folio] ?? viewerMemberId} onChange={(event) => {
                     setMemberOf((was) => ({ ...was, [entry.folio.folio]: event.target.value }));
-                  }}
-                >
-                  {members.map((member) => (
+                  }}>{members.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.displayName}
                     </option>
-                  ))}
-                </select>
-              </label>
+                  ))}</Select>
 
               <div className="mt-2">
                 <Table label={`Transactions in folio ending ${entry.folio.folioLast4}`}>

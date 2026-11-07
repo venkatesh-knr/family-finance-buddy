@@ -82,11 +82,11 @@ export function GoldCost({
   const other = gift ? null : otherWay({ costBy, typed, grams });
   return (
     <>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         <span className="label" id="gold-cost-by">
-          Cost
+          Cost, entered as
         </span>
-        <div className="segmented" role="group" aria-labelledby="gold-cost-by">
+        <div className="text-tabs" role="group" aria-labelledby="gold-cost-by">
           {(['price', 'rate'] as const).map((option) => (
             <button
               key={option}

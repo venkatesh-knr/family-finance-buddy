@@ -122,16 +122,18 @@ export function Card({
 export function Field({
   label,
   hint,
+  error,
   numeric = false,
   id,
   'aria-describedby': describedBy,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; numeric?: boolean }) {
+}: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; numeric?: boolean; error?: string | null }) {
   // Always called, so the order of hooks does not depend on whether an id was passed.
   const generated = useId().replace(/:/g, '');
   const inputId = id ?? `field${generated}`;
   const hintId = `${inputId}-hint`;
-  const described = [describedBy, hint === undefined ? undefined : hintId].filter(Boolean).join(' ');
+  const errorId = `${inputId}-error`;
+  const described = [describedBy, hint === undefined ? undefined : hintId, error ? errorId : undefined].filter(Boolean).join(' ');
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -142,13 +144,19 @@ export function Field({
         id={inputId}
         className={numeric ? 'field field-num' : 'field'}
         aria-describedby={described === '' ? undefined : described}
+        aria-invalid={error ? true : undefined}
         {...props}
       />
       {hint !== undefined && (
-        <span className="note" id={hintId}>
+        <span className="field-help" id={hintId}>
           {hint}
         </span>
       )}
+      {error ? (
+        <span className="field-error" id={errorId} role="alert">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }

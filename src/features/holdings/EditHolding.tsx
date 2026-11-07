@@ -20,6 +20,7 @@
  * says so instead of writing a figure nobody can interpret.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useCallback, useState } from 'react';
 import { isKnownCurrency, minorUnitExponent, parseAmountToMinor, money } from '../../lib/money.ts';
 import { formatQuantity, parseQuantity } from '../../lib/quantity.ts';
@@ -195,9 +196,9 @@ export function EditHolding({
           A retirement holding is an EPF, an NPS or a PPF and stays one: its kind is not offered for change, and no other holding
           is offered it, because the type it needs is chosen when it is added.
         */}
-        <label className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Kind</span>
-          {holding.instrument.kind === 'retirement' || holding.instrument.kind === 'gold' ? (
+        {holding.instrument.kind === 'retirement' || holding.instrument.kind === 'gold' ? (
+          <div className="flex w-full sm:w-[128px] sm:shrink-0 flex-col gap-1.5">
+            <span className="label">Kind</span>
             <span className="field" aria-label="Kind" style={{ color: 'var(--ink-2)' }}>
               {holding.instrument.kind === 'gold'
                 ? 'gold'
@@ -205,22 +206,23 @@ export function EditHolding({
                   ? 'retirement'
                   : holding.instrument.retirementType.toUpperCase()}
             </span>
-          ) : (
-            <select
-              className="field"
-              value={kind}
-              onChange={(event) => {
-                setKind(event.target.value as InstrumentKind);
-              }}
-            >
-              {INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
-                <option key={option} value={option}>
-                  {option.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          )}
-        </label>
+          </div>
+        ) : (
+          <Select
+            label="Kind"
+            className="w-full sm:w-[128px] sm:shrink-0"
+            value={kind}
+            onChange={(event) => {
+              setKind(event.target.value as InstrumentKind);
+            }}
+          >
+            {INSTRUMENT_KINDS.filter((option) => option !== 'retirement' && option !== 'gold').map((option) => (
+              <option key={option} value={option}>
+                {option.replace('_', ' ')}
+              </option>
+            ))}
+          </Select>
+        )}
 
         {hasLots ? (
           // Not two fields showing figures nobody should type over. The
@@ -281,77 +283,40 @@ export function EditHolding({
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Priced in
-            {hasHistory && (
+        <Select
+          label="Priced in"
+          labelExtra={
+            hasHistory ? (
               <Caveat tone="info" label="Why the currency cannot be changed">
                 This holding already has readings, purchases or sales recorded in {currency}. Those
                 rows carry their own currency and would not move with it, leaving a history
                 denominated in something the holding no longer uses. If the currency is wrong,
                 archive this holding and enter it again.
               </Caveat>
-            )}
-          </span>
-          <select
-            className="field"
-            value={currency}
-            disabled={hasHistory}
-            onChange={(event) => {
-              setCurrency(event.target.value);
-            }}
-          >
-            {currencyOptions}
-          </select>
-        </label>
+            ) : undefined
+          }
+          className="w-full sm:w-[116px] sm:shrink-0"
+          value={currency}
+          disabled={hasHistory}
+          onChange={(event) => {
+            setCurrency(event.target.value);
+          }}
+        >
+          {currencyOptions}
+        </Select>
 
-        <label className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">Tracks</span>
-          <select
-            className="field"
-            value={exposure}
-            disabled={hasHistory}
-            onChange={(event) => {
+        <Select label="Tracks" className="flex w-full sm:w-[116px] sm:shrink-0 flex-col gap-1.5" value={exposure} disabled={hasHistory} onChange={(event) => {
               setExposure(event.target.value);
-            }}
-          >
-            {currencyOptions}
-          </select>
-        </label>
+            }}>{currencyOptions}</Select>
 
-        <label className="flex w-full sm:w-[170px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Taxed as
-            {/*
-              Asked, not inferred. A mutual fund is equity or debt according to
-              what it holds and a gold ETF is neither, so `kind` cannot answer
-              this — and getting it wrong changes the holding period, the rate
-              and the figure.
-            */}
-            <Caveat tone="info" label="Why this is asked rather than worked out">
+        <Select label="Taxed as" labelExtra={<><Caveat tone="info" label="Why this is asked rather than worked out">
               The holding period and the rate follow from this, and it cannot be read off the kind:
               a mutual fund is equity or debt depending on what it holds, and a gold fund is
               neither. Left unset, the app declines to say whether a gain is long or short term
               rather than guessing.
-            </Caveat>
-          </span>
-          <select
-            className="field"
-            value={assetClass}
-            onChange={(event) => {
+            </Caveat></>} className="flex w-full sm:w-[170px] sm:shrink-0 flex-col gap-1.5" value={assetClass} onChange={(event) => {
               setAssetClass(event.target.value);
-            }}
-          >
-            <option value="">Not set</option>
-            <option value="listed_equity">Listed equity</option>
-            <option value="equity_fund">Equity mutual fund</option>
-            <option value="debt_fund">Debt fund</option>
-            <option value="gold">Gold</option>
-            <option value="foreign_equity">Foreign shares or ETF</option>
-            <option value="unlisted_equity">Unlisted shares</option>
-            <option value="property">Property</option>
-          </select>
-        </label>
+            }}><option value="">Not set</option><option value="listed_equity">Listed equity</option><option value="equity_fund">Equity mutual fund</option><option value="debt_fund">Debt fund</option><option value="gold">Gold</option><option value="foreign_equity">Foreign shares or ETF</option><option value="unlisted_equity">Unlisted shares</option><option value="property">Property</option></Select>
 
         <Button type="button" disabled={busy} onClick={() => void save()}>
           {busy ? 'Saving…' : 'Save'}
@@ -362,74 +327,36 @@ export function EditHolding({
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
-        <label className="flex w-full sm:w-[190px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Set aside for
-            {/* A label on the holding, not a figure, so there is nothing here for privacy mode to hide. */}
-            <Caveat tone="info" label="What an earmark does">
+        <Select label="Set aside for" labelExtra={<><Caveat tone="info" label="What an earmark does">
               Says what this money is for. An emergency fund, a child&rsquo;s savings or a house deposit
               is left out of the FIRE corpus, because it is not money the household means to retire on.
               Retirement and no earmark are counted. A holding has at most one.
-            </Caveat>
-          </span>
-          <select
-            className="field"
-            value={earmark}
-            onChange={(event) => {
+            </Caveat></>} className="flex w-full sm:w-[190px] sm:shrink-0 flex-col gap-1.5" value={earmark} onChange={(event) => {
               if (isEarmark(event.target.value)) setEarmark(event.target.value);
-            }}
-          >
-            {/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund, nor is physical gold (GD-I10). */}
-            {EARMARKS.filter((option) => !((holding.instrument.kind === 'retirement' || (holding.instrument.kind === 'gold' && holding.instrument.goldForm === 'physical')) && option === 'emergency')).map((option) => (
+            }}>{/* Locked money is not emergency cover: a retirement holding is never offered the emergency fund, nor is physical gold (GD-I10). */}{EARMARKS.filter((option) => !((holding.instrument.kind === 'retirement' || (holding.instrument.kind === 'gold' && holding.instrument.goldForm === 'physical')) && option === 'emergency')).map((option) => (
               <option key={option} value={option}>
                 {EARMARK_LABELS[option]}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
 
         {schemeAllowedFor(kind) && (
-          <label className="flex w-full sm:w-[230px] sm:shrink-0 flex-col gap-1.5">
-            <span className="label">Scheme</span>
-            <select
-              className="field"
-              value={scheme}
-              onChange={(event) => {
+          <Select label="Scheme" className="flex w-full sm:w-[230px] sm:shrink-0 flex-col gap-1.5" value={scheme} onChange={(event) => {
                 setScheme(isScheme(event.target.value) ? event.target.value : '');
-              }}
-            >
-              <option value="">Not set</option>
-              {SCHEMES.map((option) => (
+              }}><option value="">Not set</option>{SCHEMES.map((option) => (
                 <option key={option} value={option}>
                   {SCHEME_LABELS[option]}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
         )}
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
-        <label className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5">
-          <span className="label">
-            Priced by
-            {/*
-              Linking a holding to a feed is what stops the monthly typing. It
-              is optional and stays optional: most holdings have no feed that
-              covers them, and a valuation entered by hand is what this app has
-              always run on.
-            */}
-            <Caveat tone="info" label="What a price feed does, and what it does not">
+        <Select label="Priced by" labelExtra={<><Caveat tone="info" label="What a price feed does, and what it does not">
               With a feed, the app fetches the published price and offers it — you still record it,
               so every stored valuation has a person and a moment behind it. Without one, nothing
               changes: you type the value as before. AMFI covers Indian mutual funds and knows them
               by ISIN.
-            </Caveat>
-          </span>
-          <select
-            className="field"
-            value={priceSource}
-            onChange={(event) => {
+            </Caveat></>} className="flex w-full sm:w-[150px] sm:shrink-0 flex-col gap-1.5" value={priceSource} onChange={(event) => {
               setPriceSource(event.target.value);
               if (event.target.value === '') setPriceId('');
               // The identifier the household already has. AMFI knows a fund by
@@ -437,12 +364,7 @@ export function EditHolding({
               // somebody to type it back in from a PDF is asking them to
               // re-enter something the app is already holding.
               else if (priceId === '') setPriceId(holding.instrument.isin ?? '');
-            }}
-          >
-            <option value="">No feed</option>
-            <option value="amfi">AMFI (Indian funds)</option>
-          </select>
-        </label>
+            }}><option value="">No feed</option><option value="amfi">AMFI (Indian funds)</option></Select>
 
         {priceSource !== '' && (
           <div className="w-full sm:w-[190px] sm:shrink-0">

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Page } from '@playwright/test';
+import { choose, next, optionsOf, stepper } from './fields.ts';
 import { archiveByName, openHolding, openList, rowFor } from './holdings.ts';
 
 /**
@@ -21,8 +22,8 @@ const OLD_RATE_DAY = '2000-01-01';
 async function openAddGold(page: Page) {
   await openList(page);
   await page.getByRole('button', { name: /^Add\b/ }).click();
-  await page.getByLabel('What are you adding').selectOption('gold');
-  const form = page.getByRole('form', { name: 'Add gold' });
+  await choose(page, 'Type', /^Gold/);
+  const form = stepper(page);
   await expect(form).toBeVisible();
   return form;
 }
@@ -44,12 +45,13 @@ test('physical gold is added with a price paid, is valued at the typed rate for 
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');
   await form.getByLabel('Price paid (INR)').fill('60000');
   // The other way of saying it is worked out and shown beside it: sixty thousand for ten grams is six thousand a gram.
   await expect(form.getByTestId('gold-other-way')).toContainText('6,000 a gram');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
 
   try {
     await openHolding(page, name);
@@ -82,12 +84,13 @@ test('a rate per gram typed instead of a price stores the same cost, and a purch
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');
   await form.getByRole('button', { name: 'Rate per gram' }).click();
   await form.getByLabel('Rate per gram (INR)').fill('6000');
   await expect(form.getByTestId('gold-other-way')).toContainText('60,000 in all');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
 
   try {
     await openHolding(page, name);
@@ -124,10 +127,11 @@ test('a gift is added with no cost, and the screen says its cost is not known ra
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('4');
   await form.getByLabel('Bought on').fill('2023-11-12');
   await form.getByLabel('A gift or inherited, cost not known').check();
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
 
   try {
     await openHolding(page, name);
@@ -146,9 +150,10 @@ test('the IBJA link is a plain link to the site, in a new tab, and carries nothi
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('1');
   await form.getByLabel('Price paid (INR)').fill('6000');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
   try {
     await openHolding(page, name);
     const link = page.getByRole('link', { name: /Today.s rate on IBJA/ });
@@ -165,19 +170,25 @@ test('physical gold is not offered the emergency fund, a fund is, and a gold ETF
   test.setTimeout(180_000);
   const name = `e2e-gold-etf-${Date.now()}`;
   const form = await openAddGold(page);
-  await expect(form.getByLabel('Set aside for').locator('option', { hasText: /emergency/i })).toHaveCount(0);
+  await form.getByLabel('What it is').fill(name);
+  await next(page);
+  // Physical gold is never the emergency fund (GD-I10): its sheet of options does not offer it.
+  expect(await optionsOf(page, 'Set aside for')).not.toContain('Emergency fund');
 
-  await form.getByRole('button', { name: 'ETF or fund' }).click();
-  await expect(form.getByLabel('Set aside for').locator('option', { hasText: /emergency/i })).toHaveCount(1);
-  await form.getByLabel('Fund or ETF').fill(name);
+  // A gold ETF is a fund, and a fund may be.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await choose(page, 'Form', 'A gold ETF');
+  await next(page);
   await form.getByLabel('Units').fill('50');
   await form.getByLabel('Bought on').fill('2024-06-03');
   await form.getByLabel('Total cost (INR)').fill('5200');
-  // The ISIN is needed: it is what prices a fund.
-  await expect(form.getByLabel('ISIN')).toHaveJSProperty('required', true);
+  await next(page);
+  expect(await optionsOf(page, 'Set aside for')).toContain('Emergency fund');
+  // The ISIN is needed: it is what prices a fund, and the form does not go on without it.
+  await expect(form.getByRole('button', { name: 'Add the gold ETF' })).toBeDisabled();
   await form.getByLabel('ISIN').fill('INF000000001');
   await form.getByLabel('Worth today (INR)').fill('5931.31');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add the gold ETF' }).click();
 
   try {
     await openList(page);
@@ -193,9 +204,7 @@ test('physical gold is not offered the emergency fund, a fund is, and a gold ETF
   // Gold is not a kind a fund can be given on the generic form.
   await openList(page);
   await page.getByRole('button', { name: /^Add\b/ }).click();
-  await page.getByLabel('What are you adding').selectOption('holding');
-  const fund = page.locator('form').filter({ hasText: 'Priced in' });
-  await expect(fund.getByLabel('Kind').locator('option', { hasText: 'gold' })).toHaveCount(0);
+  expect(await optionsOf(page, 'Kind')).not.toContain('gold');
 });
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -210,15 +219,14 @@ for (const scheme of ['light', 'dark'] as const) {
 
     const name = `e2e-a11y-gold-${Date.now()}`;
     const form = await openAddGold(page);
-    await scan('add physical gold');
-    await form.getByRole('button', { name: 'ETF or fund' }).click();
-    await scan('add an ETF or fund');
-    await form.getByRole('button', { name: 'Physical gold' }).click();
+    await scan('add gold, step one');
     await form.getByLabel('What it is').fill(name);
     await form.getByRole('button', { name: '18K', exact: true }).click();
+    await next(page);
     await form.getByLabel('Weight (g)').fill('2');
     await form.getByLabel('Price paid (INR)').fill('12000');
-    await form.getByRole('button', { name: 'Add', exact: true }).click();
+    await scan('add gold, step two');
+    await form.getByRole('button', { name: 'Add gold', exact: true }).click();
 
     try {
       await openHolding(page, name);
@@ -239,9 +247,10 @@ test('a gift cannot be added to gold that has a tax class, and a purchase says h
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('2');
   await form.getByLabel('Price paid (INR)').fill('12000');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
   try {
     await openHolding(page, name);
     await page.getByRole('button', { name: 'Add a purchase' }).click();
@@ -262,10 +271,11 @@ test('a purchase’s date, weight and rate, and a sale, can be corrected, and th
   const form = await openAddGold(page);
   await form.getByLabel('What it is').fill(name);
   await form.getByRole('button', { name: '18K', exact: true }).click();
+  await next(page);
   await form.getByLabel('Weight (g)').fill('10');
   await form.getByLabel('Bought on').fill('2024-03-01');
   await form.getByLabel('Price paid (INR)').fill('60000');
-  await form.getByRole('button', { name: 'Add', exact: true }).click();
+  await form.getByRole('button', { name: 'Add gold', exact: true }).click();
   try {
     await openHolding(page, name);
     await typeRate(page, '8000');

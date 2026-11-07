@@ -10,6 +10,7 @@
  * would have to invent one for somebody who cannot see how it was chosen.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { monthBounds } from '../../domain/budget.ts';
 import {
@@ -95,22 +96,13 @@ export function SummaryScreen({
         title="Household spending"
         aside={
           <span className="flex flex-wrap items-center gap-2.5">
-            <label className="flex items-center gap-2">
-              <span className="label">Month</span>
-              <select
-                className="field w-[130px]"
-                value={month}
-                onChange={(event) => {
+            <Select label="Month" className="flex items-center gap-2 w-[130px]" value={month} onChange={(event) => {
                   setMonth(event.target.value);
-                }}
-              >
-                {months.map((first) => (
+                }}>{months.map((first) => (
                   <option key={first} value={first}>
                     {monthName(first)}
                   </option>
-                ))}
-              </select>
-            </label>
+                ))}</Select>
             <Caveat tone="info" label="What is counted here">
               The entries the household has shared, by category, for the month. A member&rsquo;s
               private spending is theirs and is not in these figures. Each currency is totalled on

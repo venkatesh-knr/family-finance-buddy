@@ -7,6 +7,7 @@
  * the common entry is two taps and an amount, and the unusual one is one tap further.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor } from '../../lib/money.ts';
@@ -192,25 +193,15 @@ export function QuickAdd({
         </div>
 
         {allCategories && (
-          <label className="mt-2.5 flex flex-col gap-1.5">
-            <span className="label">Category</span>
-            <select
-              className="field"
-              value={categoryId}
-              onChange={(event) => {
+          <Select label="Category" className="mt-2.5 flex flex-col gap-1.5" value={categoryId} onChange={(event) => {
                 setCategoryId(event.target.value);
-              }}
-            >
-              <option value="">Uncategorised</option>
-              {listing.categories
+              }}><option value="">Uncategorised</option>{listing.categories
                 .filter((category) => !category.isArchived)
                 .map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
-                ))}
-            </select>
-          </label>
+                ))}</Select>
         )}
 
         <div className="qa-foot">
@@ -255,25 +246,16 @@ export function QuickAdd({
             />
 
             {selectableMembers.length > 1 && (
-              <label className="flex flex-col gap-1.5">
-                <span className="label">Member</span>
-                <select
-                  className="field"
-                  value={memberId}
-                  onChange={(event) => {
+              <Select label="Member" className="flex flex-col gap-1.5" value={memberId} onChange={(event) => {
                     setMemberId(event.target.value);
                     // Private is offered only on your own entries, so moving the entry to somebody else takes the
                     // tick off. Left on, the form would file it private under a member who never chose that.
                     if (event.target.value !== listing.viewer.memberId) setPersonal(false);
-                  }}
-                >
-                  {selectableMembers.map((member) => (
+                  }}>{selectableMembers.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.displayName}
                     </option>
-                  ))}
-                </select>
-              </label>
+                  ))}</Select>
             )}
 
             {/*

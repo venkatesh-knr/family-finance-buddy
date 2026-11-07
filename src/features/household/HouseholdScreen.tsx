@@ -7,6 +7,7 @@
  * consequence stated rather than implied.
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import {
@@ -459,39 +460,21 @@ function IssueInvite({
             />
           </div>
 
-          <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-            <span className="label">Role</span>
-            <select
-              className="field"
-              value={role}
-              onChange={(event) => {
+          <Select label="Role" className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0" value={role} onChange={(event) => {
                 setRole(event.target.value as HouseholdRole);
-              }}
-            >
-              {HOUSEHOLD_ROLES.map((option) => (
+              }}>{HOUSEHOLD_ROLES.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
 
-          <label className="flex w-full flex-col gap-1.5 sm:w-[110px] sm:shrink-0">
-            <span className="label">Colour</span>
-            <select
-              className="field"
-              value={colour}
-              onChange={(event) => {
+          <Select label="Colour" className="flex w-full flex-col gap-1.5 sm:w-[110px] sm:shrink-0" value={colour} onChange={(event) => {
                 setColour(event.target.value as MemberColour);
-              }}
-            >
-              {MEMBER_COLOURS.map((option) => (
+              }}>{MEMBER_COLOURS.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
 
           <div className="w-full sm:w-[110px] sm:shrink-0">
             <Field

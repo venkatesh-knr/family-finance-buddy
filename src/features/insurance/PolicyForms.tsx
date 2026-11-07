@@ -5,6 +5,7 @@
  * that never offered a field makes data that cannot be repaired later (detail-level.md section 5).
  */
 
+import { Select } from '../../ui/Select.tsx';
 import { useState } from 'react';
 import type { IsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor, type Money } from '../../lib/money.ts';
@@ -169,38 +170,20 @@ function PolicyFields({
               }}
             />
           </div>
-          <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-            <span className="label">Kind</span>
-            <select
-              className="field"
-              value={values.kind}
-              onChange={(event) => {
+          <Select label="Kind" className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0" value={values.kind} onChange={(event) => {
                 set.setKind(event.target.value as PolicyKind);
-              }}
-            >
-              {POLICY_KINDS.map((option) => (
+              }}>{POLICY_KINDS.map((option) => (
                 <option key={option} value={option}>
                   {policyKindLabel(option)}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-            <span className="label">Premium every</span>
-            <select
-              className="field"
-              value={values.cadence}
-              onChange={(event) => {
+              ))}</Select>
+          <Select label="Premium every" className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0" value={values.cadence} onChange={(event) => {
                 set.setCadence(event.target.value as CommitmentCadence);
-              }}
-            >
-              {COMMITMENT_CADENCES.map((option) => (
+              }}>{COMMITMENT_CADENCES.map((option) => (
                 <option key={option} value={option}>
                   {option.replace(/_/g, ' ')}
                 </option>
-              ))}
-            </select>
-          </label>
+              ))}</Select>
         </>
       )}
       <div className="w-full sm:w-[170px] sm:shrink-0">
@@ -244,25 +227,15 @@ function PolicyFields({
           }}
         />
       </div>
-      <label className="flex w-full flex-col gap-1.5 sm:w-[170px] sm:shrink-0">
-        <span className="label">Whose</span>
-        <select
-          className="field"
-          value={values.memberId}
-          onChange={(event) => {
+      <Select label="Whose" className="flex w-full flex-col gap-1.5 sm:w-[170px] sm:shrink-0" value={values.memberId} onChange={(event) => {
             set.setMemberId(event.target.value);
-          }}
-        >
-          <option value="">The household</option>
-          {members
+          }}><option value="">The household</option>{members
             .filter((m) => !m.isArchived)
             .map((m) => (
               <option key={m.id} value={m.id}>
                 {m.displayName}
               </option>
-            ))}
-        </select>
-      </label>
+            ))}</Select>
       <div className="w-full sm:w-[260px] sm:shrink-0">
         <Field
           label="Note"
@@ -274,23 +247,13 @@ function PolicyFields({
         />
       </div>
       {isHybrid(values.kind) && (
-        <label className="flex w-full flex-col gap-1.5 sm:w-[260px] sm:shrink-0">
-          <span className="label">Holding that carries its surrender value</span>
-          <select
-            className="field"
-            value={values.linked}
-            onChange={(event) => {
+        <Select label="Holding that carries its surrender value" className="flex w-full flex-col gap-1.5 sm:w-[260px] sm:shrink-0" value={values.linked} onChange={(event) => {
               set.setLinked(event.target.value);
-            }}
-          >
-            <option value="">None yet</option>
-            {options.map((option) => (
+            }}><option value="">None yet</option>{options.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
       )}
     </div>
   );
@@ -399,22 +362,13 @@ export function NewPolicy({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0">
-          <span className="label">Kind</span>
-          <select
-            className="field"
-            value={kind}
-            onChange={(event) => {
+        <Select label="Kind" className="flex w-full flex-col gap-1.5 sm:w-[160px] sm:shrink-0" value={kind} onChange={(event) => {
               setKind(event.target.value as PolicyKind);
-            }}
-          >
-            {POLICY_KINDS.map((option) => (
+            }}>{POLICY_KINDS.map((option) => (
               <option key={option} value={option}>
                 {policyKindLabel(option)}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         <div className="w-full sm:w-[130px] sm:shrink-0">
           <Field
             label={`Premium (${base})`}
@@ -428,22 +382,13 @@ export function NewPolicy({
             }}
           />
         </div>
-        <label className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0">
-          <span className="label">Every</span>
-          <select
-            className="field"
-            value={cadence}
-            onChange={(event) => {
+        <Select label="Every" className="flex w-full flex-col gap-1.5 sm:w-[140px] sm:shrink-0" value={cadence} onChange={(event) => {
               setCadence(event.target.value as CommitmentCadence);
-            }}
-          >
-            {COMMITMENT_CADENCES.map((option) => (
+            }}>{COMMITMENT_CADENCES.map((option) => (
               <option key={option} value={option}>
                 {option.replace(/_/g, ' ')}
               </option>
-            ))}
-          </select>
-        </label>
+            ))}</Select>
         <Button type="submit" disabled={busy || name.trim() === '' || premium.trim() === ''}>
           Add
         </Button>
