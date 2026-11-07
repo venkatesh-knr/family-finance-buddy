@@ -125,7 +125,7 @@ export function SetAside({ items, privacy }: { items: readonly SetAsideItem[]; p
             <OpenRow
               href={hashFor('holdings', { earmark: item.earmark })}
               tile={null}
-              title={EARMARK_LABELS[item.earmark]}
+              title={item.earmark === 'emergency' ? 'Household emergency fund' : EARMARK_LABELS[item.earmark]}
               sub={`${String(item.count)} ${item.count === 1 ? 'holding' : 'holdings'}`}
               value={amounts(item.held, privacy)}
             />

@@ -66,9 +66,12 @@ export function HoldingsScreen({
   const { listing, rows: allRows, loading, problem, today, paidOut, paidOutFailed } = hook;
   // Whose figures: Mine first, and one state with the Overview (src/app/scope.tsx). Mine is the holdings recorded under the signed-in member.
   const { scope } = useScope();
+  // The emergency fund is only ever the household's (simple-layout.md section 2a), so its view does not follow the switch.
+  const emergencyView = (filter.earmark ?? '') === 'emergency';
   const rows = useMemo(
-    () => (scope === 'mine' && listing !== null ? allRows.filter((row) => row.holding.member.id === listing.viewer.memberId) : allRows),
-    [allRows, scope, listing],
+    () =>
+      scope === 'mine' && !emergencyView && listing !== null ? allRows.filter((row) => row.holding.member.id === listing.viewer.memberId) : allRows,
+    [allRows, scope, emergencyView, listing],
   );
   const fixed = useFixedIncomeFacts(listing, today);
   // Read once for the list, so a physical gold row can say whether its purity has a rate (gold.md section 3).
@@ -163,33 +166,41 @@ export function HoldingsScreen({
     [listHoldings, base],
   );
 
-  // What is set aside, per earmark: how many holdings and what they are worth, for the rows of All's Set aside section.
-  const setAside = useMemo<readonly SetAsideItem[]>(
-    () =>
-      grouped.chips.earmarks.map(({ earmark, count }) => {
-        const held = new Map<string, bigint>();
-        for (const h of listHoldings) {
-          if (h.earmark !== earmark || h.paidOutOn !== null || h.unitsHeld === 0n || h.latest === null) continue;
-          held.set(h.latest.currency, (held.get(h.latest.currency) ?? 0n) + h.latest.minor);
-        }
-        return { earmark: earmark as Earmark, count, held: [...held.entries()].map(([currency, minor]) => money(minor, currency)) };
-      }),
-    [grouped.chips.earmarks, listHoldings],
-  );
-
-  /** What is earmarked as an emergency fund and still held, per currency, for the card under a list of deposits. */
+  /** What is earmarked as the emergency fund and still held, per currency, across the household: the card, and the Set aside row. */
   const emergency = useMemo(() => {
     // Physical gold is never the emergency fund (GD-I10); a gold ETF or fund is, as any fund is.
-    const physical = new Set(rows.filter(isPhysicalGold).map((row) => row.holding.id));
-    const live = listHoldings.filter((h) => h.earmark === 'emergency' && !physical.has(h.id) && h.paidOutOn === null && h.unitsHeld !== 0n);
+    const live = allRows.filter(
+      (row) => row.holding.earmark === 'emergency' && !isPhysicalGold(row) && !paidOut.has(row.holding.id) && row.unitsHeld !== 0n,
+    );
     const by = new Map<string, bigint>();
-    for (const h of live) if (h.latest !== null) by.set(h.latest.currency, (by.get(h.latest.currency) ?? 0n) + h.latest.minor);
+    for (const row of live) {
+      if (row.latest !== null) by.set(row.holding.instrument.currency, (by.get(row.holding.instrument.currency) ?? 0n) + row.latest.amountMinor);
+    }
     return {
       count: live.length,
-      unvalued: live.filter((h) => h.latest === null).length,
+      unvalued: live.filter((row) => row.latest === null).length,
       held: [...by.entries()].map(([currency, minor]) => money(minor, currency)),
     };
-  }, [listHoldings, rows]);
+  }, [allRows, paidOut]);
+
+  // What is set aside, per earmark: how many holdings and what they are worth, for the rows of All's Set aside section. The emergency fund is
+  // the household's whichever way the switch is set, and the rest are the scope's.
+  const setAside = useMemo<readonly SetAsideItem[]>(
+    () => [
+      ...(emergency.count > 0 ? [{ earmark: 'emergency' as Earmark, count: emergency.count, held: emergency.held }] : []),
+      ...grouped.chips.earmarks
+        .filter(({ earmark }) => earmark !== 'emergency')
+        .map(({ earmark, count }) => {
+          const held = new Map<string, bigint>();
+          for (const h of listHoldings) {
+            if (h.earmark !== earmark || h.paidOutOn !== null || h.unitsHeld === 0n || h.latest === null) continue;
+            held.set(h.latest.currency, (held.get(h.latest.currency) ?? 0n) + h.latest.minor);
+          }
+          return { earmark: earmark as Earmark, count, held: [...held.entries()].map(([currency, minor]) => money(minor, currency)) };
+        }),
+    ],
+    [emergency, grouped.chips.earmarks, listHoldings],
+  );
 
   const modelOf = useMemo(() => {
     const byId = new Map<string, HoldingRow>(rows.map((row) => [row.holding.id, row]));
@@ -286,10 +297,16 @@ export function HoldingsScreen({
   const heading =
     kind !== ''
       ? `${whose(scope)} ${kindLabel(kind).toLowerCase()} · current value`
-      : earmarkFilter !== ''
-        ? `${EARMARK_LABELS[earmarkFilter as Earmark]} · current value`
-        : `${whose(scope)} holdings · current value`;
-  const listTitle = kind !== '' ? kindLabel(kind) : earmarkFilter !== '' ? EARMARK_LABELS[earmarkFilter as Earmark] : 'Holdings';
+      : earmarkFilter === 'emergency'
+        ? 'Household emergency fund · current value'
+        : earmarkFilter !== ''
+          ? `${whose(scope)} ${EARMARK_LABELS[earmarkFilter as Earmark].toLowerCase()} · current value`
+          : `${whose(scope)} holdings · current value`;
+  const listTitle =
+    kind !== '' ? kindLabel(kind) : earmarkFilter === 'emergency' ? 'Household emergency fund' : earmarkFilter !== '' ? EARMARK_LABELS[earmarkFilter as Earmark] : 'Holdings';
+  // Under Mine, a member can hold nothing of their own while the household holds plenty: that is said, and not "nothing recorded".
+  const householdHoldsOther = scope === 'mine' && allRows.length > 0;
+  const householdOfKind = kind === '' ? allRows.length : allRows.filter((row) => row.holding.instrument.kind === kind).length;
 
   const summary = (
     <Summary
@@ -321,7 +338,8 @@ export function HoldingsScreen({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    // The bottom room is the floating Add's band, so that the pill never sits over the last row.
+    <div className="flex flex-col gap-3 pb-24">
       {/* Whose figures, and Import: the top of the screen (simple-layout.md section 2). */}
       <div className="holdings-top">
         <ScopeSwitch members={memberCount} />
@@ -341,7 +359,7 @@ export function HoldingsScreen({
       </div>
 
       {/* All first, then a tab for each class held. An earmark opens from All's Set aside, and is no tab. */}
-      {listHoldings.length > 0 && <TabStrip kinds={tabKinds} current={earmarkFilter !== '' ? null : kind} />}
+      {allRows.length > 0 && <TabStrip kinds={tabKinds} current={earmarkFilter !== '' ? null : kind} />}
 
       {summary}
 
@@ -370,11 +388,18 @@ export function HoldingsScreen({
         />
       )}
 
-      {listHoldings.length === 0 ? (
-        <p className="note">
-          Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is the only
-          way the year&rsquo;s peak can ever be known.
-        </p>
+      {listHoldings.length === 0 && !emergencyView ? (
+        householdHoldsOther ? (
+          <p className="note" data-testid="mine-empty">
+            You hold nothing of your own here. The household holds {allRows.length} {allRows.length === 1 ? 'holding' : 'holdings'}: choose Household
+            above to see {allRows.length === 1 ? 'it' : 'them'}.
+          </p>
+        ) : (
+          <p className="note">
+            Nothing recorded yet. Add a holding, then record what it is worth at each month end — that reading is the only
+            way the year&rsquo;s peak can ever be known.
+          </p>
+        )
       ) : !filtered ? (
         <>
           <ByClass grouped={grouped} base={base} privacy={privacy} />
@@ -412,7 +437,13 @@ export function HoldingsScreen({
           {kind === 'deposit' && (
             <p className="note list-helper">FD, RD, SSY, NSC, KVP, SCSS and post office deposits all live here. A PPF is under Retirement.</p>
           )}
-          {grouped.groups.length === 0 && grouped.ended.length === 0 && <p className="note">Nothing here matches that filter.</p>}
+          {grouped.groups.length === 0 && grouped.ended.length === 0 && (
+            <p className="note" data-testid="filter-empty">
+              {scope === 'mine' && householdOfKind > 0 && kind !== ''
+                ? `You hold none of this. The household holds ${String(householdOfKind)}: choose Household above to see ${householdOfKind === 1 ? 'it' : 'them'}.`
+                : 'Nothing here matches that filter.'}
+            </p>
+          )}
           {grouped.groups.map((group) => (
             <GroupSection
               key={group.kind}

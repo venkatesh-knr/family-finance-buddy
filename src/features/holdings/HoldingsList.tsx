@@ -329,7 +329,7 @@ export function EmergencyCard({
 }) {
   if (count === 0) return null;
   return (
-    <section className="card emergency-card" aria-label="Emergency fund" data-testid="emergency-card">
+    <section className="card emergency-card" aria-label="Household emergency fund" data-testid="emergency-card">
       <div className="emergency-head">
         <span className="emergency-title">
           <svg
@@ -345,7 +345,7 @@ export function EmergencyCard({
           >
             <path d="M6 3h12v18l-6-4-6 4Z" />
           </svg>
-          Emergency fund
+          Household emergency fund
         </span>
         <span className="tabular-nums">
           {held.length === 0 ? (
@@ -408,7 +408,7 @@ export function GroupSection({
   const id = `group-${label ?? kind}`;
   if (bare) {
     return (
-      <section className="card holding-group" aria-label={label ?? kindLabel(kind)}>
+      <section className="flat-group" aria-label={label ?? kindLabel(kind)}>
         <ul className="holding-rows">
           {rows.map((row) => (
             <ListRow key={row.id} row={row} privacy={privacy} />
@@ -418,7 +418,7 @@ export function GroupSection({
     );
   }
   return (
-    <section className="card holding-group" aria-labelledby={id}>
+    <section className="flat-group" aria-labelledby={id}>
       <button
         type="button"
         className="group-head"
@@ -518,6 +518,11 @@ function ListRow({ row, privacy }: { row: RowModel; privacy: boolean }) {
           {row.value === null ? <Unit>not valued</Unit> : <Amount value={row.value} privacy={privacy} />}
         </span>
         <GainLine gain={row.gain} privacy={privacy} />
+      </span>
+      <span className="holding-chevron" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
       </span>
     </li>
   );
