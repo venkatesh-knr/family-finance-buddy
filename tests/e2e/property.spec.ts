@@ -104,8 +104,46 @@ test('the form refuses a share outside 0 to 100, and a missing price, in a sente
   await form.getByLabel('Price paid').fill('100');
   await next(page);
   await form.getByLabel(/Household.s share/).fill('150');
-  await form.getByRole('button', { name: 'Add the property' }).click();
-  await expect(form).toContainText('a percentage above 0 and up to 100');
+  // Said under the field as it is typed, and the last button waits for it to be right.
+  await expect(form.getByText('The household’s share is a percentage above 0 and up to 100, such as 50 or 33.33.')).toBeVisible();
+  await expect(form.getByLabel(/Household.s share/)).toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Add the property' })).toBeDisabled();
+  // A share that is only unfinished is not called wrong.
+  await form.getByLabel(/Household.s share/).fill('33.');
+  await expect(form.getByLabel(/Household.s share/)).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Add the property' })).toBeDisabled();
   // And nothing was filed.
   await expect(page.getByRole('region', { name: 'never saved' })).toHaveCount(0);
+});
+
+test('a property’s figures and date say what is wrong under the field they are wrong on', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openProperty(page);
+  await page.getByRole('button', { name: 'Add a property' }).click();
+  const form = page.getByRole('form', { name: 'Add a property' });
+  await form.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+  await next(page);
+
+  // A figure is marked as it is typed, and each on its own field.
+  await form.getByLabel('Price paid').fill('lots');
+  await expect(form.getByText('The price paid is an amount, such as 85,00,000.')).toBeVisible();
+  await form.getByLabel('Stamp duty').fill('1.234');
+  await expect(form.getByText('The stamp duty is an amount, such as 5,95,000, or leave it empty.')).toBeVisible();
+  await form.getByLabel('Registration').fill('-5');
+  await expect(form.getByText('The registration is an amount, such as 50,000, or leave it empty.')).toBeVisible();
+
+  // A date is marked once it has been left, and a day after today is said in words.
+  await form.getByLabel('Bought on').fill('2099-01-01');
+  await form.getByLabel('Bought on').blur();
+  await expect(form.getByText('It cannot have been bought after today.')).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+
+  // Right them and the marks go, and the step goes on.
+  await form.getByLabel('Bought on').fill('2019-03-01');
+  await form.getByLabel('Price paid').fill('4200000');
+  await form.getByLabel('Stamp duty').fill('');
+  await form.getByLabel('Registration').fill('');
+  await expect(form.getByLabel('Bought on')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByLabel('Price paid')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(form.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
 });

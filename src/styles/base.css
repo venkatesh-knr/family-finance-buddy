@@ -2427,7 +2427,8 @@
   }
 
   /* Focus is the underline going to 2px in the accent, as in every field; nothing around the box. */
-  .qa-row:focus-within {
+  .qa-row:focus-within,
+  .qa-row:has(input[aria-invalid='true']) {
     border-bottom-color: var(--brass);
     box-shadow: 0 1px 0 0 var(--brass);
   }

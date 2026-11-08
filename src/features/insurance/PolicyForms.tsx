@@ -20,6 +20,25 @@ import {
 } from '../../repo/types.ts';
 import { Button, Field, Problem } from '../../ui/primitives.tsx';
 import { isHybrid, policyKindLabel } from './labels.ts';
+import { policyFieldErrors, type PolicyField } from './policyChecks.ts';
+
+/**
+ * Which of a form's problems to show. An amount or a policy number is marked as it is typed; a date only once the field has been left or
+ * a save has been tried, because a year typed digit by digit passes through years that are not wrong yet.
+ */
+function useMarks(errors: Partial<Record<PolicyField, string>>) {
+  const [touched, setTouched] = useState<ReadonlySet<PolicyField>>(new Set());
+  const [tried, setTried] = useState(false);
+  const touch = (field: PolicyField) => {
+    setTouched((was) => (was.has(field) ? was : new Set(was).add(field)));
+  };
+  const marks: Partial<Record<PolicyField, string>> = {};
+  for (const [field, text] of Object.entries(errors) as [PolicyField, string][]) {
+    const isDate = field === 'startedOn' || field === 'premiumsEndOn' || field === 'renewalOn';
+    if (!isDate || tried || touched.has(field)) marks[field] = text;
+  }
+  return { marks, touch, tried: () => { setTried(true); } };
+}
 
 function holdingOptions(holdings: readonly Holding[]): { id: string; label: string }[] {
   return holdings
@@ -56,9 +75,16 @@ export function PolicyDetails({
   const [memberId, setMemberId] = useState(policy.memberId ?? '');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const errors = policyFieldErrors({ last4, startedOn, premiumsEndOn }, 'INR');
+  const { marks, touch, tried } = useMarks(errors);
 
   const submit = async (): Promise<void> => {
     setProblem(null);
+    if (Object.keys(errors).length > 0) {
+      tried();
+      setProblem('Check the fields marked above.');
+      return;
+    }
     setBusy(true);
     try {
       await onSave({
@@ -100,6 +126,8 @@ export function PolicyDetails({
         }}
         holdings={holdings}
         members={members}
+        errors={marks}
+        onTouch={touch}
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button type="button" disabled={busy || name.trim() === ''} onClick={() => void submit()}>
@@ -137,6 +165,8 @@ function PolicyFields({
   holdings,
   members,
   onlyDetails = false,
+  errors = {},
+  onTouch,
 }: {
   values: FieldValues;
   set: {
@@ -155,6 +185,9 @@ function PolicyFields({
   members: readonly { id: string; displayName: string; isArchived: boolean }[];
   /** The add form already has the name, kind and cadence above its fold, so the fold leaves them out. */
   onlyDetails?: boolean;
+  /** What is wrong, by field, already filtered to what is to be shown. */
+  errors?: Partial<Record<PolicyField, string>>;
+  onTouch?: ((field: PolicyField) => void) | undefined;
 }) {
   const options = holdingOptions(holdings);
   return (
@@ -200,6 +233,7 @@ function PolicyFields({
           label="Policy number, last four"
           maxLength={4}
           hint="Only the last four are kept"
+          error={errors.last4 ?? null}
           value={values.last4}
           onChange={(event) => {
             set.setLast4(event.target.value);
@@ -210,6 +244,8 @@ function PolicyFields({
         <Field
           label="Started"
           type="date"
+          error={errors.startedOn ?? null}
+          onBlur={() => onTouch?.('startedOn')}
           value={values.startedOn}
           onChange={(event) => {
             set.setStartedOn(event.target.value);
@@ -221,6 +257,8 @@ function PolicyFields({
           label="Last premium due"
           type="date"
           hint="Blank if premiums have no end"
+          error={errors.premiumsEndOn ?? null}
+          onBlur={() => onTouch?.('premiumsEndOn')}
           value={values.premiumsEndOn}
           onChange={(event) => {
             set.setPremiumsEndOn(event.target.value);
@@ -287,10 +325,20 @@ export function NewPolicy({
   const [memberId, setMemberId] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const errors = policyFieldErrors({ premium, cover, last4, startedOn, premiumsEndOn, renewalOn }, base);
+  const { marks, touch, tried } = useMarks(errors);
+  // The details are folded; a mark inside one is no use shut, so a save that finds one opens the fold.
+  const [more, setMore] = useState(false);
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setProblem(null);
+    if (Object.keys(errors).length > 0) {
+      tried();
+      if (Object.keys(errors).some((field) => field !== 'premium')) setMore(true);
+      setProblem('Check the fields marked above.');
+      return;
+    }
 
     let premiumMinor: bigint;
     let coverMoney: Money | null = null;
@@ -376,6 +424,7 @@ export function NewPolicy({
             inputMode="decimal"
             placeholder="0.00"
             required
+            error={marks.premium ?? null}
             value={premium}
             onChange={(event) => {
               setPremium(event.target.value);
@@ -399,7 +448,13 @@ export function NewPolicy({
         never offered a field makes data that cannot be repaired later (detail-level.md §5). They are
         folded, because most people need the name, the kind and the premium.
       */}
-      <details className="mt-3">
+      <details
+        className="mt-3"
+        open={more}
+        onToggle={(event) => {
+          setMore(event.currentTarget.open);
+        }}
+      >
         <summary className="notice-toggle">More details</summary>
         <div className="mt-3 flex flex-wrap items-end gap-2.5">
           <div className="w-full sm:w-[150px] sm:shrink-0">
@@ -409,6 +464,7 @@ export function NewPolicy({
               inputMode="decimal"
               placeholder="not recorded"
               hint="What it pays if claimed"
+              error={marks.cover ?? null}
               value={cover}
               onChange={(event) => {
                 setCover(event.target.value);
@@ -419,6 +475,10 @@ export function NewPolicy({
             <Field
               label="Renews on"
               type="date"
+              error={marks.renewalOn ?? null}
+              onBlur={() => {
+                touch('renewalOn');
+              }}
               value={renewalOn}
               onChange={(event) => {
                 setRenewalOn(event.target.value);
@@ -444,6 +504,8 @@ export function NewPolicy({
             holdings={holdings}
             members={members}
             onlyDetails
+            errors={marks}
+            onTouch={touch}
           />
         </div>
       </details>

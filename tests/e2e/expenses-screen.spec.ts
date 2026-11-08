@@ -142,3 +142,22 @@ test('"File them" brings the list it filtered into view and moves focus to it', 
   await expect(heading).toBeFocused();
   await expect(heading).toBeInViewport();
 });
+
+test('quick add says what is wrong with the amount under it, and does not add until it is right', async ({ page }) => {
+  await onExpenses(page);
+  const add = page.getByRole('region', { name: 'Add an expense' });
+  const amount = add.getByLabel(/^Amount/);
+  await amount.fill('abc');
+  await expect(add.getByText('The amount is a number, such as 450 or 1,299.50.')).toBeVisible();
+  await expect(amount).toHaveAttribute('aria-invalid', 'true');
+  await amount.fill('0');
+  await expect(add.getByText('The amount is above nothing, such as 450 or 1,299.50.')).toBeVisible();
+  // Adding it is refused without writing anything: the form is still holding what was typed.
+  await add.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(amount).toHaveValue('0');
+  // Right it, and the mark goes.
+  await amount.fill('450');
+  await expect(amount).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(add.getByRole('alert')).toHaveCount(0);
+  await amount.fill('');
+});

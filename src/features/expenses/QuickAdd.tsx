@@ -9,7 +9,7 @@
 
 import { Select } from '../../ui/Select.tsx';
 import { useCallback, useMemo, useState } from 'react';
-import { formatIsoDate } from '../../lib/dates.ts';
+import { formatIsoDate, isIsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor } from '../../lib/money.ts';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { ExpenseListing } from '../../repo/types.ts';
@@ -46,6 +46,7 @@ export function QuickAdd({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [opened, setOpened] = useState(false);
+  const [dateLeft, setDateLeft] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
 
   /**
@@ -61,6 +62,23 @@ export function QuickAdd({
   const currency = listing.household.baseCurrency;
   const symbol = currency === 'INR' ? '₹' : currency;
   const today = useMemo(() => todayInIst(), []);
+
+  // What is wrong is said under the field it is wrong on (docs/design/simple-layout.md section 3). The amount as it is typed; the date once it has
+  // been left or an Add has been tried, since a year typed digit by digit passes through years that are not wrong yet.
+  let amountError: string | null = null;
+  if (amount.trim() !== '') {
+    try {
+      if (parseAmountToMinor(amount, currency) <= 0n) amountError = 'The amount is above nothing, such as 450 or 1,299.50.';
+    } catch (error) {
+      const said = error instanceof Error ? error.message : '';
+      // The parser's own sentence where it says something the person can act on (a minus sign, too many decimal places); otherwise ours.
+      const useful = said.startsWith('An expense is') || said.includes('decimal places') || said.includes('whole number');
+      amountError = useful ? said : 'The amount is a number, such as 450 or 1,299.50.';
+    }
+  }
+  const dateWrong = !isIsoDate(date) || Number(date.slice(0, 4)) < 1990 || Number(date.slice(0, 4)) > 2100;
+  const [tried, setTried] = useState(false);
+  const dateError = dateWrong && (dateLeft || tried) ? 'That is not a date this can be: check the year.' : null;
 
   // The categories this household files under most come first as chips; the rest are under More. A category
   // chosen from More takes the last chip's place, so what is selected is always on screen.
@@ -83,6 +101,11 @@ export function QuickAdd({
     async (event: React.FormEvent) => {
       event.preventDefault();
       setProblem(null);
+      if (amountError !== null || dateWrong) {
+        setTried(true);
+        if (dateWrong) setOpened(true);
+        return;
+      }
 
       let minor: bigint;
       try {
@@ -120,7 +143,7 @@ export function QuickAdd({
         setBusy(false);
       }
     },
-    [amount, categoryId, currency, date, listing.household.id, memberId, onAdd, payee, personal],
+    [amount, amountError, categoryId, currency, date, dateWrong, listing.household.id, memberId, onAdd, payee, personal],
   );
 
   const memberName = listing.members.find((member) => member.id === memberId)?.displayName ?? 'you';
@@ -147,12 +170,19 @@ export function QuickAdd({
                 inputMode="decimal"
                 placeholder="0"
                 required
+                aria-invalid={amountError === null ? undefined : true}
+                aria-describedby={amountError === null ? undefined : 'qa-amount-error'}
                 value={amount}
                 onChange={(event) => {
                   setAmount(event.target.value);
                 }}
               />
             </span>
+            {amountError !== null && (
+              <span className="field-error" id="qa-amount-error" role="alert">
+                {amountError}
+              </span>
+            )}
           </label>
           <label className="qa-payee">
             <span className="label">Payee (optional)</span>
@@ -242,6 +272,10 @@ export function QuickAdd({
             <Field
               label="Date"
               type="date"
+              error={dateError}
+              onBlur={() => {
+                setDateLeft(true);
+              }}
               value={date}
               onChange={(event) => {
                 setDate(event.target.value);
