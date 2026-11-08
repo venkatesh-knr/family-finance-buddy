@@ -76,9 +76,13 @@ export async function rowsNamed(page: Page, name: string | RegExp): Promise<numb
 /** Open a holding's own screen from the list. */
 export async function openHolding(page: Page, name: string) {
   await openList(page);
-  const row = await rowFor(page, name);
-  await expect(row).toBeVisible({ timeout: 20_000 });
-  await row.locator('a.holding-link').click();
+  // The row is found and its link pressed as one step that is tried again: the list reads again after a write and folds the Ended group
+  // it had just opened, so a row seen a moment ago can have no link by the time it is pressed.
+  await expect(async () => {
+    const row = await rowFor(page, name);
+    await expect(row).toBeVisible({ timeout: 5_000 });
+    await row.locator('a.holding-link').click({ timeout: 5_000 });
+  }).toPass({ timeout: 40_000 });
   await expect(page.getByTestId('detail-value')).toBeVisible({ timeout: 20_000 });
 }
 

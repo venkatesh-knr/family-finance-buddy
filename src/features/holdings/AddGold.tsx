@@ -53,6 +53,9 @@ export function AddGold({
   const [purity, setPurity] = useState<GoldPurity>('22k');
   const [quantity, setQuantity] = useState('');
   const [boughtOn, setBoughtOn] = useState<string>(today);
+  // A date is marked wrong once it has lost focus, or a step has been tried: typing a year digit by digit passes through years that are not
+  // wrong yet, and a mark (read aloud as an alert) for each would call a right entry wrong.
+  const [boughtTouched, setBoughtTouched] = useState(false);
   const [costBy, setCostBy] = useState<CostBy>('price');
   const [typed, setTyped] = useState('');
   const [gift, setGift] = useState(false);
@@ -92,7 +95,7 @@ export function AddGold({
   }
   if (!physical && worth.trim() !== '' && amountOf(worth) === null) errors.worth = 'What it is worth today is an amount above nothing, or left out.';
   const weightError = errors.quantity ?? null;
-  const dateError = errors.boughtOn ?? null;
+  const dateError = boughtTouched || show !== null ? (errors.boughtOn ?? null) : null;
   const STEP_OF = { quantity: 1, boughtOn: 1, cost: 1, isin: 2, worth: 2 } as const;
 
   const submit = async () => {
@@ -226,7 +229,7 @@ export function AddGold({
         content: (
           <>
             <Field label="Weight (g)" numeric inputMode="decimal" required hint="grams" error={weightError} value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
-            <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
+            <Field label="Bought on" type="date" required error={dateError} onBlur={() => { setBoughtTouched(true); }} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
             <GoldCost grams={grams} gift={gift} costBy={costBy} typed={typed} onCostBy={setCostBy} onTyped={setTyped} error={errors.cost ?? null} />
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={gift} onChange={(event) => { setGift(event.target.checked); }} />
@@ -246,7 +249,7 @@ export function AddGold({
         content: (
           <>
             <Field label="Units" numeric inputMode="decimal" required error={errors.quantity ?? null} value={quantity} onChange={(event) => { setQuantity(event.target.value); }} />
-            <Field label="Bought on" type="date" required error={dateError} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
+            <Field label="Bought on" type="date" required error={dateError} onBlur={() => { setBoughtTouched(true); }} value={boughtOn} onChange={(event) => { setBoughtOn(event.target.value); }} />
             <Field label={`Total cost (${CURRENCY})`} numeric inputMode="decimal" required error={errors.cost ?? null} value={typed} onChange={(event) => { setTyped(event.target.value); }} />
           </>
         ),
