@@ -57,7 +57,7 @@ export function PropertyCard({
   };
 
   return (
-    <section className="flat-section flex flex-col gap-3" aria-label={property.label}>
+    <section className="card flex flex-col gap-3" aria-label={property.label}>
       <header className="flex flex-wrap items-center gap-3">
         <AssetTile kind="property" />
         <span className="min-w-0 flex-1">

@@ -108,7 +108,7 @@ export function ExpensesScreen({
   const quickAdd = listing.viewer.canRecord ? (
     <QuickAdd listing={listing} onAdd={add} />
   ) : (
-    <Card flat title="Quick add">
+    <Card title="Quick add">
       <p className="note">
         Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
         database enforces that, not this screen.
@@ -126,7 +126,7 @@ export function ExpensesScreen({
       {listing.viewer.role === 'contributor' ? (
         <>
           {quickAdd}
-          <Card flat title="This month">
+          <Card title="This month">
             <p className="note">
               You can read your own entries. The household&rsquo;s spending, by category, is on the Summary screen.
             </p>

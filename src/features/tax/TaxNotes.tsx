@@ -120,7 +120,7 @@ export function TaxNotes({
       </div>
 
       {panel === 'assumes' && (
-        <section className="flat-section" id="tax-assumes" aria-label="What this assumes">
+        <section className="card" id="tax-assumes" aria-label="What this assumes">
           <h2 className="card-title font-sans">What this assumes</h2>
           <p className="note mt-2">
             This page computes tax on the salary and other income you type in, and on capital gains on listed

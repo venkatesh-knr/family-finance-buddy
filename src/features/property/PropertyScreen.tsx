@@ -46,7 +46,7 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
             {facts.totals.map((total) => (
               <CostCard key={`cost-${total.currency}`} total={total} many={facts.totals.length > 1} privacy={privacy} />
             ))}
-            <div className="stat-card stat-flat">
+            <div className="card stat-card">
               <h3 className="stat-card-label">Oldest valuation</h3>
               <div className="stat-card-value">{facts.oldest === null ? '—' : monthsPhrase(facts.oldest.months)}</div>
               <div className="stat-card-sub">
@@ -137,7 +137,7 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
 function ValueCard({ total, many, privacy, lift }: { total: CurrencyTotals; many: boolean; privacy: boolean; lift: boolean }) {
   return (
     // The first is the screen's one lifted surface (FlatProperty); a second currency's is flat beside the cost basis.
-    <div className={lift ? 'card card-lift stat-card' : 'stat-card stat-flat'} style={lift ? { gridColumn: '1 / -1' } : undefined}>
+    <div className={lift ? 'card card-lift stat-card' : 'card stat-card'} style={lift ? { gridColumn: '1 / -1' } : undefined}>
       <h3 className="stat-card-label">Estimated value{many ? ` · ${total.currency}` : ''}</h3>
       <div className="stat-card-value" title={exactMoney(total.value, privacy) ?? undefined}>
         <Amount value={total.value} privacy={privacy} />
@@ -157,7 +157,7 @@ function ValueCard({ total, many, privacy, lift }: { total: CurrencyTotals; many
 /** What the properties in one currency cost, with the duty and the capital work inside it. */
 function CostCard({ total, many, privacy }: { total: CurrencyTotals; many: boolean; privacy: boolean }) {
   return (
-    <div className="stat-card stat-flat">
+    <div className="card stat-card">
       <h3 className="stat-card-label">Cost basis{many ? ` · ${total.currency}` : ''}</h3>
       <div className="stat-card-value" title={exactMoney(total.cost, privacy) ?? undefined}>
         <Amount value={total.cost} privacy={privacy} />

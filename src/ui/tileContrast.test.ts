@@ -13,7 +13,7 @@ import { mix, ratio, resolve, ruleFor } from './contrastKit.ts';
 
 const rule = ruleFor('.asset-tile');
 const percent = (property: string): number => {
-  const m = new RegExp(`${property}:[^;]*color-mix\\(in srgb, var\\(--tile\\) (\\d+)%, var\\(--tile-ground, var\\(--surface\\)\\)\\)`).exec(rule);
+  const m = new RegExp(`${property}:[^;]*color-mix\\(in srgb, var\\(--tile\\) (\\d+)%, var\\(--surface\\)\\)`).exec(rule);
   if (m?.[1] === undefined) throw new Error(`.asset-tile has no tinted ${property}`);
   return Number(m[1]) / 100;
 };
@@ -45,7 +45,7 @@ describe.each(['light', 'dark'] as const)('a tile in the %s theme', (theme) => {
     expect(ratio(mix(glyph, surface, EDGE), surface)).toBeGreaterThanOrEqual(3);
   });
 
-  // A tile in a flat list has the page behind it and is tinted over it (`--tile-ground`), so it is measured there too.
+  // A tile sits in a card, but the page is measured too: a tile that ends up on the ground itself must still hold.
   it.each(tiles)('IC-R2 — holds its 1px border at 3:1 against what is behind it, on the page: %s', (_kind, colour) => {
     const glyph = resolve(theme, colour);
     expect(ratio(mix(glyph, page, EDGE), page)).toBeGreaterThanOrEqual(3);

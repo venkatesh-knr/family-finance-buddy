@@ -255,10 +255,10 @@ wide and evenly spaced, and reads as output rather than as a fact.
 
 ### Units
 
-A magnitude suffix — `L`, `Cr`, `K` — is a **unit**: a span at `0.6em` in `--muted`,
-welded to the figure with no space, so `₹5.3` then `L` rather than `₹5.3 L`. It is never
-smaller than 11px (`0.6875rem`), or a stat value's unit would be set below the caption
-step. The currency symbol is not a unit and stays at the figure's size. One `Amount`
+A magnitude suffix — `L`, `Cr`, `K` — is a **unit**: a span at the figure's own size, weight and
+colour (the owner's call, 8 November 2026: `₹64.92L`, the L as large as the digits; it was
+`0.6em` and muted), welded to the figure with no space, so `₹5.3` then `L` rather than
+`₹5.3 L`. The currency symbol is a part of the figure like the digits. One `Amount`
 component in `ui/primitives.tsx` renders it, so every figure does it the same way; a
 plain-string formatter remains for the places a span cannot go (an `aria-label`, a `title`,
 SVG text).

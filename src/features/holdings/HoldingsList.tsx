@@ -408,7 +408,7 @@ export function GroupSection({
   const id = `group-${label ?? kind}`;
   if (bare) {
     return (
-      <section className="flat-group" aria-label={label ?? kindLabel(kind)}>
+      <section className="card holding-group" aria-label={label ?? kindLabel(kind)}>
         <ul className="holding-rows">
           {rows.map((row) => (
             <ListRow key={row.id} row={row} privacy={privacy} />
@@ -418,7 +418,7 @@ export function GroupSection({
     );
   }
   return (
-    <section className="flat-group" aria-labelledby={id}>
+    <section className="card holding-group" aria-labelledby={id}>
       <button
         type="button"
         className="group-head"

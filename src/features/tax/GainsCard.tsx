@@ -51,7 +51,7 @@ export function GainsCard({
   const unused = allowance === null ? null : money(allowance.available.minor - allowance.used.minor, 'INR');
 
   return (
-    <section className="flat-section" aria-label="Capital gains">
+    <section className="card" aria-label="Capital gains">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="card-title font-sans">Capital gains</h2>
         <span className="note">netted across classes</span>
