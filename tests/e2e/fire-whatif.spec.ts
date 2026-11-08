@@ -18,7 +18,7 @@ async function onFire(page: Page) {
 test('the line appears once there is something put in and a return, and Adjust focuses the monthly amount', async ({ page }) => {
   test.setTimeout(120_000);
   await onFire(page);
-  const assumptions = page.locator('section.flat-section').filter({ has: page.getByRole('heading', { name: 'What the projection assumes' }) });
+  const assumptions = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'What the projection assumes' }) });
   const monthly = assumptions.locator('#fire-contribution');
   test.skip((await monthly.count()) === 0, 'this role cannot set the assumptions');
   const ret = assumptions.getByLabel('Return');

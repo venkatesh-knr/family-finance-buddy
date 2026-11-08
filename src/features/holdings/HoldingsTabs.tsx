@@ -77,8 +77,8 @@ export function ByClass({ grouped, base, privacy }: { grouped: GroupedHoldings; 
   const count = grouped.groups.reduce((sum, group) => sum + group.holdings.length, 0);
   if (grouped.groups.length === 0) return null;
   return (
-    <section className="flat-section" aria-label="By class" data-testid="by-class">
-      <div className="flat-head">
+    <section className="card" aria-label="By class" data-testid="by-class">
+      <div className="section-head">
         <h2 className="label">By class</h2>
         <span className="note tabular-nums">
           {count} {count === 1 ? 'holding' : 'holdings'}
@@ -115,8 +115,8 @@ export interface SetAsideItem {
 export function SetAside({ items, privacy }: { items: readonly SetAsideItem[]; privacy: boolean }) {
   if (items.length === 0) return null;
   return (
-    <section className="flat-section" aria-label="Set aside" data-testid="set-aside">
-      <div className="flat-head">
+    <section className="card" aria-label="Set aside" data-testid="set-aside">
+      <div className="section-head">
         <h2 className="label">Set aside</h2>
       </div>
       <ul className="flat-rows">
@@ -139,7 +139,7 @@ export function SetAside({ items, privacy }: { items: readonly SetAsideItem[]; p
 /** The list header on a class or an earmark: its title, how many, and the sort. */
 export function ClassHeader({ title, count, sort, onSort }: { title: string; count: number; sort: Sort; onSort: (sort: Sort) => void }) {
   return (
-    <div className="flat-head">
+    <div className="section-head">
       <h2 className="label">
         {title} <span className="tabular-nums">{count}</span>
       </h2>
@@ -199,7 +199,7 @@ export function GoldFacts({
   if (grams.size === 0) return null;
 
   return (
-    <section className="flat-section" aria-label="Gold rate" data-testid="gold-facts">
+    <section className="card" aria-label="Gold rate" data-testid="gold-facts">
       <ul className="flat-rows">
         {[...grams.entries()].map(([purity, held]) => {
           const label = purity.toUpperCase();

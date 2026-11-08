@@ -506,3 +506,15 @@ Built from `docs/design/spending-capture.md` section 3 and SC-I10: `supabase/mig
 - **Reminders** (`reminder_days`) are stored and not yet used: they wait for the calendar (step 8).
 - The demo household has two rules that are not due yet, so seeding posts nothing.
 - **Settings is where the rules live, and the screens (built November 2026) added four rules the design did not state.** (1) Resuming a paused rule, or restoring an archived one, does not enter the period it was stopped for: the next due day becomes the first on or after today (`resumeFrom` in `src/domain/recurring.ts`), because the poster would otherwise enter every due day from the stored one, up to 24, for a bill nobody paid while it was off. This is held on the device and not in the database, so another client that sets a rule back to active without moving its date would still back-post: a trigger that does it in the table is the safe form, and wants a migration shown first. (2) A rule's next due day can be moved later and not earlier, because an earlier day could enter a period already entered; to start over, archive it and add it again. (3) Adding, resuming or moving a rule runs the poster at once, so a day that has already gone by is entered then and the rule shows its next. (4) A rule always posts itself and is always the household's: the `auto_post` switch, the reminder and a personal rule are stored and not offered, because each would promise something nothing does yet. **Say if any of these is wrong**; and whether a viewer should see the rules read-only, as the blueprint says of household settings (the policy gives a viewer none).
+
+## Simple layout, the boxes come back (8 November 2026, the owner)
+
+After using slices A to E on a phone, the owner sent seven screenshots and eight points. Each is built (slice F) and none is a recommendation of mine:
+
+- **Sections are boxes again, with hairlines between their rows, on every screen.** The one lifted surface per screen stays (SL-I7). `simple-layout.md` section 1 is amended; the Departure is `decided` in `docs/design/conformance.md` and quotes this.
+- **Recent expenses is one line an entry**, with a hairline between days.
+- **The category chips, Import and Sort are ovals**, filled `--surface-2`, as the older Holdings chips were. The quiet button is that oval everywhere.
+- **The unit letter (`L`, `Cr`, `K`) is the figure's own size, weight and colour**, on every screen. `tokens.md` section 3 (Units) says so; it was `0.6em` and muted.
+- **The one Add is smaller**: a one-line pill. It had wrapped to two lines because it was fixed at the middle of the screen with half the width.
+
+Not changed: the underline fields, the stepped forms, the Mine | Household switch, the Holdings tabs, the colours.

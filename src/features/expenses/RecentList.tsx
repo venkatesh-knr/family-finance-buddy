@@ -102,7 +102,7 @@ export function RecentList({
   }, [shown]);
 
   return (
-    <section className="flat-section" aria-label="Recent expenses">
+    <section className="card" aria-label="Recent expenses">
       <header className="mb-1 flex items-baseline justify-between gap-2">
         <h2 ref={heading} tabIndex={-1} className="card-title font-sans">
           {onlyUncategorised ? 'Not filed yet' : 'Recent'}
@@ -155,7 +155,7 @@ export function RecentList({
         </p>
       ) : (
         days.map((day) => (
-          <div key={day.date}>
+          <div key={day.date} className="recent-dayblock">
             <h3 className="recent-day">{dayLabel(day.date, today)}</h3>
             <ul className="recent-rows">
               {day.rows.map((expense) => (

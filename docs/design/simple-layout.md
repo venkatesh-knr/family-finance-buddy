@@ -1,25 +1,33 @@
-# Simple layout: tabs, flat sections, underline fields
+# Simple layout: tabs, boxed sections, underline fields
 
 <!-- invariant-prefix: SL -->
 
 A simpler look for the whole app, decided by the owner on 7 November 2026 from a
 reference screen he liked: **tabs per asset class on Holdings with All first,
-sections that are not boxes, and input fields without boxes, in short steps.**
+input fields without boxes, in short steps, and sections that were first drawn flat
+(§1, which the owner amended on 8 November 2026: the boxes came back).**
 Colours do not change: the dark theme and the Mist light theme stay as they are in
 `docs/tokens.md`. The pictures are the Simpler layout row of
 `docs/design/vibrant-canvas.html` (HoldingsTabsAll, HoldingsTabGold, AddStep1,
 AddStep2); this file is the authority where the two differ, and it supersedes the
 parts of `holdings.md` and `tokens.md` named in §5.
 
-## 1. Fewer boxes
+## 1. Sections, rows and the small controls
 
-A box (border, fill, radius, shadow) says "separate object". Most of what the app
-shows is not separate: it is a list, or a few figures about one thing.
+*Amended on 8 November 2026 by the owner, after using the flat build on a phone.* The
+first version of this section drew every section but one flat on the page. The owner
+asked for the boxes back: "section boxes and separation lines applicable to all pages".
 
 - **One lifted surface per screen stays** (`tokens.md` §1): the answer, at the top.
-- **Everything else is flat on the page:** a section is a small uppercase title and
-  rows divided by hairlines (`--line`), with space between sections instead of a card
-  around each one. Key–value facts are rows (label left, figure right), not stat tiles.
+- **Every other section is a box:** a plain card (`--surface`, border, radius, `--shadow`),
+  a title, and **rows divided by hairlines** (`--line`) inside it. Key–value facts are
+  rows (label left, figure right) or small boxes side by side, as the Overview's currencies are.
+- **A list entry is one line** where it fits (Recent expenses: the payee, what it was and
+  whose, the amount at the right), and wraps, never clips, at a large text size. A day
+  is set off from the one before by a hairline.
+- **The small controls are ovals** (`--radius-pill`, filled `--surface-2`, a `--line-strong`
+  border): the category chips, Import, Sort. The one Add is a one-line pill; its label does not wrap.
+- **A unit letter (`L`, `Cr`, `K`) is the figure's own size**, weight and colour, on every screen.
 - **A row that opens something** carries a chevron at its right edge; the whole row is
   the target, at least 44px tall.
 - Asset-class tiles (`icons.md`) stay: they are what makes a list readable at a glance.
@@ -164,7 +172,7 @@ the spending-capture boards (MonthClose, QuickAddShared), none of which is built
 
 **SL-I6 — In a stepped form, going back keeps every value, and nothing is written until the last step's button.** (§4)
 
-**SL-I7 — A screen has at most one lifted surface;** other sections are flat. (§1)
+**SL-I7 — A screen has at most one lifted surface;** other sections are plain boxes, with hairlines between their rows. (§1)
 
 **SL-I8 — Overview and Holdings open on Mine,** and the lifted figure's label names whose it is (*Your* or *Household*). (§2a)
 

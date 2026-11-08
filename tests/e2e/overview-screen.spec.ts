@@ -41,7 +41,7 @@ test('the currency cards fill their row, and the emergency fund is a card of the
 
 test('allocation is one section per currency, headed "Allocation" with the currency and its total', async ({ page }) => {
   await onOverview(page);
-  const cards = page.locator('section.flat-section').filter({ has: page.getByRole('heading', { name: 'Allocation', exact: true }) });
+  const cards = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Allocation', exact: true }) });
   const count = await cards.count();
   expect(count).toBeGreaterThan(0);
   // As many sections as currencies held, each with its ring and its rows.
@@ -55,7 +55,7 @@ test('allocation is one section per currency, headed "Allocation" with the curre
 
 test('Needs attention has no year in its header, and closing the month is an action among its rows and not a disclosure', async ({ page }) => {
   await onOverview(page);
-  const card = page.locator('section.flat-section').filter({ has: page.getByRole('heading', { name: 'Needs attention', exact: true }) });
+  const card = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Needs attention', exact: true }) });
   await expect(card).toBeVisible();
   await expect(card.locator('header')).not.toContainText(/20\d\d/);
 
