@@ -214,3 +214,33 @@ test('with amounts hidden, a policy\'s cover and premium are not in the document
   }
   if (failure !== null) throw failure;
 });
+
+test('adding a policy says what is wrong under the field, opens the details that hold it, and writes nothing', async ({ page }) => {
+  await openInsurance(page);
+  await page.getByRole('button', { name: 'Add a policy' }).click();
+  const add = page.locator('form', { hasText: 'Add a policy' });
+  await add.getByLabel('Name', { exact: true }).fill('e2e-never-added');
+
+  // An amount is marked as it is typed.
+  await add.getByLabel(/^Premium/).fill('abc');
+  await expect(add.getByText('The premium is an amount, such as 12,000.')).toBeVisible();
+  await expect(add.getByLabel(/^Premium/)).toHaveAttribute('aria-invalid', 'true');
+
+  // A policy number that is not four characters is marked in the details, and an Add that finds it opens them.
+  await add.getByLabel(/^Premium/).fill('12000');
+  await add.getByText('More details').click();
+  await add.getByLabel('Policy number, last four').fill('12');
+  await expect(add.getByText('Keep only the last four characters of the policy number, and nothing more.')).toBeVisible();
+  await add.getByText('More details').click();
+  await add.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(add.getByText('Check the fields marked above.')).toBeVisible();
+  await expect(add.getByLabel('Policy number, last four')).toBeVisible();
+
+  // A last premium before the start is said once the field has been left.
+  await add.getByLabel('Policy number, last four').fill('1234');
+  await add.getByLabel('Started').fill('2024-06-01');
+  await add.getByLabel('Last premium due').fill('2024-05-31');
+  await add.getByLabel('Last premium due').blur();
+  await expect(add.getByText('The last premium cannot be due before the policy started.')).toBeVisible();
+  await expect(page.locator('li.policy-item').filter({ hasText: 'e2e-never-added' })).toHaveCount(0);
+});

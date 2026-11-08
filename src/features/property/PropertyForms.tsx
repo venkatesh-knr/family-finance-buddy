@@ -29,6 +29,7 @@ import {
 } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
 import { CurrencyOptions } from '../holdings/holdingParts.tsx';
+import { propertyFieldErrors, shareIsWhole } from './propertyChecks.ts';
 import { BASIS_LABEL, KIND_LABEL } from './propertyLabels.ts';
 
 const SHARE = /^\d{1,3}(\.\d{1,2})?$/;
@@ -94,10 +95,28 @@ export function PropertyForm({
   const [note, setNote] = useState(existing?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [show, setShow] = useState<{ step: number; key: number } | null>(null);
+  // A date is marked wrong once it has lost focus or a save has been tried; typing a year digit by digit passes through years that are not wrong yet.
+  const [dateLeft, setDateLeft] = useState(false);
+  const [tried, setTried] = useState(false);
+
+  // Every field is checked as it is typed, and what is wrong is said under it, in words (docs/design/simple-layout.md section 3). A step's Next
+  // waits for its fields to be right, so a problem is never found on the last step about a field on an earlier one.
+  const errors = propertyFieldErrors({ boughtOn, price, duty, registration, sharePct }, currency, today);
+  const STEP_OF = { boughtOn: 1, price: 1, duty: 1, registration: 1, sharePct: 2 } as const;
+  const dateError = dateLeft || tried ? (errors.boughtOn ?? null) : null;
+  const costRight = errors.boughtOn === undefined && errors.price === undefined && errors.duty === undefined && errors.registration === undefined;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setProblem(null);
+    const wrong = (Object.keys(errors) as (keyof typeof errors)[]).map((field) => STEP_OF[field]);
+    if (wrong.length > 0) {
+      setTried(true);
+      if (editing) setProblem('Check the fields marked above.');
+      else setShow({ step: Math.min(...wrong), key: Date.now() });
+      return;
+    }
     try {
       if (label.trim() === '') throw new Error('A property needs a name.');
       const date = checkedDate(boughtOn, 'The date it was bought');
@@ -212,6 +231,10 @@ export function PropertyForm({
             label="Bought on"
             type="date"
             required
+            error={dateError}
+            onBlur={() => {
+              setDateLeft(true);
+            }}
             value={boughtOn}
             onChange={(event) => {
               setBoughtOn(event.target.value);
@@ -225,6 +248,7 @@ export function PropertyForm({
             inputMode="decimal"
             placeholder="0.00"
             required
+            error={errors.price ?? null}
             value={price}
             onChange={(event) => {
               setPrice(event.target.value);
@@ -237,6 +261,7 @@ export function PropertyForm({
             numeric
             inputMode="decimal"
             placeholder="none"
+            error={errors.duty ?? null}
             value={duty}
             onChange={(event) => {
               setDuty(event.target.value);
@@ -249,6 +274,7 @@ export function PropertyForm({
             numeric
             inputMode="decimal"
             placeholder="none"
+            error={errors.registration ?? null}
             value={registration}
             onChange={(event) => {
               setRegistration(event.target.value);
@@ -276,6 +302,7 @@ export function PropertyForm({
             label="Household’s share, %"
             numeric
             inputMode="decimal"
+            error={errors.sharePct ?? null}
             value={sharePct}
             onChange={(event) => {
               setSharePct(event.target.value);
@@ -322,12 +349,13 @@ export function PropertyForm({
         finishLabel="Add the property"
         busy={busy}
         problem={problem}
+        show={show}
         onCancel={onCancel}
         onFinish={() => submit({ preventDefault() {} } as React.FormEvent)}
         steps={[
           { name: 'What it is', ready: label.trim() !== '', content: aboutIt },
-          { name: 'What it cost', ready: boughtOn !== '' && price.trim() !== '', content: whatItCost },
-          { name: 'Share and loan', ready: sharePct.trim() !== '', content: shareAndLoan },
+          { name: 'What it cost', ready: boughtOn !== '' && price.trim() !== '' && costRight, content: whatItCost },
+          { name: 'Share and loan', ready: shareIsWhole(sharePct), content: shareAndLoan },
         ]}
       />
     );
