@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { DepositRenewal, FixedIncomeTerms, RatingChange } from '../../repo/types.ts';
-import { daysPhrase, fixedIncomeAlerts, paidOutHoldings } from './fixedIncomeRows.ts';
+import { daysPhrase, fixedIncomeAlerts, fixedIncomePayouts, paidOutHoldings } from './fixedIncomeRows.ts';
 
 const terms = (over: Partial<FixedIncomeTerms> = {}): FixedIncomeTerms => ({
   holdingId: 'h1',
@@ -198,5 +198,49 @@ describe('paidOutHoldings', () => {
 
   it('is empty for nothing, and does not read the clock', () => {
     expect(paidOutHoldings([], [], today).size).toBe(0);
+  });
+});
+
+describe('fixedIncomePayouts', () => {
+  const today = '2026-10-09';
+
+  it('is what a deposit paid, on the day it paid it: the principal and a year at 7.5%', () => {
+    const payouts = fixedIncomePayouts([terms({ start: '2025-01-01', maturity: '2026-01-01' })], [], today);
+    expect(payouts).toEqual([{ holdingId: 'h1', paidOn: '2026-01-01', amount: money(10_750_000n, 'INR') }]);
+  });
+
+  it('is the payout of the last term when the deposit was renewed, on the end of that term', () => {
+    const renewal: DepositRenewal = {
+      id: 'r1',
+      holdingId: 'h1',
+      start: '2025-01-01',
+      maturity: '2026-01-01',
+      principal: money(10_750_000n, 'INR'),
+      ratePct: '7.000',
+      compounding: 'yearly',
+      note: null,
+    };
+    const payouts = fixedIncomePayouts([terms({ start: '2024-01-01', maturity: '2025-01-01' })], [renewal], today);
+    expect(payouts).toEqual([{ holdingId: 'h1', paidOn: '2026-01-01', amount: money(11_502_500n, 'INR') }]);
+  });
+
+  it('is the face of a bond that paid its coupons along the way, since those were income and not the bond coming back', () => {
+    const payouts = fixedIncomePayouts([bond({ start: '2024-01-01', maturity: '2026-05-01' })], [], today);
+    expect(payouts).toEqual([{ holdingId: 'b1', paidOn: '2026-05-01', amount: money(10_000_000n, 'INR') }]);
+  });
+
+  it('says nothing of a position still running, one that renews itself, or one that cannot be valued', () => {
+    const payouts = fixedIncomePayouts(
+      [terms(), terms({ holdingId: 'r', start: '2024-01-01', maturity: '2025-01-01', autoRenew: true }), terms({ holdingId: 'x', compounding: null })],
+      [],
+      today,
+    );
+    expect(payouts).toEqual([]);
+  });
+
+  it('agrees with paidOutHoldings on which positions paid out and when', () => {
+    const rows = [terms({ start: '2025-01-01', maturity: '2026-01-01' }), bond({ start: '2024-01-01', maturity: '2026-05-01' })];
+    const paid = paidOutHoldings(rows, [], today);
+    expect(fixedIncomePayouts(rows, [], today).map((p) => [p.holdingId, p.paidOn])).toEqual([...paid]);
   });
 });

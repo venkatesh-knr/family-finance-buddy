@@ -53,13 +53,11 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30
 - SC-I8 — not built: the UPI reference columns arrive with slice S2 or S4, whichever lands first (spending-capture.md §8) — 2026-10-30
 - SC-I9 — not built: the unclosed-month label arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
-- SC-I11 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
 - SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
-- SC-I13 — not built: the month's invested view is slice S5 (spending-capture.md §8) — 2026-10-30
 - SC-I14 — not built: the payroll line arrives with slice S5 and the income ledger from 6a (spending-capture.md §8) — 2026-10-30
 
 ## gold.md
-- GD-I11 — not built: physical gold is built, but the month's invested view it is asserted against is slice S5 (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
+- GD-I11 — half built: a gold purchase raises invested and its Gold line (`src/domain/invested.test.ts`, 12 November 2026), but "never in spent" waits for the month's spent figure, which is the close (6d) (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
 - GD-I13 — not built, and not to be: the owner decided on 6 November 2026 that no listed-gold-ETF tax class is added (docs/decisions.md, Gold); gold.md §5 and this invariant are for the owner to retire — 2026-11-06
 
 ## commercial-launch.md

@@ -721,6 +721,8 @@ PANs, and `CLAUDE.md` keeps account identifiers to the last four digits.
 
 **7b. Spending capture, S5: where the month's money went.** The Overview's flow region opens *this month's money* (spending-capture.md section 10, the `MonthMoney` board): saved, split into spent, invested and left in the bank, then invested by class in the order and colours Holdings groups by, then the cash reserve by account. *Invested* is known from the holdings' own entries and needs no close, but **it needs the Gold class from 6b**, so it goes after that step; the cash-reserve half needs the close (6d).
 
+**Built (12 November 2026), the invested half only:** `src/domain/invested.ts` (tests first) works out what went into holdings and what came out in an IST month, per currency and class, from purchase lots, sales, redemptions and maturities, a deposit's principal on its start date, what a deposit or bond paid out on the day it did (worked out from its terms, since it cannot record a sale; `fixedIncomePayouts`) and PPF payments and withdrawals, and `InvestedCard` shows it on the Overview. Counted apart and said: bonus units, splits, gifts, transfers and ESOP vests. Not recorded, so not counted: NPS and EPF contributions and a recurring deposit's instalments. Another member's private holdings are not readable here, so Household leaves their purchases out and says so; a sum function like `personal_holding_totals` would be a migration and is the owner's call. Still to build: saved and spent (6a, 6d) and the cash reserve (6d).
+
 **8. Calendar.**
 
 Due dates, SIP posts, premium renewals, advance-tax instalments. It goes here

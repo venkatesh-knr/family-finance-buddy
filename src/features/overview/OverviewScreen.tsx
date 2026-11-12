@@ -51,6 +51,7 @@ import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { insuranceFacts } from '../insurance/insuranceFacts.ts';
 import { annualFromListing } from '../plan/annualFromListing.ts';
 import { AssetsOverTime } from './AssetsOverTime.tsx';
+import { InvestedCard } from './InvestedCard.tsx';
 import { historyAbsence, namesFor } from './historyAbsence.ts';
 import { unvaluedPhrase } from './unvaluedPhrase.ts';
 import { Field } from '../../ui/primitives.tsx';
@@ -175,6 +176,7 @@ export function OverviewScreen({
     fixedIncomeSettled,
     today,
     load,
+    mine,
     holdings,
     shortPositions,
     othersHold,
@@ -1034,6 +1036,21 @@ export function OverviewScreen({
               </div>
             </section>
           </div>
+        )}
+
+        {/* What went into holdings this month (spending-capture.md section 10): the invested half of the MonthMoney board. */}
+        {listing !== null && (
+          <InvestedCard
+            listing={listing}
+            terms={fixedIncome === null ? null : fixedIncome.terms}
+            renewals={fixedIncome === null ? [] : fixedIncome.renewals}
+            termsFailed={fixedIncomeFailed}
+            today={today}
+            scope={scope}
+            mine={mine}
+            privacy={privacy}
+            privateLeftOut={privateLeftOut}
+          />
         )}
 
       </div>

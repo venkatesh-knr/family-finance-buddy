@@ -14,6 +14,7 @@ import {
 } from '../../domain/fixed-income.ts';
 import { DOWNGRADE_NOTICE_DAYS, ratingWatch } from '../../domain/ratings.ts';
 import type { IsoDate } from '../../lib/dates.ts';
+import type { Money } from '../../lib/money.ts';
 import type { DepositRenewal, FixedIncomeTerms, RatingChange } from '../../repo/types.ts';
 
 export function buildPosition(
@@ -67,6 +68,30 @@ export function paidOutHoldings(
     paid.set(t.holdingId, ends.sort()[ends.length - 1] ?? t.maturity);
   }
   return paid;
+}
+
+/**
+ * What each position that has paid out was paid, and the day: the money that came back from it.
+ *
+ * Worked out from the same view as `paidOutHoldings`, so the two cannot disagree on which have paid out. The amount is the
+ * payout of the last term: the principal and its interest for a deposit, and the face for a bond, whose coupons were income
+ * along the way and not the bond coming back.
+ */
+export function fixedIncomePayouts(
+  terms: readonly FixedIncomeTerms[],
+  renewals: readonly DepositRenewal[],
+  today: IsoDate,
+): { readonly holdingId: string; readonly paidOn: IsoDate; readonly amount: Money }[] {
+  const paidOn = paidOutHoldings(terms, renewals, today);
+  const out: { holdingId: string; paidOn: IsoDate; amount: Money }[] = [];
+  for (const t of terms) {
+    const date = paidOn.get(t.holdingId);
+    if (date === undefined) continue;
+    const view = fixedIncomeView(buildPosition(t, renewals), today);
+    if (!view.ok) continue;
+    out.push({ holdingId: t.holdingId, paidOn: date, amount: view.maturityValue });
+  }
+  return out;
 }
 
 /** "today", "tomorrow", "in 5 days": the one way a maturity is said, on every screen. */
