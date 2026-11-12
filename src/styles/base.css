@@ -1215,6 +1215,13 @@
     color: var(--ink);
   }
 
+  /* A control that does nothing right now says so: the muted ink and the default cursor, and the hover does not wake it. */
+  .disclosure:disabled,
+  .disclosure:disabled:hover {
+    color: var(--muted);
+    cursor: default;
+  }
+
   .disclosure-chevron {
     color: var(--muted);
     display: inline-flex;
