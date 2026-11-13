@@ -20,25 +20,29 @@ async function onOverview(page: Page) {
   await page.goto('/#overview');
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByTestId('invested-card')).toBeVisible({ timeout: 20_000 });
+  // The card says it is reading the PPF payments until they have come, and its rows are not there yet: count nothing before then.
+  await expect(page.getByText('Reading PPF payments…')).toHaveCount(0, { timeout: 20_000 });
 }
 
 const heading = (page: Page) => page.getByRole('heading', { name: /investing in / });
 
-test('the card names whose it is and the month, and steps back a month and forward again', async ({ page }) => {
+test('the card names whose it is and the month, and shows this month or last month', async ({ page }) => {
   await onOverview(page);
   const month = MONTHS[Number(todayInIst().slice(5, 7)) - 1] ?? '';
   await expect(heading(page)).toHaveText(`Your investing in ${month}`);
   await expect(page.getByTestId('invested-card')).toContainText('Month to date');
 
-  const later = page.getByRole('button', { name: 'A later month' });
-  await expect(later).toBeDisabled();
+  const thisMonth = page.getByRole('button', { name: 'This month' });
+  const lastMonth = page.getByRole('button', { name: 'Last month' });
+  await expect(thisMonth).toHaveAttribute('aria-pressed', 'true');
+  await expect(lastMonth).toHaveAttribute('aria-pressed', 'false');
 
-  await page.getByRole('button', { name: 'An earlier month' }).click();
+  await lastMonth.click();
   await expect(heading(page)).not.toHaveText(`Your investing in ${month}`);
   await expect(page.getByTestId('invested-card')).not.toContainText('Month to date');
-  await expect(later).toBeEnabled();
+  await expect(lastMonth).toHaveAttribute('aria-pressed', 'true');
 
-  await later.click();
+  await thisMonth.click();
   await expect(heading(page)).toHaveText(`Your investing in ${month}`);
 });
 

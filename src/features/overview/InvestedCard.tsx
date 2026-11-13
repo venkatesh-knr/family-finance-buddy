@@ -38,8 +38,6 @@ const MONTH_NAMES = [
   'December',
 ] as const;
 
-/** How far back the month can be stepped. A year and a half is a spending year and the one before it, which is what is compared. */
-const MONTHS_BACK = 18;
 
 /** `2026-10` shifted by a number of months, which may be negative. */
 function shift(month: string, by: number): string {
@@ -91,7 +89,7 @@ export function InvestedCard({
   privateLeftOut: boolean;
 }) {
   const thisMonth = today.slice(0, 7);
-  const [back, setBack] = useState(0);
+  const [back, setBack] = useState<0 | 1>(0);
   const month = shift(thisMonth, -back);
 
   // PPF payments are read apart from the holdings, as the Close month action reads them, and their failure is said: a PPF whose
@@ -164,29 +162,19 @@ export function InvestedCard({
     <Card
       title={`${scope === 'mine' ? 'Your' : 'Household'} investing in ${monthName(month)}`}
       aside={
-        <span className="flex items-center gap-2.5">
-          <button
-            type="button"
-            className="disclosure"
-            aria-label="An earlier month"
-            disabled={back >= MONTHS_BACK}
-            onClick={() => {
-              setBack((b) => Math.min(b + 1, MONTHS_BACK));
-            }}
-          >
-            Earlier
-          </button>
-          <button
-            type="button"
-            className="disclosure"
-            aria-label="A later month"
-            disabled={back === 0}
-            onClick={() => {
-              setBack((b) => Math.max(b - 1, 0));
-            }}
-          >
-            Later
-          </button>
+        <span className="segmented" role="group" aria-label="Which month">
+          {([0, 1] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={back === option}
+              onClick={() => {
+                setBack(option);
+              }}
+            >
+              {option === 0 ? 'This month' : 'Last month'}
+            </button>
+          ))}
         </span>
       }
     >
