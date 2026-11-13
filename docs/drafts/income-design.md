@@ -82,10 +82,6 @@ Two cautions:
 
 **Option B.** It matches how people check their money (against the bank), needs no payslip arithmetic, handles uneven months, and keeps Tax's gross as its own typed answer. What it gives up is Tax gross derived automatically and the PF figure, and both are small.
 
-## Questions for the owner
+## Decided on 13 November 2026
 
-1. Option B, then? And should the Tax screen ask for **gross salary from the payslip or Form 16**, not CTC, with the reason beside the box?
-2. FIRE's annual take-home: **the last twelve months of Salary credits added up**, or **the latest month times twelve**?
-3. Is a **recurring rule that posts the salary credit** (correctable for a month that differs) the right way to cut the typing?
-4. Should the "also put away through payroll" PF line be a figure the person types on the Tax inputs, or be dropped?
-5. This needs the money screen (step 6a) and its rename settled. Do you want it designed in full (a board, invariants and tests) before 6a starts?
+Option B. FIRE's annual take-home is **the highest Salary credit among the months entered, times twelve**. The Tax screen asks for the **gross salary from the payslip**, and the person may correct it later from Form 16. The PF "put away through payroll" line is **dropped**. A recurring salary credit and the money screen's rename are still to be designed: `docs/drafts/ledger-design-prompt.md` is the prompt for that.
