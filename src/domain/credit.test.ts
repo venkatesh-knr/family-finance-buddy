@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { CREDIT_CATEGORIES, CREDIT_LABEL, cameInByCurrency, isIncome, ledgerWord, type CreditLike } from './credit.ts';
+import { CREDIT_CATEGORIES, CREDIT_LABEL, cameInByCurrency, defaultVisibility, isIncome, ledgerWord, type CreditLike } from './credit.ts';
 
 /**
  * What a credit is and what a month's credits come to (docs/design/ledger-income.md sections 1 and 4).
@@ -88,5 +88,12 @@ describe('ledgerWord: direction is a sign, an icon and a word, never a colour al
       expect(ledgerWord(kind).word.length).toBeGreaterThan(3);
     }
     expect(ledgerWord('move').sign).toBe('');
+  });
+});
+
+describe('defaultVisibility', () => {
+  it('makes income private by default and a refund the household’s', () => {
+    expect(CREDIT_CATEGORIES.filter((c) => defaultVisibility(c) === 'personal')).toEqual(['salary', 'business', 'interest', 'rent', 'dividend', 'other_income']);
+    expect(defaultVisibility('refund')).toBe('household');
   });
 });
