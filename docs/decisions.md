@@ -518,3 +518,13 @@ After using slices A to E on a phone, the owner sent seven screenshots and eight
 - **The one Add is smaller**: a one-line pill. It had wrapped to two lines because it was fixed at the middle of the screen with half the width.
 
 Not changed: the underline fields, the stepped forms, the Mine | Household switch, the Holdings tabs, the colours.
+
+## Simple layout, soft panels (12 November 2026, the owner)
+
+The owner was shown four ways to separate the sections of one screen (the outlined boxes of slice F, soft panels, full-width bands, and headed sections with no box) and chose soft panels. The boxes of 8 November fixed the sections merging into one another and were heavier than the screen needs: an outline and a shadow on every section competed with the lifted card. Built as slice G; none of it is a recommendation of mine:
+
+- **A section is a soft panel:** `--surface`, no border and no shadow, `--radius-panel` (a new token, 16px, which the lifted card takes too), padding 14px 16px, 10px of page between panels, rows on `--line` hairlines inside. It is told from the page by its tone alone. Measured, not assumed: `--surface` against `--bg` is 1.15:1 in Mist and 1.11:1 in dark. `simple-layout.md` section 1 and SL-I7 are amended; the Departure of 8 November is superseded for its box part and stands for the ovals (`docs/design/conformance.md`).
+- **SL-I9 (new): nothing filled or outlined sits inside a panel.** A note or a group inside one is plain text or rows. Made plain: the notice, the error line (`Problem`), the names under a notice, the chart note, a deposit's watch and maturity lines, the raw statement text, the invite code and the authenticator secret. Kept, because each is a layer or a control and not a box in a panel: the caveat popover (a dialog over the page), the menu and the bottom sheet, the QR code (it needs a light ground to be read), and the small controls (pills, chips, the segmented control, switches), which are the owner's ovals.
+- **The lifted card is unchanged** except for the radius: it is the only thing on a screen with an outline, a gradient and a shadow, and keeps its 18px padding.
+
+Not changed: the colours and both themes, the underline fields, the stepped forms, the tabs, Mine | Household, the ovals, the unit letter at the figure's size, one-line entries.
