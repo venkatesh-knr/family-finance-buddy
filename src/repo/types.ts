@@ -11,6 +11,8 @@
 import type { IsoDate } from '../lib/dates.ts';
 import type { AssetClass } from '../domain/tax-rules.ts';
 import type { Earmark, Scheme } from '../domain/earmark.ts';
+import type { CreditCategory } from '../domain/credit.ts';
+import type { TaxHead, TaxSource } from '../domain/income.ts';
 import type { Money } from '../lib/money.ts';
 
 export type Uuid = string;
@@ -1044,4 +1046,219 @@ export interface RecurringRulePatch {
   readonly autoPost?: boolean;
   readonly reminderDays?: number;
   readonly status?: RuleStatus;
+}
+
+// ─────────────────────────────────────────────────────────── ledger and income
+// docs/design/ledger-income.md; the schema is supabase/migrations/20261114120000_ledger_income.sql.
+
+export type AccountType = 'savings' | 'current' | 'card';
+export const ACCOUNT_TYPES: readonly AccountType[] = ['savings', 'current', 'card'];
+
+/** An account of the household: a savings or current account, or a card. Cash is not one. Only its last four characters are kept. */
+export interface Account {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly name: string;
+  readonly institution: string | null;
+  readonly type: AccountType;
+  readonly currency: string;
+  readonly last4: string | null;
+  readonly isForeign: boolean;
+  readonly openedOn: IsoDate | null;
+  readonly visibility: Visibility;
+  readonly isArchived: boolean;
+}
+
+export interface NewAccount {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly name: string;
+  readonly institution?: string | null;
+  readonly type: AccountType;
+  readonly currency: string;
+  readonly last4?: string | null;
+  readonly isForeign?: boolean;
+  readonly openedOn?: IsoDate | null;
+  readonly visibility?: Visibility;
+}
+
+/** What may change on an account. It is archived and never deleted. */
+export interface AccountPatch {
+  readonly name?: string;
+  readonly institution?: string | null;
+  readonly last4?: string | null;
+  readonly visibility?: Visibility;
+  readonly archived?: boolean;
+}
+
+export type BalanceSource = 'typed' | 'statement';
+export const BALANCE_SOURCES: readonly BalanceSource[] = ['typed', 'statement'];
+
+/** A balance of an account as at a day: for a card, the amount due, positive. */
+export interface AccountBalance {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly accountId: Uuid;
+  readonly asAt: IsoDate;
+  readonly balance: Money;
+  readonly source: BalanceSource;
+  readonly note: string | null;
+}
+
+export interface NewBalance {
+  readonly householdId: Uuid;
+  readonly accountId: Uuid;
+  readonly asAt: IsoDate;
+  readonly balance: Money;
+  readonly note?: string | null;
+}
+
+export type CreditSource = 'typed' | 'rule' | 'import';
+export const CREDIT_SOURCES: readonly CreditSource[] = ['typed', 'rule', 'import'];
+
+/** One thing that came in, with exactly one category. Voided, never deleted. */
+export interface Credit {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly accountId: Uuid;
+  readonly category: CreditCategory;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  readonly visibility: Visibility;
+  readonly source: CreditSource;
+  /** For a credit confirmed from a rule: the rule and the due date it answers. */
+  readonly ruleId: Uuid | null;
+  readonly dueDate: IsoDate | null;
+  readonly payer: string | null;
+  readonly note: string | null;
+  readonly isVoided: boolean;
+}
+
+export interface NewCredit {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly accountId: Uuid;
+  readonly category: CreditCategory;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  /** Private for income and the household's for a refund unless it says otherwise. Only the member it belongs to can make it private. */
+  readonly visibility?: Visibility;
+  readonly payer?: string | null;
+  readonly note?: string | null;
+  /** Set when a credit is confirmed from a rule's expected one. */
+  readonly rule?: { readonly ruleId: Uuid; readonly dueDate: IsoDate };
+}
+
+/** What may change on a credit. A credit is corrected here until a figure has been relied on, and voided after. */
+export interface CreditPatch {
+  readonly accountId?: Uuid;
+  readonly category?: CreditCategory;
+  readonly amount?: Money;
+  readonly date?: IsoDate;
+  readonly visibility?: Visibility;
+  readonly payer?: string | null;
+  readonly note?: string | null;
+}
+
+/** A move between two of the household's own accounts, a card payment among them. Neither income nor spent. */
+export interface Transfer {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly fromAccountId: Uuid;
+  readonly toAccountId: Uuid;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  readonly source: 'typed' | 'import';
+  readonly note: string | null;
+  readonly isVoided: boolean;
+}
+
+export interface NewTransfer {
+  readonly householdId: Uuid;
+  readonly fromAccountId: Uuid;
+  readonly toAccountId: Uuid;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  readonly note?: string | null;
+}
+
+/** A recurring credit: a salary or other income rule. It never posts by itself; an expected credit counts only once it is confirmed. */
+export interface IncomeRule {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly name: string;
+  readonly memberId: Uuid;
+  readonly accountId: Uuid;
+  readonly category: CreditCategory;
+  readonly amount: Money;
+  readonly cadence: RecurringCadence;
+  /** The day of the month, 1 to 28. */
+  readonly dueDay: number;
+  readonly nextDue: IsoDate;
+  readonly visibility: Visibility;
+  readonly reminderDays: number;
+  readonly status: RuleStatus;
+}
+
+export interface NewIncomeRule {
+  readonly householdId: Uuid;
+  readonly name: string;
+  readonly memberId: Uuid;
+  readonly accountId: Uuid;
+  readonly category: CreditCategory;
+  readonly amount: Money;
+  readonly cadence: RecurringCadence;
+  /** The first day it falls due. Its day of the month is the rule's due day. */
+  readonly firstDue: IsoDate;
+  readonly visibility?: Visibility;
+  readonly reminderDays?: number;
+}
+
+export interface IncomeRulePatch {
+  readonly name?: string;
+  readonly accountId?: Uuid;
+  readonly amount?: Money;
+  readonly cadence?: RecurringCadence;
+  readonly nextDue?: IsoDate;
+  readonly reminderDays?: number;
+  readonly status?: RuleStatus;
+}
+
+/** The Tax screen's typed gross figure for a member, tax year and head. Never derived from the credits. */
+export interface TaxInputRecord {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  /** `'2026-27'`: 1 April to 31 March, in India. */
+  readonly taxYear: string;
+  readonly head: TaxHead;
+  readonly amount: Money;
+  readonly tds: Money | null;
+  readonly source: TaxSource;
+  /** Whoever typed it, who can read it as the member can. */
+  readonly typedBy: Uuid;
+}
+
+export interface NewTaxInput {
+  readonly householdId: Uuid;
+  readonly memberId: Uuid;
+  readonly taxYear: string;
+  readonly head: TaxHead;
+  readonly amount: Money;
+  readonly tds?: Money | null;
+  readonly source: TaxSource;
+}
+
+/** What came in and what was refunded in a period, for the whole household, private credits included. One line per currency. */
+export interface MoneyTotals {
+  readonly cameIn: Money;
+  readonly refunds: Money;
+}
+
+/** The household's yearly salary and business income, the sum over its earners, per currency. */
+export interface YearlyIncomeTotals {
+  readonly yearlySalary: Money;
+  readonly yearlyBusiness: Money;
 }

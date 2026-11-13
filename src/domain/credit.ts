@@ -83,3 +83,11 @@ export function ledgerWord(kind: LedgerKind): { readonly word: string; readonly 
       return { word: 'out of a holding', sign: '+' };
   }
 }
+
+/**
+ * Who sees a credit unless the person says otherwise: income is private, and a refund or money back is the household's (ledger-income.md
+ * section 1). The column's own default is private, the safe one; this is the screen's default for each kind.
+ */
+export function defaultVisibility(category: CreditCategory): 'personal' | 'household' {
+  return category === 'refund' ? 'household' : 'personal';
+}
