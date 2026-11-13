@@ -726,10 +726,12 @@ function PositionRow({
       )}
 
       {row.watch !== null && (
-        <p
-          className="text-caption rounded px-3 py-2"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
-        >
+        <p className="text-caption flex items-start gap-2" style={{ color: 'var(--ink)' }}>
+          {/* The mark is what finds it without a box: a watch line is something to check, in every one of its three kinds. */}
+          <span className="notice-mark" aria-hidden="true" style={{ color: 'var(--brass)' }}>
+            !
+          </span>
+          <span>
           {row.watch.kind === 'downgrade' && (
             <>
               <strong>
@@ -760,6 +762,7 @@ function PositionRow({
               new rating if there is one.
             </>
           )}
+          </span>
         </p>
       )}
 
@@ -770,8 +773,8 @@ function PositionRow({
           it is not discovered a month late.
         */
         <p
-          className="text-caption rounded px-3 py-2"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+          className="text-caption"
+          style={{ color: 'var(--ink)' }}
         >
           <strong>
             {position.kind === 'deposit' && position.autoRenew ? 'Renews' : 'Matures'}{' '}

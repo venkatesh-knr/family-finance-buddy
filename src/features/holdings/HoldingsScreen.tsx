@@ -353,7 +353,7 @@ export function HoldingsScreen({
 
   return (
     // The bottom room is the floating Add's band, so that the pill never sits over the last row.
-    <div className="flex flex-col gap-3 pb-24">
+    <div className="flex flex-col gap-2.5 pb-24">
       {/* Whose figures, and Import: the top of the screen (simple-layout.md section 2). */}
       <div className="holdings-top">
         <ScopeSwitch members={memberCount} />

@@ -112,7 +112,7 @@ export function FireScreen({
   const editable = canPlan(plan.listing.viewer.role);
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       <FireReadout plan={plan} privacy={privacy} editable={editable} displayCurrency={displayCurrency} />
       <FireCard
         plan={plan}

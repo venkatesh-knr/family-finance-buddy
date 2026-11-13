@@ -14,8 +14,8 @@ explicit `[data-theme]` override so a manual toggle wins in both directions.
 **The names do not change; the values do.** `--brass` is now a gold, `--teal` an
 emerald, `--indigo` a periwinkle. Renaming them would mean touching every component
 that spends them, for no gain — the point of a token is that its meaning is stable
-while its colour is not. Only genuinely new ideas get new names, and there are five:
-`--surface-lift`, `--lift-edge`, `--shadow-lift`, `--gutter` and `--inset`.
+while its colour is not. Only genuinely new ideas get new names, and there are six:
+`--surface-lift`, `--lift-edge`, `--shadow-lift`, `--gutter`, `--inset` and `--radius-panel`.
 
 ```css
 :root{
@@ -59,6 +59,7 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
   --shadow-lift:0 2px 4px rgba(19,26,39,.05), 0 16px 34px -22px rgba(55,82,204,.35);
 
   --radius:12px;
+  --radius-panel:16px;   /* a section's soft panel, and the lifted card (docs/design/simple-layout.md section 1) */
   --radius-pill:100px;
   --gutter:12px;         /* page side gutter on a phone */
 }
@@ -120,7 +121,7 @@ while its colour is not. Only genuinely new ideas get new names, and there are f
 
 | Surface | What it is | Where |
 |---|---|---|
-| `--surface` | flat, hairline border, `--shadow` | most of the app |
+| `--surface` | a soft panel: filled, no border and no shadow, `--radius-panel`; told from the page by its tone alone | most of the app |
 | `--surface-lift` | corner-lit gradient, `--shadow-lift`, 1px `--lift-edge` on top | **one per screen** |
 | `--surface-2` | a step off its parent, no shadow | table headers, code, a quiet surface |
 | `--inset` | recessed: darker than its card in both themes, no shadow | an editable row, which is a record and the inputs that change it on one line |
@@ -291,9 +292,9 @@ An 8px base, with 2px steps where density demands it.
 
 | Thing | Value |
 |---|---|
-| Card padding | 18px |
-| Card / panel radius | 12px — `--radius` |
-| Grid gap between cards | 18px |
+| Panel padding | 14px 16px (the lifted card keeps 18px) |
+| Panel radius | 16px — `--radius-panel`, on the lifted card too; `--radius` (12px) stays for tiles, menus and controls |
+| Gap between panels | 10px of page |
 | Table cell padding | 9px 10px |
 | Pill padding / radius | 3px 9px / 100px |
 | Input padding / radius | 7px 10px / 7px |
@@ -319,14 +320,14 @@ laptop keeps the wider measure. It is a token and not a literal because 12px is
 comfortable at 390–412px and tight at 360, which plenty of Android still is, and
 because `CLAUDE.md`'s 200%-text-size rule bites hardest at the narrow end.
 
-Inner card padding stays 17–18px at every width. The gutter shrinks; the breathing
-room inside the card does not.
+Inner panel padding stays 14px 16px at every width. The gutter shrinks; the breathing
+room inside the panel does not.
 
 ## 5. Component tokens
 
 | Component | Spec |
 |---|---|
-| **Card** | `--surface` on `--line` 1px, `--radius`, padding 18. Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. |
+| **Card** (a soft panel) | `--surface`, **no border and no shadow**, `--radius-panel` (16px), padding 14px 16px, 10px of page between one panel and the next (`docs/design/simple-layout.md` section 1, SL-I7; amended 12 November 2026: the outlined box of 8 November is superseded). Header row: title 14.5/600 left, muted sub right, 14px margin-bottom. Rows inside are divided by `--line` hairlines. **No filled or outlined box sits inside a panel** (SL-I9): a note or a group in it is plain text or rows. The lifted card takes `--radius-panel` and is otherwise unchanged: it is the one thing on a screen with an outline, a gradient and a shadow. |
 | **Asset tile** | 40×40, radius `--radius` (the token, never a pixel value), 1px border. The glyph is 20×20 on a 24-unit viewBox, stroke 1.9, round caps and joins, never filled, in the class colour. The fill is a 16% tint of that colour over `--surface`; the border is a 78% tint of it. Both themes follow without a hex per theme. **Held to 3:1**: the glyph against its fill, and the border against `--surface`, which in light takes the 76% (72% is the least that reaches 3.0). Measured for every kind in both themes by `src/ui/tileContrast.test.ts`, reading the shipped rule. The border is there for the forced-colours reason given in §2, and is held to the same 3:1 as any border that is the sole marker of a shape. Decorative beside its label, hidden from assistive technology. **Which glyph a kind gets, what `other` looks like and why, and which tiles are drawn and unwired: `docs/design/icons.md`.** Colour of `other` is neutral `--muted`, never a hue; coral is reserved to liabilities. |
 | **Stat tile** | Label above (12px, sentence case), value below in Public Sans with `tabular-nums`, gap 3px. Positive `--teal`, negative `--coral`. |
 | **Pill** | 9.5px mono uppercase. Variants: `own` (indigo-soft/indigo), `warn` (brass), `due` (coral), `ok` (teal), `neutral` (surface-3/muted). |

@@ -131,7 +131,7 @@ export function ProfileScreen({ email, householdId, privacy }: { email: string |
   );
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       {/* Who you are here. The one lifted surface on the screen. */}
       <section className="card card-lift profile-hero" aria-label="You">
         <span className="avatar profile-avatar" aria-hidden="true">

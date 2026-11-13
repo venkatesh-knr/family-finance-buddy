@@ -91,7 +91,7 @@ export function SummaryScreen({
   if (householdId === null) return <p className="note px-4.5 py-4.5">Loading…</p>;
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       <Card
         title="Household spending"
         aside={

@@ -37,6 +37,9 @@ const SCREENS = [
   'more',
   'profile',
   'settings',
+  // The two boards the capture did not have: FlatProperty, and the Gold tab of Holdings (HoldingsTabGold).
+  'property',
+  'holdings-gold',
   // The forms in steps, which are screens of their own (docs/design/simple-layout.md section 4): the AddStep1 and AddStep2 boards.
   'add-holding-1',
   'add-holding-2',
@@ -70,6 +73,7 @@ async function capture(page: import('@playwright/test').Page, screen: string, th
   mkdirSync(dir, { recursive: true });
 
   if (screen.startsWith('add-')) await openStep(page, screen);
+  else if (screen === 'holdings-gold') await page.goto('/#/holdings?kind=gold');
   else await goTo(page, screen);
 
   // The shell, not the network: a screenshot taken before the chrome renders is

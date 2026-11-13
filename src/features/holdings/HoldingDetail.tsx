@@ -78,7 +78,7 @@ export function HoldingDetail({
 
   if (row === undefined) {
     return (
-      <div className="flex flex-col gap-4.5">
+      <div className="flex flex-col gap-2.5">
         <BackBar />
         <Card title="Not here">
           <p className="note">
@@ -166,7 +166,7 @@ export function HoldingDetail({
   );
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       {/* A phone's bar, in place of the app's header; a wide screen has the back link and Edit below it. */}
       <header className="screen-bar hide-wide inset-safe-top inset-safe-x">
         <a className="screen-bar-back" href={hashFor('holdings')}>

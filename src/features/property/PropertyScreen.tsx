@@ -35,7 +35,7 @@ export function PropertyScreen({ privacy, householdId }: { privacy: boolean; hou
   const editableOwn = (memberId: string) => canRecord && (listing.viewer.canFileForOthers || memberId === listing.viewer.memberId);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {facts.totals.length > 0 && (
         <>
           <h2 className="sr-only">What the property is worth, and cost</h2>

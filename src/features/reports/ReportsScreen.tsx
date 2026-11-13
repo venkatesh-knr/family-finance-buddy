@@ -51,7 +51,7 @@ export function ReportsScreen({ householdId, isDemo, privacy }: { householdId: s
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {isDemo && (
         <SampleBar title="Sample figures">
           This is the demo household. Its export is marked as a sample in the file&rsquo;s name and on its first sheet, so it cannot be
