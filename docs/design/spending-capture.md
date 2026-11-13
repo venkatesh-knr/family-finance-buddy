@@ -59,9 +59,10 @@ spent = Σ left
 ```
 
 - **Opening is last month's closing.** The first close asks for both.
-- **Money in is pre-filled** from the income ledger (6a) and transfers the app
-  knows about. Anything else (a refund, a friend repaying) is added at the close
-  as *other money in*. It reduces spending and is not income.
+- **Money in is the ledger's** (`ledger-income.md` §4): an account's credits, the
+  transfers into it and holding take-outs paid into it. Nothing is typed beside
+  them at the close; a missing credit is added with *+ Money in*. A refund or money
+  back is a credit with that category: it reduces spending and is not income.
 - **Cash is spent when it is withdrawn.** The wallet is not an account. Cash
   entries itemise the withdrawal; they do not add to it.
 - **The two ways it goes wrong are stated on the screen.** A payment in that is
@@ -216,17 +217,19 @@ S1 and S2 cut typing now. S3 is what makes the figure right.
    gross with TDS, the employee's PF and any other deduction, take-home is worked out
    from them, and *saved* is take-home less *spent*. The PF the employee pays is money
    put away through payroll and is shown on its own line, as §10 says for EPF.
+   **Superseded the same day by the ledger (`ledger-income.md` §0):** take-home is the
+   Salary credit as the bank received it and deductions are not recorded; Tax takes a
+   gross salary typed once a year from the payslip; the payroll line is dropped.
 
 ## 10. Where the month's money went
 
-*Saved this month* (protection-and-flow.md §4: income − spent) is one number. A
+*Saved this month* (protection-and-flow.md §4: came in − spent) is one number. A
 household also needs to know **how much of it was actually invested**, and how much
-is still sitting in the bank. Money in a savings account is a **cash reserve**, not
-yet moved into savings, and the screen should say so.
+went to the **cash reserve**, the money kept in savings accounts.
 
 ```
-saved this month   = income − spent                                  (PF §4)
-                   = net invested + change in cash reserve             (closed month, exactly)
+saved this month   = came in − spent                                 (PF §4)
+                   = net invested + paid to loans + change in cash reserve             (closed month, exactly)
 
 net invested       = put into holdings − taken out of holdings
 cash reserve       = savings and current account balances − card dues
@@ -243,9 +246,9 @@ maturity paid into an account. Both are shown, and the net.
 - Dividends and interest reinvested inside a holding, bonus units and splits.
 - Moving a holding between members.
 - **Contributions that never pass through an account** (EPF, and employer NPS
-  through payroll). They are shown on a line of their own, *also put away through
-  payroll*, and are not in *invested* or *saved*, because they were never in the
-  take-home income that *saved* starts from.
+  through payroll). They are not in *invested* or *saved*, because they were never in
+  the take-home that *came in* records. They are not shown on a line of their own:
+  the owner dropped the payroll line on 13 November 2026.
 
 **Exactness.** *Invested* is known as soon as the holdings are recorded and
 needs no month close; it is the sum of entries the person can open one by one.
@@ -257,12 +260,12 @@ arithmetic rather than being checked against it, so a gap means a bug.
 class), with card dues netted off. It is not *invested*. **Decided 13 November 2026:
 money kept in a savings account is a legitimate cash reserve and not money that
 still has to be invested**, so the screen calls it the cash reserve and does not say
-*not yet invested* or *left in the bank* beside it (the MonthMoney board draws "Left
-in the bank · not yet invested", which the build will not copy). Whether any of it
+*not yet invested* or *left in the bank* beside it (the MonthMoney board is redrawn
+with this wording in `ledger-income-boards.html`). Whether any of it
 should be invested is a judgement the app does not make.
 
 **On the screen:** the Overview's flow region opens *October's money*. That screen
-leads with saved, split three ways (spent · invested · left in the bank), then
+leads with saved, split four ways (spent · invested · paid to loans · to cash reserve; `ledger-income.md` §4), then
 invested by class (in the order and colours Holdings groups by), then the cash
 reserve by account. A class with nothing in it this month is folded into one line.
 
@@ -290,11 +293,9 @@ reserve by account. A class with nothing in it this month is folded into one lin
 
 **SC-I11 — Invested is derived from the holdings' own entries by date,** never from balances and never including market movement. (§10)
 
-**SC-I12 — For a closed month, saved equals net invested plus the change in cash reserve, to the paisa.** (§10)
+**SC-I12 — For a closed month, came in minus spent equals net invested plus paid to loans plus the change in cash reserve, to the paisa.** (§10)
 
 **SC-I13 — Invested by class adds up to invested,** and its classes are the classes Holdings groups by (HD-I2). (§10)
-
-**SC-I14 — A contribution that never passed through a household account is shown apart from invested,** and is in neither invested nor saved. (§10)
 
 ## Tests
 
@@ -325,5 +326,3 @@ reserve by account. A class with nothing in it this month is folded into one lin
   = invested ₹57,500 + cash reserve ₹69,080.
 - SC-I13: invested by class sums to invested, and a class absent from Holdings
   never appears.
-- SC-I14: an EPF contribution recorded for the month appears on the payroll line
-  and changes neither invested nor saved.

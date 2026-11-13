@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger and income boards — Family Finance Buddy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  body { margin: 0; background: #05070C; color: #C3CEDF; font-family: 'Public Sans', system-ui, sans-serif; }
+  .n { font-variant-numeric: tabular-nums; }
+  a { color: #F0B429; }
+  header.row { padding: 24px 24px 8px; max-width: 900px; }
+  header.row h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; color: #EEF3FB; margin: 0 0 6px; font-size: 24px; }
+  header.row p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.5; }
+  .boards { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; padding: 16px 24px 48px; }
+  figure.board { margin: 0; }
+  figcaption { font-size: 12.5px; margin: 0 0 8px; color: #9AA3B2; } figcaption b { color: #EEF3FB; font-weight: 600; }
+</style>
+</head>
+<body>
+<header class="row">
+  <h1>Ledger and income, salaried and business · decided, 13 November 2026</h1>
+  <p>The pictures for <code>docs/design/ledger-income.md</code>, which is the authority where they differ. Dashed indigo numbers are annotations naming the states in its §9, not interface. Nothing here is built.</p>
+</header>
+<div class="boards">
+<figure id="MoneyLedger" class="board"><figcaption><b>MoneyLedger</b> · Money: the ledger (dark)</figcaption>
+<div style="width: 390px; height: 1296px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #9AA3B2">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #F0B429; background: #3A2C0C; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+    <section aria-label="November's money" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">November so far</span>
+        <div role="group" aria-label="Month" style="display: inline-flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 11.5px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">This month</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 11.5px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Last month</button></div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px">
+        <div style="min-width: 0"><div style="font-size: 11px; color: #9AA3B2; display: flex; gap: 6px; align-items: center">Came in</div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">₹2,61,250</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">salary, interest</div></div>
+        <div style="min-width: 0"><div style="font-size: 11px; color: #9AA3B2; display: flex; gap: 6px; align-items: center">Spent</div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">₹37,790</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">itemised so far</div></div>
+        <div style="min-width: 0"><div style="font-size: 11px; color: #9AA3B2; display: flex; gap: 6px; align-items: center">Saved<span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">—</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">after the close</div></div>
+      </div>
+      <p style="margin: 12px 0 0; font-size: 12px; line-height: 1.45; color: #C3CEDF">Refunds take away from spent. Money moved between your own accounts, and into holdings, is in neither.</p>
+    </section>
+    <section aria-label="Waiting to be confirmed" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Expected <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #F0B429; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Rent · Flat 2B</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">SBI Savings ••7710 · due 5 Nov · not counted yet</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹28,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">expected</div></div>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 6px 40px"><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 12.5px; cursor: pointer">Confirm</button><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 12.5px; cursor: pointer">Change amount</button><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 12.5px; cursor: pointer">Not this month</button></div>
+    </section>
+    <div style="display: flex; gap: 8px"><button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer">+ Money in</button><button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #EEF3FB; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer">+ Money out</button></div>
+    <div><div role="group" aria-label="Show" style="display: inline-flex; background: #121825; border: 1px solid #27324A; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 12.5px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">All</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">In</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Out</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Moved</button></div></div>
+    <section aria-label="Ledger" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Ledger</h2>
+      <div style="font-size: 11.5px; font-weight: 600; color: #9AA3B2; padding: 10px 0 0">Fri 13 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #C3CEDF; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Swiggy</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Food · ICICI card ••1188 · UPI</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">−₹486</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #9AA3B2; padding: 10px 0 0">Thu 12 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #9AA3B2; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">ICICI card payment <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">HDFC ••4021 → ICICI card ••1188</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹18,240</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">moved · not spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #9AA3B2; padding: 10px 0 0">Tue 10 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #2ED3A8; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Amazon</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Refund or money back · ICICI card ••1188</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #2ED3A8">+₹1,299</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">takes away from spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #9AA3B2; padding: 10px 0 0">Thu 5 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #9AA3B2; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Parag Parikh Flexi Cap <span data-annotation="state" aria-hidden="true" title="State 4, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">4</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">SIP from HDFC ••4021 · from the holding</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹10,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">into a holding</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #9AA3B2; padding: 10px 0 0">Sun 1 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #2ED3A8; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Salary <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> <span data-annotation="state" aria-hidden="true" title="State 5, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">5</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Venkat · HDFC ••4021 · only you see this row</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #2ED3A8">+₹1,42,000</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">came in</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #2ED3A8; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Interest</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">SBI Savings ••7710 · joint</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #2ED3A8">+₹1,250</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">came in</div></div>
+      </div>
+      <p style="margin: 2px 0 6px; padding-top: 10px; border-top: 1px solid #222C41; font-size: 12px; line-height: 1.45; color: #9AA3B2; display: flex; gap: 8px"><span data-annotation="state" aria-hidden="true" title="State 6, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">6</span><span>Credits another member keeps private are in Came in, as part of the total, and are not listed here.</span></p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">Overview</span></a>
+    <a href="#MoneyLedger" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px; font-weight: 600">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px">Goals</span></a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">More</span></a>
+  </nav>
+</div>
+</figure>
+<figure id="MoneyLedgerLight" class="board"><figcaption><b>MoneyLedgerLight</b> · Money: the ledger (Mist)</figcaption>
+<div style="width: 390px; height: 1296px; box-sizing: border-box; background: #E3E8EF; font-family: 'Public Sans', system-ui, sans-serif; color: #131A27; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #D6DCE5; background: #EDF1F6">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #D6DCE5; background: #EDF1F6; color: #394250; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #5A6371">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #835A00; background: #F6E9C8; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+    <section aria-label="November's money" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%); border: 1px solid #C9D2EE; box-shadow: 0 2px 6px rgba(19,26,39,0.08), 0 18px 38px -24px rgba(19,26,39,0.25); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371">November so far</span>
+        <div role="group" aria-label="Month" style="display: inline-flex; background: #E8ECF2; border: 1px solid #D6DCE5; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 11.5px; font-weight: 600; color: #F5F7FA; background: #131A27; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">This month</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 11.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Last month</button></div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px">
+        <div style="min-width: 0"><div style="font-size: 11px; color: #5A6371; display: flex; gap: 6px; align-items: center">Came in</div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">₹2,61,250</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">salary, interest</div></div>
+        <div style="min-width: 0"><div style="font-size: 11px; color: #5A6371; display: flex; gap: 6px; align-items: center">Spent</div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">₹37,790</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">itemised so far</div></div>
+        <div style="min-width: 0"><div style="font-size: 11px; color: #5A6371; display: flex; gap: 6px; align-items: center">Saved<span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></div><div class="n" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px">—</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">after the close</div></div>
+      </div>
+      <p style="margin: 12px 0 0; font-size: 12px; line-height: 1.45; color: #394250">Refunds take away from spent. Money moved between your own accounts, and into holdings, is in neither.</p>
+    </section>
+    <section aria-label="Waiting to be confirmed" style="flex-shrink: 0; border-radius: 16px; background: #F5F7FA; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371; display: flex; align-items: center; gap: 8px">Expected <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #835A00; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Rent · Flat 2B</div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">SBI Savings ••7710 · due 5 Nov · not counted yet</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹28,000</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">expected</div></div>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 6px 40px"><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 12.5px; cursor: pointer">Confirm</button><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 12.5px; cursor: pointer">Change amount</button><button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 12.5px; cursor: pointer">Not this month</button></div>
+    </section>
+    <div style="display: flex; gap: 8px"><button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer">+ Money in</button><button type="button" style="flex: 1; height: 44px; border-radius: 999px; border: 1px solid #747D8A; background: transparent; color: #131A27; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer">+ Money out</button></div>
+    <div><div role="group" aria-label="Show" style="display: inline-flex; background: #F5F7FA; border: 1px solid #D6DCE5; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 12.5px; font-weight: 600; color: #F5F7FA; background: #131A27; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">All</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">In</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Out</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 12.5px; color: #5A6371; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Moved</button></div></div>
+    <section aria-label="Ledger" style="flex-shrink: 0; border-radius: 16px; background: #F5F7FA; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #5A6371; display: flex; align-items: center; gap: 8px">Ledger</h2>
+      <div style="font-size: 11.5px; font-weight: 600; color: #5A6371; padding: 10px 0 0">Fri 13 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #D6DCE5"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #394250; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Swiggy</div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">Food · ICICI card ••1188 · UPI</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">−₹486</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #5A6371; padding: 10px 0 0">Thu 12 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #D6DCE5"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #5A6371; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">ICICI card payment <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">HDFC ••4021 → ICICI card ••1188</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹18,240</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">moved · not spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #5A6371; padding: 10px 0 0">Tue 10 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #D6DCE5"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #066F5C; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Amazon</div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">Refund or money back · ICICI card ••1188</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #066F5C">+₹1,299</span></div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">takes away from spent</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #5A6371; padding: 10px 0 0">Thu 5 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #D6DCE5"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #5A6371; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Parag Parikh Flexi Cap <span data-annotation="state" aria-hidden="true" title="State 4, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">4</span></div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">SIP from HDFC ••4021 · from the holding</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹10,000</div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">into a holding</div></div>
+      </div>
+      <div style="font-size: 11.5px; font-weight: 600; color: #5A6371; padding: 10px 0 0">Sun 1 Nov</div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #D6DCE5"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #066F5C; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Salary <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5A6371" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> <span data-annotation="state" aria-hidden="true" title="State 5, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">5</span></div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">Venkat · HDFC ••4021 · only you see this row</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #066F5C">+₹1,42,000</span></div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">came in</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #E8ECF2; color: #066F5C; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #131A27">Interest</div><div style="font-size: 12px; color: #5A6371; margin-top: 2px">SBI Savings ••7710 · joint</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #066F5C">+₹1,250</span></div><div style="font-size: 11.5px; color: #5A6371; margin-top: 2px">came in</div></div>
+      </div>
+      <p style="margin: 2px 0 6px; padding-top: 10px; border-top: 1px solid #D6DCE5; font-size: 12px; line-height: 1.45; color: #5A6371; display: flex; gap: 8px"><span data-annotation="state" aria-hidden="true" title="State 6, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #3752CC; color: #3752CC; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">6</span><span>Credits another member keeps private are in Came in, as part of the total, and are not listed here.</span></p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #D6DCE5; background: #EDF1F6; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">Overview</span></a>
+    <a href="#MoneyLedger" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #835A00"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px; font-weight: 600">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px">Goals</span></a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #5A6371"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">More</span></a>
+  </nav>
+</div>
+</figure>
+<figure id="AddCredit" class="board"><figcaption><b>AddCredit</b> · Add money in, step 1</figcaption>
+<div style="width: 390px; height: 761px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 12px">
+    <button type="button" aria-label="Back" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #EEF3FB; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">Add money in</h1>
+  </div>
+  <div style="padding: 6px 20px 0">
+    <div style="display: flex; justify-content: space-between; font-size: 12.5px"><span style="color: #EEF3FB; font-weight: 600">What came in</span><span style="color: #9AA3B2">Step 1 of 2</span></div>
+    <div role="progressbar" aria-label="Step 1 of 2" aria-valuenow="1" aria-valuemin="1" aria-valuemax="2" style="display: flex; gap: 4px; margin-top: 8px"><span style="flex: 1; height: 3px; border-radius: 999px; background: #F0B429"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: #222C41"></span></div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 14px 20px 0; display: flex; flex-direction: column; gap: 16px">
+      <p style="margin: 0; font-size: 12px; color: #9AA3B2"><span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span> needed</p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Amount <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 2px solid #F0B429"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="Amount" aria-required="true" value="1,42,000" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span>
+      </label>
+      <div role="group" aria-labelledby="catl" style="padding-top: 4px">
+        <span id="catl" style="display: block; font-size: 12px; color: #9AA3B2">What it is <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <div role="group" aria-label="What it is" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px"><button type="button" aria-pressed="true" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #EEF3FB; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Salary</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Business income</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Interest</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Rent</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Dividend</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Other income</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">Refund or money back</button><button type="button" aria-pressed="false" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #6D7683; background: transparent; color: #C3CEDF; font: inherit; font-size: 12.5px; cursor: pointer">From my own account</button></div>
+        <span style="display: block; font-size: 12px; line-height: 1.45; color: #9AA3B2; margin-top: 8px">Salary, business income, interest, rent, dividends and other income count as came in. Business income is money you take from the business into this account; the business's own accounts are not added. A refund takes away from spent. Money from your own account counts in neither.</span>
+      </div>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Into which account <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Into which account" aria-required="true" value="HDFC Savings ••4021" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Date it was credited <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Date it was credited" aria-required="true" value="1 Nov 2026" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Cash kept as cash is not entered. Rent paid to you in cash is entered on the day you pay it into an account.</p>
+  </div>
+  <div style="padding: 12px 20px 22px">
+    <button type="button" style="width: 100%; height: 50px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Next</button>
+  </div>
+</div>
+</figure>
+<figure id="AddCredit2" class="board"><figcaption><b>AddCredit2</b> · Add money in, step 2</figcaption>
+<div style="width: 390px; height: 664px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 12px">
+    <button type="button" aria-label="Back" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #EEF3FB; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">Add money in</h1>
+  </div>
+  <div style="padding: 6px 20px 0">
+    <div style="display: flex; justify-content: space-between; font-size: 12.5px"><span style="color: #EEF3FB; font-weight: 600">Whose, and who sees it</span><span style="color: #9AA3B2">Step 2 of 2</span></div>
+    <div role="progressbar" aria-label="Step 2 of 2" aria-valuenow="2" aria-valuemin="1" aria-valuemax="2" style="display: flex; gap: 4px; margin-top: 8px"><span style="flex: 1; height: 3px; border-radius: 999px; background: #F0B429"></span><span style="flex: 1; height: 3px; border-radius: 999px; background: #F0B429"></span></div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 14px 20px 0; display: flex; flex-direction: column; gap: 16px">
+      <p style="margin: 0; font-size: 12px; color: #9AA3B2"><span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span> needed</p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Whose income <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Whose income" aria-required="true" value="Venkat" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>
+      <div style="padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2; margin-bottom: 8px">Who can see this row</span>
+        <div role="group" aria-label="Who can see this row" style="display: inline-flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 13px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Only me</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 13px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">The household</button></div>
+        <span style="display: block; font-size: 12px; line-height: 1.45; color: #9AA3B2; margin-top: 8px">Income starts private. The household's Came in still counts it, as a total, without the row.</span>
+      </div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.45; color: #C3CEDF; display: flex; gap: 8px"><span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span><span>Shown when the account is joint: <b style="font-weight: 600">SBI Savings ••7710 is a joint account.</b> Its balance is seen by the household, so a private credit there is private in this list only.</span></p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">From</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="From" value="Acme Technologies" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px">
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">Optional. The payer, as the bank shows it.</span>
+      </label>
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 44px; border-bottom: 1px solid #222C41">
+        <span style="flex: 1; font-size: 14px">Repeats every month <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 2px">Makes a rule that reminds you on payday</span></span>
+        <span style="font-size: 13px; font-weight: 600; color: #EEF3FB">On</span><button type="button" role="switch" aria-checked="true" aria-label="Repeats every month" style="width: 46px; height: 28px; border-radius: 999px; border: 0; background: #F0B429; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 999px; background: #0B1220"></span></button>
+      </div>
+  </div>
+  <div style="padding: 12px 20px 22px">
+    <button type="button" style="width: 100%; height: 50px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Add credit</button>
+  </div>
+</div>
+</figure>
+<figure id="SalaryRule" class="board"><figcaption><b>SalaryRule</b> · Salary rule</figcaption>
+<div style="width: 390px; height: 1185px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 12px">
+    <button type="button" aria-label="Back" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #EEF3FB; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">Salary rule</h1>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 14px 20px 0; display: flex; flex-direction: column; gap: 16px">
+      <p style="margin: 0; font-size: 12px; color: #9AA3B2"><span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span> needed</p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Name <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Name" aria-required="true" value="Venkat's salary" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px">
+        </span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Whose <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Whose" aria-required="true" value="Venkat" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Paid into <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Paid into" aria-required="true" value="HDFC Savings ••4021" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Usual amount <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="Usual amount" aria-required="true" value="1,42,000" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">Filled in on payday. You confirm what actually came in.</span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Payday <span aria-hidden="true" style="color: #FF6F61; font-weight: 700">*</span></span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Payday" aria-required="true" value="1st of the month" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">Days 1 to 28. Paid on the last working day? Pick the 28th and confirm when it lands.</span>
+      </label>
+      <div style="padding-top: 2px"><span style="display: block; font-size: 12px; color: #9AA3B2; margin-bottom: 8px">Who can see its credits</span><div role="group" aria-label="Who can see its credits" style="display: inline-flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="true" style="font: inherit; font-size: 13px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Only me</button><button type="button" aria-pressed="false" style="font: inherit; font-size: 13px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">The household</button></div></div>
+    <section aria-label="What happens on payday" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">On payday</h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">A credit waits in Money as <b style="font-weight: 600">Expected</b>. It counts nowhere, not in Came in and not in FIRE, until you confirm it. Confirm it, change the amount, or mark it not this month.</p>
+    </section>
+    <section aria-label="This rule's credits" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Its credits</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #F0B429; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">1 Dec <span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">expected · not counted yet</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #2ED3A8; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">1 Nov <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">confirmed</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #2ED3A8">+₹1,42,000</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #2ED3A8; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"/><path d="M15 17H7V9"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">1 Oct <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">confirmed at a different amount</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #2ED3A8">+₹1,38,450</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">rule said ₹1,42,000</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0"><span style="flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px; background: #0E1522; color: #9AA3B2; display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">1 Sep <span data-annotation="state" aria-hidden="true" title="State 4, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">4</span></div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">not this month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">—</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">nothing posted</div></div>
+      </div>
+    </section>
+    <div style="display: flex; gap: 16px; font-size: 13.5px; padding: 0 4px"><a href="#">Pause rule</a><a href="#">Archive rule</a></div>
+  </div>
+  <div style="padding: 12px 20px 22px">
+    <button type="button" style="width: 100%; height: 50px; border-radius: 999px; border: 0; background: #EEF3FB; color: #0B1220; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Save rule</button>
+  </div>
+</div>
+</figure>
+<figure id="TaxIncomeInputs" class="board"><figcaption><b>TaxIncomeInputs</b> · Tax: income for the year</figcaption>
+<div style="width: 390px; height: 1299px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 12px">
+    <button type="button" aria-label="Back" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #EEF3FB; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">Tax</h1>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; padding: 0 4px">      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Tax year</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Tax year" value="2026-27" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label>      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Whose</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683">
+          <input type="text" aria-label="Whose" value="Venkat" readonly style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font: inherit; font-size: 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </label></div>
+    <section aria-label="Estimated tax" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Estimated tax · 2026-27 · new regime</span>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 6px">₹2,65,980</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 4px">on the income below · ₹73,980 still to pay after TDS</div>
+    </section>
+    <section aria-label="Income for the year" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Income for the year</h2>
+      <div style="display: flex; flex-direction: column; gap: 14px">
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">All optional. The estimate covers what is typed, and says what it left out.</p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Gross salary for the year</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="Gross salary for the year" value="22,80,000" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span>
+      </label>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: -4px">
+        <span style="font-size: 11.5px; font-weight: 600; color: #C3CEDF; border: 1px solid #6D7683; border-radius: 999px; padding: 3px 9px">From payslip · 14 Apr 2026</span><span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span>
+        <a href="#" style="font-size: 13px">Correct from Form 16</a>
+      </div>
+      <p style="margin: 4px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Gross earnings on your payslip, for the twelve months. <b style="font-weight: 600">Not your CTC</b>, which includes your employer's PF and other parts that are not salary. Not the Salary credits in Money either: those are take-home.</p>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Business or professional income</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="Business or professional income" placeholder="net profit, optional" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">The year's net profit from your books or ITR, after business expenses. Not the Business income credits in Money, which are what you drew. Slab rates; no standard deduction. A loss, and presumptive 44AD or 44ADA, are not modelled.</span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">Other income at slab rates</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="Other income at slab rates" value="18,000" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">Optional. Savings and FD interest, rent after its 30%.</span>
+      </label>
+      <label style="display: block; padding-top: 4px">
+        <span style="display: block; font-size: 12px; color: #9AA3B2">TDS so far</span>
+        <span style="display: flex; align-items: center; gap: 8px; min-height: 44px; border-bottom: 1px solid #6D7683"><span style="font-size: 18px; color: #9AA3B2">₹</span>
+          <input type="text" aria-label="TDS so far" value="1,92,000" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #EEF3FB; padding: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px">
+        </span><span style="display: block; font-size: 12px; color: #9AA3B2; margin-top: 6px">Optional. From the payslip or Form 26AS; shows what is still to pay.</span>
+      </label>
+      <p style="margin: 10px 0 4px; font-size: 12px; color: #9AA3B2; display: flex; gap: 6px; align-items: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Only you see these figures.</p>
+      </div>
+    </section>
+    <section aria-label="After Form 16" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Corrected from Form 16 <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Gross salary</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Form 16 · corrected 12 Jun 2027</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹22,94,600</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">was ₹22,80,000 from payslip</div></div>
+      </div>
+    </section>
+    <section aria-label="No salary yet" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Nothing typed yet <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Nothing typed for 2026-27. The estimate covers the year's capital gains only, and says what it left out.</p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">Overview</span></a>
+    <a href="#MoneyLedger" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px">Goals</span></a>
+    <a href="#More" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px; font-weight: 600">More</span></a>
+  </nav>
+</div>
+</figure>
+<figure id="FireIncome" class="board"><figcaption><b>FireIncome</b> · FIRE: what comes in, salary</figcaption>
+<div style="width: 390px; height: 1363px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #9AA3B2">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #F0B429; background: #3A2C0C; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+    <section aria-label="FIRE" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Your FIRE number</span>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 6px">₹1,87,50,000</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 4px">25 × ₹7,50,000 spent a year</div>
+    </section>
+    <section aria-label="What comes in, a year" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">What comes in, a year <span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></h2>
+      <div class="n" style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em">₹17,04,000</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 3px">₹1,42,000 × 12 · never grown by inflation</div>
+      <p style="margin: 8px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">₹1,42,000 is your <b style="font-weight: 600">usual</b> monthly salary: the amount that came in four of the six months entered. A bonus month, or a short one, does not move it.</p>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Jun 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"><span style="color: #2ED3A8; display: inline-flex; gap: 4px; align-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ED3A8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>usual</span></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Jul 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"><span style="color: #2ED3A8; display: inline-flex; gap: 4px; align-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ED3A8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>usual</span></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Aug 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"><span style="color: #2ED3A8; display: inline-flex; gap: 4px; align-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ED3A8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>usual</span></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Sep 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,38,450</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">not the usual amount</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Oct 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹2,10,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">not the usual amount</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Nov 2026</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Salary credits that month</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"><span style="color: #2ED3A8; display: inline-flex; gap: 4px; align-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ED3A8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>usual</span></div></div>
+      </div>
+      <p style="margin: 6px 0 4px"><a href="#MoneyLedger" style="font-size: 13px">Change it in Money</a></p>
+    </section>
+    <section aria-label="A year, side by side" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">A year, side by side</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Comes in</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">usual salary × 12</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹17,04,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Spent</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">from your plan</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹7,50,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Difference</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">arithmetic only, not advice</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹9,54,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="No usual amount yet" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">No amount repeats <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Two months entered, two different amounts. Until one amount repeats, FIRE uses the latest month, ₹1,38,450, and says so.</p>
+    </section>
+    <section aria-label="No salary yet" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Nothing entered <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">No Salary or Business income credit yet. FIRE shows your number without a yearly income. <a href="#AddCredit">Add one in Money</a></p>
+    </section>
+    <section aria-label="Household" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Household <span data-annotation="state" aria-hidden="true" title="State 4, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">4</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">On Household: each earner's usual salary, added up by the sum function. Other members' months are not listed.</p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">Overview</span></a>
+    <a href="#MoneyLedger" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px; font-weight: 600">Goals</span></a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">More</span></a>
+  </nav>
+</div>
+</figure>
+<figure id="FireBusiness" class="board"><figcaption><b>FireBusiness</b> · FIRE: what comes in, business income</figcaption>
+<div style="width: 390px; height: 1371px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 12px; border-bottom: 1px solid #1B2335; background: #0C111B">
+    <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: -0.01em">Family Finance Buddy</span>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="Amounts shown. Hide them." style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #27324A; background: #151D2D; color: #C3CEDF; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button type="button" aria-label="Account" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: linear-gradient(140deg, #F0B429, #E0742B); color: #1A1204; font-size: 13px; font-weight: 700; cursor: pointer">V</button>
+    </div>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 13px; color: #9AA3B2">Demo household</span>
+      <span style="font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #F0B429; background: #3A2C0C; border-radius: 999px; padding: 3px 8px">Demo</span>
+    </div>
+    <section aria-label="FIRE" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Your FIRE number</span>
+      <div class="n" style="font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 6px">₹1,87,50,000</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 4px">25 × ₹7,50,000 spent a year</div>
+    </section>
+    <section aria-label="What comes in, a year" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">What comes in, a year <span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></h2>
+      <div class="n" style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em">₹14,40,000</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 3px">Business income, last 12 months · never grown by inflation</div>
+      <p style="margin: 8px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">What you drew from the business into your accounts, November 2025 to October 2026. A month with nothing drawn counts as nothing. November 2026 joins when it ends.</p>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 18px"><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Nov 25</span><span class="n" style="font-weight: 600">₹1,00,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Dec 25</span><span class="n" style="font-weight: 600">₹1,20,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Jan 26</span><span class="n" style="font-weight: 600">₹80,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Feb 26</span><span class="n" style="font-weight: 600"><span style="color: #9AA3B2; font-weight: 400">nothing drawn</span></span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Mar 26</span><span class="n" style="font-weight: 600">₹2,40,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Apr 26</span><span class="n" style="font-weight: 600">₹1,10,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">May 26</span><span class="n" style="font-weight: 600">₹90,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Jun 26</span><span class="n" style="font-weight: 600">₹1,30,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Jul 26</span><span class="n" style="font-weight: 600"><span style="color: #9AA3B2; font-weight: 400">nothing drawn</span></span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Aug 26</span><span class="n" style="font-weight: 600">₹1,60,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Sep 26</span><span class="n" style="font-weight: 600">₹1,40,000</span></div><div style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #222C41; font-size: 13px"><span style="color: #C3CEDF">Oct 26</span><span class="n" style="font-weight: 600">₹2,70,000</span></div></div>
+      <p style="margin: 10px 0 4px"><a href="#MoneyLedger" style="font-size: 13px">Change it in Money</a></p>
+    </section>
+    <section aria-label="A year, side by side" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">A year, side by side</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Comes in</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">business income, last 12 months</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹14,40,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Spent</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">from your plan</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹7,50,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Difference</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">arithmetic only, not advice</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹6,90,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="Fewer months" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Fewer than 12 months <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Five complete months entered, ₹5,40,000 in all: ₹12,96,000 a year, <b style="font-weight: 600">an average of 5 months × 12</b>.</p>
+    </section>
+    <section aria-label="Salary and business" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Salaried and in business <span data-annotation="state" aria-hidden="true" title="State 3, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">3</span></h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Salary</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">usual ₹1,42,000 × 12</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹17,04,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Business income</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">last 12 months</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹14,40,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Comes in, a year</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">the two added</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹31,44,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="First month" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Only this month so far <span data-annotation="state" aria-hidden="true" title="State 4, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">4</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">Business income entered for November only. The first yearly figure comes when November ends.</p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">Overview</span></a>
+    <a href="#MoneyLedger" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px; font-weight: 600">Goals</span></a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">More</span></a>
+  </nav>
+</div>
+</figure>
+<figure id="MonthMoney" class="board"><figcaption><b>MonthMoney</b> · October's money (redrawn)</figcaption>
+<div style="width: 390px; height: 1404px; box-sizing: border-box; background: #080B12; font-family: 'Public Sans', system-ui, sans-serif; color: #EEF3FB; overflow: hidden; display: flex; flex-direction: column; position: relative">
+  <div style="display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 12px">
+    <button type="button" aria-label="Back" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #EEF3FB; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">October's money</h1>
+  </div>
+  <div style="flex: 1; overflow: hidden; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 12px">
+    <section aria-label="October's money" style="position: relative; border-radius: 16px; padding: 15px 16px 16px; background: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%); border: 1px solid #2A3650; box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 18px 38px -24px rgba(0,0,0,0.9); overflow: hidden; flex-shrink: 0">
+      <div aria-hidden="true" style="position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,0.55), rgba(123,156,255,0.35), rgba(240,180,41,0))"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2">Saved in October</span>
+        <div role="group" aria-label="Month" style="display: inline-flex; background: #0E1522; border: 1px solid #27324A; border-radius: 999px; padding: 2px"><button type="button" aria-pressed="false" style="font: inherit; font-size: 11.5px; color: #9AA3B2; background: transparent; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">This month</button><button type="button" aria-pressed="true" style="font: inherit; font-size: 11.5px; font-weight: 600; color: #0B1220; background: #EEF3FB; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer">Last month</button></div>
+      </div>
+      <div class="n" style="font-size: 36px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin-top: 8px">₹73,580</div>
+      <div class="n" style="font-size: 12.5px; color: #9AA3B2; margin-top: 4px">of ₹1,43,250 that came in · closed 1 Nov</div>
+      <div role="img" aria-label="Of what came in: spent 69,670 rupees, invested 55,000, added to the cash reserve 18,580" style="display: flex; gap: 2px; height: 10px; margin-top: 14px; border-radius: 999px; overflow: hidden"><span style="width: 48.6%; background: #6D7683"></span><span style="width: 38.4%; background: #2ED3A8"></span><span style="width: 13%; background: #7B9CFF"></span></div>
+      <div class="n" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; font-size: 12px">
+        <span><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #6D7683; margin-right: 5px"></span><span style="color: #9AA3B2">Spent</span><br><b style="font-weight: 600">₹69,670</b></span>
+        <span><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #2ED3A8; margin-right: 5px"></span><span style="color: #9AA3B2">Invested</span><br><b style="font-weight: 600">₹55,000</b></span>
+        <span><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #7B9CFF; margin-right: 5px"></span><span style="color: #9AA3B2">To cash reserve</span><br><b style="font-weight: 600">₹18,580</b></span>
+      </div>
+    </section>
+    <section aria-label="Came in" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Came in</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Salary</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">Venkat · HDFC ••4021</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,42,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Interest</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">SBI Savings ••7710 · joint</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹1,250</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="Spent" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Spent</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Spent, from balances</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">3 of 3 accounts · closed 1 Nov</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹69,670</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Not counted as spent</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">moved between your accounts ₹18,240 · into holdings ₹55,000 · refunds ₹1,299</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600"><span style="color: #9AA3B2">›</span></div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="Invested by class" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Invested by class</h2>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Mutual funds</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">SIPs and one purchase</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹35,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Stocks</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">2 purchases</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹10,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Gold</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">ETF</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹5,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Fixed deposits</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">1 opened</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹5,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">Net invested</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">put in ₹55,000 · taken out ₹0</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹55,000</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px"></div></div>
+      </div>
+    </section>
+    <section aria-label="Cash reserve" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">Cash reserve <span data-annotation="state" aria-hidden="true" title="State 1, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">1</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">₹2,78,100 at 31 October, up ₹18,580. Money kept in savings accounts, less card dues. It is part of net worth, as Cash.</p>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">HDFC Savings ••4021</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">balance</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹2,14,300</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">up ₹20,380</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #222C41">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">SBI Savings ••7710 · joint</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">balance</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">₹86,200</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">up ₹400</div></div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0">
+        <div style="flex: 1; min-width: 0"><div style="font-size: 14px; color: #EEF3FB">ICICI card ••1188</div><div style="font-size: 12px; color: #9AA3B2; margin-top: 2px">amount due</div></div>
+        <div style="text-align: right; flex-shrink: 0"><div class="n" style="font-size: 14px; font-weight: 600">−₹22,400</div><div style="font-size: 11.5px; color: #9AA3B2; margin-top: 2px">due up ₹2,200</div></div>
+      </div>
+    </section>
+    <section aria-label="This month" style="flex-shrink: 0; border-radius: 16px; background: #121825; padding: 14px 16px 10px">
+      <h2 style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #9AA3B2; display: flex; align-items: center; gap: 8px">This month, open <span data-annotation="state" aria-hidden="true" title="State 2, see ledger-income.md" style="flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1px dashed #7B9CFF; color: #7B9CFF; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 500; vertical-align: middle">2</span></h2>
+      <p style="margin: 0px 0 4px; font-size: 12.5px; line-height: 1.45; color: #C3CEDF">This month, before the close: invested so far ₹10,000. Saved and the cash reserve come from balances, after you close the month.</p>
+    </section>
+  </div>
+  <nav aria-label="Main" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #1B2335; background: #0C111B; padding: 9px 4px 14px">
+    <a href="#Main" aria-current="page" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #F0B429"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px; font-weight: 600">Overview</span></a>
+    <a href="#MoneyLedger" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11"/><path d="M6 9h11"/><path d="M8 4c4 0 6 2 6 5s-2 5-6 5"/><path d="M6 14h2"/><path d="m8 14 7 6"/></svg><span style="font-size: 10.5px">Money</span></a>
+    <a href="#HoldingsTabsAll" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 5v14"/></svg><span style="font-size: 10.5px">Holdings</span></a>
+    <a href="#Goals" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span style="font-size: 10.5px">Goals</span></a>
+    <a href="#More" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3B2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span style="font-size: 10.5px">More</span></a>
+  </nav>
+</div>
+</figure>
+</div>
+</body>
+</html>

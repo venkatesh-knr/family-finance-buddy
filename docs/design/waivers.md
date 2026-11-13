@@ -54,7 +54,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I8 — not built: the UPI reference columns arrive with slice S2 or S4, whichever lands first (spending-capture.md §8) — 2026-10-30
 - SC-I9 — not built: the unclosed-month label arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
-- SC-I14 — not built: the payroll line arrives with slice S5 and the income ledger from 6a (spending-capture.md §8) — 2026-10-30
 
 ## gold.md
 - GD-I11 — half built: a gold purchase raises invested and its Gold line (`src/domain/invested.test.ts`, 12 November 2026), but "never in spent" waits for the month's spent figure, which is the close (6d) (gold.md §6; spending-capture.md §8, §10) — 2026-11-06
@@ -74,3 +73,29 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - CL-I10 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
 
 ## simple-layout.md
+
+## ledger-income.md
+
+- LI-I1 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I2 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I3 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I4 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I5 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I6 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I7 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I8 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I9 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I10 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I11 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I12 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I13 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I14 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I15 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I16 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I17 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I18 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I19 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I20 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
+- LI-I21 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
+- LI-I22 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
+- LI-I23 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
