@@ -97,7 +97,7 @@ test('a rule is added, enters its due day once however often the app is opened, 
 
   // Opening the app again makes no second entry for the day that was entered.
   for (const _ of [1, 2]) {
-    await openedAgain(page, 'expenses');
+    await openedAgain(page, 'money');
     await expect(page.getByRole('heading', { name: 'Recent' })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
     // However often the app is opened, the day is entered once (SC-I10).

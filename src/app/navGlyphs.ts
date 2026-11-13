@@ -19,7 +19,7 @@ export interface NavGlyphPart {
   readonly filled?: true;
 }
 
-type NavScreen = Extract<Screen, 'overview' | 'summary' | 'expenses' | 'holdings' | 'tax' | 'fire' | 'more'>;
+type NavScreen = Extract<Screen, 'overview' | 'summary' | 'money' | 'holdings' | 'tax' | 'fire' | 'more'>;
 
 const OVERVIEW: readonly NavGlyphPart[] = [
   { d: 'M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0z' },
@@ -31,7 +31,7 @@ export const NAV_GLYPHS: Record<NavScreen, readonly NavGlyphPart[]> = {
   // The Summary is what Overview is to a role that cannot see the household, so it wears the same mark.
   summary: OVERVIEW,
   // A rupee: two rules, a bowl and a tail.
-  expenses: [
+  money: [
     { d: 'M6 4h11' },
     { d: 'M6 9h11' },
     { d: 'M6 14h6' },

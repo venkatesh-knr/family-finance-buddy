@@ -4,7 +4,7 @@ import { allowedScreen, moreFor, roleSummary, screensFor, type AppScreen } from 
 describe('screensFor', () => {
   it('gives an owner and a partner five places in the bar, the last being More, and no summary', () => {
     for (const role of ['owner', 'partner'] as const) {
-      expect(screensFor(role)).toEqual(['overview', 'expenses', 'holdings', 'fire', 'more']);
+      expect(screensFor(role)).toEqual(['overview', 'money', 'holdings', 'fire', 'more']);
     }
   });
 
@@ -19,7 +19,7 @@ describe('screensFor', () => {
   it('gives a contributor their own records and the summary, and not the household-wide figures', () => {
     // Overview and FIRE are household net worth and the household plan: with only
     // their own rows readable they would show a partial figure that looks whole.
-    expect(screensFor('contributor')).toEqual(['summary', 'expenses', 'holdings', 'tax']);
+    expect(screensFor('contributor')).toEqual(['summary', 'money', 'holdings', 'tax']);
   });
 
   it('gives a viewer the summary and nothing else', () => {
@@ -37,7 +37,7 @@ describe('allowedScreen', () => {
     expect(allowedScreen('partner', 'insurance')).toBe('insurance');
     expect(allowedScreen('partner', 'property')).toBe('property');
     expect(allowedScreen('owner', 'more')).toBe('more');
-    expect(allowedScreen('contributor', 'expenses')).toBe('expenses');
+    expect(allowedScreen('contributor', 'money')).toBe('money');
   });
 
   it('sends a role away from a screen it may not see, to the first it may', () => {

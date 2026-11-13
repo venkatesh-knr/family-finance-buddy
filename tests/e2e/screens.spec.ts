@@ -27,7 +27,7 @@ import { goTo, openList } from './holdings.ts';
 
 const SCREENS = [
   'overview',
-  'expenses',
+  'money',
   'holdings',
   'holding',
   'tax',

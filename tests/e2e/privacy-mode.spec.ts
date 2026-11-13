@@ -24,7 +24,7 @@ test('an amount is absent from the page, not merely hidden', async ({ page }) =>
   const rendered = '4,242.42';
   const payee = `e2e-privacy-${Date.now()}`;
 
-  await page.goto('/#expenses');
+  await page.goto('/#money');
 
   await page.getByLabel(/^Amount \(/).fill(amount);
   await page.getByLabel('Payee').fill(payee);
@@ -70,7 +70,7 @@ test('privacy mode survives moving between screens', async ({ page }) => {
   await page.goto('/#overview');
   await page.getByRole('button', { name: /Amounts shown/ }).click();
 
-  for (const screen of ['Expenses', 'Holdings', 'Overview']) {
+  for (const screen of ['Money', 'Holdings', 'Overview']) {
     await page.getByRole('group', { name: 'Screen' }).first().getByText(screen, { exact: true }).click();
     await expect(
       page.getByRole('button', { name: /Amounts hidden/ }),

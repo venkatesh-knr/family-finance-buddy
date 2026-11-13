@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test('the navigation passes every axe rule, and a phone has a navigation landmark', async ({ page }) => {
-  await page.goto('/#/expenses');
+  await page.goto('/#/money');
   await expect(page.getByRole('group', { name: 'Screen' }).first()).toBeVisible({ timeout: 20_000 });
 
   const phone = (page.viewportSize()?.width ?? 1000) < 640;

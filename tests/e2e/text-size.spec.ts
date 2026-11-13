@@ -20,7 +20,7 @@ import { goTo } from './holdings.ts';
  * Read-only: it opens each screen and reads the layout.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'money', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
 
 async function ready(page: Page, screen: string) {
   await goTo(page, screen);

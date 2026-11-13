@@ -30,11 +30,20 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AppScreen } from '../domain/access.ts';
-import { hashFor, parseHash, type Route } from './route.ts';
+import { hashFor, legacyRedirect, parseHash, type Route } from './route.ts';
 
 export type Screen = AppScreen;
 
-const here = (): Route => parseHash(typeof window === 'undefined' ? '' : window.location.hash);
+/**
+ * The address as it is now. An old Expenses link is replaced in the history with its Money address before it is read, so the back button
+ * goes where it would have gone and not to the old address, which would only redirect again.
+ */
+const here = (): Route => {
+  if (typeof window === 'undefined') return parseHash('');
+  const moved = legacyRedirect(window.location.hash);
+  if (moved !== null) window.history.replaceState(window.history.state, '', moved);
+  return parseHash(window.location.hash);
+};
 
 export function useScreen(): {
   screen: Screen;

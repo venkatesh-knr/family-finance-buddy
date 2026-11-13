@@ -47,7 +47,7 @@ async function waitLoaded(page: Page) {
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
 }
 
-const SCREENS = ['#/overview', '#/expenses', '#/holdings', '#/tax', '#/fire', '#/insurance', '#/reports', '#/more', '#/profile', '#/settings', '#/property'];
+const SCREENS = ['#/overview', '#/money', '#/holdings', '#/tax', '#/fire', '#/insurance', '#/reports', '#/more', '#/profile', '#/settings', '#/property'];
 
 test('SL-I3 — every input on every screen has a visible label that is not its placeholder', async ({ page }) => {
   test.setTimeout(240_000);
@@ -94,7 +94,7 @@ test('SL-I3 — every field of Add a holding, on every step of every type, has a
 test('SL-I3 — axe finds no unlabelled field on the screens a form opens on', async ({ page }) => {
   test.setTimeout(240_000);
   const found: string[] = [];
-  for (const screen of ['#/holdings', '#/expenses', '#/settings', '#/tax', '#/insurance', '#/property']) {
+  for (const screen of ['#/holdings', '#/money', '#/settings', '#/tax', '#/insurance', '#/property']) {
     await page.goto(`/${screen}`);
     await waitLoaded(page);
     const result = await new AxeBuilder({ page }).withRules(['label', 'select-name', 'aria-input-field-name']).analyze();
@@ -117,7 +117,7 @@ test('SL-I5 — every field is at least 44px tall at 375px', async ({ page }, te
     return found.length;
   };
   let seen = 0;
-  for (const screen of ['#/expenses', '#/settings', '#/tax', '#/insurance', '#/property']) {
+  for (const screen of ['#/money', '#/settings', '#/tax', '#/insurance', '#/property']) {
     await page.goto(`/${screen}`);
     await waitLoaded(page);
     seen += await measure(screen);

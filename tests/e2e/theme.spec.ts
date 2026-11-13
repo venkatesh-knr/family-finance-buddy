@@ -20,7 +20,7 @@ import AxeBuilder from '@axe-core/playwright';
  * `npm run test:e2e` run.
  */
 
-const SCREENS = ['overview', 'expenses', 'holdings', 'tax', 'fire', 'profile', 'settings'] as const;
+const SCREENS = ['overview', 'money', 'holdings', 'tax', 'fire', 'profile', 'settings'] as const;
 
 /** The same settle the screenshot capture uses, and for the same reasons. */
 async function ready(page: import('@playwright/test').Page, screen: string) {
