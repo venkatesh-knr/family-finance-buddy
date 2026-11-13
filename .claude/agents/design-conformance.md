@@ -4,7 +4,7 @@ description: >
   Reviews built screens and features against the project's own specification —
   docs/blueprint.md, docs/tokens.md, docs/design/icons.md, the feature design
   documents (docs/design/protection-and-flow.md, docs/design/spending-capture.md, docs/design/gold.md,
-  docs/design/detail-level.md),
+  docs/design/detail-level.md, docs/design/ledger-income.md),
   CLAUDE.md invariants and docs/design/conformance.md — and reports findings. Use after a vertical slice
   is finished, before merging, or when asked to check whether something matches
   the design. Reports only; never edits, never fixes, never commits.
@@ -39,7 +39,11 @@ When two documents disagree, this is the order. Say which one you applied.
 5. **The feature design documents** — `docs/design/protection-and-flow.md`
    (insurance, the small-savings schemes, earmarks, income and transfers),
    `docs/design/spending-capture.md` (how spending is captured cheaply, the month-close figure and where the month's money went;
-   not built), `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
+   not built), `docs/design/ledger-income.md` (Money as a ledger of credits and debits, how income is captured, the Tax year's typed
+   income and how FIRE reads income; decided by the owner on 13 November 2026 and not built; **it amends `spending-capture.md` in its
+   section 11**, so on what it amends this document applies and `spending-capture.md` is read as amended, and where `ledger-income.md` and
+   `CLAUDE.md` disagree it is `CLAUDE.md` that stands, except for the audit exception `CLAUDE.md` now names),
+   `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
    holding), `docs/design/goals.md` (what a household is saving for, replacing the earmark; not built, step 9) and
@@ -53,7 +57,7 @@ When two documents disagree, this is the order. Say which one you applied.
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`, `SL-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`, `SL-…`, `LI-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
@@ -82,7 +86,7 @@ When two documents disagree, this is the order. Say which one you applied.
 `docs/build-plan.md` tells you what stage the project is in and what is not
 supposed to exist yet. Read it before you report anything missing.
 
-**Read, and not obeyed.** Three more documents in `docs/design/` are context and
+**Read, and not obeyed.** Four more documents in `docs/design/` are context and
 not specification:
 
 - `docs/design/ui-review.md` is the log of what earlier reviews found and how each
@@ -93,6 +97,11 @@ not specification:
   reason is no longer true (the feature has since been built), say so as a note.
 - `docs/design/keeping-docs-honest.md` is how the design documents and the tests
   are kept in step, and what CI checks. It tells you what you need not check.
+- `docs/design/ledger-income-boards.html` is the pictures of `ledger-income.md` (MoneyLedger, MoneyLedgerLight, AddCredit,
+  AddCredit2, SalaryRule, TaxIncomeInputs, FireIncome, FireBusiness and MonthMoney redrawn). Read them for layout and hierarchy, as
+  you read `vibrant-canvas.html`; they are not obeyed. Where a board and `ledger-income.md` differ the document is the authority, and
+  values come from `tokens.md`. The dashed numbered circles on them are annotations that point to the numbered states of its section 9,
+  not interface.
 
 <!-- authority-exclusions:start -->
 Documents in `docs/design/` this brief deliberately does not treat as part of the

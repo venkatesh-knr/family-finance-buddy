@@ -73,12 +73,17 @@ here to push what was left. The next session may be a cloud one that sees only w
   trigger only, updatable by nobody, deletable by nobody. Adding one trigger to a new table
   is trivial; retrofitting audit across a schema that already has thirty of them is a day
   nobody enjoys. The log records reads as well as writes on tables carrying personal detail,
-  because section 20 shows it to members — including reads by the owner. **One exception,
-  decided by the maintainer (`docs/decisions.md`, Upload):** `import_batch_row`, the ledger an
-  upload from a template keeps so it can be reversed, has no audit trigger, because an audit
-  row is readable by the household and the ledger's images include rows that are private to
-  whoever made the upload. What it records is audited at the tables it names. It is read only
-  by the upload's maker and written only by `app.record_template_row`. Nothing else is exempt.
+  because section 20 shows it to members — including reads by the owner. **Two exceptions,
+  both decided by the maintainer.** (1) Upload (`docs/decisions.md`): `import_batch_row`, the
+  ledger an upload from a template keeps so it can be reversed, has no audit trigger, because
+  an audit row is readable by the household and the ledger's images include rows that are
+  private to whoever made the upload. What it records is audited at the tables it names. It is
+  read only by the upload's maker and written only by `app.record_template_row`. (2) Ledger and
+  income (`docs/design/ledger-income.md` section 12, LI-I22; `docs/decisions.md`): `credit_entry`
+  and `income_entry` keep their audit triggers and the log still records reads as well as
+  writes, but an audit row for either is readable only by whoever can read the row it records,
+  so a member's private income is not shown to the household through the log. Nothing else is
+  exempt.
 - **`detail_level` is a rendering preference, never an access control.** The data reaches the
   client either way — essential mode simply does not draw it. If figures ever need to be hidden
   from a household member, that is row-level security and a separate mechanism. See

@@ -522,6 +522,17 @@ Twenty-seven questions were put to the owner at the end of the invested-card sli
 - **Gold.** A gift with an unknown cost: `docs/drafts/gold-gift-cost-estimate.md` is accepted as the draft (an estimate from the year's price, marked as one). Not built.
 - **Housekeeping.** The updated canvas was sent and is in `vibrant-canvas.html`. The PPF rate check is acknowledged and the screen keeps saying "not yet checked against a statement" until `PPF_RATE_CHECKED` is set.
 
+## Ledger and income, decided (13 November 2026)
+
+`docs/design/ledger-income.md` is the design of Money as a ledger and of how income is captured. **Its section 0 (what is decided) and section 10 (the questions, answered) are the owner's answers, in chat on 13 November 2026**, and the rest of the document works them out; none is a recommendation of mine. In outline:
+
+- **Money is a ledger of credits and debits**, and the screen is renamed Money, **label and route** (`#/money`, with `#/expenses` redirecting to it). A credit carries a category (Salary, interest, rent, refund, dividend, other, and business income). Moves between the household's own accounts, card payments and money into or out of a holding are in neither income nor spent. Money coming back is "Refund or money back": it takes away from spent and is not income.
+- **Take-home is the Salary credit** as the bank received it; deductions are not recorded and the payroll line is dropped. **FIRE uses the usual monthly salary**: the amount that recurs most often in the last six months entered, the more recent on a tie, the latest month (said so) when nothing repeats; this amends the earlier answer of the highest month. Never grown by inflation. **Business income** is what reaches home: FIRE takes the total of the last 12 complete months (fewer months: their average times twelve, labelled), and Tax takes a net profit typed once a year. A mixed account is left as it is.
+- **Tax takes a gross salary typed once a year per member from the payslip**, corrected later from Form 16, with other income and TDS optional; a member's tax inputs are read by that member's login and by whoever typed them.
+- **A salary rule reminds you and posts only when you confirm.** Loan EMIs are a fourth part of the month's split: spent, invested, paid to loans, to the cash reserve.
+- **Income is private by default**, with household totals from a sum function; a contributor sees their own and a viewer none. **Audit rows for `credit_entry` and `income_entry` follow the visibility of the row they record** (section 12, LI-I22): the owner's ruling as maintainer, now the second named exception in the audit paragraph of `CLAUDE.md`. Wording only; nothing is built.
+- **Design only.** Step 6a is ready to build from it. `docs/drafts/ledger-income-conformance.md` lists the proposed Departures and `docs/drafts/ledger-income-questions.md` keeps the questions that were asked.
+
 ## Simple layout, the boxes come back (8 November 2026, the owner)
 
 After using slices A to E on a phone, the owner sent seven screenshots and eight points. Each is built (slice F) and none is a recommendation of mine:
