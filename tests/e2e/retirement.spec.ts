@@ -169,7 +169,9 @@ test('a retirement holding is a row of the allocation, under its own name', asyn
     await expect(await rowFor(page, name)).toBeVisible({ timeout: 20_000 });
     await page.goto('/#overview');
     await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
-    const row = page.locator('.alloc-row').filter({ hasText: /^Retirement/ });
+    // The allocation's row, in the Allocation card: the investing card draws its classes with the same row, and a PPF payment made this month gives it a Retirement row too.
+    const allocation = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Allocation', exact: true }) });
+    const row = allocation.locator('.alloc-row').filter({ hasText: /^Retirement/ });
     await expect(row).toHaveCount(1, { timeout: 20_000 });
     await expect(row.locator('a')).toHaveAttribute('href', '#/holdings?kind=retirement');
   } finally {
