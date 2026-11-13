@@ -22,7 +22,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(70);
+select plan(81);
 
 -- ============================================================== the fixture
 --
@@ -49,6 +49,9 @@ values
   ('00000000-0000-0000-0000-000000000000', 'c9000000-0000-4000-8000-0000000000a4',
    'authenticated', 'authenticated', 'viewer@led.test', 'not-a-real-hash',
    now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}'),
+  ('00000000-0000-0000-0000-000000000000', 'c9000000-0000-4000-8000-0000000000d1',
+   'authenticated', 'authenticated', 'towner@led.test', 'not-a-real-hash',
+   now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}'),
   ('00000000-0000-0000-0000-000000000000', 'c9000000-0000-4000-8000-0000000000b1',
    'authenticated', 'authenticated', 'stranger@elsewhere.test', 'not-a-real-hash',
    now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}');
@@ -63,10 +66,13 @@ update public.user_account set id = 'd9000000-0000-4000-8000-0000000000a4'
   where auth_user_id = 'c9000000-0000-4000-8000-0000000000a4';
 update public.user_account set id = 'd9000000-0000-4000-8000-0000000000b1'
   where auth_user_id = 'c9000000-0000-4000-8000-0000000000b1';
+update public.user_account set id = 'd9000000-0000-4000-8000-0000000000d1'
+  where auth_user_id = 'c9000000-0000-4000-8000-0000000000d1';
 
 insert into public.household (id, name, kind) values
   ('e9000000-0000-4000-8000-0000000000f1', 'Household R', 'demo'),
-  ('e9000000-0000-4000-8000-0000000000f2', 'Household S', 'demo');
+  ('e9000000-0000-4000-8000-0000000000f2', 'Household S', 'demo'),
+  ('e9000000-0000-4000-8000-0000000000f3', 'Household T', 'demo');
 
 insert into public.member (id, household_id, display_name, colour) values
   ('f9000000-0000-4000-8000-0000000000a1', 'e9000000-0000-4000-8000-0000000000f1', 'Owner',       'c1'),
@@ -74,7 +80,10 @@ insert into public.member (id, household_id, display_name, colour) values
   ('f9000000-0000-4000-8000-0000000000a3', 'e9000000-0000-4000-8000-0000000000f1', 'Contributor', 'c3'),
   ('f9000000-0000-4000-8000-0000000000a4', 'e9000000-0000-4000-8000-0000000000f1', 'Viewer',      'c4'),
   ('f9000000-0000-4000-8000-0000000000a5', 'e9000000-0000-4000-8000-0000000000f1', 'Parent',      'c6'),
-  ('f9000000-0000-4000-8000-0000000000b1', 'e9000000-0000-4000-8000-0000000000f2', 'Stranger',    'c5');
+  ('f9000000-0000-4000-8000-0000000000b1', 'e9000000-0000-4000-8000-0000000000f2', 'Stranger',    'c5'),
+  ('f9000000-0000-4000-8000-0000000000c1', 'e9000000-0000-4000-8000-0000000000f3', 'T owner',     'c1'),
+  ('f9000000-0000-4000-8000-0000000000c2', 'e9000000-0000-4000-8000-0000000000f3', 'T earner two', 'c2'),
+  ('f9000000-0000-4000-8000-0000000000c3', 'e9000000-0000-4000-8000-0000000000f3', 'T earner three', 'c3');
 
 insert into public.membership (user_account_id, household_id, member_id, role) values
   ('d9000000-0000-4000-8000-0000000000a1', 'e9000000-0000-4000-8000-0000000000f1',
@@ -86,7 +95,9 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
   ('d9000000-0000-4000-8000-0000000000a4', 'e9000000-0000-4000-8000-0000000000f1',
    'f9000000-0000-4000-8000-0000000000a4', 'viewer'),
   ('d9000000-0000-4000-8000-0000000000b1', 'e9000000-0000-4000-8000-0000000000f2',
-   'f9000000-0000-4000-8000-0000000000b1', 'owner');
+   'f9000000-0000-4000-8000-0000000000b1', 'owner'),
+  ('d9000000-0000-4000-8000-0000000000d1', 'e9000000-0000-4000-8000-0000000000f3',
+   'f9000000-0000-4000-8000-0000000000c1', 'owner');
 
 -- Accounts. 01 household, INR, the owner's. 02 the owner's personal one. 03 the partner's personal card. 04 the contributor's.
 -- 05 a household USD account. 06 belongs to household S.
@@ -149,6 +160,60 @@ insert into public.income_entry (id, household_id, member_id, tax_year, head, am
    '2026-27', 'salary', 18000000, 'payslip', 'd9000000-0000-4000-8000-0000000000a2'),
   ('e9000000-0000-4000-8000-0000000000e4', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
    '2026-27', 'salary',  9000000, 'payslip', 'd9000000-0000-4000-8000-0000000000a3');
+
+
+-- Household T: three earners, for the design's yearly-income vectors (ledger-income.md section 7), worked out as at 13 November 2026.
+--   earner one   Salary May to October: 1,42,000 four times, 1,38,450 once, 2,10,000 once  -> usual 1,42,000 (LI-I9)
+--                Business: 1,44,000 in ten of the twelve months November 2025 to October 2026, none in two, and a credit this month
+--                that must not count                                                       -> 14,40,000 (LI-I18)
+--   earner two   Salary: 1,30,000 three times then 1,50,000 three times (a tie)           -> the more recent, 1,50,000 (LI-I20)
+--                Business: five complete months of 1,08,000 (5,40,000 in all)             -> average of 5 months times 12 = 12,96,000
+--   earner three Salary April to October, seven different-or-equal months: April equals May, and the other six are all different, so
+--                the seventh month back must drop out                                      -> the latest, 1,50,000 (LI-I20)
+insert into public.account (id, household_id, member_id, name, type, currency, visibility, created_by) values
+  ('a9000000-0000-4000-8000-00000000000a', 'e9000000-0000-4000-8000-0000000000f3', 'f9000000-0000-4000-8000-0000000000c1',
+   'T savings', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000d1');
+
+insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date, visibility, created_by)
+select 'e9000000-0000-4000-8000-0000000000f3', v.member_id::uuid, 'a9000000-0000-4000-8000-00000000000a', v.category, v.amount, 'INR', v.day::date,
+       'household', 'd9000000-0000-4000-8000-0000000000d1'
+  from (values
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 14200000, '2026-05-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 14200000, '2026-06-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 13845000, '2026-07-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 14200000, '2026-08-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 21000000, '2026-09-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'salary', 14200000, '2026-10-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 13000000, '2026-05-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 13000000, '2026-06-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 13000000, '2026-07-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 15000000, '2026-08-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 15000000, '2026-09-01'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'salary', 15000000, '2026-10-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 10000000, '2026-04-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 10000000, '2026-05-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 11000000, '2026-06-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 12000000, '2026-07-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 13000000, '2026-08-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 14000000, '2026-09-01'),
+    ('f9000000-0000-4000-8000-0000000000c3', 'salary', 15000000, '2026-10-01'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2025-11-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2025-12-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-01-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-04-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-05-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-06-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-07-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-08-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-09-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 14400000, '2026-10-03'),
+    ('f9000000-0000-4000-8000-0000000000c1', 'business', 99900000, '2026-11-05'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'business', 10800000, '2026-06-03'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'business', 10800000, '2026-07-03'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'business', 10800000, '2026-08-03'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'business', 10800000, '2026-09-03'),
+    ('f9000000-0000-4000-8000-0000000000c2', 'business', 10800000, '2026-10-03')
+  ) as v (member_id, category, amount, day);
 
 -- A salary rule: it reminds, and never posts.
 insert into public.recurring_rule
@@ -551,6 +616,12 @@ select is(
   'LI-I13 — the partner reads the household''s totals, one line per currency'
 );
 
+select is(
+  (select count(*)::int from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f1', '2026-11-13')),
+  1,
+  'and its yearly income: one line, in rupees'
+);
+
 -- ================================================== the contributor
 
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a3';
@@ -593,6 +664,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I13 — and the sum function raises for a contributor'
+);
+
+select throws_ok(
+  $q$ select * from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f1', '2026-11-13') $q$,
+  '42501'::char(5), null::text,
+  'and so does the yearly income'
 );
 
 -- ===================================================== the viewer
@@ -638,6 +715,12 @@ select throws_ok(
   'LI-I13 — and the sum function raises for a viewer'
 );
 
+select throws_ok(
+  $q$ select * from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f1', '2026-11-13') $q$,
+  '42501'::char(5), null::text,
+  'and so does the yearly income'
+);
+
 select is(
   (select count(*)::int from public.audit_log where entity in ('credit_entry', 'income_entry', 'account', 'account_balance', 'account_transfer')),
   0,
@@ -647,6 +730,55 @@ select is(
 select is_empty(
   $q$ with u as (update public.account set name = 'x' where id = 'a9000000-0000-4000-8000-000000000001' returning id) select id from u $q$,
   'a viewer changes no account: they cannot see it'
+);
+
+-- ============================ the household's yearly income, as the owner of household T
+
+set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000d1';
+set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000d1","role":"authenticated","aal":"aal2"}';
+
+select results_eq(
+  $q$ select currency, yearly_salary_minor, yearly_business_minor
+        from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2026-11-13') $q$,
+  $q$ values ('INR'::text, 530400000::bigint, 273600000::bigint) $q$,
+  'the household''s yearly income is the sum over its earners: usual salary times twelve, plus business income over the last twelve complete months'
+);
+
+select is(
+  (select yearly_salary_minor from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2026-11-13')),
+  (14200000::bigint * 12) + (15000000::bigint * 12) + (15000000::bigint * 12),
+  'the usual salary is the amount that occurs most often in the last six months entered; on a tie the more recent amount; when nothing repeats the latest month; and the seventh month back does not count'
+);
+
+select is(
+  (select yearly_business_minor from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2026-11-13')),
+  144000000::bigint + 129600000::bigint,
+  'a month with nothing is zero inside the twelve; fewer than twelve months is their average times twelve; and a credit in the current month changes nothing'
+);
+
+select results_eq(
+  $q$ select yearly_business_minor from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2026-12-05') $q$,
+  $q$ values (337500000::bigint) $q$,
+  'a month later the window has moved on: November 2025 drops out, the November credit counts, and the second earner''s six months are averaged'
+);
+
+select is_empty(
+  $q$ select 1 from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2025-01-01') $q$,
+  'with no Salary or Business income credit yet there is no line, and so no yearly income: never zero'
+);
+
+select is(
+  (select proargnames from pg_proc where proname = 'household_yearly_income'),
+  array['target_household_id', 'as_of', 'currency', 'yearly_salary_minor', 'yearly_business_minor']::text[],
+  'its result has a currency and two sums and no member'
+);
+
+set local request.jwt.claims to '{"sub":"c9000000-0000-4000-8000-0000000000d1","role":"authenticated","aal":"aal1"}';
+
+select throws_ok(
+  $q$ select * from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f3', '2026-11-13') $q$,
+  '42501'::char(5), null::text,
+  'it raises without a second factor'
 );
 
 -- ===================================================== the stranger
@@ -666,6 +798,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'and the sum function raises for a stranger'
+);
+
+select throws_ok(
+  $q$ select * from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f1', '2026-11-13') $q$,
+  '42501'::char(5), null::text,
+  'and so does the yearly income'
 );
 
 -- ================================================ the demo reset clears them

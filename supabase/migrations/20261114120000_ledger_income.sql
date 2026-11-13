@@ -1,6 +1,6 @@
 -- Family Finance Buddy — step 6a: accounts, money in, moves between accounts, and the Tax screen's typed income.
 --
--- FOR REVIEW. Not applied anywhere. The design is `docs/design/ledger-income.md` (section 12 lists the tables and what each one owes), and
+-- FOR REVIEW. Not applied anywhere, and not yet run: Docker is blocked on the maintainer's machine, so the first run is CI's policy suite. The design is `docs/design/ledger-income.md` (section 12 lists the tables and what each one owes), and
 -- `docs/design/spending-capture.md` section 7 for the account registry. This file is the schema and its access rules and nothing else:
 -- no screen, no repository code and no calculation. Money in, spent and saved are derived in pure domain functions from what these
 -- tables hold (ledger-income.md sections 4 and 7), and nothing here stores them.
@@ -13,7 +13,8 @@
 --   account_transfer   a move between two of the household's own accounts, a card payment among them: neither income nor spent.
 --   income_entry       the Tax screen's typed gross figures, per member and tax year (ledger-income.md 8), made exact from the blueprint.
 --   recurring_rule     gains a direction, a credit category and an account, so a salary rule can exist (ledger-income.md 5).
---   household_money_totals   the one sum function: came in and refunds per currency, to an owner or a partner, never a row.
+--   household_money_totals   came in and refunds per currency, to an owner or a partner, never a row.
+--   household_yearly_income  the Household FIRE figure: each earner's yearly salary and business income, summed per currency.
 --   audit_log policy   an audit row for any of these is readable only by whoever can read the row it records (LI-I22, CLAUDE.md).
 --   reset_demo_household   re-created from the latest version, clearing the new tables, in the same migration as the tables.
 --
@@ -26,11 +27,14 @@
 --
 -- ── decisions made here, for the reviewer to confirm or change ───────────────
 --
---   1. `household_yearly_income()`, which ledger-income.md section 12 lists, is NOT here. The Household FIRE figure needs each earner's
---      usual salary (the amount that occurs most often in their last six months), which is arithmetic, and CLAUDE.md puts every
---      calculation in a pure domain function. A sum function cannot return that figure without doing the arithmetic in the database,
---      and one that returned each earner's months to hand to the domain would disclose more than a household total (the owner chose a
---      total). Which of the two, or another way, is the owner's call; the Household FIRE read waits for it.
+--   1. `household_yearly_income(household, as_of)` IS here, by the owner's decision of 13 November 2026 ("if household is there and who all
+--      earn, go with household yearly income"). It does arithmetic in the database: each earner's usual salary (the amount that occurs
+--      most often in their last six months entered) times twelve, and their business income over the last twelve complete months. That
+--      is a calculation, and CLAUDE.md puts calculations in pure domain functions, so this is a named exception for one reason: the
+--      Household figure needs every earner's months and the owner chose a household total, not each person's months, so only the
+--      database can compute it without disclosing them. The same rule is written again as a pure domain function for Mine; both are held
+--      to the same test vectors (ledger-income.md section 7, LI-I9, LI-I18, LI-I20), and a change to the rule changes both. The date is
+--      passed in, never read from the clock.
 --   2. A personal credit can be made only by the member it belongs to, as an expense update already can. Otherwise an owner typing a
 --      parent's income (a member with no login) as personal would write a row nobody could ever read again. The owner types such
 --      income as household; the member's own private income is their own to enter.
@@ -800,6 +804,125 @@ comment on function public.household_money_totals(uuid, date, date) is
 
 revoke all on function public.household_money_totals(uuid, date, date) from public;
 grant execute on function public.household_money_totals(uuid, date, date) to authenticated;
+
+-- ═════════════════════════════════════ the Household FIRE figure, summed
+
+-- ledger-income.md section 7, for the Household view. Per currency, the sum over every earner of:
+--   yearly salary   = the usual month's salary times twelve, where a month's salary is the sum of that member's Salary credits in the IST
+--                     month, the months entered are those with more than nothing, and the usual amount is the one that occurs most often
+--                     among the last six months entered (compared to the paisa); on a tie the amount seen most recently wins, and when
+--                     nothing repeats that gives the latest month's, which is the same rule;
+--   yearly business = the member's Business income over the last 12 complete IST months, starting no earlier than the month of their first
+--                     Business income credit; with fewer than 12 months in that window, their total over it divided by the months in it
+--                     times twelve. The current month is never in the window, and a month with nothing entered counts as zero.
+-- Never grown by inflation. Returns two sums per currency and nothing else: no member, no month, no credit.
+create or replace function public.household_yearly_income(
+  target_household_id uuid,
+  as_of date
+)
+returns table (currency text, yearly_salary_minor bigint, yearly_business_minor bigint)
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $fn$
+declare
+  v_this_month date := date_trunc('month', as_of)::date;
+begin
+  if not app.has_second_factor() then
+    raise exception 'Reading the household''s yearly income needs an authenticator code in this session, not only a password.'
+      using errcode = '42501';
+  end if;
+
+  if not coalesce(app.household_role(target_household_id) in ('owner', 'partner'), false) then
+    raise exception 'Only an owner or a partner reads the household''s yearly income.' using errcode = '42501';
+  end if;
+
+  return query
+    with salary_months as (
+      select c.member_id, c.currency, date_trunc('month', c.credit_date)::date as mon, sum(c.amount_minor) as total
+        from public.credit_entry c
+       where c.household_id = target_household_id
+         and c.category = 'salary'
+         and c.voided_at is null
+         and c.credit_date <= as_of
+       group by c.member_id, c.currency, date_trunc('month', c.credit_date)::date
+      having sum(c.amount_minor) > 0
+    ),
+    recent as (
+      select s.member_id, s.currency, s.mon, s.total,
+             row_number() over (partition by s.member_id, s.currency order by s.mon desc) as rn
+        from salary_months s
+    ),
+    amounts as (
+      select r.member_id, r.currency, r.total, count(*) as n, max(r.mon) as latest
+        from recent r
+       where r.rn <= 6
+       group by r.member_id, r.currency, r.total
+    ),
+    usual as (
+      select distinct on (a.member_id, a.currency) a.member_id, a.currency, a.total
+        from amounts a
+       order by a.member_id, a.currency, a.n desc, a.latest desc
+    ),
+    salary as (
+      select u.currency, sum(u.total * 12)::bigint as yearly
+        from usual u
+       group by u.currency
+    ),
+    biz_credits as (
+      select c.member_id, c.currency, date_trunc('month', c.credit_date)::date as mon, c.amount_minor
+        from public.credit_entry c
+       where c.household_id = target_household_id
+         and c.category = 'business'
+         and c.voided_at is null
+         and c.credit_date <= as_of
+    ),
+    biz_first as (
+      select b.member_id, min(b.mon) as first_month
+        from biz_credits b
+       group by b.member_id
+    ),
+    biz_span as (
+      select f.member_id,
+             greatest(f.first_month, (v_this_month - interval '12 months')::date) as w_start,
+             (v_this_month - interval '1 month')::date as w_end
+        from biz_first f
+    ),
+    biz_months as (
+      select w.member_id, w.w_start, w.w_end,
+             ((extract(year from w.w_end) * 12 + extract(month from w.w_end))
+              - (extract(year from w.w_start) * 12 + extract(month from w.w_start)) + 1)::int as months_n
+        from biz_span w
+    ),
+    biz_sum as (
+      select m.member_id, b.currency, m.months_n, sum(b.amount_minor) as total
+        from biz_months m
+        join biz_credits b on b.member_id = m.member_id and b.mon between m.w_start and m.w_end
+       where m.months_n >= 1
+       group by m.member_id, b.currency, m.months_n
+    ),
+    business as (
+      select x.currency,
+             sum(case when x.months_n = 12 then x.total
+                      else round(x.total::numeric * 12 / x.months_n) end)::bigint as yearly
+        from biz_sum x
+       group by x.currency
+    )
+    select coalesce(s.currency, b.currency),
+           coalesce(s.yearly, 0)::bigint,
+           coalesce(b.yearly, 0)::bigint
+      from salary s
+      full join business b on b.currency = s.currency
+     order by 1;
+end;
+$fn$;
+
+comment on function public.household_yearly_income(uuid, date) is
+  'The Household FIRE figure: the sum over every earner of their usual salary times twelve and their business income over the last 12 complete months, per currency, to an owner or a partner with a second factor. Two sums per currency; no member, month or credit. A named exception to the pure-function rule (decision 1 in this migration).';
+
+revoke all on function public.household_yearly_income(uuid, date) from public;
+grant execute on function public.household_yearly_income(uuid, date) to authenticated;
 
 -- ═══════════════════════════════════════════ reset_demo_household
 
