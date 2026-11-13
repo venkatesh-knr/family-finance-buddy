@@ -14,9 +14,11 @@
 -- section deduction only where a cap row exists for the regime, so nothing is read as an allowance of nothing.
 --
 -- The figures are the ones that applied in tax year 2025-26 and that Budget 2026 (1 February 2026) did not change: ₹1,50,000 under
--- 80C, ₹25,000 or ₹50,000 under 80D by age, ₹5,000 of it for a preventive check-up. They were checked on the date below against
--- published summaries by tax-advisory and insurer sites, NOT against the text of the Act (the Income Tax Department's own pages
--- refused the request), so `verified_on` says when somebody looked and a CA reading the Act is the check that counts.
+-- 80C, ₹25,000 under 80D for the taxpayer's family and ₹25,000 for parents, ₹5,000 of it for a preventive check-up. Senior citizens
+-- are NOT modelled (the owner, 13 November 2026: the app holds no date of birth), so there is no senior row. They were checked on
+-- the date below against published summaries by tax-advisory and insurer sites, NOT against the text of the Act (the Income Tax
+-- Department's own pages refused the request), so `verified_on` says when somebody looked. The owner or a partner finalises them
+-- against the Act (a CA is not required); change `verified_on` to the day they did.
 --
 -- The Income-tax Act 2025 takes effect for tax year 2026-27 and renumbers the sections. The authority strings name the section as
 -- it stood in the 1961 Act and say the 2025 Act carries it, as the existing rows do, and do not give a new number: the summaries
@@ -27,12 +29,10 @@
 -- `section_80c`                 one combined ceiling over everything 80C lists (life premiums, PPF, SSY, NSC, ELSS, EPF, tuition
 --                               fees, the principal of a home loan, and the rest); the engine adds them and applies this once.
 -- `section_80d_self`            premiums for the taxpayer, spouse and children, when none of them is a senior citizen.
--- `section_80d_self_senior`     the same, when the taxpayer or spouse is a senior citizen (sixty or over).
 -- `section_80d_parents`         premiums for parents, when neither is a senior citizen.
--- `section_80d_parents_senior`  the same, when a parent is a senior citizen.
 -- `section_80d_checkup`         a preventive health check-up, which is inside the 80D ceilings above and not on top of them.
 --
--- Six rows, one per subject, none ended. `effective_from` is the first year seeded, as for the other kinds: a year before it has
+-- Four rows, one per subject, none ended. `effective_from` is the first year seeded, as for the other kinds: a year before it has
 -- no row, and the computation refuses it rather than apply a year's ceilings to a year they did not govern.
 
 insert into public.tax_rule
@@ -44,14 +44,10 @@ values
 
   ('IN', 'deduction_cap', 'old', 'section_80d_self',            2500000, date '2025-04-01', null,
    'Income-tax Act 1961, s. 80D — premiums for self, spouse and children, none a senior citizen; old regime only; carried into the Income-tax Act 2025 for tax year 2026-27, limit unchanged', date '2026-11-12'),
-  ('IN', 'deduction_cap', 'old', 'section_80d_self_senior',     5000000, date '2025-04-01', null,
-   'Income-tax Act 1961, s. 80D — premiums for self, spouse and children where the taxpayer or spouse is sixty or over; old regime only; carried into the Income-tax Act 2025 for tax year 2026-27, limit unchanged', date '2026-11-12'),
   ('IN', 'deduction_cap', 'old', 'section_80d_parents',         2500000, date '2025-04-01', null,
    'Income-tax Act 1961, s. 80D — premiums for parents, neither a senior citizen; old regime only; carried into the Income-tax Act 2025 for tax year 2026-27, limit unchanged', date '2026-11-12'),
-  ('IN', 'deduction_cap', 'old', 'section_80d_parents_senior',  5000000, date '2025-04-01', null,
-   'Income-tax Act 1961, s. 80D — premiums for parents where a parent is sixty or over; old regime only; carried into the Income-tax Act 2025 for tax year 2026-27, limit unchanged', date '2026-11-12'),
   ('IN', 'deduction_cap', 'old', 'section_80d_checkup',          500000, date '2025-04-01', null,
    'Income-tax Act 1961, s. 80D — preventive health check-up, inside the limits above and not additional to them; old regime only; carried into the Income-tax Act 2025 for tax year 2026-27, limit unchanged', date '2026-11-12');
 
--- The most 80D allows in all, ₹1,00,000 where both the taxpayer's side and the parents' side are senior, is not a row: it is the sum
--- of the two ceilings that apply, and a row for it would be a figure that could disagree with them.
+-- The most 80D allows in all is not a row: it is the sum of the two ceilings that apply, and a row for it would be a figure that
+-- could disagree with them.

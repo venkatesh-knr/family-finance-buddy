@@ -31,8 +31,8 @@ select is(
 select is(
   (select count(distinct subject)::int from public.tax_rule
     where kind = 'deduction_cap' and subject like 'section\_%' and effective_from = date '2025-04-01'),
-  6,
-  'the six subjects are seeded: 80C, four 80D ceilings and the check-up'
+  4,
+  'the four subjects are seeded: 80C, the two 80D ceilings and the check-up'
 );
 
 select is(
