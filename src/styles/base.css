@@ -52,12 +52,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /*
+   * A section is a soft panel (docs/design/simple-layout.md section 1, SL-I7; chosen 12 November 2026): filled, with no border and
+   * no shadow, told from the page by its tone alone, which `--surface` against `--bg` provides in both themes. Nothing filled or
+   * outlined sits inside one (SL-I9): a note or a group in a panel is plain text or rows.
+   */
   .card {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 18px;
+    border-radius: var(--radius-panel);
+    padding: 14px 16px;
   }
 
   /*
@@ -68,14 +71,17 @@
    * src/ui/liftContrast.test.ts reads the shipped token values to say so. A stop that got
    * lighter, or an ink that got dimmer, fails the build.
    *
-   * Everything else is the ordinary card: the same border, the same radius. What the lift
-   * adds is the deeper shadow and a 1px light along the top edge.
+   * Everything else is a soft panel, with no outline and no shadow. The lift is the one thing on a screen that has them: the
+   * hairline outline and the deeper shadow, a 1px light along the top edge, and the 18px padding it has always had, at the same
+   * radius as the panels.
    */
   .card-lift {
     background-color: var(--surface);
     background-image: var(--surface-lift);
     background-repeat: no-repeat;
+    border: 1px solid var(--line);
     box-shadow: var(--shadow-lift);
+    padding: 18px;
     position: relative;
   }
 
@@ -88,18 +94,18 @@
     position: absolute;
   }
 
-  /* The sample bar: figures that are illustrative say so (docs/design/prototype.html, .samplebar). */
+  /*
+   * The sample line: figures that are illustrative say so. A caveat that belongs to no section, so it sits on the page between
+   * panels as a line of words with a brass title, and not in a box of its own (docs/design/simple-layout.md section 1).
+   */
   .samplebar {
     align-items: center;
-    background: var(--brass-soft);
-    border: 1px solid var(--brass);
-    border-radius: 8px;
     color: var(--ink-2);
     display: flex;
     flex-wrap: wrap;
     font-size: 0.7875rem;
     gap: 0.625rem;
-    padding: 0.5625rem 0.8125rem;
+    padding: 0 0.25rem;
   }
 
   .samplebar b {
@@ -367,12 +373,10 @@
    * The rule is carried by the glyph and the words, never by the hue alone.
    */
   .notice {
-    border-left: 3px solid currentcolor;
-    border-radius: 4px;
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    padding: 8px 11px;
+    padding: 2px 0;
   }
 
   /*
@@ -382,13 +386,11 @@
    * commonest state is how a warning stops being read.
    */
   .notice-gap {
-    background: var(--brass-soft);
     color: var(--brass);
   }
 
   /* Reserved for a figure that is actually wrong — a peak below the true one. */
   .notice-due {
-    background: var(--coral-soft);
     color: var(--coral);
   }
 
@@ -711,22 +713,21 @@
    */
   .notice-names {
     display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
+    flex-direction: column;
     margin-top: 7px;
   }
 
   /*
-   * Names are sometimes a sentence, and a pill's radius is a half-circle at
-   * each end: wrapped over two or three lines it drew the border through the
-   * words at a phone width. A small radius holds any number of lines.
+   * Names are sometimes a sentence. Each is a row, one to a line and divided from the next by a hairline, so where one ends is
+   * clear however many lines it wraps to, and nothing is drawn round it (docs/design/simple-layout.md section 1, SL-I9).
    */
   .notice-names > li {
-    background: var(--surface);
-    border: 1px solid currentcolor;
-    border-radius: 6px;
     color: inherit;
-    padding: 3px 10px;
+    padding: 4px 0;
+  }
+
+  .notice-names > li + li {
+    border-top: 1px solid var(--line);
   }
 
   /*
@@ -734,12 +735,10 @@
    * choice. A row says what it is for in a line under its name only where that is the thing to know; the rest of
    * what used to sit under every row is gone, because a setting nobody can act on is not a row.
    */
-  /* A group of rows: a box, the rows divided by hairlines (docs/design/simple-layout.md section 1). */
+  /* A group of rows: a soft panel, the rows divided by hairlines (docs/design/simple-layout.md section 1). */
   .setgrp {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-panel);
     overflow: hidden;
   }
 
@@ -838,6 +837,11 @@
     gap: 0.5rem;
     justify-content: space-between;
     margin: 0 0.25rem 0.5rem;
+  }
+
+  /* A heading between two panels sits with the panel below it: 10px of page above the panel above it plus these 8px, and 8px below (the board's 18 and 8). */
+  section + section > .grouphead {
+    margin-top: 0.5rem;
   }
 
   .grouphead h2 {
@@ -1540,7 +1544,7 @@
    */
   .stat-cards {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.625rem;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
   }
 
@@ -1650,18 +1654,14 @@
     color: var(--coral);
   }
 
-  /* The one note under the chart, boxed as the board draws it; the assumptions are behind its mark. */
+  /* The one note under the chart, as plain text in a panel (SL-I9); the assumptions are behind its mark. */
   .chart-note {
     align-items: center;
-    background: var(--inset);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
     color: var(--muted);
     display: flex;
     font-size: 0.75rem;
     gap: 0.4rem;
     margin-top: 0.25rem;
-    padding: 0.5rem 0.625rem;
   }
 
   /* The target named on its own line (docs/tokens.md section 3: brass for a target, as a text label). */
@@ -3171,12 +3171,10 @@
     margin: 0 0.25rem 0.375rem;
   }
 
-  /* The policies of one kind: a box, the rows divided by hairlines (docs/design/simple-layout.md section 1). */
+  /* The policies of one kind: a soft panel, the rows divided by hairlines (docs/design/simple-layout.md section 1). */
   .policy-card {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-panel);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -3890,7 +3888,8 @@
     padding: 0;
   }
 
-  .flat-rows > li {
+  /* Hairlines between rows, as the boards draw them, and none between a panel's title and its first row. */
+  .flat-rows > li + li {
     border-top: 1px solid var(--line);
   }
 
@@ -3961,6 +3960,7 @@
     font-size: 0.8125rem;
     gap: 0.375rem;
     left: 50%;
+    border-radius: var(--radius-pill);
     min-height: 2.75rem;
     padding: 0.5rem 1rem;
     position: fixed;

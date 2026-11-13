@@ -163,7 +163,7 @@ export function UploadPanel({ householdId, privacy }: { householdId: string; pri
   };
 
   return (
-    <section className="card mt-3" aria-label="Bring a workbook back">
+    <section className="card" aria-label="Bring a workbook back">
       <div className="label">Bring a workbook back</div>
       <h2 className="card-title mt-1.5">Upload what you edited</h2>
       <p className="note mt-1.5">

@@ -318,7 +318,7 @@ function SecretToType({ secret }: { secret: string }) {
     <div className="flex flex-col gap-1.5">
       <span className="label">Or enter this by hand</span>
       <div className="flex flex-wrap items-center gap-2.5">
-        <code className="num scroll-x rounded bg-s2 px-2.5 py-2 text-cell">{secret}</code>
+        <code className="num scroll-x text-cell">{secret}</code>
         <Button
           variant="quiet"
           type="button"

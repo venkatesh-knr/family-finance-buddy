@@ -150,7 +150,7 @@ export function TaxScreen({
   const whose = member?.displayName ?? 'this member';
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {/* Whose return, which year: one line, not a card. */}
       <div className="tax-head">
         {years.length === 1 ? (
