@@ -28,7 +28,13 @@ function asRepositoryError(error: ProviderError): Error {
 
 /** The household's rules the caller may read, the ones in use first and a paused or archived one after, by name. */
 export async function listRules(householdId: Uuid): Promise<readonly RecurringRule[]> {
-  const { data, error } = await supabase().from('recurring_rule').select(COLUMNS).eq('household_id', householdId).order('name', { ascending: true });
+  const { data, error } = await supabase()
+    .from('recurring_rule')
+    .select(COLUMNS)
+    .eq('household_id', householdId)
+    // Expense rules only: a credit rule (a salary rule) has no category and is read by `incomeRules.ts`.
+    .eq('direction', 'debit')
+    .order('name', { ascending: true });
   // Before the migration is applied there is no table, and so no rule: an empty list, not a failure. The provider's codes stay here.
   if (error !== null && (error.code === '42P01' || error.code === 'PGRST205')) return [];
   if (error !== null) throw asRepositoryError(error);

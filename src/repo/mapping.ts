@@ -67,12 +67,12 @@ import {
   type Visibility,
 } from './types.ts';
 
-function requireNumber(value: unknown, field: string): number {
+export function requireNumber(value: unknown, field: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) throw new MalformedRowError(field, 'is not a whole number');
   return value;
 }
 
-function requireIsoDate(value: unknown, field: string): IsoDate {
+export function requireIsoDate(value: unknown, field: string): IsoDate {
   const text = requireString(value, field);
   if (!isIsoDate(text)) {
     throw new MalformedRowError(field, `is ${JSON.stringify(text)}, not a calendar date`);
