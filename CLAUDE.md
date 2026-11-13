@@ -140,10 +140,13 @@ here to push what was left. The next session may be a cloud one that sees only w
   Departures table in `docs/design/conformance.md` and list it in your report. Every screen's row in that
   file names its artboard in the Artboard column (`none` only where the canvas has no board).
 - **Run the tests in tiers, so the cost matches the change.** On every change: typecheck and the unit tests.
-  While working on a screen: only the e2e specs for the screen touched, run alone and never alongside the unit
-  tests (that produces false failures), with the output captured to a file and the failures read from it. The
-  full e2e suite runs once, before the pull request is opened. CI is the final gate on everything and is not
-  repeated locally.
+  A small change gets no e2e: run only the new or changed tests. While working on a screen: only the e2e specs
+  for the screen touched, run alone and never alongside the unit tests (that produces false failures), with the
+  output captured to a file and the failures read from it. The full e2e suite runs once, before the pull
+  request is opened, **when the change is considerable**. Small means small in reach, not in lines: a change to
+  the stylesheet, the tokens, `src/ui/primitives.tsx`, the shell, or a repository or domain function that
+  several screens use is considerable however short the diff. CI does not run e2e, so that one local run is the
+  only e2e gate; CI is the final gate on everything else and is not repeated locally.
 - **A finished vertical slice gets a design-conformance review before I see it** — meaning a screen built or
   rebuilt to its artboard, or a change to a layout, a figure a person reads or a rule in the design documents.
   Copy fixes, label changes, refactors and test-only changes do not get one. Invoke the
