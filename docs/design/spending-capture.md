@@ -194,19 +194,28 @@ S1 and S2 cut typing now. S3 is what makes the figure right.
    hands over, one message at a time; it never reads the inbox and asks no
    permission. Proposed rewording: *"No SMS reading: the app requests no SMS,
    notification or accessibility permission. Text a person shares into the app
-   may be parsed."*
+   may be parsed."* **Decided 13 November 2026: no rewording, and the share target and
+   Paste are not to be built.** The `CLAUDE.md` line stays as it is.
 2. **Loan EMIs.** The principal reduces a liability and is not spending; the
    interest is. Proposed: an EMI paid to a recorded liability is excluded from
    *spent* and shown as its own line until the liability carries the split.
+   **Decided 13 November 2026: yes.**
 3. **The UPI reference:** last four and a hash (proposed) or the full number.
+   **Decided 13 November 2026: the last four and a hash.**
 4. **A spreadsheet library** for Paytm's Excel file. Step 7 already owes this
-   decision for bank XLS; Paytm's PDF works without it.
+   decision for bank XLS; Paytm's PDF works without it. **Decided 13 November
+   2026: skip Excel for now.**
 5. **Who closes a month:** proposed, owner or partner for the household, and a
-   contributor for their own accounts only.
+   contributor for their own accounts only. **Decided 13 November 2026: accepted.**
 6. **Take-home income.** §10 assumes salary is recorded as what reached the
    account, so payroll deductions sit outside *saved*. 6a already owes the "which
    income" decision (gross with TDS for the Tax card, or take-home); if it is
    gross, *saved* must subtract tax and payroll deductions, and §10 changes with it.
+   **Decided 13 November 2026: gross, before tax and PF deductions** (the same answer
+   as the "which income" decision in the build plan, step 6a). Salary is recorded as
+   gross with TDS, the employee's PF and any other deduction, take-home is worked out
+   from them, and *saved* is take-home less *spent*. The PF the employee pays is money
+   put away through payroll and is shown on its own line, as §10 says for EPF.
 
 ## 10. Where the month's money went
 
@@ -245,9 +254,12 @@ closed month the two parts add up to *saved* to the paisa. That follows from §2
 arithmetic rather than being checked against it, so a gap means a bug.
 
 **The cash reserve is in net worth** as the Cash class (blueprint §01, the ninth
-class), with card dues netted off. It is not *invested*, and the screen says
-*not yet invested* beside it rather than implying it should be. Whether it should
-be invested is a judgement the app does not make.
+class), with card dues netted off. It is not *invested*. **Decided 13 November 2026:
+money kept in a savings account is a legitimate cash reserve and not money that
+still has to be invested**, so the screen calls it the cash reserve and does not say
+*not yet invested* or *left in the bank* beside it (the MonthMoney board draws "Left
+in the bank · not yet invested", which the build will not copy). Whether any of it
+should be invested is a judgement the app does not make.
 
 **On the screen:** the Overview's flow region opens *October's money*. That screen
 leads with saved, split three ways (spent · invested · left in the bank), then
