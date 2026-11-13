@@ -555,12 +555,7 @@ export function ImportStatement({
           </p>
           <pre
             className="mt-2 overflow-auto text-caption"
-            style={{
-              maxHeight: '24rem',
-              background: 'var(--surface-2)',
-              padding: '0.75rem',
-              borderRadius: '0.375rem',
-            }}
+            style={{ maxHeight: '24rem', borderBlock: '1px solid var(--line)', padding: '0.5rem 0' }}
           >
             {rawLines.map((line, at) => `${String(at + 1).padStart(4, ' ')}  ${line}`).join('\n')}
           </pre>

@@ -576,10 +576,8 @@ function IssuedCode({
 
       <div className="flex flex-wrap items-center gap-3">
         <code
-          className="num rounded px-3.5 py-2.5"
+          className="num"
           style={{
-            background: 'var(--surface-2)',
-            border: '1px solid var(--line-strong)',
             color: 'var(--ink)',
             fontSize: '1.1875rem',
             letterSpacing: '0.16em',

@@ -60,7 +60,7 @@ export function PolicyList({
   const groups = policyGroups(policies);
 
   return (
-    <section aria-label="Policies" className="flex flex-col gap-3">
+    <section aria-label="Policies" className="flex flex-col gap-2.5">
       <div className="policy-head">
         <h2 className="policy-title">Policies</h2>
         <span className="policy-count tabular-nums">{policies.length}</span>

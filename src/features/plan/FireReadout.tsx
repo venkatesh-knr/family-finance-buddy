@@ -198,7 +198,7 @@ export function FireReadout({
   };
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       <section aria-label="Financial independence">
         <p className="label">Financial independence</p>
         <div className="figure mt-1" title={exactMoney(first.target, privacy) ?? undefined}>

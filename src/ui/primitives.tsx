@@ -909,12 +909,8 @@ export function Problem({ children }: { children: ReactNode }) {
   return (
     <p
       role="alert"
-      className="flex items-start gap-2 rounded border px-2.5 py-2 text-caption"
-      style={{
-        background: 'var(--coral-soft)',
-        borderColor: 'var(--coral)',
-        color: 'var(--coral)',
-      }}
+      className="flex items-start gap-2 text-caption"
+      style={{ color: 'var(--coral)' }}
     >
       <span className="notice-mark" aria-hidden="true">
         !

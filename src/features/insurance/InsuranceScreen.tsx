@@ -67,7 +67,7 @@ export function InsuranceScreen({ privacy, householdId }: { privacy: boolean; ho
   const base = listing.household.baseCurrency;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       <CoverGapCard
         facts={facts}
         years={listing.household.coverDependencyYears}

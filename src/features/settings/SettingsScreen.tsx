@@ -115,7 +115,7 @@ export function SettingsScreen({
   const options = [...new Set([base, reading, ...convertible])];
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       <section>
         <div className="grouphead">
           <h2>This device</h2>

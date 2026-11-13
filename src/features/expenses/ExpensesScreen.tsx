@@ -117,7 +117,7 @@ export function ExpensesScreen({
   );
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-2.5">
       {/*
         The comparison adds up the entries it can see and sets them against the household's plan. A contributor can
         read only their own entries, so for them it would show their spending as the household's, a partial figure
