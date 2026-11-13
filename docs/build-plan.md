@@ -582,6 +582,8 @@ Three things are owed before it is built:
 
 **6a. Flow — design slice A.**
 
+> **Built from `docs/design/ledger-income.md` (decided by the owner, 13 November 2026).** That document is the design of this step, and where the paragraphs below disagree with it, it applies. What it settles that these paragraphs left open or answered differently: the money screen is a **ledger of credits and debits**, renamed Money (label and route, `#/money`); `credit_entry`, `account_transfer` and `income_entry` replace the `income` table and the idea that Tax's heads are derived from the ledger; the ledger records credits **as the bank received them** and deductions are not recorded; **Tax's gross figures are typed once a year per member** and stored, not derived (the earlier "income recorded gross in the ledger, with TDS" is superseded); a salary rule reminds and never posts; the payroll line is dropped; an audit row for a credit or a tax input follows the row it records (`CLAUDE.md`, LI-I22). The migration is `supabase/migrations/20261114120000_ledger_income.sql`, shown for review before any screen is built on it.
+
 *Where it sits, and why.* Immediately before bank and card import. The design's
 transfer rule ("moving money between the household's own accounts is neither
 income nor expense") needs something to move money *between*, and the blueprint's
@@ -620,7 +622,7 @@ the repository):
   `access.ts`, the ledger and a large part of the e2e suite. Rename the label and
   keep the id, or rename both with a redirect. The nav change itself is 2b's.
 
-*Decided by the owner on 13 November 2026* (`docs/decisions.md`, Owner's answers): the ledger is the source and income is recorded **gross, before tax and PF deductions**, with TDS, the employee's PF and other deductions, so the tax calculation can be done properly and take-home is worked out; a realised capital gain is derived from lots, shown beside income and used in the tax view, never stored and never added to income or to *saved* (a sale's proceeds are already counted as money taken out of holdings); income is private by default with a sum function for the household total; a transfer goes to a holding as well as to an account; the same gross answer settles spending-capture §9 item 6. Still open: renaming Expenses to "Money" (label only, or label and route), and whether the FIRE screen takes an income figure.
+*The owner's answers of 13 November 2026* are in `docs/decisions.md` (*The owner's answers to the open questions* and *Ledger and income, decided*). Two lines that this paragraph once carried are superseded by `ledger-income.md`: income is not recorded gross in the ledger (the ledger holds credits as received, and gross is typed on the Tax screen), and whether the FIRE screen takes an income figure is answered there (it only reads income, which is entered in Money). A realised capital gain is derived from lots, shown beside income and used in the tax view, never stored and never added to income or to *saved*; income is private by default with a sum function for the household total; a transfer goes to a holding as well as to an account.
 
 *Also here:* the stock and flow regions of the Overview, with the one lifted
 surface per screen unchanged (`theme.spec.ts` must not be relaxed); the two

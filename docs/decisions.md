@@ -533,6 +533,17 @@ Twenty-seven questions were put to the owner at the end of the invested-card sli
 - **Income is private by default**, with household totals from a sum function; a contributor sees their own and a viewer none. **Audit rows for `credit_entry` and `income_entry` follow the visibility of the row they record** (section 12, LI-I22): the owner's ruling as maintainer, now the second named exception in the audit paragraph of `CLAUDE.md`. Wording only; nothing is built.
 - **Design only.** Step 6a is ready to build from it. `docs/drafts/ledger-income-conformance.md` lists the proposed Departures and `docs/drafts/ledger-income-questions.md` keeps the questions that were asked.
 
+## Step 6a: the migration's decisions, confirmed (13 November 2026, the owner)
+
+The migration `supabase/migrations/20261114120000_ledger_income.sql` was put to the owner for review with six decisions; all six were answered in chat on 13 November 2026.
+
+- **The Household FIRE figure is a database function**, `household_yearly_income(household, as_of)`: the owner said to go with it "if household is there and who all earn". It adds each earner's usual salary times twelve and their business income over the last twelve complete months, per currency, to an owner or a partner with a second factor, and returns two sums and no member. **This is a named exception to the rule that calculations are pure functions** (the migration says so): the owner chose a household total and not each person's months, so only the database can compute it without disclosing them. The same rule is written again as a pure domain function for Mine, and both are held to the design's test vectors (LI-I9, LI-I18, LI-I20).
+- **A personal credit can be made only by the member it belongs to**, so an owner records a parent's income as the household's.
+- **A transfer is readable only by someone who can read both accounts**, and both legs are in one currency (a move between currencies is not modelled yet).
+- **A balance, and its audit row, is as private as its account.**
+- **Reads are not audited yet** (step 11), as for every other table.
+- **No ledger rows in the demo seed**; the reset clears the new tables and the seed is unchanged.
+
 ## Simple layout, the boxes come back (8 November 2026, the owner)
 
 After using slices A to E on a phone, the owner sent seven screenshots and eight points. Each is built (slice F) and none is a recommendation of mine:

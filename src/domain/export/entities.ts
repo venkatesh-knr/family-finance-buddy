@@ -154,6 +154,9 @@ export const ENTITIES: readonly Entity[] = [
       text('status'),
       ts('archived_at'),
     ],
+    // A rule can now be a credit (docs/design/ledger-income.md section 5). The three columns that say so are out of the sheet until the
+    // ledger screens decide what a person may read and back up of a salary rule, and `account` is not an entity yet to point them at.
+    leftOut: ['direction', 'credit_category', 'account_id'],
   },
   {
     // What a holding is. Written in the Holdings sheet, beside the holding: a person adds a holding, and its kind, scheme and type are
@@ -414,6 +417,16 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
   user_account: 'Sign-in identities: an email address and an authentication id. Not household data.',
   membership: 'Who may sign in, and with what role. Access, not records, and it is rebuilt by inviting people.',
   invite: 'An invitation’s code is a credential, and a hash of one.',
+  account:
+    'Step 6a (docs/design/ledger-income.md section 12). Its sheet, the template version and what an upload may write to it are decided with the first screen that reads it, as a personal account’s rows stay hidden from everyone else.',
+  account_balance:
+    'Step 6a. As private as the account it is a balance of. Its sheet arrives with the month close that reads it (step 6d), and not before.',
+  credit_entry:
+    'Step 6a. Money in, private by default (blueprint section 20). Its sheet, and whether an upload may write a private credit at all, are decided with the first screen that reads it, so no one is handed a file of other members’ income.',
+  account_transfer:
+    'Step 6a. A move between two of the household’s own accounts. Its sheet arrives with the ledger screen that shows it.',
+  income_entry:
+    'Step 6a. The Tax screen’s typed gross figures, readable only by the member and whoever typed them (LI-I21). Its sheet is decided with the Tax screen’s change, since a file that held another member’s gross salary would break that rule.',
 };
 
 /**
