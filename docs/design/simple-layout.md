@@ -1,11 +1,11 @@
-# Simple layout: tabs, boxed sections, underline fields
+# Simple layout: tabs, soft panels, underline fields
 
 <!-- invariant-prefix: SL -->
 
 A simpler look for the whole app, decided by the owner on 7 November 2026 from a
 reference screen he liked: **tabs per asset class on Holdings with All first,
-input fields without boxes, in short steps, and sections that were first drawn flat
-(§1, which the owner amended on 8 November 2026: the boxes came back).**
+input fields without boxes, in short steps, and sections as soft panels (§1: first
+drawn flat, boxed again on 8 November 2026, and soft panels since 12 November 2026).**
 Colours do not change: the dark theme and the Mist light theme stay as they are in
 `docs/tokens.md`. The pictures are the Simpler layout row of
 `docs/design/vibrant-canvas.html` (HoldingsTabsAll, HoldingsTabGold, AddStep1,
@@ -18,10 +18,25 @@ parts of `holdings.md` and `tokens.md` named in §5.
 first version of this section drew every section but one flat on the page. The owner
 asked for the boxes back: "section boxes and separation lines applicable to all pages".
 
-- **One lifted surface per screen stays** (`tokens.md` §1): the answer, at the top.
-- **Every other section is a box:** a plain card (`--surface`, border, radius, `--shadow`),
-  a title, and **rows divided by hairlines** (`--line`) inside it. Key–value facts are
-  rows (label left, figure right) or small boxes side by side, as the Overview's currencies are.
+*Amended again on 12 November 2026 by the owner: the outlined box becomes a **soft panel**.*
+The boxes fixed the merging, and were heavier than the screen needs: with an outline and a
+shadow on every section, each one competes with the lifted card. The owner was shown four
+ways to separate sections on one screen (boxes as built, soft panels, full-width bands,
+headed sections with no box) and chose soft panels. The pictures are the SectionPanel and
+SectionPanelLight boards.
+
+- **One lifted surface per screen stays** (`tokens.md` §1): the answer, at the top. It is the
+  only thing on a screen with an outline, a gradient and a shadow.
+- **Every other section is a soft panel:** filled `--surface`, **no border and no shadow**,
+  corners `--radius-panel` (16px; the lifted card takes the same radius), 14px 16px padding,
+  and 10px of page ground between one panel and the next. A title, and **rows divided by
+  hairlines** (`--line`) inside it. The panel is told from the page by its tone alone, which
+  both themes already provide: `--surface` is lighter than `--bg` in dark and in Mist.
+- **No box inside a panel.** A note or a group inside a panel is plain text or rows, never a
+  second filled or outlined box. Key–value facts are rows (label left, figure right), or
+  small panels side by side, as the Overview's currencies are.
+- **A caveat line that belongs to no section** (one sentence with an info mark) sits on the
+  page between panels, not in a panel of its own.
 - **A list entry is one line** where it fits (Recent expenses: the payee, what it was and
   whose, the amount at the right), and wraps, never clips, at a large text size. A day
   is set off from the one before by a hairline.
@@ -172,7 +187,9 @@ the spending-capture boards (MonthClose, QuickAddShared), none of which is built
 
 **SL-I6 — In a stepped form, going back keeps every value, and nothing is written until the last step's button.** (§4)
 
-**SL-I7 — A screen has at most one lifted surface;** other sections are plain boxes, with hairlines between their rows. (§1)
+**SL-I7 — A screen has at most one lifted surface;** every other section is a soft panel: filled, with no border and no shadow, and hairlines between its rows. (§1)
+
+**SL-I9 — No filled or outlined box sits inside a panel.** (§1)
 
 **SL-I8 — Overview and Holdings open on Mine,** and the lifted figure's label names whose it is (*Your* or *Household*). (§2a)
 
@@ -191,5 +208,7 @@ the spending-capture boards (MonthClose, QuickAddShared), none of which is built
   the form on step two writes no row (e2e).
 - SL-I8: a fresh sign-in opens Overview with Mine pressed and the label "Your net worth";
   pressing Household changes the label and Holdings follows; a reload opens on Mine again.
+- SL-I9: no element with the panel's class has a descendant with the panel's or the lifted
+  surface's class, on every screen.
 - SL-I7: each screen has exactly one element with the lifted surface's class (extends the
   existing check in `theme.spec.ts`).

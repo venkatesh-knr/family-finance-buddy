@@ -74,4 +74,4 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - CL-I10 — not built: proposed, awaiting the owner's decisions in commercial-launch.md §12 — 2026-11-06
 
 ## simple-layout.md
-
+- SL-I9 — not built: soft panels are decided (simple-layout.md §1, 12 November 2026) and not yet built — 2026-11-12

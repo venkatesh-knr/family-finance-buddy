@@ -831,6 +831,8 @@ a percentage carries no units to check it against.
 
 Create the real household and enter the opening position. The demo stays as a permanent sandbox. Then the roadmap's later phases — currencies and the Global screen, imports, the tax engine — with real figures to test against.
 
+> **Parked for later (13 November 2026).** `docs/later.md` keeps three lists the owner wants for later development, none designed or scheduled: getting the app noticed, AI features that cost nothing and keep everything on the device, and simulators that are arithmetic with their assumptions shown and never recommend. Each needs a design document before it is built.
+
 > **Selling the app is designed and not scheduled.** `docs/design/commercial-launch.md` (sign-up, billing, data protection, support; invariants CL-I1 to CL-I10) exists and is **proposed**. It adds no step here and is not scheduled until its section 12 is decided (`docs/decisions.md`, Open: selling the app). It reverses `CLAUDE.md`'s "No public sign-up" only if the owner decides so.
 
 ## 03. Working with Claude Code
