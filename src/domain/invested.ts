@@ -12,6 +12,8 @@
  * What counts as put in:
  *   - a purchase lot, at its cost, all in;
  *   - a deposit's principal on the day it started (a renewal is the same money and is not counted again);
+ *   - a holding with a cost on it and no purchase and no terms, at that cost on the day it was opened (the owner's call,
+ *     13 November 2026: the opening date is the purchase date);
  *   - a PPF payment, on its entry date.
  * What counts as taken out:
  *   - a sale, a redemption or a maturity, at what it fetched net of the costs of selling;
@@ -22,8 +24,8 @@
  * members, a gift and an ESOP vest, none of which was money leaving the household's accounts.
  *
  * Not recorded anywhere, so not here: an NPS or EPF contribution, and a recurring deposit's instalments. A figure that
- * claimed them would be invented. A holding opened this month with a cost and no purchase recorded is not guessed at either:
- * it is counted in `leftOut.holdings` so the screen can say so.
+ * claimed them would be invented, so a recurring deposit (scheme `rd`) is kept out altogether, as the owner decided on
+ * 13 November 2026.
  */
 
 import type { IsoDate } from '../lib/dates.ts';
@@ -36,9 +38,11 @@ export interface InvestedHolding {
   readonly id: string;
   /** The instrument's kind, which is the class Holdings groups by. */
   readonly kind: string;
-  /** The day the holding was opened, and whether it has a cost recorded on it. Only for counting what is left out. */
+  /** The day the holding was opened, and the cost recorded on it: a holding with no purchase is counted at that cost on that day. */
   readonly openedOn?: IsoDate | null;
-  readonly costed?: boolean;
+  readonly cost?: Money | null;
+  /** A deposit's scheme. A recurring deposit (`rd`) is kept out of this figure. */
+  readonly scheme?: string | null;
 }
 
 export interface InvestedLot {
@@ -111,7 +115,7 @@ export interface Invested {
   /** Currencies with any movement, INR first. Empty for a month with none. */
   readonly currencies: readonly InvestedCurrency[];
   /** Entries in the month that were deliberately not counted, so the screen can say there were some. */
-  readonly leftOut: { readonly lots: number; readonly disposals: number; readonly holdings: number };
+  readonly leftOut: { readonly lots: number; readonly disposals: number };
 }
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
@@ -122,6 +126,8 @@ export function investedInMonth(input: InvestedInput): Invested {
   if (!MONTH.test(input.month)) throw new Error(`"${input.month}" is not a month such as 2026-10.`);
   const inMonth = (date: IsoDate): boolean => date.slice(0, 7) === input.month;
 
+  // A recurring deposit is kept out of every part of this figure.
+  const outOf = new Set(input.holdings.filter((holding) => holding.scheme === 'rd').map((holding) => holding.id));
   const kindOf = new Map(input.holdings.map((holding) => [holding.id, holding.kind]));
   const classFor = (holdingId: string): string => {
     const kind = kindOf.get(holdingId);
@@ -145,7 +151,7 @@ export function investedInMonth(input: InvestedInput): Invested {
 
   let lotsLeftOut = 0;
   for (const lot of input.lots) {
-    if (!inMonth(lot.acquiredOn)) continue;
+    if (!inMonth(lot.acquiredOn) || outOf.has(lot.holdingId)) continue;
     if (lot.kind !== 'purchase') {
       lotsLeftOut += 1;
       continue;
@@ -156,7 +162,7 @@ export function investedInMonth(input: InvestedInput): Invested {
 
   let disposalsLeftOut = 0;
   for (const disposal of input.disposals) {
-    if (!inMonth(disposal.disposedOn)) continue;
+    if (!inMonth(disposal.disposedOn) || outOf.has(disposal.holdingId)) continue;
     if (!TAKEN_OUT_KINDS.includes(disposal.kind)) {
       disposalsLeftOut += 1;
       continue;
@@ -166,18 +172,20 @@ export function investedInMonth(input: InvestedInput): Invested {
   }
 
   for (const terms of input.terms) {
-    if (inMonth(terms.start)) add(terms.principal.currency, classFor(terms.holdingId), 'in', terms.principal.minor);
+    if (inMonth(terms.start) && !outOf.has(terms.holdingId)) add(terms.principal.currency, classFor(terms.holdingId), 'in', terms.principal.minor);
   }
 
   for (const payout of input.payouts) {
-    if (inMonth(payout.paidOn)) add(payout.amount.currency, classFor(payout.holdingId), 'out', payout.amount.minor);
+    if (inMonth(payout.paidOn) && !outOf.has(payout.holdingId)) add(payout.amount.currency, classFor(payout.holdingId), 'out', payout.amount.minor);
   }
 
-  // Opened this month with a cost on the holding and nothing else to show for it: not a lot, not terms. Not counted, and said.
+  // Opened this month with a cost on the holding and no purchase and no terms to show for it: its cost is what went in, on the day it was opened.
   const hasLot = new Set(input.lots.map((lot) => lot.holdingId));
-  const holdingsLeftOut = input.holdings.filter(
-    (h) => h.openedOn != null && inMonth(h.openedOn) && h.costed === true && !hasLot.has(h.id) && !hasTerms.has(h.id),
-  ).length;
+  for (const holding of input.holdings) {
+    if (outOf.has(holding.id) || hasLot.has(holding.id) || hasTerms.has(holding.id)) continue;
+    if (holding.openedOn == null || !inMonth(holding.openedOn) || holding.cost == null) continue;
+    add(holding.cost.currency, classFor(holding.id), 'in', holding.cost.minor);
+  }
 
   for (const entry of input.ppfEntries) {
     if (entry.isVoided || !inMonth(entry.date)) continue;
@@ -205,5 +213,5 @@ export function investedInMonth(input: InvestedInput): Invested {
       return { currency, putIn, takenOut, net: putIn - takenOut, classes: list };
     });
 
-  return { month: input.month, currencies, leftOut: { lots: lotsLeftOut, disposals: disposalsLeftOut, holdings: holdingsLeftOut } };
+  return { month: input.month, currencies, leftOut: { lots: lotsLeftOut, disposals: disposalsLeftOut } };
 }

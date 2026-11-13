@@ -110,7 +110,7 @@ describe('investedInMonth', () => {
     const inr = only(result);
     expect(inr.putIn).toBe(100_000n);
     expect(inr.takenOut).toBe(0n);
-    expect(result.leftOut).toEqual({ lots: 5, disposals: 2, holdings: 0 });
+    expect(result.leftOut).toEqual({ lots: 5, disposals: 2 });
   });
 
   it('counts a deposit once, as its principal on the day it started, and not again when it renews', () => {
@@ -175,20 +175,42 @@ describe('investedInMonth', () => {
     expect(only(result).takenOut).toBe(10_700_000n);
   });
 
-  it('counts the holdings opened this month with a cost and no purchase recorded, so the screen can say they were not counted', () => {
+  it('counts a holding with a cost on it and no purchase recorded at that cost, on the day it was opened', () => {
     const result = investedInMonth({
       ...base,
       holdings: [
-        { id: 'a', kind: 'mutual_fund', openedOn: '2026-10-03', costed: true },
-        { id: 'b', kind: 'mutual_fund', openedOn: '2026-10-04', costed: true }, // has a lot: counted as a lot
-        { id: 'c', kind: 'mutual_fund', openedOn: '2026-10-05', costed: false }, // no cost recorded
-        { id: 'd', kind: 'mutual_fund', openedOn: '2026-09-05', costed: true }, // another month
-        { id: 'e', kind: 'deposit', openedOn: '2026-10-06', costed: true }, // its terms are its money
+        { id: 'a', kind: 'mutual_fund', openedOn: '2026-10-03', cost: money(5_000_000n, 'INR') },
+        { id: 'b', kind: 'mutual_fund', openedOn: '2026-10-04', cost: money(9_000_000n, 'INR') }, // has a lot: the lot counts, not this
+        { id: 'c', kind: 'mutual_fund', openedOn: '2026-10-05', cost: null }, // no cost recorded: nothing to count
+        { id: 'd', kind: 'mutual_fund', openedOn: '2026-09-05', cost: money(7_000_000n, 'INR') }, // another month
+        { id: 'e', kind: 'deposit', openedOn: '2026-10-06', cost: money(100_000n, 'INR') }, // its terms are its money
       ],
       lots: [lot('b', '2026-10-04', 1_000)],
       terms: [{ holdingId: 'e', start: '2026-10-06', principal: money(100_000n, 'INR') }],
     });
-    expect(result.leftOut.holdings).toBe(1);
+    const inr = only(result);
+    expect(inr.classes).toEqual([
+      { kind: 'mutual_fund', putIn: 5_100_000n, takenOut: 0n, net: 5_100_000n, moves: 2 },
+      { kind: 'deposit', putIn: 100_000n, takenOut: 0n, net: 100_000n, moves: 1 },
+    ]);
+  });
+
+  it('keeps a recurring deposit out altogether: its principal, its payout, and any lot or cost on it', () => {
+    const result = investedInMonth({
+      ...base,
+      holdings: [
+        { id: 'rd', kind: 'deposit', scheme: 'rd', openedOn: '2026-10-06', cost: money(200_000n, 'INR') },
+        { id: 'fd', kind: 'deposit', scheme: 'fd' },
+      ],
+      lots: [lot('rd', '2026-10-07', 2_000)],
+      terms: [
+        { holdingId: 'rd', start: '2026-10-06', principal: money(200_000n, 'INR') },
+        { holdingId: 'fd', start: '2026-10-08', principal: money(1_000_000n, 'INR') },
+      ],
+      payouts: [{ holdingId: 'rd', paidOn: '2026-10-20', amount: money(300_000n, 'INR') }],
+      disposals: [sale('rd', '2026-10-21', 1_000)],
+    });
+    expect(only(result).classes).toEqual([{ kind: 'deposit', putIn: 1_000_000n, takenOut: 0n, net: 1_000_000n, moves: 1 }]);
   });
 
   it('counts PPF payments in and withdrawals out, and ignores a voided entry', () => {

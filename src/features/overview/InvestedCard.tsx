@@ -38,8 +38,6 @@ const MONTH_NAMES = [
   'December',
 ] as const;
 
-/** How far back the month can be stepped. A year and a half is a spending year and the one before it, which is what is compared. */
-const MONTHS_BACK = 18;
 
 /** `2026-10` shifted by a number of months, which may be negative. */
 function shift(month: string, by: number): string {
@@ -91,7 +89,7 @@ export function InvestedCard({
   privateLeftOut: boolean;
 }) {
   const thisMonth = today.slice(0, 7);
-  const [back, setBack] = useState(0);
+  const [back, setBack] = useState<0 | 1>(0);
   const month = shift(thisMonth, -back);
 
   // PPF payments are read apart from the holdings, as the Close month action reads them, and their failure is said: a PPF whose
@@ -124,7 +122,7 @@ export function InvestedCard({
     return investedInMonth({
       month,
       classOrder: CLASS_ORDER,
-      holdings: held.map((h) => ({ id: String(h.id), kind: h.instrument.kind, openedOn: h.openedOn, costed: h.cost !== null })),
+      holdings: held.map((h) => ({ id: String(h.id), kind: h.instrument.kind, openedOn: h.openedOn, cost: h.cost, scheme: h.instrument.scheme })),
       lots: listing.lots
         .filter((l) => ids.has(String(l.holdingId)))
         .map((l) => ({ holdingId: String(l.holdingId), acquiredOn: l.acquiredOn, cost: l.cost, kind: l.kind })),
@@ -164,29 +162,19 @@ export function InvestedCard({
     <Card
       title={`${scope === 'mine' ? 'Your' : 'Household'} investing in ${monthName(month)}`}
       aside={
-        <span className="flex items-center gap-2.5">
-          <button
-            type="button"
-            className="disclosure"
-            aria-label="An earlier month"
-            disabled={back >= MONTHS_BACK}
-            onClick={() => {
-              setBack((b) => Math.min(b + 1, MONTHS_BACK));
-            }}
-          >
-            Earlier
-          </button>
-          <button
-            type="button"
-            className="disclosure"
-            aria-label="A later month"
-            disabled={back === 0}
-            onClick={() => {
-              setBack((b) => Math.max(b - 1, 0));
-            }}
-          >
-            Later
-          </button>
+        <span className="segmented" role="group" aria-label="Which month">
+          {([0, 1] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={back === option}
+              onClick={() => {
+                setBack(option);
+              }}
+            >
+              {option === 0 ? 'This month' : 'Last month'}
+            </button>
+          ))}
         </span>
       }
     >
@@ -219,13 +207,6 @@ export function InvestedCard({
             members and ESOP vests are not money put in or taken out.
           </p>
         )}
-        {invested.leftOut.holdings > 0 && (
-          <p className="note mt-2.5" data-testid="invested-no-purchase">
-            {String(invested.leftOut.holdings)} {invested.leftOut.holdings === 1 ? 'holding' : 'holdings'} opened this month{' '}
-            {invested.leftOut.holdings === 1 ? 'has' : 'have'} a cost recorded on the holding and no purchase, so nothing is counted for{' '}
-            {invested.leftOut.holdings === 1 ? 'it' : 'them'}. Record the purchase on the holding to count it.
-          </p>
-        )}
         {unread.length > 0 && (
           <p className="note mt-2.5" role="alert">
             {unread.join(' and ')} could not be read, so this may be short. It is not that there are none: the request failed.
@@ -236,7 +217,7 @@ export function InvestedCard({
           <p className="note mt-2.5">Other members&rsquo; private holdings are not here: this device cannot read their purchases.</p>
         )}
         <p className="note mt-2.5">
-          Market gains are not investing, and NPS and EPF contributions are not recorded, so neither is counted.
+          Market gains are not investing, and NPS and EPF contributions and recurring deposits are not counted.
         </p>
       </div>
     </Card>
