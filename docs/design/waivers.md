@@ -76,21 +76,11 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## ledger-income.md
 
-- LI-I1 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I2 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I3 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I5 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I6 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I7 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I8 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I9 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I10 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I11 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I14 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I15 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I16 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I17 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I18 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I19 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I20 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
-- LI-I23 — not built: step 6a, decided 13 November 2026 (ledger-income.md §10) — 2026-11-13
