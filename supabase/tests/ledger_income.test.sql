@@ -3,14 +3,16 @@
 -- FOR REVIEW with the migration beside it (20261114120000_ledger_income.sql). Not run locally: Docker is blocked on the maintainer's
 -- machine, so CI's policy suite is the first run.
 --
--- LI-I1  — a credit has exactly one category: a value outside the list is refused by the table's check.
 -- LI-I4  — there is no credit without an account of the household, in the account's own currency.
--- LI-I8  — a credit rule never auto-posts, and a rule makes at most one credit per due date.
 -- LI-I12 — a viewer reads no credit; a contributor reads only their own; nobody reads another member's private credit.
 -- LI-I13 — the household's total of private income is reachable only through the sum function, by an owner or a partner, as totals
 --          per currency, and the result has no member in it.
 -- LI-I21 — a member's tax inputs are readable only by that member's login and by whoever typed them.
 -- LI-I22 — an audit row for a credit or a tax input is readable only by whoever can read the row it records.
+--
+-- The table's half of four others is checked here without claiming them, because each has a half that is a pure domain test and is
+-- not written yet: the category rule (LI-I1), a move being in neither came in nor spent (LI-I2), a credit rule never posting and
+-- posting once per due date (LI-I8), the Form 16 precedence (LI-I11) and the business loss (LI-I19).
 --
 -- Run: supabase test db
 
@@ -195,7 +197,7 @@ select throws_ok(
       values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
               'a9000000-0000-4000-8000-000000000001', 'bonus', 100, 'INR', '2026-10-02') $q$,
   '23514'::char(5), null::text,
-  'LI-I1 — a category outside the seven is refused'
+  'a category outside the seven is refused by the table''s check'
 );
 
 select throws_ok(
@@ -238,7 +240,7 @@ select throws_ok(
               'a9000000-0000-4000-8000-000000000001', 'salary', 14200000, 'INR', '2026-10-01', 'rule',
               'f9000000-0000-4000-8000-0000000000f9', '2026-10-01') $q$,
   '23505'::char(5), null::text,
-  'LI-I8 — confirming the same due date twice makes one credit and refuses the second'
+  'confirming the same due date twice makes one credit and refuses the second'
 );
 
 select throws_ok(
@@ -247,7 +249,7 @@ select throws_ok(
       values ('e9000000-0000-4000-8000-0000000000f1', 'Bad', 'credit', 'salary', 'a9000000-0000-4000-8000-000000000001',
               'f9000000-0000-4000-8000-0000000000a1', 100, 'INR', 'monthly', 1, '2026-11-01', true) $q$,
   '23514'::char(5), null::text,
-  'LI-I8 — a credit rule that posts by itself is refused'
+  'a credit rule that posts by itself is refused'
 );
 
 select throws_ok(
@@ -301,7 +303,7 @@ select throws_ok(
       values ('e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000001',
               'a9000000-0000-4000-8000-000000000001', '2026-10-12', 100, 'INR') $q$,
   '23514'::char(5), null::text,
-  'LI-I2 — a move from an account to itself is not a move'
+  'a move from an account to itself is not a move'
 );
 
 select throws_ok(
@@ -316,7 +318,7 @@ select throws_ok(
   $q$ insert into public.income_entry (household_id, member_id, tax_year, head, amount_minor)
       values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', '2026-27', 'business', -1) $q$,
   '23514'::char(5), null::text,
-  'LI-I19 — a business loss is refused by the table: the typed profit is not negative'
+  'a business loss is refused by the table: the typed profit is not negative'
 );
 
 select throws_ok(
@@ -350,7 +352,7 @@ select throws_ok(
 select lives_ok(
   $q$ insert into public.income_entry (household_id, member_id, tax_year, head, amount_minor, source)
       values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', '2026-27', 'salary', 22500000, 'form16') $q$,
-  'LI-I11 — a Form 16 figure is its own row beside the payslip one'
+  'a Form 16 figure is its own row beside the payslip one'
 );
 
 -- Put back, so that every insert below is attributed to whoever makes it.
