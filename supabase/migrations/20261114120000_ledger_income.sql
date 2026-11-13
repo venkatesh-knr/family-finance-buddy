@@ -1,6 +1,7 @@
 -- Family Finance Buddy — step 6a: accounts, money in, moves between accounts, and the Tax screen's typed income.
 --
--- FOR REVIEW. Not applied anywhere, and not yet run: Docker is blocked on the maintainer's machine, so the first run is CI's policy suite. The design is `docs/design/ledger-income.md` (section 12 lists the tables and what each one owes), and
+-- FOR REVIEW. Not applied to the live database. CI's policy suite applied it to a fresh database and ran supabase/tests/ledger_income.test.sql
+-- against it, and both passed (13 November 2026); Docker is blocked on the maintainer's machine, so CI is the only place it runs. The design is `docs/design/ledger-income.md` (section 12 lists the tables and what each one owes), and
 -- `docs/design/spending-capture.md` section 7 for the account registry. This file is the schema and its access rules and nothing else:
 -- no screen, no repository code and no calculation. Money in, spent and saved are derived in pure domain functions from what these
 -- tables hold (ledger-income.md sections 4 and 7), and nothing here stores them.
