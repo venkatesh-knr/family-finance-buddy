@@ -124,7 +124,7 @@ export function InvestedCard({
     return investedInMonth({
       month,
       classOrder: CLASS_ORDER,
-      holdings: held.map((h) => ({ id: String(h.id), kind: h.instrument.kind, openedOn: h.openedOn, costed: h.cost !== null })),
+      holdings: held.map((h) => ({ id: String(h.id), kind: h.instrument.kind, openedOn: h.openedOn, cost: h.cost, scheme: h.instrument.scheme })),
       lots: listing.lots
         .filter((l) => ids.has(String(l.holdingId)))
         .map((l) => ({ holdingId: String(l.holdingId), acquiredOn: l.acquiredOn, cost: l.cost, kind: l.kind })),
@@ -219,13 +219,6 @@ export function InvestedCard({
             members and ESOP vests are not money put in or taken out.
           </p>
         )}
-        {invested.leftOut.holdings > 0 && (
-          <p className="note mt-2.5" data-testid="invested-no-purchase">
-            {String(invested.leftOut.holdings)} {invested.leftOut.holdings === 1 ? 'holding' : 'holdings'} opened this month{' '}
-            {invested.leftOut.holdings === 1 ? 'has' : 'have'} a cost recorded on the holding and no purchase, so nothing is counted for{' '}
-            {invested.leftOut.holdings === 1 ? 'it' : 'them'}. Record the purchase on the holding to count it.
-          </p>
-        )}
         {unread.length > 0 && (
           <p className="note mt-2.5" role="alert">
             {unread.join(' and ')} could not be read, so this may be short. It is not that there are none: the request failed.
@@ -236,7 +229,7 @@ export function InvestedCard({
           <p className="note mt-2.5">Other members&rsquo; private holdings are not here: this device cannot read their purchases.</p>
         )}
         <p className="note mt-2.5">
-          Market gains are not investing, and NPS and EPF contributions are not recorded, so neither is counted.
+          Market gains are not investing, and NPS and EPF contributions and recurring deposits are not counted.
         </p>
       </div>
     </Card>
