@@ -15,7 +15,7 @@ import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import { PlanCard, SpentHero, useBudgetComparison } from './budgetView.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
 import { QuickAdd } from './QuickAdd.tsx';
-import { RecentList } from './RecentList.tsx';
+import { RecentList, type LedgerMoney } from './RecentList.tsx';
 import { useExpenses } from './useExpenses.ts';
 
 export function ExpensesScreen({
@@ -23,6 +23,7 @@ export function ExpensesScreen({
   householdId,
   displayCurrency,
   recurringMade = 0,
+  money,
 }: {
   privacy: boolean;
   householdId: string | null;
@@ -30,6 +31,8 @@ export function ExpensesScreen({
   recurringMade?: number;
   /** Empty for the household's own currency. A device setting (§366). */
   displayCurrency: string;
+  /** Money in and money moved, listed beside the spending (Money's Ledger). Absent where only spending is shown. */
+  money?: LedgerMoney;
 }) {
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
   // "File them" on the plan: the ledger shows only the entries with no category in the period the plan was
@@ -187,6 +190,7 @@ export function ExpensesScreen({
         onShowAll={() => {
           setUncategorisedIn(null);
         }}
+        {...(money === undefined ? {} : { money })}
       />
     </div>
   );

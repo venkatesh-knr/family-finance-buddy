@@ -10,9 +10,33 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { daysBetween, formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney } from '../../lib/money.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
-import type { ExpenseListing, Expense as ExpenseRow, Member } from '../../repo/types.ts';
-import { Pill } from '../../ui/primitives.tsx';
+import type { Account, Credit, ExpenseListing, Expense as ExpenseRow, Member, Transfer } from '../../repo/types.ts';
+import { Pill, Problem } from '../../ui/primitives.tsx';
+import { creditLine, kindsFor, LEDGER_FILTERS, mergeByDate, spendingWord, transferLine, type LedgerFilter, type LedgerLine } from '../money/ledgerLines.ts';
 import { memberMarks, type MemberMark } from './memberMark.ts';
+
+/** What the Money screen adds to the list: the credits and moves the caller may read, and the accounts they name (ledger-income.md section 1). */
+export interface LedgerMoney {
+  readonly credits: readonly Credit[];
+  readonly transfers: readonly Transfer[];
+  readonly accounts: readonly Account[];
+  /** Whether the credits and moves have been read, are being read, or could not be. */
+  readonly status: 'loading' | 'ready' | 'failed';
+  readonly onRetry: () => void;
+}
+
+type LedgerEntry =
+  | { readonly kind: 'spending'; readonly date: string; readonly key: string; readonly expense: ExpenseRow }
+  | { readonly kind: 'credit'; readonly date: string; readonly key: string; readonly line: LedgerLine }
+  | { readonly kind: 'move'; readonly date: string; readonly key: string; readonly line: LedgerLine };
+
+/**
+ * A line of the ledger wraps instead of squeezing: the name keeps room to read, and the amount, which stays together, drops underneath it
+ * when the row is too narrow, as it is at a large text size (ledger-income.md section 9). Nothing here is a fixed height.
+ */
+const LEDGER_ROW = { flexWrap: 'wrap', rowGap: '0.125rem' } as const;
+const LEDGER_NAME = { flex: '1 1 6rem' } as const;
+const LEDGER_AMOUNT = { flex: '0 0 auto', marginLeft: 'auto', textAlign: 'right' } as const;
 
 /** For an entry whose member is somehow not in the list: the mark still says something. */
 const FALLBACK_MARK: MemberMark = { text: '?', showName: true };
@@ -37,6 +61,7 @@ export function RecentList({
   onEdit,
   uncategorisedIn,
   onShowAll,
+  money,
 }: {
   listing: ExpenseListing;
   today: string;
@@ -50,8 +75,11 @@ export function RecentList({
   uncategorisedIn: { start: string; end: string } | null;
   /** Leave the uncategorised view. */
   onShowAll: () => void;
+  /** Money in and money moved, listed beside the spending. Absent where only spending is shown. */
+  money?: LedgerMoney;
 }) {
   const [seeAll, setSeeAll] = useState(false);
+  const [filter, setFilter] = useState<LedgerFilter>('all');
   const onlyUncategorised = uncategorisedIn !== null;
 
   // Tapping File them changes a list that may be off the screen, and focus is left on the button. Bring the list
@@ -75,28 +103,38 @@ export function RecentList({
     [listing.categories],
   );
 
-  const all = useMemo(
-    () =>
-      uncategorisedIn === null
-        ? listing.expenses
-        : listing.expenses.filter(
-            (expense) =>
-              expense.categoryId === null &&
-              !expense.isVoided &&
-              expense.date >= uncategorisedIn.start &&
-              expense.date <= uncategorisedIn.end,
-          ),
-    [listing.expenses, uncategorisedIn],
-  );
+  const all = useMemo((): LedgerEntry[] => {
+    const spending = (expenses: readonly ExpenseRow[]): LedgerEntry[] =>
+      expenses.map((expense) => ({ kind: 'spending', date: expense.date, key: `e-${expense.id}`, expense }));
+    if (uncategorisedIn !== null) {
+      return spending(
+        listing.expenses.filter(
+          (expense) => expense.categoryId === null && !expense.isVoided && expense.date >= uncategorisedIn.start && expense.date <= uncategorisedIn.end,
+        ),
+      );
+    }
+    if (money === undefined) return spending(listing.expenses);
+    const kinds = kindsFor(filter);
+    const context = { accounts: money.accounts, members: listing.members, viewerMemberId: listing.viewer.memberId, privacy };
+    const entries: LedgerEntry[] = [];
+    if (kinds.includes('spending')) entries.push(...spending(listing.expenses));
+    if (kinds.includes('credit')) {
+      for (const credit of money.credits) entries.push({ kind: 'credit', date: credit.date, key: `c-${credit.id}`, line: creditLine(credit, context) });
+    }
+    if (kinds.includes('move')) {
+      for (const transfer of money.transfers) entries.push({ kind: 'move', date: transfer.date, key: `t-${transfer.id}`, line: transferLine(transfer, context) });
+    }
+    return mergeByDate(entries);
+  }, [listing.expenses, listing.members, listing.viewer.memberId, uncategorisedIn, money, filter, privacy]);
   const expanded = seeAll || onlyUncategorised;
   const shown = expanded ? all : all.slice(0, FIRST);
 
   const days = useMemo(() => {
-    const out: { date: string; rows: ExpenseRow[] }[] = [];
-    for (const expense of shown) {
+    const out: { date: string; rows: LedgerEntry[] }[] = [];
+    for (const entry of shown) {
       const last = out[out.length - 1];
-      if (last !== undefined && last.date === expense.date) last.rows.push(expense);
-      else out.push({ date: expense.date, rows: [expense] });
+      if (last !== undefined && last.date === entry.date) last.rows.push(entry);
+      else out.push({ date: entry.date, rows: [entry] });
     }
     return out;
   }, [shown]);
@@ -147,32 +185,145 @@ export function RecentList({
         </span>
       </header>
 
+      {money !== undefined && !onlyUncategorised && (
+        <div className="qa-chips" role="group" aria-label="Show">
+          {LEDGER_FILTERS.map((each) => (
+            <button
+              key={each.id}
+              type="button"
+              className="qa-chip"
+              aria-pressed={filter === each.id}
+              onClick={() => {
+                setFilter(each.id);
+              }}
+            >
+              {each.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {money?.status === 'failed' && !onlyUncategorised && (
+        <div className="mb-1 flex flex-wrap items-center gap-x-3">
+          <Problem>Money in could not be read, so it is not listed.</Problem>
+          <button type="button" className="disclosure" onClick={money.onRetry}>
+            Try again
+          </button>
+        </div>
+      )}
+
       {all.length === 0 ? (
         <p className="note">
           {onlyUncategorised
             ? 'Every entry in this period has a category.'
-            : 'Nothing recorded yet. The first amount you add above will appear here, and on any other device signed in to this household.'}
+            : money?.status === 'loading'
+              ? 'Reading…'
+              : filter !== 'all'
+                ? 'Nothing of this kind yet.'
+                : money === undefined
+                  ? 'Nothing recorded yet. The first amount you add above will appear here, and on any other device signed in to this household.'
+                  : 'Nothing recorded yet. The first amount you add above will appear here.'}
         </p>
       ) : (
         days.map((day) => (
           <div key={day.date} className="recent-dayblock">
             <h3 className="recent-day">{dayLabel(day.date, today)}</h3>
             <ul className="recent-rows">
-              {day.rows.map((expense) => (
-                <Entry
-                  key={expense.id}
-                  expense={expense}
-                  mark={marks.get(expense.member.id) ?? FALLBACK_MARK}
-                  categoryName={expense.categoryId === null ? null : (categoryNames.get(expense.categoryId) ?? null)}
-                  privacy={privacy}
-                  onEdit={onEdit}
-                />
-              ))}
+              {day.rows.map((entry) =>
+                entry.kind === 'spending' ? (
+                  <Entry
+                    key={entry.key}
+                    expense={entry.expense}
+                    mark={marks.get(entry.expense.member.id) ?? FALLBACK_MARK}
+                    categoryName={entry.expense.categoryId === null ? null : (categoryNames.get(entry.expense.categoryId) ?? null)}
+                    privacy={privacy}
+                    onEdit={onEdit}
+                    ledger={money !== undefined}
+                  />
+                ) : (
+                  <LedgerRow key={entry.key} line={entry.line} direction={entry.kind === 'credit' ? 'in' : 'move'} />
+                ),
+              )}
             </ul>
           </div>
         ))
       )}
+
+      {/* The board's state 6: what the list cannot show is said, so the In filter is not read as the household's income. */}
+      {money !== undefined && !onlyUncategorised && (filter === 'all' || filter === 'in') && listing.members.filter((member) => !member.isArchived).length > 1 && (
+        <p className="note mt-2">Credits another member keeps private are not listed here.</p>
+      )}
     </section>
+  );
+}
+
+/**
+ * A line of money in, or of money moved: an arrow, a name, the second line, the signed amount and a word for what it does to the month.
+ * Direction is a sign and a word as well as the arrow, and never a colour alone (LI-I16). Read-only here: a credit is corrected where it is
+ * entered.
+ */
+function LedgerRow({ line, direction }: { line: LedgerLine; direction: 'in' | 'move' }) {
+  const struck = line.voided ? 'line-through' : undefined;
+  // Teal is the third signal for money in, after the sign and the word (the board); a move stays neutral.
+  const tone = direction === 'in' && !line.voided ? { color: 'var(--teal)' } : undefined;
+  return (
+    <li aria-label={line.name}>
+      <div className="recent-row" style={LEDGER_ROW}>
+        <DirectionTile direction={direction} />
+        <span className="recent-main" style={LEDGER_NAME}>
+          <span className="recent-payee" style={{ textDecoration: struck }}>
+            {line.title}
+          </span>
+          {line.private && (
+            <span aria-hidden="true" style={{ display: 'inline-flex', color: 'var(--ink-2)' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              </svg>
+            </span>
+          )}
+          <span className="recent-meta" style={{ flexBasis: '100%' }}>
+            <span>{line.sub}</span>
+            {line.voided && <Pill tone="due">Voided</Pill>}
+          </span>
+        </span>
+        <span className="recent-amount tabular-nums" style={LEDGER_AMOUNT}>
+          <span style={{ textDecoration: struck, ...tone }}>{line.amount}</span>
+          <span className="note block" style={{ fontWeight: 400, whiteSpace: 'normal' }}>
+            {line.word}
+          </span>
+        </span>
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The direction of a line of the ledger in a round tile, as the board draws it: an arrow in, an arrow out, or two arrows for a move. The
+ * arrow is the second signal after the sign and the word; the tile's colour is the third and is never the only one (LI-I16).
+ */
+function DirectionTile({ direction }: { direction: 'in' | 'out' | 'move' }) {
+  const path =
+    direction === 'in' ? 'M17 7 7 17M7 8v9h9' : direction === 'out' ? 'M7 17 17 7M8 7h9v9' : 'M7 8h13M16 4l4 4-4 4M17 16H4M8 12l-4 4 4 4';
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        alignItems: 'center',
+        background: 'var(--surface-2)',
+        borderRadius: '999px',
+        color: direction === 'in' ? 'var(--teal)' : 'var(--ink-2)',
+        display: 'inline-flex',
+        flexShrink: 0,
+        height: '1.875rem',
+        justifyContent: 'center',
+        width: '1.875rem',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={path} />
+      </svg>
+    </span>
   );
 }
 
@@ -199,6 +350,7 @@ function Entry({
   categoryName,
   privacy,
   onEdit,
+  ledger = false,
 }: {
   expense: ExpenseRow;
   mark: MemberMark;
@@ -206,7 +358,10 @@ function Entry({
   categoryName: string | null;
   privacy: boolean;
   onEdit: ((expense: ExpenseRow) => void) | null;
+  /** The row is a line of the ledger beside money in: it has the ledger's arrow, sign and word (LI-I16). */
+  ledger?: boolean;
 }) {
+  const said = spendingWord(expense.isVoided);
   // A voided entry is struck through and says Voided: not dimmed, which put its figures under 4.5:1 and left the
   // meaning to a lighter shade.
   const struck = expense.isVoided ? 'line-through' : undefined;
@@ -214,11 +369,12 @@ function Entry({
 
   const inner = (
     <>
-      <span className="recent-main">
+      {ledger && <DirectionTile direction="out" />}
+      <span className="recent-main" style={ledger ? LEDGER_NAME : undefined}>
         <span className="recent-payee" style={{ textDecoration: struck }}>
           {expense.payee ?? <span className="note">No payee</span>}
         </span>
-        <span className="recent-meta">
+        <span className="recent-meta" style={ledger ? { flexBasis: '100%' } : undefined}>
           <span>{categoryName ?? 'Uncategorised'}</span>
           <MemberTag member={expense.member} mark={mark} />
           {expense.amount.currency !== 'INR' && <Pill tone="neutral">{expense.amount.currency}</Pill>}
@@ -233,9 +389,21 @@ function Entry({
           {expense.visibility === 'personal' && <Pill tone="own">Private</Pill>}
         </span>
       </span>
-      <span className="recent-amount tabular-nums" style={{ textDecoration: struck }}>
-        {formatMoney(expense.amount, { privacy })}
-      </span>
+      {ledger ? (
+        <span className="recent-amount tabular-nums" style={LEDGER_AMOUNT}>
+          <span style={{ textDecoration: struck }}>
+            {said.sign}
+            {formatMoney(expense.amount, { privacy })}
+          </span>
+          <span className="note block" style={{ fontWeight: 400, whiteSpace: 'normal' }}>
+            {said.word}
+          </span>
+        </span>
+      ) : (
+        <span className="recent-amount tabular-nums" style={{ textDecoration: struck }}>
+          {formatMoney(expense.amount, { privacy })}
+        </span>
+      )}
     </>
   );
 
@@ -245,7 +413,8 @@ function Entry({
         <button
           type="button"
           className="recent-row"
-          aria-label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}`}
+          style={ledger ? LEDGER_ROW : undefined}
+          aria-label={`Edit ${expense.payee ?? 'this entry'}, ${formatIsoDate(expense.date)}${ledger ? `, ${said.word}` : ''}`}
           onClick={() => {
             onEdit(expense);
           }}
@@ -253,7 +422,9 @@ function Entry({
           {inner}
         </button>
       ) : (
-        <div className="recent-row">{inner}</div>
+        <div className="recent-row" style={ledger ? LEDGER_ROW : undefined}>
+          {inner}
+        </div>
       )}
     </li>
   );
