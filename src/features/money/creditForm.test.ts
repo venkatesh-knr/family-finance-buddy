@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Account } from '../../repo/types.ts';
-import { accountChoices, creditAmount, creditDateProblem, creditMember, creditVisibility, sharedAccountNote } from './creditForm.ts';
+import { money } from '../../lib/money.ts';
+import type { Account, Credit } from '../../repo/types.ts';
+import { accountChoices, amountText, creditAmount, creditDateProblem, creditMember, creditPatch, creditVisibility, mayChangeCredit, sharedAccountNote } from './creditForm.ts';
 
 /**
  * What the Add money in form works out for itself (docs/design/ledger-income.md section 2; the AddCredit and AddCredit2 boards): the amount
@@ -62,6 +63,14 @@ describe('creditDateProblem — the date it was credited', () => {
 });
 
 describe('accountChoices — the accounts the picker offers', () => {
+  it('keeps the credit’s own account when it is archived, said so, so a correction never loses it', () => {
+    const choices = accountChoices([account({ id: 'a' }), account({ id: 'b', isArchived: true, name: 'Old', last4: null })], 'b');
+    expect(choices.map((c) => [c.id, c.label])).toEqual([
+      ['a', 'HDFC Savings ••4021'],
+      ['b', 'Old (archived)'],
+    ]);
+  });
+
   it('leaves out an archived account, which cannot be chosen for a new entry, and keeps the order it was given', () => {
     const choices = accountChoices([account({ id: 'a' }), account({ id: 'b', isArchived: true }), account({ id: 'c', name: 'SBI', last4: null })]);
     expect(choices.map((c) => [c.id, c.label])).toEqual([
@@ -120,5 +129,107 @@ describe('sharedAccountNote — a private credit on an account the household see
     expect(sharedAccountNote(account({}), 'household')).toBeNull();
     expect(sharedAccountNote(account({ visibility: 'personal' }), 'personal')).toBeNull();
     expect(sharedAccountNote(null, 'personal')).toBeNull();
+  });
+});
+
+describe('amountText — a figure back into something a person can edit', () => {
+  it('writes minor units as they were typed: 14,200,000 paise is 142000.00', () => {
+    expect(amountText(14_200_000n, 'INR')).toBe('142000.00');
+    expect(amountText(129_950n, 'INR')).toBe('1299.50');
+    expect(amountText(5n, 'INR')).toBe('0.05');
+  });
+
+  it('and reads back to the same figure', () => {
+    const typed = amountText(129_950n, 'INR');
+    expect(creditAmount(typed, 'INR')).toEqual({ ok: true, minor: 129_950n });
+  });
+});
+
+const credit = (patch: Partial<Credit>): Credit => ({
+  id: 'c-1',
+  householdId: 'h-1',
+  memberId: 'm-1',
+  accountId: 'a-1',
+  category: 'salary',
+  amount: money(14_200_000n, 'INR'),
+  date: '2026-11-01',
+  visibility: 'personal',
+  source: 'typed',
+  ruleId: null,
+  dueDate: null,
+  payer: 'Acme',
+  note: null,
+  isVoided: false,
+  ...patch,
+});
+
+describe('creditPatch — only what was changed', () => {
+  const same = {
+    accountId: 'a-1' as string | null,
+    memberId: 'm-1',
+    category: 'salary' as const,
+    amount: money(14_200_000n, 'INR'),
+    date: '2026-11-01',
+    visibility: 'personal' as const,
+    payer: 'Acme',
+  };
+
+  it('is empty when nothing was changed', () => {
+    expect(creditPatch(credit({}), same)).toEqual({});
+  });
+
+  it('carries the amount, the date and the category when they were', () => {
+    expect(creditPatch(credit({}), { ...same, amount: money(14_250_000n, 'INR'), date: '2026-11-02', category: 'business' })).toEqual({
+      amount: money(14_250_000n, 'INR'),
+      date: '2026-11-02',
+      category: 'business',
+    });
+  });
+
+  it('says no account when one was taken off, and an account when one was put on', () => {
+    expect(creditPatch(credit({}), { ...same, accountId: null })).toEqual({ accountId: null });
+    expect(creditPatch(credit({ accountId: null }), { ...same, accountId: 'a-2' })).toEqual({ accountId: 'a-2' });
+  });
+
+  it('carries whose income it is when it was moved to another member', () => {
+    expect(creditPatch(credit({}), { ...same, memberId: 'm-2', visibility: 'household' })).toEqual({ memberId: 'm-2', visibility: 'household' });
+    expect(creditPatch(credit({}), { ...same, memberId: 'm-1' })).toEqual({});
+  });
+
+  it('does not take a credit off an account it was never told about: the account is what the field held, not what could be read', () => {
+    // The corrector cannot read the account, so the form holds its id and resolves no name; nothing about the account changes.
+    expect(creditPatch(credit({ accountId: 'a-private' }), { ...same, accountId: 'a-private', amount: money(14_250_000n, 'INR') })).toEqual({
+      amount: money(14_250_000n, 'INR'),
+    });
+  });
+
+  it('carries who sees it, and the payer, a blank one clearing it', () => {
+    expect(creditPatch(credit({}), { ...same, visibility: 'household' })).toEqual({ visibility: 'household' });
+    expect(creditPatch(credit({}), { ...same, payer: '  ' })).toEqual({ payer: null });
+    expect(creditPatch(credit({ payer: null }), { ...same, payer: '' })).toEqual({});
+  });
+});
+
+describe('mayChangeCredit — who corrects or voids a credit', () => {
+  const owner = { role: 'owner' as const, canRecord: true, memberId: 'm-1' };
+
+  it('an owner or a partner changes any credit they can read; a viewer changes none', () => {
+    expect(mayChangeCredit(credit({ memberId: 'm-2' }), owner)).toBe(true);
+    expect(mayChangeCredit(credit({}), { role: 'partner', canRecord: true, memberId: 'm-3' })).toBe(true);
+    expect(mayChangeCredit(credit({}), { role: 'viewer', canRecord: false, memberId: 'm-1' })).toBe(false);
+  });
+
+  it('a contributor changes only their own', () => {
+    const contributor = { role: 'contributor' as const, canRecord: true, memberId: 'm-1' };
+    expect(mayChangeCredit(credit({ memberId: 'm-1' }), contributor)).toBe(true);
+    expect(mayChangeCredit(credit({ memberId: 'm-2' }), contributor)).toBe(false);
+  });
+
+  it('a voided credit is the end of its life: it is not changed again', () => {
+    expect(mayChangeCredit(credit({ isVoided: true }), owner)).toBe(false);
+  });
+
+  it('a credit confirmed from a rule can be corrected: it is the same row as any other', () => {
+    expect(mayChangeCredit(credit({ source: 'rule', ruleId: 'r-1', dueDate: '2026-11-01' }), owner)).toBe(true);
   });
 });

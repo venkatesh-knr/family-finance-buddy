@@ -65,6 +65,7 @@ export async function updateCredit(id: Uuid, patch: CreditPatch): Promise<void> 
   checkCreditPatch(patch);
   const row: Record<string, unknown> = {};
   if (patch.accountId !== undefined) row['account_id'] = patch.accountId;
+  if (patch.memberId !== undefined) row['member_id'] = patch.memberId;
   if (patch.category !== undefined) row['category'] = patch.category;
   if (patch.amount !== undefined) {
     row['amount_minor'] = patch.amount.minor.toString();

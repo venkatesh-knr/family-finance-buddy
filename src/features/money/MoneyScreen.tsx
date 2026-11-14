@@ -9,6 +9,10 @@
 import { hashFor } from '../../app/route.ts';
 import { ExpensesScreen } from '../expenses/ExpensesScreen.tsx';
 import { AccountsTab } from './AccountsTab.tsx';
+import { useState } from 'react';
+import type { Credit } from '../../repo/types.ts';
+import { AddCredit } from './AddCredit.tsx';
+import { mayChangeCredit } from './creditForm.ts';
 import { MoneyIn } from './MoneyIn.tsx';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
@@ -48,15 +52,40 @@ function LedgerTab({
   recurringMade: number;
 }) {
   const ledger = useMoneyLedger(householdId);
+  const [changing, setChanging] = useState<Credit | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const viewer = ledger.data?.viewer ?? null;
   return (
     <>
-      <MoneyIn data={ledger.data} privacy={privacy} onAddAccount={ledger.add} onChangeAccount={ledger.change} onSaved={ledger.reloadMoney} />
+      <MoneyIn
+        data={ledger.data}
+        privacy={privacy}
+        onAddAccount={ledger.add}
+        onChangeAccount={ledger.change}
+        onSaved={() => {
+          setSaid(null);
+          void ledger.reloadMoney();
+        }}
+      />
+      {/* Always in the page, so that what is put into it is announced; under the button, where the person is looking. */}
+      <p className="note" role="status">
+        {said}
+      </p>
       <ExpensesScreen
         privacy={privacy}
         householdId={householdId}
         recurringMade={recurringMade}
         displayCurrency={displayCurrency}
         money={{
+          ...(viewer === null
+            ? {}
+            : {
+                canChangeCredit: (credit: Credit) => mayChangeCredit(credit, viewer),
+                onEditCredit: (credit: Credit) => {
+                  setSaid(null);
+                  setChanging(credit);
+                },
+              }),
           credits: ledger.credits,
           transfers: ledger.transfers,
           accounts: ledger.data?.accounts ?? [],
@@ -66,6 +95,26 @@ function LedgerTab({
           },
         }}
       />
+      {changing !== null && ledger.data !== null && (
+        <AddCredit
+          key={changing.id}
+          data={ledger.data}
+          editing={changing}
+          onAddAccount={ledger.add}
+          onChangeAccount={ledger.change}
+          onSaved={() => {
+            setChanging(null);
+          }}
+          onChanged={(outcome) => {
+            setChanging(null);
+            setSaid(outcome === 'voided' ? 'Credit voided. It no longer counts.' : 'Credit changed.');
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setChanging(null);
+          }}
+        />
+      )}
     </>
   );
 }

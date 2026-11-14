@@ -17,6 +17,10 @@ import { memberMarks, type MemberMark } from './memberMark.ts';
 
 /** What the Money screen adds to the list: the credits and moves the caller may read, and the accounts they name (ledger-income.md section 1). */
 export interface LedgerMoney {
+  /** Opens a credit to correct or void. Absent where credits are only read. */
+  readonly onEditCredit?: (credit: Credit) => void;
+  /** Whether the caller may change this credit, so a line is a button only where it does something. */
+  readonly canChangeCredit?: (credit: Credit) => boolean;
   readonly credits: readonly Credit[];
   readonly transfers: readonly Transfer[];
   readonly accounts: readonly Account[];
@@ -27,7 +31,7 @@ export interface LedgerMoney {
 
 type LedgerEntry =
   | { readonly kind: 'spending'; readonly date: string; readonly key: string; readonly expense: ExpenseRow }
-  | { readonly kind: 'credit'; readonly date: string; readonly key: string; readonly line: LedgerLine }
+  | { readonly kind: 'credit'; readonly date: string; readonly key: string; readonly line: LedgerLine; readonly credit: Credit }
   | { readonly kind: 'move'; readonly date: string; readonly key: string; readonly line: LedgerLine };
 
 /**
@@ -119,7 +123,9 @@ export function RecentList({
     const entries: LedgerEntry[] = [];
     if (kinds.includes('spending')) entries.push(...spending(listing.expenses));
     if (kinds.includes('credit')) {
-      for (const credit of money.credits) entries.push({ kind: 'credit', date: credit.date, key: `c-${credit.id}`, line: creditLine(credit, context) });
+      for (const credit of money.credits) {
+        entries.push({ kind: 'credit', date: credit.date, key: `c-${credit.id}`, line: creditLine(credit, context), credit });
+      }
     }
     if (kinds.includes('move')) {
       for (const transfer of money.transfers) entries.push({ kind: 'move', date: transfer.date, key: `t-${transfer.id}`, line: transferLine(transfer, context) });
@@ -241,7 +247,18 @@ export function RecentList({
                     ledger={money !== undefined}
                   />
                 ) : (
-                  <LedgerRow key={entry.key} line={entry.line} direction={entry.kind === 'credit' ? 'in' : 'move'} />
+                  <LedgerRow
+                    key={entry.key}
+                    line={entry.line}
+                    direction={entry.kind === 'credit' ? 'in' : 'move'}
+                    onEdit={
+                      entry.kind === 'credit' && money?.onEditCredit !== undefined && money.canChangeCredit?.(entry.credit) === true
+                        ? () => {
+                            money.onEditCredit?.(entry.credit);
+                          }
+                        : null
+                    }
+                  />
                 ),
               )}
             </ul>
@@ -259,16 +276,21 @@ export function RecentList({
 
 /**
  * A line of money in, or of money moved: an arrow, a name, the second line, the signed amount and a word for what it does to the month.
- * Direction is a sign and a word as well as the arrow, and never a colour alone (LI-I16). Read-only here: a credit is corrected where it is
- * entered.
+ * Direction is a sign and a word as well as the arrow, and never a colour alone (LI-I16). A credit the viewer may change is a button that opens
+ * it to correct or void; a move, a voided credit and another member's credit for a contributor are plain lines.
  */
-function LedgerRow({ line, direction }: { line: LedgerLine; direction: 'in' | 'move' }) {
+function LedgerRow({ line, direction, onEdit }: { line: LedgerLine; direction: 'in' | 'move'; onEdit: (() => void) | null }) {
   const struck = line.voided ? 'line-through' : undefined;
   // Teal is the third signal for money in, after the sign and the word (the board); a move stays neutral.
   const tone = direction === 'in' && !line.voided ? { color: 'var(--teal)' } : undefined;
+  const Row = onEdit === null ? 'div' : 'button';
   return (
-    <li aria-label={line.name}>
-      <div className="recent-row" style={LEDGER_ROW}>
+    <li {...(onEdit === null ? { 'aria-label': line.name } : {})}>
+      <Row
+        className="recent-row"
+        style={LEDGER_ROW}
+        {...(onEdit === null ? {} : { type: 'button' as const, 'aria-label': `Change ${line.name}`, onClick: onEdit })}
+      >
         <DirectionTile direction={direction} />
         <span className="recent-main" style={LEDGER_NAME}>
           <span className="recent-payee" style={{ textDecoration: struck }}>
@@ -293,7 +315,7 @@ function LedgerRow({ line, direction }: { line: LedgerLine; direction: 'in' | 'm
             {line.word}
           </span>
         </span>
-      </div>
+      </Row>
     </li>
   );
 }

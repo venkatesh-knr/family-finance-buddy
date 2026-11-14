@@ -6,6 +6,10 @@
  * written until the last step's button (SL-I6). The account picker ends with "+ Add an account", which opens AddAccount over this form and
  * returns to it with the new account chosen and every value kept (LI-I25).
  *
+ * The same form changes a credit (`editing`): it opens with the credit's values, keeps its currency, offers only accounts in that
+ * currency (and keeps the credit's own, even one that is archived or that the person cannot read), lets whoever may file for others move
+ * it to another member, and ends with *Void this credit*, which asks first. A voided credit stays in the list, marked, and stops counting.
+ *
  * Not here yet, and said in the conformance ledger: the eighth chip *From my own account* (a move, an `account_transfer`) and *Repeats
  * every month* (the rule form, section 5).
  */
@@ -13,14 +17,14 @@
 import { useMemo, useState } from 'react';
 import { CREDIT_CATEGORIES, CREDIT_LABEL, type CreditCategory } from '../../domain/credit.ts';
 import { money } from '../../lib/money.ts';
-import { addCredit } from '../../repo/credits.ts';
+import { addCredit, updateCredit, voidCredit } from '../../repo/credits.ts';
 import { todayInIst } from '../../repo/expenses.ts';
-import type { AccountPatch, NewAccount, Visibility } from '../../repo/types.ts';
+import type { AccountPatch, Credit, NewAccount, Visibility } from '../../repo/types.ts';
 import { Select } from '../../ui/Select.tsx';
-import { Field, RequiredKey, RequiredMark } from '../../ui/primitives.tsx';
+import { Button, Field, RequiredKey, RequiredMark } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
 import { AddAccount } from './AddAccount.tsx';
-import { accountChoices, creditAmount, creditDateProblem, creditMember, creditVisibility, sharedAccountNote } from './creditForm.ts';
+import { accountChoices, amountText, creditAmount, creditDateProblem, creditMember, creditPatch, creditVisibility, sharedAccountNote } from './creditForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 /** The picker's last row is not an account: choosing it opens AddAccount. */
@@ -40,26 +44,42 @@ export function AddCredit({
   onAddAccount,
   onChangeAccount,
   onSaved,
+  onChanged,
   onCancel,
+  editing = null,
 }: {
   data: AccountsData;
   onAddAccount: (input: NewAccount) => Promise<{ readonly id: string }>;
   onChangeAccount: (id: string, patch: AccountPatch) => Promise<void>;
   onSaved: (added: AddedCredit) => void;
+  /** A credit was changed or voided (only when `editing`). */
+  onChanged?: (outcome: 'changed' | 'voided') => void;
   onCancel: () => void;
+  /** The credit being changed, or null to add one. */
+  editing?: Credit | null;
 }) {
+  const isEdit = editing !== null;
   const { viewer } = data;
   const today = useMemo(() => todayInIst(), []);
-  const choices = useMemo(() => accountChoices(data.accounts), [data.accounts]);
+  // A credit being changed keeps its currency, so it is offered only accounts in it (an account holds one currency, and so does what it is credited).
+  const choices = useMemo(
+    () =>
+      accountChoices(
+        editing === null ? data.accounts : data.accounts.filter((each) => each.currency === editing.amount.currency),
+        editing?.accountId ?? null,
+      ),
+    [data.accounts, editing],
+  );
 
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<CreditCategory>('salary');
-  const [accountId, setAccountId] = useState(NO_ACCOUNT);
-  const [date, setDate] = useState(today);
-  // Whose income: null until the person picks, so it follows the account chosen (the account's member).
-  const [memberChoice, setMemberChoice] = useState<string | null>(null);
-  const [visibilityChoice, setVisibilityChoice] = useState<Visibility | null>(null);
-  const [payer, setPayer] = useState('');
+  const [amount, setAmount] = useState(editing === null ? '' : amountText(editing.amount.minor, editing.amount.currency));
+  const [category, setCategory] = useState<CreditCategory>(editing?.category ?? 'salary');
+  const [accountId, setAccountId] = useState(editing?.accountId ?? NO_ACCOUNT);
+  const [date, setDate] = useState(editing?.date ?? today);
+  // Whose income: null until the person picks, so it follows the account chosen (the account's member). A credit being changed keeps its member.
+  const [memberChoice, setMemberChoice] = useState<string | null>(editing?.memberId ?? null);
+  const [visibilityChoice, setVisibilityChoice] = useState<Visibility | null>(editing?.visibility ?? null);
+  const [payer, setPayer] = useState(editing?.payer ?? '');
+  const [confirmingVoid, setConfirmingVoid] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -67,12 +87,17 @@ export function AddCredit({
   const [amountLeft, setAmountLeft] = useState(false);
 
   const account = data.accounts.find((each) => each.id === accountId) ?? null;
-  const currency = account?.currency ?? data.household.baseCurrency ?? 'INR';
+  const currency = editing !== null ? editing.amount.currency : (account?.currency ?? data.household.baseCurrency ?? 'INR');
   const symbol = currency === 'INR' ? '₹' : currency;
 
+  // Whoever may file for others chooses among the members in use, and a credit being changed keeps its own even if that member is archived;
+  // anyone else files, and corrects, only under their own name.
   const selectableMembers = useMemo(
-    () => (viewer.canFileForOthers ? data.members.filter((member) => !member.isArchived) : data.members.filter((member) => member.id === viewer.memberId)),
-    [data.members, viewer.canFileForOthers, viewer.memberId],
+    () =>
+      viewer.canFileForOthers
+        ? data.members.filter((member) => !member.isArchived || member.id === editing?.memberId)
+        : data.members.filter((member) => member.id === viewer.memberId),
+    [data.members, editing, viewer.canFileForOthers, viewer.memberId],
   );
   const memberId = memberChoice ?? creditMember(account, viewer, selectableMembers.map((member) => member.id));
   const mine = memberId === viewer.memberId;
@@ -89,6 +114,25 @@ export function AddCredit({
     setBusy(true);
     setProblem(null);
     try {
+      if (editing !== null) {
+        const patch = creditPatch(editing, {
+          // What the field holds, not what could be resolved: an account the corrector cannot read is still the credit's account.
+          accountId: accountId === NO_ACCOUNT ? null : accountId,
+          memberId,
+          category,
+          amount: money(reading.minor, currency),
+          date,
+          visibility,
+          payer,
+        });
+        // Nothing changed: nothing is written.
+        if (Object.keys(patch).length === 0) onCancel();
+        else {
+          await updateCredit(editing.id, patch);
+          onChanged?.('changed');
+        }
+        return;
+      }
       const made = await addCredit({
         householdId: data.household.id,
         memberId,
@@ -107,12 +151,27 @@ export function AddCredit({
     }
   };
 
+  const voidIt = async (): Promise<void> => {
+    if (editing === null) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      await voidCredit(editing.id);
+      onChanged?.('voided');
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'That could not be voided.');
+      setConfirmingVoid(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <Stepper
-        title="Add money in"
-        finishLabel="Add credit"
-        busyLabel="Adding…"
+        title={isEdit ? 'Change a credit' : 'Add money in'}
+        finishLabel={isEdit ? 'Save changes' : 'Add credit'}
+        busyLabel={isEdit ? 'Saving…' : 'Adding…'}
         busy={busy}
         problem={problem}
         onCancel={onCancel}
@@ -188,7 +247,11 @@ export function AddCredit({
                       {choice.label}
                     </option>
                   ))}
-                  <option value={ADD_ACCOUNT}>+ Add an account</option>
+                  {/* The credit's own account, which the person changing it cannot read: it is kept, and said to be one they cannot see. */}
+                  {isEdit && editing.accountId !== null && !data.accounts.some((each) => each.id === editing.accountId) && (
+                    <option value={editing.accountId}>An account you cannot see</option>
+                  )}
+                  {!isEdit && <option value={ADD_ACCOUNT}>+ Add an account</option>}
                 </Select>
 
                 <Field
@@ -273,6 +336,49 @@ export function AddCredit({
                     setPayer(event.target.value);
                   }}
                 />
+
+                {isEdit && (
+                  <div className="flex flex-col gap-1.5">
+                    {confirmingVoid ? (
+                      <>
+                        <p className="note">Void this credit? It stops counting and stays in the list, marked voided.</p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              void voidIt();
+                            }}
+                          >
+                            Yes, void it
+                          </Button>
+                          <button
+                            type="button"
+                            className="note underline"
+                            disabled={busy}
+                            onClick={() => {
+                              setConfirmingVoid(false);
+                            }}
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="note underline self-start"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirmingVoid(true);
+                        }}
+                      >
+                        Void this credit
+                      </button>
+                    )}
+                    <span className="field-help">Void it if it should not have been entered. If only a detail is wrong, correct it instead.</span>
+                  </div>
+                )}
               </>
             ),
           },
