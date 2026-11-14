@@ -146,6 +146,12 @@ describe('transferLine — a move between the household’s own accounts', () =>
     expect(line.name).toBe('ICICI card payment, HDFC ••4021 → ICICI card ••1188, ₹18,240, moved · not spent');
   });
 
+  it('LI-I16 — says the note, when there is one, on the second line, so that it is read in the list, in the name and in the form that voids it', () => {
+    const line = transferLine(move({ note: 'Rent to the landlord' }), ctx);
+    expect(line.sub).toBe('HDFC ••4021 → ICICI card ••1188 · Rent to the landlord');
+    expect(line.name).toContain('Rent to the landlord');
+  });
+
   it('a move between two bank accounts is named a move', () => {
     const line = transferLine(move({ toAccountId: 'a-2' }), ctx);
     expect(line.title).toBe('Moved between accounts');

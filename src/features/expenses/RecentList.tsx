@@ -25,6 +25,8 @@ export interface LedgerMoney {
   readonly inCameIn?: boolean;
   /** Whether the caller may change this credit, so a line is a button only where it does something. */
   readonly canChangeCredit?: (credit: Credit) => boolean;
+  /** Opens a move to void it. Absent where moves are only read; a voided move is not offered. */
+  readonly onVoidMove?: (transfer: Transfer, line: LedgerLine) => void;
   readonly credits: readonly Credit[];
   readonly transfers: readonly Transfer[];
   readonly accounts: readonly Account[];
@@ -36,7 +38,7 @@ export interface LedgerMoney {
 type LedgerEntry =
   | { readonly kind: 'spending'; readonly date: string; readonly key: string; readonly expense: ExpenseRow }
   | { readonly kind: 'credit'; readonly date: string; readonly key: string; readonly line: LedgerLine; readonly credit: Credit }
-  | { readonly kind: 'move'; readonly date: string; readonly key: string; readonly line: LedgerLine };
+  | { readonly kind: 'move'; readonly date: string; readonly key: string; readonly line: LedgerLine; readonly transfer: Transfer };
 
 /**
  * A line of the ledger wraps instead of squeezing: the name keeps room to read, and the amount, which stays together, drops underneath it
@@ -132,7 +134,9 @@ export function RecentList({
       }
     }
     if (kinds.includes('move')) {
-      for (const transfer of money.transfers) entries.push({ kind: 'move', date: transfer.date, key: `t-${transfer.id}`, line: transferLine(transfer, context) });
+      for (const transfer of money.transfers) {
+        entries.push({ kind: 'move', date: transfer.date, key: `t-${transfer.id}`, line: transferLine(transfer, context), transfer });
+      }
     }
     return mergeByDate(entries);
   }, [listing.expenses, listing.members, listing.viewer.memberId, uncategorisedIn, money, filter, privacy]);
@@ -255,12 +259,17 @@ export function RecentList({
                     key={entry.key}
                     line={entry.line}
                     direction={entry.kind === 'credit' ? 'in' : 'move'}
+                    verb={entry.kind === 'credit' ? 'Change' : 'Open'}
                     onEdit={
                       entry.kind === 'credit' && money?.onEditCredit !== undefined && money.canChangeCredit?.(entry.credit) === true
                         ? () => {
                             money.onEditCredit?.(entry.credit);
                           }
-                        : null
+                        : entry.kind === 'move' && money?.onVoidMove !== undefined && !entry.transfer.isVoided
+                          ? () => {
+                              money.onVoidMove?.(entry.transfer, entry.line);
+                            }
+                          : null
                     }
                   />
                 ),
@@ -285,9 +294,10 @@ export function RecentList({
 /**
  * A line of money in, or of money moved: an arrow, a name, the second line, the signed amount and a word for what it does to the month.
  * Direction is a sign and a word as well as the arrow, and never a colour alone (LI-I16). A credit the viewer may change is a button that opens
- * it to correct or void; a move, a voided credit and another member's credit for a contributor are plain lines.
+ * it to correct or void, and a move that is not voided is a button that opens it to void; a voided line and another member's credit for a
+ * contributor are plain lines.
  */
-function LedgerRow({ line, direction, onEdit }: { line: LedgerLine; direction: 'in' | 'move'; onEdit: (() => void) | null }) {
+function LedgerRow({ line, direction, onEdit, verb }: { line: LedgerLine; direction: 'in' | 'move'; onEdit: (() => void) | null; verb: string }) {
   const struck = line.voided ? 'line-through' : undefined;
   // Teal is the third signal for money in, after the sign and the word (the board); a move stays neutral.
   const tone = direction === 'in' && !line.voided ? { color: 'var(--teal)' } : undefined;
@@ -297,7 +307,7 @@ function LedgerRow({ line, direction, onEdit }: { line: LedgerLine; direction: '
       <Row
         className="recent-row"
         style={LEDGER_ROW}
-        {...(onEdit === null ? {} : { type: 'button' as const, 'aria-label': `Change ${line.name}`, onClick: onEdit })}
+        {...(onEdit === null ? {} : { type: 'button' as const, 'aria-label': `${verb} ${line.name}`, onClick: onEdit })}
       >
         <DirectionTile direction={direction} />
         <span className="recent-main" style={LEDGER_NAME}>
