@@ -1086,6 +1086,10 @@ export interface NewAccount {
 /** What may change on an account. It is archived and never deleted. */
 export interface AccountPatch {
   readonly name?: string;
+  /** Type, currency and where it is held are fixed once the account has a credit, a transfer or a balance; the screen offers them only before. */
+  readonly type?: AccountType;
+  readonly currency?: string;
+  readonly isForeign?: boolean;
   readonly institution?: string | null;
   readonly last4?: string | null;
   readonly visibility?: Visibility;

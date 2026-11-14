@@ -54,11 +54,16 @@ export async function addAccount(input: NewAccount): Promise<{ readonly id: Uuid
 export async function updateAccount(id: Uuid, patch: AccountPatch): Promise<void> {
   checkAccount({
     ...(patch.name === undefined ? {} : { name: patch.name }),
+    ...(patch.type === undefined ? {} : { type: patch.type }),
+    ...(patch.currency === undefined ? {} : { currency: patch.currency }),
     ...(patch.last4 === undefined ? {} : { last4: patch.last4 }),
     ...(patch.institution === undefined ? {} : { institution: patch.institution }),
   });
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row['name'] = patch.name.trim();
+  if (patch.type !== undefined) row['type'] = patch.type;
+  if (patch.currency !== undefined) row['currency'] = patch.currency;
+  if (patch.isForeign !== undefined) row['is_foreign'] = patch.isForeign;
   if (patch.institution !== undefined) row['institution'] = text(patch.institution);
   if (patch.last4 !== undefined) row['account_last4'] = text(patch.last4);
   if (patch.visibility !== undefined) row['visibility'] = patch.visibility;
@@ -103,4 +108,23 @@ export async function saveBalance(input: NewBalance): Promise<void> {
       { onConflict: 'account_id,as_at,source' },
     );
   if (error !== null) throw asLedgerError(error);
+}
+
+/**
+ * Whether an account has a credit, a transfer or a balance, so that its type and currency are fixed (docs/design/ledger-income.md
+ * section 1a): they decide how its past months were worked out. It reads only what the caller may read, so it can say no for an account
+ * whose only entries are another member's private ones. The table does not yet refuse a change of type or currency (LI-I26 is still to
+ * build in a migration), so until it does the form is the only guard: it offers them only to an account with no history.
+ */
+export async function accountHasHistory(accountId: Uuid): Promise<boolean> {
+  const client = supabase();
+  const asked = await Promise.all([
+    client.from('credit_entry').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+    client.from('account_transfer').select('id', { count: 'exact', head: true }).or(`from_account_id.eq.${accountId},to_account_id.eq.${accountId}`),
+    client.from('account_balance').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+  ]);
+  for (const result of asked) {
+    if (result.error !== null) throw asLedgerError(result.error);
+  }
+  return asked.some((result) => (result.count ?? 0) > 0);
 }
