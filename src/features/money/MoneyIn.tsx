@@ -10,6 +10,7 @@ import { CREDIT_LABEL } from '../../domain/credit.ts';
 import { formatShortDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { AddCredit, type AddedCredit } from './AddCredit.tsx';
+import type { RuleDraft } from './ruleForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 export function MoneyIn({
@@ -18,6 +19,8 @@ export function MoneyIn({
   onAddAccount,
   onChangeAccount,
   onSaved,
+  onRepeat,
+  canRepeat,
 }: {
   data: AccountsData | null;
   privacy: boolean;
@@ -25,6 +28,10 @@ export function MoneyIn({
   onChangeAccount: Parameters<typeof AddCredit>[0]['onChangeAccount'];
   /** A credit was written: the list reads it again. */
   onSaved: () => void;
+  /** *Repeats every month* was on: the rule form opens with this. */
+  onRepeat: (draft: RuleDraft) => void;
+  /** Whether *Repeats every month* is offered: only an owner or a partner makes a rule. */
+  canRepeat: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState<AddedCredit | null>(null);
@@ -51,12 +58,14 @@ export function MoneyIn({
       {open && (
         <AddCredit
           data={data}
+          canRepeat={canRepeat}
           onAddAccount={onAddAccount}
           onChangeAccount={onChangeAccount}
           onSaved={(credit) => {
             setAdded(credit);
             setOpen(false);
             onSaved();
+            if (credit.repeat !== undefined) onRepeat(credit.repeat);
           }}
           onCancel={() => {
             setOpen(false);

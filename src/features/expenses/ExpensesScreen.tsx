@@ -130,6 +130,7 @@ export function ExpensesScreen({
       {listing.viewer.role === 'contributor' ? (
         <>
           {quickAdd}
+          {money?.expected}
           <Card title="This month">
             <p className="note">
               You can read your own entries. The household&rsquo;s spending, by category, is on the Summary screen.
@@ -157,6 +158,7 @@ export function ExpensesScreen({
           {...(money !== undefined && (listing.viewer.role === 'owner' || listing.viewer.role === 'partner')
             ? { month: { householdId: listing.household.id, refreshKey: money.credits } }
             : {})}
+          {...(money?.expected === undefined ? {} : { afterSurface: money.expected })}
           onFile={(period) => {
             setUncategorisedIn(period);
           }}
@@ -209,9 +211,12 @@ function Budget({
   onFile,
   privacy,
   month,
+  afterSurface,
   ...inputs
 }: Parameters<typeof useBudgetComparison>[0] & {
   quickAdd: React.ReactNode;
+  /** What sits under the month surface: the Expected panel. */
+  afterSurface?: React.ReactNode;
   onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
   /** The household and what to read the month's totals again on, where the month surface is shown: an owner or a partner, with money in. */
@@ -225,6 +230,7 @@ function Budget({
       {month !== undefined && (
         <MonthSurface view={monthView} householdId={month.householdId} today={inputs.today} privacy={privacy} refreshKey={month.refreshKey} />
       )}
+      {afterSurface}
       <SpentHero view={view} privacy={privacy} soft={month !== undefined} />
       {quickAdd}
       <PlanCard view={view} privacy={privacy} onFile={onFile} />

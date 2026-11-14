@@ -1228,6 +1228,8 @@ export interface NewIncomeRule {
 
 export interface IncomeRulePatch {
   readonly name?: string;
+  /** Who sees the credits it writes from now on; only the member the rule belongs to can make them private. */
+  readonly visibility?: Visibility;
   readonly accountId?: Uuid | null;
   readonly amount?: Money;
   readonly cadence?: RecurringCadence;

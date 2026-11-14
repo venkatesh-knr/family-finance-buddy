@@ -81,6 +81,7 @@ export async function updateIncomeRule(id: Uuid, patch: IncomeRulePatch): Promis
   });
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row['name'] = patch.name.trim();
+  if (patch.visibility !== undefined) row['visibility'] = patch.visibility;
   if (patch.accountId !== undefined) row['account_id'] = patch.accountId;
   if (patch.amount !== undefined) {
     row['amount_minor'] = patch.amount.minor.toString();

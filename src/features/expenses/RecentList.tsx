@@ -17,6 +17,8 @@ import { memberMarks, type MemberMark } from './memberMark.ts';
 
 /** What the Money screen adds to the list: the credits and moves the caller may read, and the accounts they name (ledger-income.md section 1). */
 export interface LedgerMoney {
+  /** The Expected panel: placed under the month surface, where the board draws it, or above the month card where there is no surface. */
+  readonly expected?: React.ReactNode;
   /** Opens a credit to correct or void. Absent where credits are only read. */
   readonly onEditCredit?: (credit: Credit) => void;
   /** The month surface is shown, so what the list leaves out is said to be in Came in (the board's state 6). */
