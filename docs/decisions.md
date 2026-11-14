@@ -565,3 +565,13 @@ The owner was shown four ways to separate the sections of one screen (the outlin
 - **The lifted card is unchanged** except for the radius: it is the only thing on a screen with an outline, a gradient and a shadow, and keeps its 18px padding.
 
 Not changed: the colours and both themes, the underline fields, the stepped forms, the tabs, Mine | Household, the ovals, the unit letter at the figure's size, one-line entries.
+
+## The ledger, accounts and Tax, the owner's answers (15 November 2026)
+
+Questions that had been parked while the ledger and income work was built, answered in chat:
+
+- **A new account is visible to the household unless its owner makes it private.** The build already did this; the Departure is `decided`. A credit's own default stays private.
+- **A form of one short screen of one kind of thing may keep more than five fields on one step.** AddAccount (seven) and the salary rule (six). A sequence stays stepped. `docs/design/simple-layout.md` section 4 and `docs/tokens.md` (Stepper) say so.
+- **The month surface's Spent is per currency, never converted:** itemised and private spending in a currency, less the refunds in it, a line each, as Came in is. `ledger-income.md` section 4 says *per currency*. The plan panel under it still converts.
+- **A voided row is final: a mistake in it is fixed by entering a new one.** The screens already work that way. Whether the database should also refuse an edit to a voided row is a migration to be reviewed before it is applied.
+- **Rules, meaning the salary rule:** whether a contributor may confirm their own rule's credits was asked and left, because a contributor has not asked for it. Only an owner or a partner makes or changes a rule.

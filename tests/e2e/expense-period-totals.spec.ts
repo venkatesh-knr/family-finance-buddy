@@ -71,8 +71,8 @@ test('a month with more than 50 entries is added up in full, and does not say it
   await page.reload();
   await expect(page.getByTestId('period-spent')).toBeVisible({ timeout: 30_000 });
 
-  // The mark is there for other reasons in some households; open it if it is, and read what it says.
-  const mark = page.getByRole('button', { name: 'Why this figure may be short' });
-  if ((await mark.count()) > 0) await mark.first().click();
-  await expect(page.getByText(/holds more entries than the 50 most recent/)).toHaveCount(0);
+  // The marks are there for other reasons in some households; open each, on the plan's figure and on the month surface's, and read what they say.
+  const marks = page.getByRole('button', { name: /Why (this figure|spent) may be short/ });
+  for (let i = 0; i < (await marks.count()); i += 1) await marks.nth(i).click();
+  await expect(page.getByText(/holds more entries than (the 50 most recent|this screen reads)/)).toHaveCount(0);
 });
