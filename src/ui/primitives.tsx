@@ -107,6 +107,32 @@ export function Card({
 }
 
 /**
+ * The mark on a field a form needs: an asterisk after the label in the attention colour, hidden from a screen reader, which is told by
+ * `aria-required` on the field instead. The symbol carries the meaning and the colour only helps (the owner's decision of 13 November
+ * 2026); the word "required" is not written beside each field, and `RequiredKey` explains the mark once per form.
+ */
+export function RequiredMark() {
+  return (
+    <span className="required-mark" aria-hidden="true">
+      {' '}
+      *
+    </span>
+  );
+}
+
+/** The one line of key at the top of a form that has fields it needs: the asterisk alone must be explained once. */
+export function RequiredKey() {
+  return (
+    <p className="required-key">
+      <span className="required-mark" aria-hidden="true">
+        *
+      </span>{' '}
+      needed
+    </p>
+  );
+}
+
+/**
  * A labelled input.
  *
  * The label is a real `<label htmlFor>` and the input has the matching `id`, and
@@ -125,10 +151,18 @@ export function Field({
   hint,
   error,
   numeric = false,
+  needed = false,
   id,
   'aria-describedby': describedBy,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; numeric?: boolean; error?: string | null }) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  hint?: string;
+  numeric?: boolean;
+  error?: string | null;
+  /** The form needs this field: it is marked, and announced as required. Opt in, form by form, as the mark reaches each. */
+  needed?: boolean;
+}) {
   // Always called, so the order of hooks does not depend on whether an id was passed.
   const generated = useId().replace(/:/g, '');
   const inputId = id ?? `field${generated}`;
@@ -140,12 +174,14 @@ export function Field({
     <div className="flex flex-col gap-1.5">
       <label className="label" htmlFor={inputId}>
         {label}
+        {needed && <RequiredMark />}
       </label>
       <input
         id={inputId}
         className={numeric ? 'field field-num' : 'field'}
         aria-describedby={described === '' ? undefined : described}
         aria-invalid={error ? true : undefined}
+        aria-required={needed ? true : undefined}
         {...props}
       />
       {hint !== undefined && (

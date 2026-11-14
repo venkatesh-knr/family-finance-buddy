@@ -3820,6 +3820,40 @@
     font-size: 0.8125rem;
   }
 
+  /* The mark on a field a form needs, and its key (the owner's decision of 13 November 2026): the asterisk is the meaning, the colour only helps. */
+  .required-mark {
+    color: var(--brass);
+    font-weight: 600;
+  }
+
+  .required-key {
+    color: var(--ink-2);
+    font-size: 0.8125rem;
+    margin: 0;
+  }
+
+  /* An account that only its owner sees: a round badge leading its row, as the MoneyAccounts board draws it. The words say the same. */
+  .account-badge {
+    align-items: center;
+    align-self: flex-start;
+    background: var(--surface-2);
+    border-radius: 999px;
+    color: var(--muted);
+    display: flex;
+    flex: none;
+    height: 1.875rem;
+    justify-content: center;
+    margin-top: 0.25rem;
+    width: 1.875rem;
+  }
+
+  /* The Add on the Accounts tab: one line, full width, a pill (simple-layout.md section 1). */
+  .add-pill {
+    border-radius: 999px;
+    min-height: 2.75rem;
+    width: 100%;
+  }
+
   .field-error {
     color: var(--brass);
     font-size: 0.8125rem;

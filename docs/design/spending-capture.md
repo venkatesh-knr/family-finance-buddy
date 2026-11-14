@@ -164,7 +164,7 @@ unfolded. It never changes the figure, and the caveat survives essential mode
 
 | Change | Notes |
 |---|---|
-| `account` | 6a's registry: institution, type (`savings`, `current`, `card`), currency, last four, member, visibility |
+| `account` | 6a's registry: a name, institution, type (`savings`, `current`, `card`), currency, last four (optional, `ledger-income.md` LI-I24), member, visibility. Optional for a household: without any, months are itemised (`ledger-income.md` §4) |
 | `account_balance` | account, `as_at` date, `balance_minor` (for a card, the amount due, positive), `source` (`typed`, `statement`), `source_batch_id`. Unique per account, date and source |
 | `expense_txn` gains | `account_id`, `captured_via` (`typed`, `shared`, `rule`, `import`), `recurring_rule_id`, `upi_ref_last4`, `upi_ref_hash`, `source_batch_id`, `source_hash` |
 | `expense_witness` | expense, batch, line hash. Unique per household and line hash, so the second statement to witness a payment is recognised on re-import too |

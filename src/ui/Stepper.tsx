@@ -26,6 +26,7 @@ export function Stepper({
   title,
   steps,
   finishLabel,
+  busyLabel = 'Adding…',
   busy = false,
   problem = null,
   done = false,
@@ -38,6 +39,8 @@ export function Stepper({
   steps: readonly Step[];
   /** The form's verb on the last step: "Add gold". */
   finishLabel: string;
+  /** The button's words while it writes: "Adding…" by default, and "Saving…" for a change. */
+  busyLabel?: string;
   busy?: boolean;
   problem?: string | null;
   /** The form has written what it was asked to, though something is still to be said (a value that could not be recorded): the button closes it. */
@@ -96,7 +99,7 @@ export function Stepper({
       className="step-form"
       role="dialog"
       aria-modal="true"
-      aria-label={`${title}, step ${String(index + 1)} of ${String(steps.length)}`}
+      aria-label={steps.length === 1 ? title : `${title}, step ${String(index + 1)} of ${String(steps.length)}`}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onCancel();
       }}
@@ -127,19 +130,28 @@ export function Stepper({
           <span className="step-form-title">{title}</span>
         </div>
         <div className="step-form-body">
-          <div className="step-form-stepline">
-            <h2 ref={heading} tabIndex={-1} className="text-[0.78rem] font-semibold outline-none">
+          {steps.length === 1 ? (
+            // One short form (docs/design/ledger-income.md section 1a, AddAccount): no count and no progress line, only a heading that takes focus.
+            <h2 ref={heading} tabIndex={-1} className="sr-only">
               {step.name}
             </h2>
-            <p className="note" data-testid="step-count">
-              Step {index + 1} of {steps.length}
-            </p>
-          </div>
-          <div className="step-form-progress" role="progressbar" aria-label="Progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={index + 1}>
-            {steps.map((_, at) => (
-              <i key={at} data-done={at <= index} />
-            ))}
-          </div>
+          ) : (
+            <>
+              <div className="step-form-stepline">
+                <h2 ref={heading} tabIndex={-1} className="text-[0.78rem] font-semibold outline-none">
+                  {step.name}
+                </h2>
+                <p className="note" data-testid="step-count">
+                  Step {index + 1} of {steps.length}
+                </p>
+              </div>
+              <div className="step-form-progress" role="progressbar" aria-label="Progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={index + 1}>
+                {steps.map((_, at) => (
+                  <i key={at} data-done={at <= index} />
+                ))}
+              </div>
+            </>
+          )}
           {/* Every step stays mounted and the others are hidden, so what was typed is kept whichever way the person goes. */}
           {steps.map((each, at) => (
             <div key={each.name} hidden={at !== index} className={at === index ? 'mt-4 flex flex-col gap-4' : 'hidden'}>
@@ -154,7 +166,7 @@ export function Stepper({
         </div>
         <div className="step-form-foot">
           <Button type="submit" disabled={!done && (!step.ready || busy)}>
-            {done ? 'Done' : last ? (busy ? 'Adding…' : finishLabel) : 'Next'}
+            {done ? 'Done' : last ? (busy ? busyLabel : finishLabel) : 'Next'}
           </Button>
         </div>
       </form>

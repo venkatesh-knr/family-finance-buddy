@@ -9,8 +9,8 @@ outline by the owner on 13 November 2026 (`docs/decisions.md`, "The owner's answ
 the open questions"), and the details were decided in chat the same day (§0).
 
 The pictures are `docs/design/ledger-income-boards.html`: MoneyLedger, MoneyLedgerLight,
-AddCredit, AddCredit2, SalaryRule, TaxIncomeInputs, FireIncome, FireBusiness and
-MonthMoney (redrawn).
+MoneyAccounts, MoneyAccountsEmpty, AddAccount, AddCredit, AddCredit2, SalaryRule,
+TaxIncomeInputs, FireIncome, FireBusiness and MonthMoney (redrawn).
 The boards use the Simple layout (`simple-layout.md`): one lifted surface, soft panels,
 underline fields, stepped forms, and ovals for small controls. Dashed indigo circles with
 a number are annotations, not UI. Each one points to a numbered state in §9. Where this
@@ -74,14 +74,25 @@ the design is ready for the build of step 6a.
   - **Audit rows** for `credit_entry` and `income_entry` follow the visibility of the row
     they record.
 
+- **Accounts are optional, in chat, 14 November 2026.** A family can start without adding
+  any account.
+  - A credit may name an account or none.
+  - The month close, and the exact saved split, work for the accounts someone has added.
+  - Without accounts, spent comes from itemised entries, and says so.
+  - An account's last four digits are optional: a nickname such as *Salary account* is
+    enough.
+
+- **Where accounts are managed, in chat, 14 November 2026:** on Money, in a second tab,
+  **Ledger | Accounts** (§1a).
+
 ## 1. The ledger
 
 **One screen, one list, newest first, grouped by IST date.** Each line shows:
 
 - a direction icon;
 - a name, such as the payee, the category or the holding;
-- a second line naming the category, the account (last four only) and, where relevant,
-  the member;
+- a second line naming the category, the account (its name, and its last four when
+  given) and, where relevant, the member;
 - the amount, with its sign;
 - one word saying what the line does to the month: *spent*, *came in*, *takes away from
   spent*, *moved · not spent* or *into a holding*.
@@ -125,7 +136,7 @@ redrawn.
 | `amount_minor`, `currency` | `bigint > 0`, integer minor units, ISO code. Stored as received, never converted on write. |
 | `credit_date` | A calendar date in IST: the date the bank credited it. |
 | `member_id` | Whose income it is. The default is the account's member. On a joint account, the person chooses. |
-| `account_id` | Required. The household account it was credited to (§6, cash). |
+| `account_id` | Optional (owner, 14 November). The household account it was credited to, when the person has added it. With none, the credit counts in came in, FIRE and Tax as usual, and the month close treats it as having arrived outside the accounts added (§4). |
 | `visibility` | `personal` or `household`. Income categories default to `personal`; `refund` defaults to `household`. The column's own default is `personal`, the safe one. |
 | `source` | `typed`, `rule` (confirmed from an expected credit) or `import`. With `rule`, it also stores `recurring_rule_id` and the `due_date` it answers. With `import`, it also stores `source_batch_id` and `source_hash`. |
 | `payer`, `note` | Optional text: who paid, as the bank shows it. |
@@ -138,6 +149,65 @@ credit nor a debit of the household's money.
 
 **On AddCredit**, the chip *From my own account* makes the form an `account_transfer`.
 Step 2 then asks *From which account* in place of *Whose income*.
+
+## 1a. Accounts: the second tab on Money
+
+Money has two tabs, **Ledger | Accounts**. Ledger opens first. They use the same tab style
+as Holdings' class tabs (SL-I1): underlined, at 44px. `#/money` is the ledger, and
+`#/money?tab=accounts` is Accounts. Both tabs keep the bar's Money place.
+
+**The Accounts tab** (MoneyAccounts):
+
+- **The lifted surface is the cash reserve** (state 1): the total from the last closed
+  month's balances, with card dues netted. Under it, *from balances at 31 Oct · 3 of 4
+  accounts*, and the **Close October** button, which opens the month close
+  (spending-capture §6, MonthClose).
+- **A soft panel lists the accounts.** Each row shows:
+  - the name, and the last four digits when given (state 2);
+  - the type, whose it is, and who sees it, in words, with a lock for a private account;
+  - the balance at the last close, or *no balance yet*, *not in a close yet* (state 3);
+  - for a card, the amount owed, with a minus sign and the word *owed*.
+- **Accounts another member keeps private are not listed** (state 4). Their balances are
+  in the cash reserve as part of the total, through the sum function, as
+  `personal_holding_totals` already does for holdings.
+- **+ Add an account**, then the archived accounts, folded, and a short panel, **What is
+  kept**. It says, in the app's words, what an account is: a name, a type, whose it is
+  and who sees it, with the bank and the last four optional. There is no account number,
+  no bank login and no link to the bank.
+- **With no accounts** (MoneyAccountsEmpty, state 5), the lifted surface says accounts
+  are optional, what a month is like without them, and what adding them gives. Below it
+  are *+ Add an account* and *What is kept*. It never nags elsewhere in the app.
+
+**Adding an account** (AddAccount) is one short form, not stepped, because it has seven
+fields and only three are needed:
+
+| Field | Rule |
+|---|---|
+| Name | Required. What the person calls it. Shown on every ledger line from the account. |
+| Type | Required. Savings, Current or Card, as ovals. The help says a card's balance is what is owed. |
+| Whose | Required. A member of the household. |
+| Who can see it | *Only its owner* or *The household*. A joint account is the household's. |
+| Bank | Optional. |
+| Last four digits | Optional. Four characters at most, never the full number. |
+| Currency | INR by default. Another currency is for an account held abroad, and then *Held outside India* (`is_foreign`, Schedule FA) is asked, never inferred. |
+
+**From a form.** The account picker in *Add money in* and in the quick add for money out
+ends with **+ Add an account**. It opens AddAccount, and saving returns to the form with the
+new account chosen and every value kept. That is the same promise as SL-I6.
+
+**Changing and archiving.**
+
+- An account's name, bank, last four and who can see it can be changed at any time.
+- Its **type and currency cannot be changed once it has a credit, a transfer or a
+  balance**, because they decide how its past months were worked out. Archive it and add
+  a new one instead.
+- **Archived, never deleted**, like members and categories: its lines and balances keep
+  their history. An archived account cannot be chosen for a new entry, and it is not in a
+  close after the month it was archived in.
+
+**Who can add and change accounts:** an owner or a partner for any member, and a
+contributor for their own accounts only (the same rule as closing a month, decided 13
+November). A viewer cannot, and does not see the Accounts tab.
 
 ## 2. Adding money in
 
@@ -180,11 +250,19 @@ open month:
   spent so far   = Σ expense_txn in the month − refunds          ("itemised so far")
   saved          = not shown                                     ("after the close")
 
+a month that has ended, in a household with no accounts added (itemised mode):
+  spent          = Σ expense_txn in the month − refunds − paid to loans
+  saved          = came in − spent                ("from what you entered", never "exact")
+  split          = spent · invested · paid to loans · the rest ("not tracked without
+                   accounts"); no cash reserve, which needs balances
+
 closed month (spending-capture §2, money in made exact):
   money in (per account) = its credits + transfers into it + holding take-outs paid into it
+  outside        = Σ credits in the month with no account   ("came in outside the accounts
+                   you added": treated as spent outside them, as cash is when withdrawn)
   left           = opening + money in − closing        (bank)
                  = due at end − due at start + money in (card: payments and refunds)
-  spent          = Σ left − own transfers out − money into holdings − refunds
+  spent          = Σ left + outside − own transfers out − money into holdings − refunds
                    − paid to loans
   saved          = came in − spent
                  = net invested + paid to loans + change in cash reserve   (SC-I12)
@@ -205,6 +283,18 @@ term is needed either, because only what reached a household account is recorded
 an account is no longer typed at the close as *other money in*. Each credit is a ledger
 line with a category, so the close shows what was recorded per account, and offers
 *+ Money in* when it is short.
+
+**Credits with no account, at the close.** The close lists them, as *came in outside the
+accounts you added*, with a choice of account for any that did land in one. Whatever stays
+without an account is added to spent as money outside the tracked accounts. Its income
+part is in came in too, so saved is unchanged by it, and the split still adds up to the
+paisa. This is the same rule as spending-capture §2's *money spent from an account nobody
+added is in itemised only*.
+
+**Which mode a household is in** is shown, never guessed: a closed month says *from
+balances, 3 of 3 accounts*; a household with no accounts says *from what you entered*,
+with *Add an account to close months from balances* beneath it. A household can move
+from one mode to the other at any month; earlier months keep the mode they were shown in.
 
 **The month control** is This month | Last month, as ovals in the lifted surface. Last
 month is closed, or shows the open state if nobody has closed it yet.
@@ -251,7 +341,8 @@ little, and an unconfirmed figure must not reach the month, FIRE or the househol
 | **A reimbursement** (an employer repays travel) | Refund or money back. It takes away from spent in its month and is not income. If the spending was in an earlier month, that month's spent does not change, and this month's spent can go below the itemised total. The ledger's word for it says so. |
 | **A refund** | Refund or money back, on the account or card it landed on. On a card it is money in for the card, so the card's *left* stays gross, and the refund is taken away once, as for any other account. |
 | **A joint account** | The account belongs to the household (`visibility = household`). A credit on it belongs to whoever the person names. If the credit is private, AddCredit warns that the account's balance is seen by the household, so the credit is private *in the list only* (AddCredit2, state 1). |
-| **Cash** | The wallet is not an account (spending-capture §2). Cash kept as cash is not entered. Cash income paid into an account is entered on the day it is paid in, with its real category. A credit always names an account. |
+| **Cash** | The wallet is not an account (spending-capture §2). Cash income can be entered with no account. In itemised mode it simply counts as came in. At a close, it is *came in outside the accounts you added* and is treated as spent outside them, the way cash is spent when withdrawn. If it is later paid into an added account, that deposit is entered as the credit instead, and the cash entry is voided. |
+| **No accounts at all** | Itemised mode (§4): came in, spent from entries, and saved *from what you entered*. Invested and paid to loans are still exact, because they come from holdings and EMI entries. Only the cash reserve is missing. |
 | **A salary in two parts** | Two Salary credits in the same month. The month's salary is their sum, and FIRE reads monthly sums, not single credits. |
 | **A month with no salary** | Came in holds whatever else came in, and saved can be negative. A negative saved shows a minus sign and the words *spent more than came in*, never red alone. The month is not a month entered for FIRE (§7). |
 | **A bonus** | A Salary credit. It counts in that month's came in. Because FIRE uses the *usual* amount, a bonus month does not move it (FireIncome, Oct). |
@@ -379,6 +470,12 @@ owner*, and no estimate.
 | | 5 | A private Salary credit: a lock and *only you see this row* |
 | | 6 | Other members' private credits: in *Came in*, not listed |
 | MoneyLedgerLight | 1–6 | The same in Mist |
+| MoneyAccounts | 1 | The cash reserve from the last close, with Close October |
+| | 2 | An account with no last four |
+| | 3 | An account with no balance yet |
+| | 4 | Other members' private accounts: in the total, not listed |
+| MoneyAccountsEmpty | 5 | No accounts: optional, and what adding them gives |
+| AddAccount | 1 | Opened from a form's account picker: saving returns to it |
 | AddCredit | — | Step 1, amount focused |
 | AddCredit2 | 1 | The joint-account warning |
 | | 2 | Repeats every month, which leads to the rule |
@@ -501,13 +598,21 @@ functions, which read the totals.
 
 **LI-I3 — A refund or money back reduces spent in the month it is credited and is never income.** (§4, §6)
 
-**LI-I4 — Every credit names an account of the household;** there is no credit without one. (§1, §6)
+**LI-I4 — A credit names an account of its own household, or none;** a credit with none still counts in came in, FIRE and Tax. (§1, §6)
 
 **LI-I5 — Amounts are integer minor units with a currency, dates are IST calendar dates, and totals are per currency, never converted into one another.** (§1, §4)
 
-**LI-I6 — A closed month's money in, for each account, is the sum of its credits, transfers in and holding take-outs;** nothing is typed beside them at the close, and spent is still derived, never stored. (§4)
+**LI-I6 — A closed month's money in, for each account, is the sum of its credits, transfers in and holding take-outs;** a credit with no account is counted in spent as money outside the accounts added; nothing is typed beside them at the close, and spent is still derived, never stored. (§4)
 
-**LI-I7 — Saved is shown only for a closed month, and equals came in minus spent.** (§4)
+**LI-I7 — Saved equals came in minus spent, and is shown for a closed month, labelled from balances, or, in a household with no accounts, for a month that has ended, labelled from what was entered;** an open month never shows it. (§4)
+
+**LI-I24 — An account needs a name, a type and whose it is; its last four digits are optional.** (§0)
+
+**LI-I25 — Accounts are created and managed on Money's Accounts tab, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
+
+**LI-I26 — An account's type and currency cannot change once it has a credit, a transfer or a balance;** an account is archived, never deleted. (§1a)
+
+**LI-I27 — A private account is listed only to its owner; its balance reaches others only inside the cash reserve's total.** (§1a)
 
 **LI-I8 — An expected credit counts nowhere until it is confirmed;** a credit rule never auto-posts, and a rule posts at most one credit per due date. (§5)
 
@@ -546,10 +651,10 @@ functions, which read the totals.
 - LI-I1: a month with Salary ₹1,42,000, Interest ₹1,250 and Refund ₹1,299 gives came in ₹1,43,250, and a ₹50,000 Business income credit raises it to ₹1,93,250; a credit with no category, or two, is refused by the table's check.
 - LI-I2: an `account_transfer` of ₹18,240 from savings to a card, and a ₹10,000 SIP paid from savings, change neither came in nor a closed month's spent (pure domain test over the §4 worked example).
 - LI-I3: the §4 worked example with a ₹1,299 refund gives spent ₹1,299 lower than without it and came in unchanged; the same refund in the next month changes the next month alone.
-- LI-I4: inserting a `credit_entry` with a null `account_id`, or an account of another household, is refused (pgTAP).
+- LI-I4: a `credit_entry` with a null `account_id` is accepted and counts in came in; one naming an account of another household is refused (pgTAP).
 - LI-I5: a credit with a fractional amount is refused; a credit at 23:30 IST on 31 October lands in October; a USD credit and an INR credit give two came-in lines and no sum.
-- LI-I6: for the MonthMoney example (Salary ₹1,42,000 to HDFC, Interest ₹1,250 to SBI, a ₹1,299 refund and an ₹18,240 payment to the card, ₹55,000 into holdings from HDFC; HDFC up ₹20,380, SBI up ₹400, card due up ₹2,200), left is HDFC ₹1,21,620, SBI ₹850 and card ₹21,739, Σ ₹1,44,209, and spent = ₹1,44,209 − ₹18,240 − ₹55,000 − ₹1,299 = ₹69,670; no column stores it.
-- LI-I7: the open month renders saved as "—" with "after the close"; the closed month renders ₹73,580, which equals ₹55,000 + ₹18,580.
+- LI-I6: for the MonthMoney example (Salary ₹1,42,000 to HDFC, Interest ₹1,250 to SBI, a ₹1,299 refund and an ₹18,240 payment to the card, ₹55,000 into holdings from HDFC; HDFC up ₹20,380, SBI up ₹400, card due up ₹2,200), left is HDFC ₹1,21,620, SBI ₹850 and card ₹21,739, Σ ₹1,44,209, and spent = ₹1,44,209 − ₹18,240 − ₹55,000 − ₹1,299 = ₹69,670; no column stores it. Adding a ₹5,000 Rent credit with no account raises came in and spent by ₹5,000 each and leaves saved at ₹73,580.
+- LI-I7: the open month renders saved as "—" with "after the close"; the closed month renders ₹73,580, which equals ₹55,000 + ₹18,580, labelled "from balances"; a household with no accounts sees October's saved labelled "from what you entered", and no cash reserve.
 - LI-I8: an active credit rule due today adds nothing to came in or FIRE until confirmed; confirming twice inserts one row; `auto_post = true` with `direction = 'credit'` is refused (pgTAP).
 - LI-I9: monthly salaries of 1,42,000 ×4, 1,38,450 and 2,10,000 give ₹17,04,000; adding the FireBusiness months gives ₹31,44,000; two earners give the sum of both on Household; a year later, with no new credit, the figure is unchanged.
 - LI-I10: a member with no Salary or Business income credit sees the FIRE number, no yearly-income figure, and the link to + Money in; the DOM contains no "₹0" in that panel.
@@ -566,3 +671,7 @@ functions, which read the totals.
 - LI-I21: pgTAP, select: a partner reads no `income_entry` of the owner's that the partner did not create; the owner reads a parent's row the owner typed; the parent's own login, once invited, reads it too.
 - LI-I22: pgTAP: a partner reading `audit_log` sees no row for the owner's personal `credit_entry` or the owner's `income_entry`; the owner sees both.
 - LI-I23: the §4 worked example plus a ₹32,000 EMI from HDFC (HDFC then down ₹11,620, so the cash reserve is down ₹13,420) gives spent ₹69,670, paid to loans ₹32,000, and saved ₹73,580 = ₹55,000 + ₹32,000 − ₹13,420.
+- LI-I24: an account with a name, the type savings and a member, and no last four, is accepted (pgTAP); the ledger line shows its name alone.
+- LI-I25: `#/money?tab=accounts` renders the Accounts tab current; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
+- LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
+- LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it.

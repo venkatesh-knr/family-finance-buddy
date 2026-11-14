@@ -12,6 +12,7 @@
 
 import { Children, Fragment, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { RequiredMark } from './primitives.tsx';
 
 export interface ParsedOption {
   readonly value: string;
@@ -130,7 +131,7 @@ export function Select({
     <div className={`select-field ${className ?? ''}`.trim()}>
       <span className="label" id={`${base}-label`}>
         {label}
-        {required && <span aria-hidden="true"> *</span>}
+        {required && <RequiredMark />}
         {labelExtra}
       </span>
       <button

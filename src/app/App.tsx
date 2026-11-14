@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExpensesScreen } from '../features/expenses/ExpensesScreen.tsx';
+import { MoneyScreen, moneyTabOf } from '../features/money/MoneyScreen.tsx';
 import { usePostRecurring } from './usePostRecurring.ts';
 import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
@@ -401,7 +401,8 @@ function SignedIn({
           />
         )}
         {screen === 'money' && (
-          <ExpensesScreen
+          <MoneyScreen
+            tab={moneyTabOf(params)}
             privacy={privacy}
             householdId={householdId}
             recurringMade={recurringMade}
