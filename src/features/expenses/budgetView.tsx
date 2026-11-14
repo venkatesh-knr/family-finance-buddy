@@ -297,7 +297,7 @@ export type BudgetComparisonView = ReturnType<typeof useBudgetComparison>;
  * something to act on, so it is the muted mark. It rides on the figure and not on the plan below it: "₹10,335 left"
  * under a total that is short by ten thousand rupees tells a person they have more to spend than they do.
  */
-function ShortFigure({ view }: { view: BudgetComparisonView }) {
+export function ShortFigure({ view }: { view: BudgetComparisonView }) {
   const fixable: string[] = [];
   if (view.personalSpend === null) {
     fixable.push('Private spending could not be read just now, so this total may be short. Reload to read it again.');
@@ -360,8 +360,11 @@ function paceWords(view: BudgetComparisonView): { text: string; tone: 'warn' | '
  * 15 of 31", a bar for how much of the plan is spent with a tick for how much of the period has passed, and
  * under it what is left and a pace verdict. The pace is the point: a month-end total says what happened, a pace
  * says it while there is still something to do about it.
+ *
+ * Where the month surface (Came in · Spent · Saved) is the lifted figure, this is the soft panel under it, unchanged
+ * (`soft`): spent against the plan (docs/design/ledger-income.md section 1).
  */
-export function SpentHero({ view, privacy }: { view: BudgetComparisonView; privacy: boolean }) {
+export function SpentHero({ view, privacy, soft = false }: { view: BudgetComparisonView; privacy: boolean; soft?: boolean }) {
   const { summary, totals, period, setPeriod, daysElapsed, daysInPeriod, bounds } = view;
   const words = paceWords(view);
   const planned = totals.planned.minor > 0n;
@@ -371,9 +374,9 @@ export function SpentHero({ view, privacy }: { view: BudgetComparisonView; priva
   const noun = period === 'month' ? 'month' : 'year';
 
   return (
-    <section className="card card-lift" aria-label={period === 'month' ? 'This month' : 'This year'}>
+    <section className={soft ? 'card' : 'card card-lift'} aria-label={soft ? 'Against the plan' : period === 'month' ? 'This month' : 'This year'}>
       <div className="flex items-center justify-between gap-3">
-        <span className="label">Spent</span>
+        <span className="label">{soft ? 'Against the plan' : 'Spent'}</span>
         <span className="segmented" role="group" aria-label="Period">
           <button type="button" aria-pressed={period === 'month'} onClick={() => { setPeriod('month'); }}>
             This month

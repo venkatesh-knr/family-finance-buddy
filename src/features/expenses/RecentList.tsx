@@ -19,6 +19,8 @@ import { memberMarks, type MemberMark } from './memberMark.ts';
 export interface LedgerMoney {
   /** Opens a credit to correct or void. Absent where credits are only read. */
   readonly onEditCredit?: (credit: Credit) => void;
+  /** The month surface is shown, so what the list leaves out is said to be in Came in (the board's state 6). */
+  readonly inCameIn?: boolean;
   /** Whether the caller may change this credit, so a line is a button only where it does something. */
   readonly canChangeCredit?: (credit: Credit) => boolean;
   readonly credits: readonly Credit[];
@@ -268,7 +270,11 @@ export function RecentList({
 
       {/* The board's state 6: what the list cannot show is said, so the In filter is not read as the household's income. */}
       {money !== undefined && !onlyUncategorised && (filter === 'all' || filter === 'in') && listing.members.filter((member) => !member.isArchived).length > 1 && (
-        <p className="note mt-2">Credits another member keeps private are not listed here.</p>
+        <p className="note mt-2">
+          {money.inCameIn === true
+            ? 'Credits another member keeps private are in Came in, as part of the total, and are not listed here.'
+            : 'Credits another member keeps private are not listed here.'}
+        </p>
       )}
     </section>
   );
