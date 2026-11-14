@@ -59,6 +59,8 @@ export interface IncomeTaxComputation {
   /** What was taken off the salary. Never more than the salary itself. */
   readonly standardDeduction: Money;
   readonly otherIncome: Money;
+  /** A business or professional net profit, typed: taxed at the slab rates with no standard deduction (ledger-income.md section 8). */
+  readonly business: Money;
   /** Short-term gold and unlisted gains, which the slab taxes as income. */
   readonly shortTermAtSlab: Money;
   /** Income the slabs are applied to, after deductions. */
@@ -251,6 +253,11 @@ export function computeIncomeTax(options: {
   readonly salary: Money;
   /** Interest, rent and the like: anything the slab taxes that is not salary. */
   readonly otherIncome: Money;
+  /**
+   * A business or professional net profit for the year, as typed from the books or the return, after business expenses. Taxed at the slab
+   * rates with no standard deduction, which is salary's alone. Not a loss: that is refused by name where it is typed. Nothing when absent.
+   */
+  readonly business?: Money;
   /** The year's capital gains, already netted. Must be for the same year. */
   readonly gains: CapitalGains;
   readonly rules: readonly TaxRule[];
@@ -260,7 +267,8 @@ export function computeIncomeTax(options: {
   if (gains.fy !== fy) {
     throw new Error(`The gains are for tax year ${String(gains.fy)}, not ${String(fy)}.`);
   }
-  if (options.salary.currency !== CURRENCY || options.otherIncome.currency !== CURRENCY) {
+  const businessMoney = options.business ?? inr(0n);
+  if (options.salary.currency !== CURRENCY || options.otherIncome.currency !== CURRENCY || businessMoney.currency !== CURRENCY) {
     throw new Error('Income tax is computed in rupees.');
   }
 
@@ -275,10 +283,11 @@ export function computeIncomeTax(options: {
 
   const salary = options.salary.minor;
   const other = options.otherIncome.minor;
+  const business = businessMoney.minor;
   const shortTermAtSlab = gains.otherShort.taxable.minor;
 
   const standardDeduction = standardRule === null ? 0n : min(salary, standardRule.amountMinor ?? 0n);
-  const ordinary = positive(salary - standardDeduction + other + shortTermAtSlab);
+  const ordinary = positive(salary - standardDeduction + other + business + shortTermAtSlab);
 
   // The basic exemption: the top of the nil band. What other income has not used
   // of it is set against the gains before they are taxed.
@@ -304,6 +313,7 @@ export function computeIncomeTax(options: {
     salary: options.salary,
     standardDeduction: inr(standardDeduction),
     otherIncome: options.otherIncome,
+    business: businessMoney,
     shortTermAtSlab: inr(shortTermAtSlab),
     taxableOrdinary: inr(ordinary),
     basicExemptionAdjustment: capitalGains.adjustedForBasicExemption,

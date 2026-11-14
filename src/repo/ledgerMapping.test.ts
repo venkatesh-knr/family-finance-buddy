@@ -183,13 +183,17 @@ describe('toIncomeRule', () => {
 });
 
 describe('toTaxInput', () => {
-  const row = { id: 'i-1', household_id: 'h-1', member_id: 'm-1', tax_year: '2026-27', head: 'salary', amount_minor: '22800000', currency: 'INR', tds_minor: '3100000', source: 'payslip', created_by: 'u-1' };
+  const row = { id: 'i-1', household_id: 'h-1', member_id: 'm-1', tax_year: '2026-27', head: 'salary', amount_minor: '22800000', currency: 'INR', tds_minor: '3100000', source: 'payslip', created_by: 'u-1', updated_at: '2026-04-13T20:30:00Z' };
 
   it('maps a typed gross figure with its tax deducted, and who typed it', () => {
     const mapped = toTaxInput(row);
     expect(mapped).toMatchObject({ memberId: 'm-1', taxYear: '2026-27', head: 'salary', source: 'payslip', typedBy: 'u-1' });
     expect(mapped.amount).toEqual({ minor: 22_800_000n, currency: 'INR' });
     expect(mapped.tds).toEqual({ minor: 3_100_000n, currency: 'INR' });
+  });
+
+  it('reads the day a figure was last typed in India: 2 a.m. on the 14th there is still the 13th in UTC', () => {
+    expect(toTaxInput(row).updatedOn).toBe('2026-04-14');
   });
 
   it('reads no tax deducted as none, and not as zero', () => {

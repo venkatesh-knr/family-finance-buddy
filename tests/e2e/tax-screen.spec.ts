@@ -8,7 +8,8 @@ import { archiveByName, openHolding, openList } from './holdings.ts';
  * estimate in the one lifted card with its working behind a fold, the gains with the allowance as one bar, the
  * sales as stacked rows, and one quiet line with two buttons for the rest.
  *
- * The figures come from the seed's rules. What is typed in the estimate is never saved, and a spec checks that.
+ * The figures come from the seed's rules. What is typed in the estimate is held on the page until Save, and a spec checks that; saving is
+ * its own spec at the end, since what is saved lasts for the run.
  * One test records a sale through Holdings to see a row on the sales list, and archives the holding after.
  */
 
@@ -32,7 +33,7 @@ test('the estimate is the figure first, then the two amounts, and the working is
   await onTax(page);
   const estimate = page.getByRole('region', { name: 'Estimated tax' });
   await expect(estimate.locator('.tax-figure')).toContainText('₹');
-  await expect(estimate).toContainText('Typed here, never saved');
+  await expect(estimate).toContainText(/Kept for .*, once saved: only they and whoever typed it can read these figures\./);
 
   // The working is not drawn until it is asked for.
   const fold = estimate.getByRole('button', { name: 'How it adds up' });
@@ -55,14 +56,15 @@ test('the estimate is the figure first, then the two amounts, and the working is
   await expect(estimate.locator('.tax-figure')).not.toContainText('₹1,50,800');
 });
 
-test('what is typed is held on the page and gone on a reload, as the card says', async ({ page }) => {
+test('what is typed is held on the page until it is saved, and gone on a reload', async ({ page }) => {
   await onTax(page);
   const salary = page.getByRole('region', { name: 'Estimated tax' }).getByLabel('Salary for the year');
   await salary.fill('1200000');
   await expect(salary).toHaveValue('1200000');
   await onTax(page);
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Estimated tax' }).getByLabel('Salary for the year')).toHaveValue('', {
+  // A figure that was saved earlier in the run may be there; what was typed and not saved is not.
+  await expect(page.getByRole('region', { name: 'Estimated tax' }).getByLabel('Salary for the year')).not.toHaveValue('1200000', {
     timeout: 20_000,
   });
 });
@@ -180,4 +182,86 @@ test('a sale appears as a row: its tile, its name, its gain with a sign, when, h
   } finally {
     await archiveByName(page, name);
   }
+});
+
+/** The rupees in a figure such as "₹1,50,800": 150800. */
+function rupees(text: string): number {
+  const first = /₹\s*([\d,]+(?:\.\d+)?)/.exec(text);
+  return first === null ? Number.NaN : Number((first[1] as string).replace(/,/g, ''));
+}
+
+test('LI-I11 — saved figures are kept for the member, the tax already deducted is taken off, and a Form 16 figure is used from then on', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'it writes figures that last for the run, and a Form 16 correction cannot be undone within it');
+  test.setTimeout(120_000);
+  await onTax(page);
+  const estimate = page.getByRole('region', { name: 'Estimated tax' });
+
+  // A salary of ₹22,80,000 with ₹2,50,000 deducted so far, and a business profit of ₹3,00,000.
+  await estimate.getByLabel(/^Gross salary for the year/).fill('2280000');
+  await estimate.getByLabel('TDS so far').fill('250000');
+  await estimate.getByLabel('Business or professional income').fill('300000');
+  await estimate.getByRole('button', { name: 'Save these figures' }).click();
+  await expect(estimate.getByRole('status')).toContainText('Saved.', { timeout: 20_000 });
+
+  // Kept: a reload reads them back. The business profit is taxed with no standard deduction, so it is in the working beside the salary's.
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Estimated tax' })).toBeVisible({ timeout: 20_000 });
+  await expect(estimate.getByLabel(/^Gross salary for the year/)).toHaveValue('2280000.00', { timeout: 20_000 });
+  await expect(estimate.getByLabel('TDS so far')).toHaveValue('250000.00');
+  await expect(estimate.getByLabel('Business or professional income')).toHaveValue('300000.00');
+  // The source pill says where the salary came from, and when.
+  await expect(estimate).toContainText(/From payslip · \d{1,2} \w{3} \d{4}/);
+
+  // Privacy mode removes the figures from the boxes, as it does from every other amount: the digits are not in the page.
+  await page.getByRole('button', { name: /Amounts shown/ }).click();
+  await expect(estimate.getByLabel(/^Gross salary for the year/)).toHaveValue('••••••');
+  await expect(estimate.getByLabel('TDS so far')).toHaveValue('••••••');
+  await expect(estimate.getByRole('button', { name: 'Save these figures' })).toBeDisabled();
+  await page.getByRole('button', { name: /Amounts hidden/ }).click();
+  await expect(estimate.getByLabel(/^Gross salary for the year/)).toHaveValue('2280000.00');
+
+  await estimate.getByRole('button', { name: 'How it adds up' }).click();
+  await expect(estimate.locator('dl')).toContainText('Business or professional income');
+  await expect(estimate.locator('dl')).toContainText('₹3,00,000');
+
+  // The tax already deducted is taken off the estimate.
+  const total = rupees(await estimate.locator('.tax-figure').innerText());
+  const still = estimate.getByTestId('still-to-pay');
+  await expect(still).toBeVisible();
+  const left = rupees(await still.innerText());
+  // Taken off exactly, when the estimate is more than what was deducted.
+  if (total > 250_000) expect(left).toBe(total - 250_000);
+
+  // A loss is refused by name, and nothing is written.
+  await estimate.getByLabel('Business or professional income').fill('-5000');
+  await expect(estimate.getByText(/A business loss is not entered here/)).toBeVisible();
+  await estimate.getByRole('button', { name: 'Save these figures' }).click();
+  await expect(estimate.getByRole('alert').filter({ hasText: 'business loss' }).first()).toBeVisible();
+  await estimate.getByLabel('Business or professional income').fill('300000');
+
+  // Corrected from Form 16: its own figure, used from then on, with the payslip's beside it.
+  await estimate.getByLabel(/^Gross salary for the year/).fill('2300000');
+  await estimate.getByRole('button', { name: 'Correct from Form 16' }).click();
+  await expect(estimate.getByRole('status')).toContainText('The Form 16 figure is used from now on', { timeout: 20_000 });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Estimated tax' })).toBeVisible({ timeout: 20_000 });
+  await expect(estimate.getByLabel(/^Gross salary for the year \(Form 16\)/)).toHaveValue('2300000.00', { timeout: 20_000 });
+  await expect(estimate).toContainText('was ₹22,80,000 from payslip');
+  await expect(estimate).toContainText(/Form 16 · corrected \d{1,2} \w{3} \d{4}/);
+
+  // Once there is a Form 16 figure, Save writes to it: an edit after the correction takes effect, and is not saved under a figure never used.
+  await estimate.getByLabel(/^Gross salary for the year/).fill('2400000');
+  await estimate.getByRole('button', { name: 'Save these figures' }).click();
+  await expect(estimate.getByRole('status')).toContainText('Saved.', { timeout: 20_000 });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Estimated tax' })).toBeVisible({ timeout: 20_000 });
+  await expect(estimate.getByLabel(/^Gross salary for the year \(Form 16\)/)).toHaveValue('2400000.00', { timeout: 20_000 });
+  await expect(estimate).toContainText('was ₹22,80,000 from payslip');
+
+  // Put back what other specs in the run expect to find: nothing of consequence.
+  await estimate.getByLabel(/^Gross salary for the year/).fill('0');
+  await estimate.getByLabel('Business or professional income').fill('0');
+  await estimate.getByLabel('TDS so far').fill('0');
+  await estimate.getByRole('button', { name: 'Correct from Form 16' }).click();
+  await expect(estimate.getByRole('status')).toContainText('Saved', { timeout: 20_000 });
 });

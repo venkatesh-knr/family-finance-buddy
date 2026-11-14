@@ -14,7 +14,7 @@ import { asLedgerError } from './ledgerErrors.ts';
 import { toTaxInput } from './ledgerMapping.ts';
 import type { NewTaxInput, TaxInputRecord, Uuid } from './types.ts';
 
-const COLUMNS = 'id, household_id, member_id, tax_year, head, amount_minor::text, currency, tds_minor::text, source, created_by';
+const COLUMNS = 'id, household_id, member_id, tax_year, head, amount_minor::text, currency, tds_minor::text, source, created_by, updated_at';
 
 /** The figures the caller may read, for a tax year if one is given. */
 export async function listTaxInputs(householdId: Uuid, options: { taxYear?: string } = {}): Promise<readonly TaxInputRecord[]> {

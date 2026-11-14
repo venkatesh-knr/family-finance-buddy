@@ -8,6 +8,7 @@
  */
 
 import { CREDIT_CATEGORIES } from '../domain/credit.ts';
+import { istCalendarDate } from '../lib/dates.ts';
 import { MalformedRowError, optionalString, requireBoolean, requireOneOf, requireRecord, requireString, toBigIntExact } from '../lib/guards.ts';
 import { money } from '../lib/money.ts';
 import { requireIsoDate, requireNumber } from './mapping.ts';
@@ -141,6 +142,7 @@ export function toTaxInput(raw: unknown): TaxInputRecord {
     tds: tds === null || tds === undefined ? null : money(toBigIntExact(tds, 'income_entry.tds_minor'), currency),
     source: requireOneOf(row['source'], TAX_SOURCES, 'income_entry.source'),
     typedBy: requireString(row['created_by'], 'income_entry.created_by'),
+    updatedOn: istCalendarDate(new Date(requireString(row['updated_at'], 'income_entry.updated_at'))),
   };
 }
 
