@@ -1265,6 +1265,16 @@ export interface NewTaxInput {
   readonly source: TaxSource;
 }
 
+/**
+ * The cash reserve as at a day, for the whole household, other members' private accounts included: the latest balance of each account, a
+ * card's taken off, per currency, with how many accounts had a balance and how many there are (*2 of 3 accounts*). No account, no member.
+ */
+export interface CashReserve {
+  readonly reserve: Money;
+  readonly counted: number;
+  readonly total: number;
+}
+
 /** What came in and what was refunded in a period, for the whole household, private credits included. One line per currency. */
 export interface MoneyTotals {
   readonly cameIn: Money;

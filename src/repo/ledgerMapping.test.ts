@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MalformedRowError } from '../lib/guards.ts';
-import { toAccount, toAccountBalance, toCredit, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
+import { toAccount, toAccountBalance, toCashReserve, toCredit, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
 
 /**
  * The mapping from the ledger's rows to the app's vocabulary (docs/design/ledger-income.md section 12). Rows are as PostgREST returns them:
@@ -211,6 +211,16 @@ describe('the sum functions’ rows', () => {
     const totals = toMoneyTotals({ currency: 'INR', came_in_minor: '28325000', refunds_minor: '129900' });
     expect(totals).toEqual({ cameIn: { minor: 28_325_000n, currency: 'INR' }, refunds: { minor: 129_900n, currency: 'INR' } });
     expect(Object.keys(totals)).not.toContain('memberId');
+  });
+
+  it('LI-I27 — reads the cash reserve per currency with how many accounts it counted, and nothing about an account or a member', () => {
+    const reserve = toCashReserve({ currency: 'INR', reserve_minor: '21518000', accounts_counted: 3, accounts_total: 4 });
+    expect(reserve).toEqual({ reserve: { minor: 21_518_000n, currency: 'INR' }, counted: 3, total: 4 });
+    expect(Object.keys(reserve)).toEqual(['reserve', 'counted', 'total']);
+  });
+
+  it('refuses a count that is not a whole number, rather than reading it as none', () => {
+    expect(() => toCashReserve({ currency: 'INR', reserve_minor: '1', accounts_counted: 'three', accounts_total: 4 })).toThrow(MalformedRowError);
   });
 
   it('reads the household’s yearly salary and business income per currency', () => {

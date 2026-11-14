@@ -13,8 +13,8 @@
 import { MalformedRowError } from '../lib/guards.ts';
 import { supabase } from './client.ts';
 import { asLedgerError } from './ledgerErrors.ts';
-import { toMoneyTotals, toYearlyIncomeTotals } from './ledgerMapping.ts';
-import type { MoneyTotals, Uuid, YearlyIncomeTotals } from './types.ts';
+import { toCashReserve, toMoneyTotals, toYearlyIncomeTotals } from './ledgerMapping.ts';
+import type { CashReserve, MoneyTotals, Uuid, YearlyIncomeTotals } from './types.ts';
 
 /** What came in and what was refunded between two days, per currency, for the whole household. */
 export async function householdMoneyTotals(householdId: Uuid, from: string, to: string): Promise<readonly MoneyTotals[]> {
@@ -24,6 +24,19 @@ export async function householdMoneyTotals(householdId: Uuid, from: string, to: 
   if (data === null) return [];
   if (!Array.isArray(data)) throw new MalformedRowError('household_money_totals', 'did not return a set of rows');
   return data.map(toMoneyTotals);
+}
+
+/**
+ * The household's cash reserve as at a day, per currency, other members' private accounts included without their rows (LI-I27): what the
+ * accounts hold, a card's due taken off, with how many accounts had a balance and how many there are. A currency with no balance typed returns
+ * a sum of nothing and a count of none, which a screen says in words and never shows as a reserve of nothing.
+ */
+export async function householdCashReserve(householdId: Uuid, asOf: string): Promise<readonly CashReserve[]> {
+  const { data, error } = await supabase().rpc('household_cash_reserve', { target_household_id: householdId, as_of: asOf });
+  if (error !== null) throw asLedgerError(error);
+  if (data === null) return [];
+  if (!Array.isArray(data)) throw new MalformedRowError('household_cash_reserve', 'did not return a set of rows');
+  return data.map(toCashReserve);
 }
 
 /**
