@@ -113,8 +113,8 @@ export async function saveBalance(input: NewBalance): Promise<void> {
 /**
  * Whether an account has a credit, a transfer or a balance, so that its type and currency are fixed (docs/design/ledger-income.md
  * section 1a): they decide how its past months were worked out. It reads only what the caller may read, so it can say no for an account
- * whose only entries are another member's private ones. The table does not yet refuse a change of type or currency (LI-I26 is still to
- * build in a migration), so until it does the form is the only guard: it offers them only to an account with no history.
+ * whose only entries are another member's private ones. The table itself refuses a change of type or currency once there is any history,
+ * whoever can see it (LI-I26, app.refuse_account_retyping), so this only lets the form say so before it is tried.
  */
 export async function accountHasHistory(accountId: Uuid): Promise<boolean> {
   const client = supabase();

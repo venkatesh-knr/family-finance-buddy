@@ -3,7 +3,8 @@
 -- FOR REVIEW with the migration beside it (20261114120000_ledger_income.sql). Not run locally: Docker is blocked on the maintainer's
 -- machine, so CI's policy suite is the first run.
 --
--- LI-I4  — there is no credit without an account of the household, in the account's own currency.
+-- LI-I4  — a credit names an account of its own household, in the account's own currency, or none (accounts are optional, 14 November 2026).
+-- LI-I26 — an account's type and currency cannot change once a credit, a transfer or a balance refers to it.
 -- LI-I12 — a viewer reads no credit; a contributor reads only their own; nobody reads another member's private credit.
 -- LI-I13 — the household's total of private income is reachable only through the sum function, by an owner or a partner, as totals
 --          per currency, and the result has no member in it.
@@ -22,7 +23,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(81);
+select plan(86);
 
 -- ============================================================== the fixture
 --
@@ -234,11 +235,11 @@ alter table public.recurring_rule alter column created_by set default 'd9000000-
 
 -- ============================================ what the tables refuse, as the database owner
 
-select throws_ok(
-  $q$ insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date)
-      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', null, 'salary', 100, 'INR', '2026-10-02') $q$,
-  '23502'::char(5), null::text,
-  'LI-I4 — a credit with no account is refused'
+select is(
+  (select is_nullable from information_schema.columns
+    where table_schema = 'public' and table_name = 'credit_entry' and column_name = 'account_id'),
+  'YES',
+  'LI-I4 — a credit may name no account: the column accepts null'
 );
 
 select throws_ok(
@@ -420,6 +421,38 @@ select lives_ok(
   'a Form 16 figure is its own row beside the payslip one'
 );
 
+-- LI-I26: an account with history keeps its type and currency. 01 has credits and a balance, 03 a balance and a transfer.
+select throws_ok(
+  $q$ update public.account set type = 'current' where id = 'a9000000-0000-4000-8000-000000000001' $q$,
+  '23514'::char(5), null::text,
+  'LI-I26 — an account with credits cannot change type'
+);
+
+select throws_ok(
+  $q$ update public.account set type = 'savings' where id = 'a9000000-0000-4000-8000-000000000003' $q$,
+  '23514'::char(5), null::text,
+  'LI-I26 — nor one with only a balance and a transfer'
+);
+
+select throws_ok(
+  $q$ update public.account set currency = 'USD' where id = 'a9000000-0000-4000-8000-000000000001' $q$,
+  '23514'::char(5), null::text,
+  'LI-I26 — nor change currency, in words a person can read before the key refuses it'
+);
+
+-- An account nothing refers to may still be corrected. Made, changed and removed in one block, so nothing below counts it.
+select lives_ok(
+  $q$ do $d$
+      begin
+        insert into public.account (id, household_id, member_id, name, type, currency)
+          values ('a9000000-0000-4000-8000-0000000000f7', 'e9000000-0000-4000-8000-0000000000f1',
+                  'f9000000-0000-4000-8000-0000000000a1', 'Typed wrongly', 'card', 'INR');
+        update public.account set type = 'current', currency = 'USD' where id = 'a9000000-0000-4000-8000-0000000000f7';
+        delete from public.account where id = 'a9000000-0000-4000-8000-0000000000f7';
+      end $d$ $q$,
+  'LI-I26 — an account with no history can still change its type and currency'
+);
+
 -- Put back, so that every insert below is attributed to whoever makes it.
 alter table public.account alter column created_by set default app.current_account_id();
 alter table public.account_balance alter column created_by set default app.current_account_id();
@@ -490,6 +523,13 @@ select throws_ok(
               'a9000000-0000-4000-8000-000000000003', 'salary', 100, 'INR', '2026-09-02', 'personal') $q$,
   '42501'::char(5), null::text,
   'nor can a credit be put into an account the owner cannot read'
+);
+
+select lives_ok(
+  $q$ insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date, visibility)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
+              null, 'other_income', 250000, 'INR', '2026-09-16', 'household') $q$,
+  'LI-I4 — the owner records money that came in outside the accounts added: a credit with no account'
 );
 
 select throws_ok(

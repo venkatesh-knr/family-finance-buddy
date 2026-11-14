@@ -75,7 +75,7 @@ export function toCredit(raw: unknown): Credit {
     id: requireString(row['id'], 'credit_entry.id'),
     householdId: requireString(row['household_id'], 'credit_entry.household_id'),
     memberId: requireString(row['member_id'], 'credit_entry.member_id'),
-    accountId: requireString(row['account_id'], 'credit_entry.account_id'),
+    accountId: optionalString(row['account_id'], 'credit_entry.account_id'),
     category: requireOneOf(row['category'], CREDIT_CATEGORIES, 'credit_entry.category'),
     amount: money(toBigIntExact(row['amount_minor'], 'credit_entry.amount_minor'), currency),
     date: requireIsoDate(row['credit_date'], 'credit_entry.credit_date'),
