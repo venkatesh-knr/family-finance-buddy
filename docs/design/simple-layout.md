@@ -125,7 +125,16 @@ category chips, the disclosure line) with underline fields.
 ## 4. Forms in steps
 
 A form with more than five fields is split into steps of five or fewer, on a screen of
-its own (no bottom bar):
+its own (no bottom bar).
+
+**One exception, decided by the owner on 15 November 2026:** a form that is one short
+screen of one kind of thing, with nothing after it to take a second step, may keep its
+fields on one step, because splitting them would send a person through two screens for
+one decision. AddAccount (seven fields) and the salary rule (six) are such forms. It is
+the stepper with one step: no step count and no progress line. A form that is a sequence
+(adding a holding, adding money in) stays stepped.
+
+The steps:
 
 - A top bar with back and the form's name; under it the step's name, *Step n of m*,
   and a segmented progress line.
