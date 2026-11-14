@@ -10,10 +10,22 @@ import { CREDIT_LABEL } from '../../domain/credit.ts';
 import { formatShortDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { AddCredit, type AddedCredit } from './AddCredit.tsx';
-import { useAccounts } from './useAccounts.ts';
+import type { AccountsData } from './useAccounts.ts';
 
-export function MoneyIn({ householdId, privacy }: { householdId: string | null; privacy: boolean }) {
-  const { data, add, change } = useAccounts(householdId);
+export function MoneyIn({
+  data,
+  privacy,
+  onAddAccount,
+  onChangeAccount,
+  onSaved,
+}: {
+  data: AccountsData | null;
+  privacy: boolean;
+  onAddAccount: Parameters<typeof AddCredit>[0]['onAddAccount'];
+  onChangeAccount: Parameters<typeof AddCredit>[0]['onChangeAccount'];
+  /** A credit was written: the list reads it again. */
+  onSaved: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState<AddedCredit | null>(null);
 
@@ -39,11 +51,12 @@ export function MoneyIn({ householdId, privacy }: { householdId: string | null; 
       {open && (
         <AddCredit
           data={data}
-          onAddAccount={add}
-          onChangeAccount={change}
+          onAddAccount={onAddAccount}
+          onChangeAccount={onChangeAccount}
           onSaved={(credit) => {
             setAdded(credit);
             setOpen(false);
+            onSaved();
           }}
           onCancel={() => {
             setOpen(false);

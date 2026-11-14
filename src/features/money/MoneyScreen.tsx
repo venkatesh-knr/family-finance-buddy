@@ -10,6 +10,7 @@ import { hashFor } from '../../app/route.ts';
 import { ExpensesScreen } from '../expenses/ExpensesScreen.tsx';
 import { AccountsTab } from './AccountsTab.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
+import { useMoneyLedger } from './useMoneyLedger.ts';
 
 export type MoneyTab = 'ledger' | 'accounts';
 
@@ -28,6 +29,44 @@ export function MoneyTabs({ current }: { current: MoneyTab }) {
         Accounts
       </a>
     </nav>
+  );
+}
+
+/**
+ * The Ledger: the spending screen as it was, with money in and money moved listed beside the spending, and *+ Money in* above it.
+ * A component of its own so that the credits are read only when this tab is showing.
+ */
+function LedgerTab({
+  privacy,
+  householdId,
+  displayCurrency,
+  recurringMade,
+}: {
+  privacy: boolean;
+  householdId: string | null;
+  displayCurrency: string;
+  recurringMade: number;
+}) {
+  const ledger = useMoneyLedger(householdId);
+  return (
+    <>
+      <MoneyIn data={ledger.data} privacy={privacy} onAddAccount={ledger.add} onChangeAccount={ledger.change} onSaved={ledger.reloadMoney} />
+      <ExpensesScreen
+        privacy={privacy}
+        householdId={householdId}
+        recurringMade={recurringMade}
+        displayCurrency={displayCurrency}
+        money={{
+          credits: ledger.credits,
+          transfers: ledger.transfers,
+          accounts: ledger.data?.accounts ?? [],
+          status: ledger.moneyStatus,
+          onRetry: () => {
+            void ledger.reloadMoney();
+          },
+        }}
+      />
+    </>
   );
 }
 
@@ -50,10 +89,7 @@ export function MoneyScreen({
       {tab === 'accounts' ? (
         <AccountsTab householdId={householdId} privacy={privacy} />
       ) : (
-        <>
-          <MoneyIn householdId={householdId} privacy={privacy} />
-          <ExpensesScreen privacy={privacy} householdId={householdId} recurringMade={recurringMade} displayCurrency={displayCurrency} />
-        </>
+        <LedgerTab privacy={privacy} householdId={householdId} displayCurrency={displayCurrency} recurringMade={recurringMade} />
       )}
     </>
   );

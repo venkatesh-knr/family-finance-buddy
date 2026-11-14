@@ -20,6 +20,16 @@ async function onLedger(page: Page) {
 
 const form = (page: Page) => page.getByRole('form', { name: 'Add money in' });
 
+/**
+ * Entries of one day are listed spending first, then money in (spending carries no time of entry), and the list shows its first six: a
+ * credit added today may be below them, and See all is how it is reached. Opened when it is there, so a short list works too.
+ */
+async function showAll(page: Page) {
+  const seeAll = page.getByRole('button', { name: 'See all' });
+  await expect(page.getByRole('region', { name: 'Recent expenses' })).toBeVisible({ timeout: 20_000 });
+  if (await seeAll.isVisible()) await seeAll.click();
+}
+
 async function openForm(page: Page) {
   await page.getByRole('button', { name: '+ Money in' }).click();
   await expect(form(page)).toBeVisible();
@@ -131,5 +141,62 @@ for (const scheme of ['light', 'dark'] as const) {
     const two = await new AxeBuilder({ page }).analyze();
     const foundTwo = two.violations.map((v) => `${v.id}: ${String(v.nodes.length)} · ${v.nodes[0]?.html.slice(0, 110) ?? ''}`);
     expect(foundTwo, foundTwo.join('\n')).toEqual([]);
+  });
+}
+
+test('LI-I16 — a credit is listed on the Ledger beside the spending, with a sign and a word, and the filters sort it', async ({ page }) => {
+  test.setTimeout(90_000);
+  const payer = testName('credit-list');
+  await onLedger(page);
+  await openForm(page);
+  await form(page).getByLabel('Amount').fill('1,42,000');
+  await next(page);
+  await form(page).getByLabel('From').fill(payer);
+  await form(page).getByRole('button', { name: 'Add credit' }).click();
+  await expect(form(page)).toHaveCount(0, { timeout: 20_000 });
+
+  await showAll(page);
+  const list = page.getByRole('region', { name: 'Recent expenses' });
+  const row = list.locator('.recent-row').filter({ hasText: payer });
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  // Direction is a sign and a word, as well as an arrow (LI-I16); a private credit says whose eyes it is for.
+  await expect(row).toContainText('+₹1,42,000');
+  await expect(row).toContainText('came in');
+  await expect(row).toContainText('Salary');
+  await expect(row).toContainText('only you see this row');
+  // The line is named as one sentence, so a screen reader hears the direction and the word with the figure.
+  await expect(list.getByRole('listitem', { name: new RegExp(`^${payer}, .*\\+₹1,42,000, came in$`) })).toBeVisible();
+  // Spending beside it is a minus and a word too, and a move would have no sign.
+  const spendingRow = list.locator('.recent-row').filter({ hasText: /−₹/ }).first();
+  await expect(spendingRow).toContainText('spent');
+
+  const filters = list.getByRole('group', { name: 'Show' });
+  await expect(filters.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await filters.getByRole('button', { name: 'Out', exact: true }).click();
+  await expect(row).toHaveCount(0);
+  await filters.getByRole('button', { name: 'In', exact: true }).click();
+  await expect(row).toBeVisible();
+  await filters.getByRole('button', { name: 'Moved', exact: true }).click();
+  await expect(row).toHaveCount(0);
+  await filters.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(row).toBeVisible();
+});
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`the Ledger with money in listed has no accessibility violations in the ${scheme} theme`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.emulateMedia({ colorScheme: scheme });
+    await onLedger(page);
+    await openForm(page);
+    await form(page).getByLabel('Amount').fill('1,42,000');
+    await next(page);
+    await form(page).getByLabel('From').fill(testName(`credit-axe-${scheme}`));
+    await form(page).getByRole('button', { name: 'Add credit' }).click();
+    await expect(form(page)).toHaveCount(0, { timeout: 20_000 });
+    await showAll(page);
+    await expect(page.getByRole('region', { name: 'Recent expenses' }).locator('.recent-row').filter({ hasText: 'came in' }).first()).toBeVisible({ timeout: 20_000 });
+    const result = await new AxeBuilder({ page }).analyze();
+    const found = result.violations.map((v) => `${v.id}: ${String(v.nodes.length)} · ${v.nodes[0]?.html.slice(0, 110) ?? ''}`);
+    expect(found, found.join('\n')).toEqual([]);
   });
 }
