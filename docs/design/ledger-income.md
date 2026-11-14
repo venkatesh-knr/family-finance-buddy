@@ -247,7 +247,7 @@ came in (month)  = Σ credits in the month whose category is salary, business,
 refunds (month)  = Σ credits in the month whose category is refund
 
 open month:
-  spent so far   = Σ expense_txn in the month − refunds          ("itemised so far")
+  spent so far   = Σ expense_txn in the month − refunds          (per currency; "itemised so far")
   saved          = not shown                                     ("after the close")
 
 a month that has ended, in a household with no accounts added (itemised mode):

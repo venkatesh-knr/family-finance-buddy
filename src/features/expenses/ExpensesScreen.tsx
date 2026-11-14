@@ -228,7 +228,17 @@ function Budget({
   return (
     <>
       {month !== undefined && (
-        <MonthSurface view={monthView} householdId={month.householdId} today={inputs.today} privacy={privacy} refreshKey={month.refreshKey} />
+        <MonthSurface
+          bounds={monthView.bounds}
+          currency={inputs.currency}
+          expenses={inputs.expenses}
+          personalSpend={inputs.personalSpend}
+          partial={monthView.partial}
+          householdId={month.householdId}
+          today={inputs.today}
+          privacy={privacy}
+          refreshKey={month.refreshKey}
+        />
       )}
       {afterSurface}
       <SpentHero view={view} privacy={privacy} soft={month !== undefined} />
