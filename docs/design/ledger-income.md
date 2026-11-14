@@ -310,7 +310,7 @@ until somebody confirms it. That was the owner's choice (13 November): a salary 
 little, and an unconfirmed figure must not reach the month, FIRE or the household total.
 
 - **The rule** is a `recurring_rule` with `direction = 'credit'`, a `credit_category`, a
-  `member_id`, an `account_id`, a usual amount, the payday (`due_day` 1–28, as today) and
+  `member_id`, an `account_id` when the household has added accounts (owner, 14 November: it may be none, and the credit a confirmation writes then names none either), a usual amount, the payday (`due_day` 1–28, as today) and
   a visibility. A credit rule **never auto-posts**: the database refuses
   `auto_post = true` when `direction = 'credit'`. Rules for business income (a fixed
   monthly drawing) and rent work the same way; the SalaryRule board is the salary case.

@@ -23,7 +23,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(86);
+select plan(87);
 
 -- ============================================================== the fixture
 --
@@ -318,13 +318,26 @@ select throws_ok(
   'a credit rule that posts by itself is refused'
 );
 
+-- Made and removed in one block, so nothing below counts it.
+select lives_ok(
+  $q$ do $d$
+      begin
+        insert into public.recurring_rule
+          (id, household_id, name, direction, credit_category, member_id, amount_minor, currency, cadence, due_day, next_due, auto_post)
+        values ('f9000000-0000-4000-8000-0000000000f8', 'e9000000-0000-4000-8000-0000000000f1', 'No account', 'credit', 'salary',
+                'f9000000-0000-4000-8000-0000000000a1', 100, 'INR', 'monthly', 1, '2026-11-01', false);
+        delete from public.recurring_rule where id = 'f9000000-0000-4000-8000-0000000000f8';
+      end $d$ $q$,
+  'LI-I4 — a credit rule may name no account: a household with none still has a salary'
+);
+
 select throws_ok(
   $q$ insert into public.recurring_rule
-        (household_id, name, direction, credit_category, member_id, amount_minor, currency, cadence, due_day, next_due, auto_post)
-      values ('e9000000-0000-4000-8000-0000000000f1', 'Bad', 'credit', 'salary',
+        (household_id, name, direction, credit_category, account_id, member_id, amount_minor, currency, cadence, due_day, next_due, auto_post)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'Bad', 'credit', 'salary', 'a9000000-0000-4000-8000-000000000006',
               'f9000000-0000-4000-8000-0000000000a1', 100, 'INR', 'monthly', 1, '2026-11-01', false) $q$,
-  '23514'::char(5), null::text,
-  'a credit rule names the account it will arrive in'
+  '23503'::char(5), null::text,
+  'LI-I4 — but a credit rule that names an account names one of its own household'
 );
 
 select throws_ok(

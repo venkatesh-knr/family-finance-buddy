@@ -176,6 +176,10 @@ describe('toIncomeRule', () => {
   it('LI-I8 — refuses a debit rule: an expense rule is not an income rule', () => {
     expect(() => toIncomeRule({ ...row, direction: 'debit', credit_category: null, account_id: null })).toThrow(MalformedRowError);
   });
+
+  it('reads a rule with no account as null: a household with no accounts still has a salary (LI-I4)', () => {
+    expect(toIncomeRule({ ...row, account_id: null }).accountId).toBeNull();
+  });
 });
 
 describe('toTaxInput', () => {
