@@ -76,8 +76,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## ledger-income.md
 
-- LI-I5 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
-- LI-I7 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I10 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I11 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I15 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13

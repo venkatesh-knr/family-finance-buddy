@@ -86,6 +86,8 @@ function LedgerTab({
                   setChanging(credit);
                 },
               }),
+          // The month surface, whose Came in counts other members' private credits, is shown to an owner or a partner.
+          inCameIn: viewer?.role === 'owner' || viewer?.role === 'partner',
           credits: ledger.credits,
           transfers: ledger.transfers,
           accounts: ledger.data?.accounts ?? [],

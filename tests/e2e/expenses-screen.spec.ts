@@ -19,8 +19,8 @@ async function onExpenses(page: Page) {
 test('the screen runs in the artboard\'s order: the month, quick add, the plan, then recent entries', async ({ page }) => {
   await onExpenses(page);
   const tops: number[] = [];
-  for (const name of ['This month', 'Add an expense', 'Plan', 'Recent expenses']) {
-    const box = await page.getByRole('region', { name }).boundingBox();
+  for (const name of ['Against the plan', 'Add an expense', 'Plan', 'Recent expenses']) {
+    const box = await page.getByRole('region', { name, exact: true }).boundingBox();
     expect(box, `a region named "${name}"`).not.toBeNull();
     tops.push(box?.y ?? -1);
   }
@@ -29,14 +29,14 @@ test('the screen runs in the artboard\'s order: the month, quick add, the plan, 
 
 test('the month says how much was spent, of how much, and whether that is early', async ({ page }) => {
   await onExpenses(page);
-  const hero = page.getByRole('region', { name: 'This month' });
+  const hero = page.getByRole('region', { name: 'Against the plan' });
   await expect(hero.getByTestId('period-spent')).toContainText(/\d/);
   await expect(hero).toContainText(/planned · day \d+ of \d+/);
   await expect(hero).toContainText(/(ahead of|under|on) the month's pace|over the plan/);
 
   await hero.getByRole('button', { name: 'This year' }).click();
-  await expect(page.getByRole('region', { name: 'This year' })).toContainText(/of \d+/);
-  await expect(page.getByRole('region', { name: 'This year' })).toContainText(/(ahead of|under|on) the year's pace|over the plan/);
+  await expect(hero).toContainText(/of \d+/);
+  await expect(hero).toContainText(/(ahead of|under|on) the year's pace|over the plan/);
 });
 
 test('with amounts hidden the month\'s figure has no digits in it', async ({ page }) => {

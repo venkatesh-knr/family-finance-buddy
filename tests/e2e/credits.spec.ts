@@ -339,3 +339,29 @@ test('a credit on an account that was archived since keeps that account when it 
   await expect(row).toContainText(`${name} ••3311`);
   await expect(row).not.toContainText('no account');
 });
+
+/** The rupees in a figure such as "₹1,42,000": 142000. */
+function rupees(text: string): number {
+  // The first figure only: a second currency has a line of its own.
+  const first = /₹\s*([\d,]+(?:\.\d+)?)/.exec(text);
+  return first === null ? Number.NaN : Number((first[1] as string).replace(/,/g, ''));
+}
+
+test('the month surface shows Came in, Spent and Saved, and money in raises Came in; saved waits for the close', async ({ page }) => {
+  test.setTimeout(90_000);
+  await onLedger(page);
+  const surface = page.getByRole('region', { name: 'The month so far' });
+  await expect(surface).toContainText('so far', { timeout: 20_000 });
+  await expect(surface.getByTestId('month-came-in')).not.toContainText('Reading…', { timeout: 20_000 });
+  // Saved is a dash and a reason, never a figure, for a month that is not closed (LI-I7).
+  await expect(surface.getByTestId('month-saved')).toContainText('—');
+  await expect(surface).toContainText('after the close');
+  await expect(surface).toContainText('itemised so far');
+  await expect(surface).toContainText('Refunds take away from spent.');
+  // The plan's figure is the soft panel under it, named for what it is, so two panels are not both titled Spent.
+  await expect(page.getByRole('region', { name: 'Against the plan' })).toBeVisible();
+
+  const before = rupees(await surface.getByTestId('month-came-in').innerText());
+  await addSalary(page, testName('credit-surface'), '1,111');
+  await expect.poll(async () => rupees(await surface.getByTestId('month-came-in').innerText()), { timeout: 20_000 }).toBeGreaterThanOrEqual(before + 1_111);
+});

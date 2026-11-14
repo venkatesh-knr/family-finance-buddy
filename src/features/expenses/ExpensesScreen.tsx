@@ -12,6 +12,7 @@ import { listRates, type FxRate } from '../../repo/rates.ts';
 import type { Expense as ExpenseRow } from '../../repo/types.ts';
 import { Card, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import { MonthSurface } from '../money/MonthSurface.tsx';
 import { PlanCard, SpentHero, useBudgetComparison } from './budgetView.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
 import { QuickAdd } from './QuickAdd.tsx';
@@ -153,6 +154,9 @@ export function ExpensesScreen({
           currency={reading}
           rates={rates}
           privacy={privacy}
+          {...(money !== undefined && (listing.viewer.role === 'owner' || listing.viewer.role === 'partner')
+            ? { month: { householdId: listing.household.id, refreshKey: money.credits } }
+            : {})}
           onFile={(period) => {
             setUncategorisedIn(period);
           }}
@@ -204,16 +208,24 @@ function Budget({
   quickAdd,
   onFile,
   privacy,
+  month,
   ...inputs
 }: Parameters<typeof useBudgetComparison>[0] & {
   quickAdd: React.ReactNode;
   onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
+  /** The household and what to read the month's totals again on, where the month surface is shown: an owner or a partner, with money in. */
+  month?: { householdId: string; refreshKey: unknown };
 }) {
   const view = useBudgetComparison(inputs);
+  // A second reading of the same inputs that is never moved off the month: the surface is the month, whatever the plan panel shows.
+  const monthView = useBudgetComparison(inputs);
   return (
     <>
-      <SpentHero view={view} privacy={privacy} />
+      {month !== undefined && (
+        <MonthSurface view={monthView} householdId={month.householdId} today={inputs.today} privacy={privacy} refreshKey={month.refreshKey} />
+      )}
+      <SpentHero view={view} privacy={privacy} soft={month !== undefined} />
       {quickAdd}
       <PlanCard view={view} privacy={privacy} onFile={onFile} />
     </>
