@@ -36,6 +36,7 @@ import {
   Stat,
 } from '../../ui/primitives.tsx';
 import { DraftNumber } from './DraftNumber.tsx';
+import { FireIncome } from './FireIncome.tsx';
 import { FireReadout } from './FireReadout.tsx';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
@@ -114,6 +115,18 @@ export function FireScreen({
   return (
     <div className="flex flex-col gap-2.5">
       <FireReadout plan={plan} privacy={privacy} editable={editable} displayCurrency={displayCurrency} />
+      <FireIncome
+        householdId={plan.listing.household.id}
+        currency={plan.listing.household.baseCurrency ?? 'INR'}
+        memberId={plan.listing.viewer.memberId}
+        mayAskHousehold={plan.listing.viewer.role === 'owner' || plan.listing.viewer.role === 'partner'}
+        severalMembers={plan.listing.members.filter((member) => !member.isArchived).length > 1}
+        canRecord={plan.listing.viewer.canRecord}
+        // A plan with nothing in it has no year of spending, as the read-out above says in refusing a number; the year is not worked out against ₹0.
+        annualExpense={plan.annual !== null && plan.annual.total.minor > 0n ? plan.annual.total : null}
+        planIncomplete={(plan.annual?.unplanned.length ?? 0) > 0}
+        privacy={privacy}
+      />
       <FireCard
         plan={plan}
         privacy={privacy}
