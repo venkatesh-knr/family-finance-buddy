@@ -19,6 +19,8 @@ import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
+import { VoidMove } from './VoidMove.tsx';
+import type { LedgerLine } from './ledgerLines.ts';
 import { expectedRows, pausedRules, type RuleDraft } from './ruleForm.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
@@ -64,6 +66,8 @@ function LedgerTab({
   const [newRule, setNewRule] = useState<RuleDraft | null>(null);
   const [editingRule, setEditingRule] = useState<IncomeRule | null>(null);
   const [confirming, setConfirming] = useState<{ rule: IncomeRule; dueDate: string } | null>(null);
+  // A move being voided: its id and the line that names it.
+  const [voidingMove, setVoidingMove] = useState<{ id: string; line: LedgerLine } | null>(null);
   const viewer = ledger.data?.viewer ?? null;
   const today = todayInIst();
   // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
@@ -128,6 +132,21 @@ function LedgerTab({
           }}
         />
       )}
+      {voidingMove !== null && (
+        <VoidMove
+          key={voidingMove.id}
+          id={voidingMove.id}
+          line={voidingMove.line}
+          onDone={(message) => {
+            setVoidingMove(null);
+            setSaid(message);
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setVoidingMove(null);
+          }}
+        />
+      )}
       {confirming !== null && (
         <ConfirmAtAmount
           rule={confirming.rule}
@@ -170,6 +189,14 @@ function LedgerTab({
                 }}
               />
             ),
+          ...(viewer === null || !viewer.canRecord
+            ? {}
+            : {
+                onVoidMove: (transfer: { id: string }, line: LedgerLine) => {
+                  setSaid(null);
+                  setVoidingMove({ id: transfer.id, line });
+                },
+              }),
           ...(viewer === null
             ? {}
             : {

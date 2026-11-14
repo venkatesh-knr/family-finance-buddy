@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { Account, Credit } from '../../repo/types.ts';
-import { accountChoices, amountText, creditAmount, creditDateProblem, creditMember, creditPatch, creditVisibility, mayChangeCredit, sharedAccountNote } from './creditForm.ts';
+import {
+  accountChoices,
+  amountText,
+  canMove,
+  creditAmount,
+  creditDateProblem,
+  creditMember,
+  creditPatch,
+  creditVisibility,
+  mayChangeCredit,
+  moveFromChoices,
+  moveIntoChoices,
+  sharedAccountNote,
+} from './creditForm.ts';
 
 /**
  * What the Add money in form works out for itself (docs/design/ledger-income.md section 2; the AddCredit and AddCredit2 boards): the amount
@@ -231,5 +244,47 @@ describe('mayChangeCredit — who corrects or voids a credit', () => {
 
   it('a credit confirmed from a rule can be corrected: it is the same row as any other', () => {
     expect(mayChangeCredit(credit({ source: 'rule', ruleId: 'r-1', dueDate: '2026-11-01' }), owner)).toBe(true);
+  });
+});
+
+describe('canMove — a move needs two accounts in one currency', () => {
+  it('is true with two active accounts in the same currency', () => {
+    expect(canMove([account({ id: 'a' }), account({ id: 'b' })])).toBe(true);
+  });
+
+  it('is false with one account, with two in different currencies, or when the second is archived', () => {
+    expect(canMove([account({ id: 'a' })])).toBe(false);
+    expect(canMove([account({ id: 'a' }), account({ id: 'b', currency: 'USD' })])).toBe(false);
+    expect(canMove([account({ id: 'a' }), account({ id: 'b', isArchived: true })])).toBe(false);
+  });
+
+  it('is true when two of three share a currency', () => {
+    expect(canMove([account({ id: 'a' }), account({ id: 'b', currency: 'USD' }), account({ id: 'c', currency: 'USD' })])).toBe(true);
+  });
+});
+
+describe('moveFromChoices — the accounts a move can come from', () => {
+  const accounts = [
+    account({ id: 'a', name: 'HDFC Savings', last4: '4021' }),
+    account({ id: 'b', name: 'SBI', last4: null }),
+    account({ id: 'c', name: 'Dollar', currency: 'USD', last4: null }),
+    account({ id: 'd', name: 'Old', isArchived: true, last4: null }),
+  ];
+
+  it('are the other accounts in use in the same currency, never the one it goes into', () => {
+    expect(moveFromChoices(accounts, 'a').map((c) => [c.id, c.label])).toEqual([['b', 'SBI']]);
+    expect(moveFromChoices(accounts, 'b').map((c) => c.id)).toEqual(['a']);
+  });
+
+  it('LI-I2 — a move goes only into an account that has another in its currency, so step 2 can always be completed', () => {
+    expect(moveIntoChoices(accounts).map((c) => c.id)).toEqual(['a', 'b']);
+    // The dollar account has no partner, and the archived one is not in use.
+    expect(moveIntoChoices(accounts).map((c) => c.id)).not.toContain('c');
+    expect(moveIntoChoices([account({ id: 'x' })])).toEqual([]);
+  });
+
+  it('are none until the account it goes into is chosen, and none for an account with no other in its currency', () => {
+    expect(moveFromChoices(accounts, '')).toEqual([]);
+    expect(moveFromChoices(accounts, 'c')).toEqual([]);
   });
 });

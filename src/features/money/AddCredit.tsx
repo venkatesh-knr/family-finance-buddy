@@ -1,8 +1,8 @@
 /**
  * Add money in: a stepped form (docs/design/ledger-income.md section 2; the AddCredit and AddCredit2 boards).
  *
- * Step 1 is what came in: the amount, what it is (one of the seven kinds), the account it went into, which is optional, and the date it was
- * credited. Step 2 is whose income it is and who can see the row, and who it came from. Going back keeps every value, and nothing is
+ * Step 1 is what came in: the amount, what it is (one of the seven kinds, or *From my own account*, a move), the account it went into, which is
+ * optional for a credit, and the date it was credited. Step 2 is whose income it is and who can see the row, and who it came from. Going back keeps every value, and nothing is
  * written until the last step's button (SL-I6). The account picker ends with "+ Add an account", which opens AddAccount over this form and
  * returns to it with the new account chosen and every value kept (LI-I25).
  *
@@ -12,7 +12,8 @@
  *
  * *Repeats every month* hands the credit on as a rule draft, and its form opens once the credit is saved (section 5).
  *
- * Not here yet, and said in the conformance ledger: the eighth chip *From my own account* (a move, an `account_transfer`).
+ * *From my own account* makes the form a move, an `account_transfer` between two accounts in one currency: step 2 then asks which account it came
+ * from, in place of whose income it is, and a move is neither came in nor spent (LI-I2).
  */
 
 import { useMemo, useState } from 'react';
@@ -20,12 +21,25 @@ import { CREDIT_CATEGORIES, CREDIT_LABEL, type CreditCategory } from '../../doma
 import { money } from '../../lib/money.ts';
 import { addCredit, updateCredit, voidCredit } from '../../repo/credits.ts';
 import { todayInIst } from '../../repo/expenses.ts';
+import { addTransfer } from '../../repo/transfers.ts';
 import type { AccountPatch, Credit, NewAccount, Visibility } from '../../repo/types.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Button, Field, RequiredKey, RequiredMark } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
 import { AddAccount } from './AddAccount.tsx';
-import { accountChoices, amountText, creditAmount, creditDateProblem, creditMember, creditPatch, creditVisibility, sharedAccountNote } from './creditForm.ts';
+import {
+  accountChoices,
+  amountText,
+  canMove,
+  creditAmount,
+  creditDateProblem,
+  creditMember,
+  creditPatch,
+  creditVisibility,
+  moveFromChoices,
+  moveIntoChoices,
+  sharedAccountNote,
+} from './creditForm.ts';
 import { ruleFromCredit, type RuleDraft } from './ruleForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 
@@ -41,6 +55,8 @@ export interface AddedCredit {
   readonly date: string;
   /** Set when *Repeats every month* was on: the rule the credit becomes, for its form to open with. */
   readonly repeat?: RuleDraft;
+  /** The form made a move between two of the household's own accounts, not a credit. */
+  readonly move?: boolean;
 }
 
 export function AddCredit({
@@ -87,6 +103,11 @@ export function AddCredit({
   const [visibilityChoice, setVisibilityChoice] = useState<Visibility | null>(editing?.visibility ?? null);
   const [payer, setPayer] = useState(editing?.payer ?? '');
   const [confirmingVoid, setConfirmingVoid] = useState(false);
+  // *From my own account*: the form makes a move, an `account_transfer`, which is neither money in nor spent. Step 2 then asks which account it
+  // came from, in place of whose income it is (a new entry only).
+  const [isMove, setIsMove] = useState(false);
+  const [fromChoice, setFromChoice] = useState('');
+  const [moveNote, setMoveNote] = useState('');
   // *Repeats every month*: after the credit is saved, the rule form opens with what it had (a new credit only).
   const [repeats, setRepeats] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
@@ -115,7 +136,14 @@ export function AddCredit({
 
   const reading = creditAmount(amount, currency);
   const dateError = creditDateProblem(date);
-  const step1Ready = reading.ok && dateError === null;
+  const movable = canMove(data.accounts);
+  // Where a move goes: only an account that has another in its currency, so step 2 can be completed. The household has begun on accounts when it has one.
+  const intoChoices = useMemo(() => moveIntoChoices(data.accounts), [data.accounts]);
+  const hasAccounts = data.accounts.some((each) => !each.isArchived);
+  // A move goes into an account, and comes from another in the same currency.
+  const fromChoices = useMemo(() => moveFromChoices(data.accounts, accountId), [data.accounts, accountId]);
+  const fromId = fromChoices.some((choice) => choice.id === fromChoice) ? fromChoice : '';
+  const step1Ready = reading.ok && dateError === null && (!isMove || accountId !== NO_ACCOUNT);
   const amountError = reading.ok ? null : reading.blank && !amountLeft ? null : reading.problem;
 
   const save = async (): Promise<void> => {
@@ -123,6 +151,18 @@ export function AddCredit({
     setBusy(true);
     setProblem(null);
     try {
+      if (isMove && editing === null) {
+        const made = await addTransfer({
+          householdId: data.household.id,
+          fromAccountId: fromId,
+          toAccountId: accountId,
+          amount: money(reading.minor, currency),
+          date,
+          note: moveNote.trim() === '' ? null : moveNote.trim(),
+        });
+        onSaved({ id: made.id, category, minor: reading.minor, currency, date, move: true });
+        return;
+      }
       if (editing !== null) {
         const patch = creditPatch(editing, {
           // What the field holds, not what could be resolved: an account the corrector cannot read is still the credit's account.
@@ -199,7 +239,7 @@ export function AddCredit({
     <>
       <Stepper
         title={isEdit ? 'Change a credit' : 'Add money in'}
-        finishLabel={isEdit ? 'Save changes' : 'Add credit'}
+        finishLabel={isEdit ? 'Save changes' : isMove ? 'Add move' : 'Add credit'}
         busyLabel={isEdit ? 'Saving…' : 'Adding…'}
         busy={busy}
         problem={problem}
@@ -241,27 +281,46 @@ export function AddCredit({
                         key={each}
                         type="button"
                         className="qa-chip"
-                        aria-pressed={category === each}
+                        aria-pressed={!isMove && category === each}
                         onClick={() => {
                           setCategory(each);
+                          setIsMove(false);
                         }}
                       >
                         {CREDIT_LABEL[each]}
                       </button>
                     ))}
+                    {!isEdit && (
+                      <button
+                        type="button"
+                        className="qa-chip"
+                        aria-pressed={isMove}
+                        disabled={!movable}
+                        onClick={() => {
+                          setIsMove(true);
+                          // A move goes into an account: none is chosen yet, and the picker no longer offers *No account*.
+                          if (accountId === NO_ACCOUNT) setAccountId('');
+                        }}
+                      >
+                        From my own account
+                      </button>
+                    )}
                   </div>
-                  {category === 'business' && (
+                  {!isEdit && !movable && hasAccounts && <span className="field-help">A move is between two of your accounts in one currency.</span>}
+                  {!isMove && category === 'business' && (
                     <span className="field-help">Money you take from the business into your accounts; the business&rsquo;s own accounts are not added here.</span>
                   )}
                   <span className="field-help">
-                    Salary, business income, interest, rent, dividends and other income count as came in. A refund takes away from spent.
+                    Salary, business income, interest, rent, dividends and other income count as came in. A refund takes away from spent. Money from
+                    your own account counts in neither.
                   </span>
                 </div>
 
                 <Select
                   label="Into which account"
+                  required={isMove}
                   value={accountId}
-                  hint="Optional. Needed only to close months from balances."
+                  hint={isMove ? 'The account the money moved into.' : 'Optional. Needed only to close months from balances.'}
                   onChange={(event) => {
                     if (event.target.value === ADD_ACCOUNT) setAddingAccount(true);
                     else {
@@ -270,8 +329,8 @@ export function AddCredit({
                     }
                   }}
                 >
-                  <option value={NO_ACCOUNT}>No account</option>
-                  {choices.map((choice) => (
+                  {!isMove && <option value={NO_ACCOUNT}>No account</option>}
+                  {(isMove ? intoChoices : choices).map((choice) => (
                     <option key={choice.id} value={choice.id}>
                       {choice.label}
                     </option>
@@ -294,14 +353,44 @@ export function AddCredit({
                   }}
                 />
 
-                <p className="note">Cash you receive, such as rent paid in cash, can be entered with no account.</p>
+                {!isMove && <p className="note">Cash you receive, such as rent paid in cash, can be entered with no account.</p>}
               </>
             ),
           },
           {
-            name: 'Whose, and who sees it',
-            ready: true,
-            content: (
+            name: isMove ? 'From which account' : 'Whose, and who sees it',
+            ready: isMove ? fromId !== '' : true,
+            content: isMove ? (
+              <>
+                <RequiredKey />
+                <Select
+                  label="From which account"
+                  required
+                  value={fromId}
+                  hint="Another account of the household, in the same currency. The move is in neither came in nor spent."
+                  onChange={(event) => {
+                    setFromChoice(event.target.value);
+                  }}
+                >
+                  {fromChoices.map((choice) => (
+                    <option key={choice.id} value={choice.id}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </Select>
+                <Field
+                  label="Note"
+                  placeholder="optional"
+                  value={moveNote}
+                  maxLength={500}
+                  hint="Optional. A card payment, a transfer to savings."
+                  autoComplete="off"
+                  onChange={(event) => {
+                    setMoveNote(event.target.value);
+                  }}
+                />
+              </>
+            ) : (
               <>
                 <RequiredKey />
                 <Select

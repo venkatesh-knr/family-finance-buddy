@@ -94,7 +94,8 @@ export function transferLine(transfer: Transfer, context: LedgerContext): Ledger
   const name = (account: Account | null): string => (account === null ? 'another account' : titleOf(account));
   const word = transfer.isVoided ? VOIDED_WORD : ledgerWord('move').word;
   const title = to !== null && to.type === 'card' ? `${to.name} payment` : 'Moved between accounts';
-  const sub = `${name(from)} → ${name(to)}`;
+  const noted = transfer.note !== null && transfer.note !== '' ? ` · ${transfer.note}` : '';
+  const sub = `${name(from)} → ${name(to)}${noted}`;
   const amount = formatMoney(transfer.amount, { privacy: context.privacy });
   return { title, sub, private: false, amount, word, voided: transfer.isVoided, name: `${title}, ${sub}, ${amount}, ${word}` };
 }

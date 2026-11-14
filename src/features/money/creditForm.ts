@@ -126,3 +126,24 @@ export function mayChangeCredit(
   if (credit.isVoided || !viewer.canRecord) return false;
   return viewer.role === 'contributor' ? credit.memberId === viewer.memberId : true;
 }
+
+/** Whether a move can be made at all: two accounts in use that share a currency, because a move between currencies is not modelled. */
+export function canMove(accounts: readonly Account[]): boolean {
+  const counts = new Map<string, number>();
+  for (const account of accounts) {
+    if (!account.isArchived) counts.set(account.currency, (counts.get(account.currency) ?? 0) + 1);
+  }
+  return [...counts.values()].some((count) => count >= 2);
+}
+
+/** The accounts a move can go into: those in use that have another in their currency, so that step 2 always has an account to come from. */
+export function moveIntoChoices(accounts: readonly Account[]): AccountChoice[] {
+  return accountChoices(accounts.filter((account) => !account.isArchived && moveFromChoices(accounts, account.id).length > 0));
+}
+
+/** The accounts a move can come from: the others in use, in the currency of the account it goes into. None until that one is chosen. */
+export function moveFromChoices(accounts: readonly Account[], toId: string): AccountChoice[] {
+  const to = accounts.find((account) => account.id === toId);
+  if (to === undefined) return [];
+  return accountChoices(accounts.filter((account) => account.currency === to.currency && account.id !== toId));
+}

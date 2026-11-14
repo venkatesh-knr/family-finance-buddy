@@ -52,7 +52,9 @@ export function MoneyIn({
       </button>
       {added !== null && (
         <p className="note" role="status">
-          Added {CREDIT_LABEL[added.category]}, {formatMoney(money(added.minor, added.currency), { privacy })}, {formatShortDate(added.date)}.
+          {added.move === true
+            ? `Moved ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}. It is in neither came in nor spent.`
+            : `Added ${CREDIT_LABEL[added.category]}, ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}.`}
         </p>
       )}
       {open && (
