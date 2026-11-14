@@ -6,9 +6,9 @@
  */
 
 import { isIsoDate } from '../../lib/dates.ts';
-import { parseAmountToMinor } from '../../lib/money.ts';
+import { minorUnitExponent, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import { defaultVisibility, type CreditCategory } from '../../domain/credit.ts';
-import type { Account, Visibility } from '../../repo/types.ts';
+import type { Account, Credit, CreditPatch, Visibility } from '../../repo/types.ts';
 import { titleOf } from './accountRows.ts';
 
 export type AmountReading =
@@ -43,9 +43,14 @@ export interface AccountChoice {
   readonly label: string;
 }
 
-/** The accounts the picker offers: the ones in use, in the order given. An archived account cannot be chosen for a new entry. */
-export function accountChoices(accounts: readonly Account[]): AccountChoice[] {
-  return accounts.filter((account) => !account.isArchived).map((account) => ({ id: account.id, label: titleOf(account) }));
+/**
+ * The accounts the picker offers: the ones in use, in the order given. An archived account cannot be chosen for a new entry, except that a
+ * credit being changed keeps its own (`keep`), said to be archived, so a correction never takes it off the account it was credited to.
+ */
+export function accountChoices(accounts: readonly Account[], keep: string | null = null): AccountChoice[] {
+  return accounts
+    .filter((account) => !account.isArchived || account.id === keep)
+    .map((account) => ({ id: account.id, label: account.isArchived ? `${titleOf(account)} (archived)` : titleOf(account) }));
 }
 
 /**
@@ -75,4 +80,49 @@ export function creditVisibility(input: { readonly category: CreditCategory; rea
 export function sharedAccountNote(account: Pick<Account, 'name' | 'last4' | 'visibility'> | null, visibility: Visibility): string | null {
   if (account === null || account.visibility !== 'household' || visibility !== 'personal') return null;
   return `${titleOf(account)} is shared with the household. Its balance is seen by the household, so a private credit there is private in this list only.`;
+}
+
+/** Minor units back into something a person can edit: 129950 is "1299.50". */
+export function amountText(minor: bigint, currency: string): string {
+  const exponent = minorUnitExponent(currency);
+  const digits = minor.toString().padStart(exponent + 1, '0');
+  if (exponent === 0) return digits;
+  return `${digits.slice(0, digits.length - exponent)}.${digits.slice(digits.length - exponent)}`;
+}
+
+/** What the form holds when it is saved. */
+export interface CreditFields {
+  readonly accountId: string | null;
+  readonly memberId: string;
+  readonly category: CreditCategory;
+  readonly amount: Money;
+  readonly date: string;
+  readonly visibility: Visibility;
+  readonly payer: string;
+}
+
+/** Only what differs from the credit as it was, so a correction writes only what it corrects. A blank payer clears it. */
+export function creditPatch(original: Credit, next: CreditFields): CreditPatch {
+  const payer = next.payer.trim() === '' ? null : next.payer.trim();
+  return {
+    ...(next.accountId !== original.accountId ? { accountId: next.accountId } : {}),
+    ...(next.memberId !== original.memberId ? { memberId: next.memberId } : {}),
+    ...(next.category !== original.category ? { category: next.category } : {}),
+    ...(next.amount.minor !== original.amount.minor || next.amount.currency !== original.amount.currency ? { amount: next.amount } : {}),
+    ...(next.date !== original.date ? { date: next.date } : {}),
+    ...(next.visibility !== original.visibility ? { visibility: next.visibility } : {}),
+    ...(payer !== original.payer ? { payer } : {}),
+  };
+}
+
+/**
+ * Whether the viewer may correct or void this credit: an owner or a partner any they can read, a contributor their own, a viewer none.
+ * The policies decide in the end; the form agrees so it does not offer what the database will refuse. A voided credit is not changed again.
+ */
+export function mayChangeCredit(
+  credit: Pick<Credit, 'memberId' | 'isVoided'>,
+  viewer: { readonly role: string; readonly canRecord: boolean; readonly memberId: string },
+): boolean {
+  if (credit.isVoided || !viewer.canRecord) return false;
+  return viewer.role === 'contributor' ? credit.memberId === viewer.memberId : true;
 }

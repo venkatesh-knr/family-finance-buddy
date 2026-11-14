@@ -1160,6 +1160,8 @@ export interface NewCredit {
 /** What may change on a credit. A credit is corrected here until a figure has been relied on, and voided after. */
 export interface CreditPatch {
   readonly accountId?: Uuid | null;
+  /** Whose income it is. An owner or a partner may move a credit to another member; a contributor's own stay their own. */
+  readonly memberId?: Uuid;
   readonly category?: CreditCategory;
   readonly amount?: Money;
   readonly date?: IsoDate;
