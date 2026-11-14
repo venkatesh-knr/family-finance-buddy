@@ -89,19 +89,29 @@ export async function voidCredit(id: Uuid): Promise<void> {
   if ((data ?? []).length === 0) throw new Error('That credit is not yours to void.');
 }
 
-/** Move a rule on by one period, past a due date that was confirmed or passed over. Only if that date is the rule's next due. */
+/**
+ * Move a rule on, past a due date that was confirmed or passed over: its next due becomes the one after that date. A date before the rule's
+ * next due was dealt with already, and moves nothing. An update that touches no row is an error, not a success: a role the policy refuses,
+ * or a rule that moved in the meantime, must not be reported as done.
+ */
 async function moveRuleOn(rule: IncomeRule, dueDate: string): Promise<void> {
-  if (rule.nextDue !== dueDate) return;
+  if (dueDate < rule.nextDue) return;
   const next = nextDueAfter(dueDate, rule.dueDay, rule.cadence);
-  const { error } = await supabase().from('recurring_rule').update({ next_due: next }).eq('id', rule.id).eq('next_due', dueDate);
+  const { data, error } = await supabase().from('recurring_rule').update({ next_due: next }).eq('id', rule.id).eq('next_due', rule.nextDue).select('id');
   if (error !== null) throw asLedgerError(error);
+  if ((data ?? []).length === 0) throw new Error('That rule could not be moved on: it was changed elsewhere, or is not yours to change. Reload and try again.');
 }
 
 /**
- * Confirm an expected credit from a rule: write one credit for the due date, at the rule's amount or at the one given, and move the rule
- * on. A due date confirmed twice writes one credit.
+ * Confirm an expected credit from a rule: write one credit for the due date, at the rule's amount or at the one given, on the day it was
+ * credited when that is given (it is the due date otherwise), and move the rule on. A due date confirmed twice writes one credit.
  */
-export async function confirmExpectedCredit(input: { readonly rule: IncomeRule; readonly dueDate: string; readonly amount?: IncomeRule['amount'] }): Promise<void> {
+export async function confirmExpectedCredit(input: {
+  readonly rule: IncomeRule;
+  readonly dueDate: string;
+  readonly amount?: IncomeRule['amount'];
+  readonly date?: string;
+}): Promise<void> {
   const { rule } = input;
   try {
     await addCredit({
@@ -110,7 +120,7 @@ export async function confirmExpectedCredit(input: { readonly rule: IncomeRule; 
       accountId: rule.accountId,
       category: rule.category,
       amount: input.amount ?? rule.amount,
-      date: input.dueDate,
+      date: input.date ?? input.dueDate,
       visibility: rule.visibility,
       payer: rule.name,
       rule: { ruleId: rule.id, dueDate: input.dueDate },

@@ -10,10 +10,16 @@ import { hashFor } from '../../app/route.ts';
 import { ExpensesScreen } from '../expenses/ExpensesScreen.tsx';
 import { AccountsTab } from './AccountsTab.tsx';
 import { useState } from 'react';
+import { todayInIst } from '../../repo/expenses.ts';
 import type { Credit } from '../../repo/types.ts';
+import type { IncomeRule } from '../../repo/types.ts';
 import { AddCredit } from './AddCredit.tsx';
+import { ConfirmAtAmount } from './ConfirmAtAmount.tsx';
 import { mayChangeCredit } from './creditForm.ts';
+import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
+import { SalaryRuleForm } from './SalaryRuleForm.tsx';
+import { expectedRows, pausedRules, type RuleDraft } from './ruleForm.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
 export type MoneyTab = 'ledger' | 'accounts';
@@ -54,7 +60,23 @@ function LedgerTab({
   const ledger = useMoneyLedger(householdId);
   const [changing, setChanging] = useState<Credit | null>(null);
   const [said, setSaid] = useState<string | null>(null);
+  // The salary rule form: a new rule from a credit, or one being changed. And the form that confirms an expected credit at another amount.
+  const [newRule, setNewRule] = useState<RuleDraft | null>(null);
+  const [editingRule, setEditingRule] = useState<IncomeRule | null>(null);
+  const [confirming, setConfirming] = useState<{ rule: IncomeRule; dueDate: string } | null>(null);
   const viewer = ledger.data?.viewer ?? null;
+  const today = todayInIst();
+  // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
+  const mayRule = viewer?.role === 'owner' || viewer?.role === 'partner';
+  const expected =
+    ledger.data === null
+      ? []
+      : expectedRows(ledger.rules, {
+          accounts: ledger.data.accounts,
+          today,
+          privacy,
+          credits: ledger.credits.map((credit) => ({ ruleId: credit.ruleId, dueDate: credit.dueDate })),
+        });
   return (
     <>
       <MoneyIn
@@ -66,17 +88,88 @@ function LedgerTab({
           setSaid(null);
           void ledger.reloadMoney();
         }}
+        canRepeat={mayRule}
+        onRepeat={(draft) => {
+          setNewRule(draft);
+        }}
       />
       {/* Always in the page, so that what is put into it is announced; under the button, where the person is looking. */}
       <p className="note" role="status">
         {said}
       </p>
+      {newRule !== null && ledger.data !== null && (
+        <SalaryRuleForm
+          data={ledger.data}
+          draft={newRule}
+          onSaved={() => {
+            setNewRule(null);
+            setSaid('Rule saved. On payday a credit waits here as Expected.');
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setNewRule(null);
+          }}
+        />
+      )}
+      {editingRule !== null && ledger.data !== null && (
+        <SalaryRuleForm
+          key={editingRule.id}
+          data={ledger.data}
+          editing={editingRule}
+          onSaved={(outcome) => {
+            setEditingRule(null);
+            setSaid(
+              outcome === 'paused' ? 'Rule paused. It expects nothing until it is resumed.' : outcome === 'archived' ? 'Rule archived.' : outcome === 'resumed' ? 'Rule resumed.' : 'Rule changed.',
+            );
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setEditingRule(null);
+          }}
+        />
+      )}
+      {confirming !== null && (
+        <ConfirmAtAmount
+          rule={confirming.rule}
+          dueDate={confirming.dueDate}
+          privacy={privacy}
+          onDone={(message) => {
+            setConfirming(null);
+            setSaid(message);
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setConfirming(null);
+          }}
+        />
+      )}
       <ExpensesScreen
         privacy={privacy}
         householdId={householdId}
         recurringMade={recurringMade}
         displayCurrency={displayCurrency}
         money={{
+          expected:
+            viewer === null ? undefined : (
+              <ExpectedPanel
+                rows={expected}
+                rules={ledger.rules}
+                paused={pausedRules(ledger.rules)}
+                canChange={() => mayRule}
+                onChangeAmount={(rule, dueDate) => {
+                  setSaid(null);
+                  setConfirming({ rule, dueDate });
+                }}
+                onChangeRule={(rule) => {
+                  setSaid(null);
+                  setEditingRule(rule);
+                }}
+                onDone={(message) => {
+                  setSaid(message);
+                  void ledger.reloadMoney();
+                }}
+              />
+            ),
           ...(viewer === null
             ? {}
             : {

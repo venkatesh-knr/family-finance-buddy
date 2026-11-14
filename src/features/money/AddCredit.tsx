@@ -10,8 +10,9 @@
  * currency (and keeps the credit's own, even one that is archived or that the person cannot read), lets whoever may file for others move
  * it to another member, and ends with *Void this credit*, which asks first. A voided credit stays in the list, marked, and stops counting.
  *
- * Not here yet, and said in the conformance ledger: the eighth chip *From my own account* (a move, an `account_transfer`) and *Repeats
- * every month* (the rule form, section 5).
+ * *Repeats every month* hands the credit on as a rule draft, and its form opens once the credit is saved (section 5).
+ *
+ * Not here yet, and said in the conformance ledger: the eighth chip *From my own account* (a move, an `account_transfer`).
  */
 
 import { useMemo, useState } from 'react';
@@ -25,6 +26,7 @@ import { Button, Field, RequiredKey, RequiredMark } from '../../ui/primitives.ts
 import { Stepper } from '../../ui/Stepper.tsx';
 import { AddAccount } from './AddAccount.tsx';
 import { accountChoices, amountText, creditAmount, creditDateProblem, creditMember, creditPatch, creditVisibility, sharedAccountNote } from './creditForm.ts';
+import { ruleFromCredit, type RuleDraft } from './ruleForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 /** The picker's last row is not an account: choosing it opens AddAccount. */
@@ -37,6 +39,8 @@ export interface AddedCredit {
   readonly minor: bigint;
   readonly currency: string;
   readonly date: string;
+  /** Set when *Repeats every month* was on: the rule the credit becomes, for its form to open with. */
+  readonly repeat?: RuleDraft;
 }
 
 export function AddCredit({
@@ -47,6 +51,7 @@ export function AddCredit({
   onChanged,
   onCancel,
   editing = null,
+  canRepeat = false,
 }: {
   data: AccountsData;
   onAddAccount: (input: NewAccount) => Promise<{ readonly id: string }>;
@@ -57,6 +62,8 @@ export function AddCredit({
   onCancel: () => void;
   /** The credit being changed, or null to add one. */
   editing?: Credit | null;
+  /** Whether *Repeats every month* is offered: only an owner or a partner makes a rule. */
+  canRepeat?: boolean;
 }) {
   const isEdit = editing !== null;
   const { viewer } = data;
@@ -80,6 +87,8 @@ export function AddCredit({
   const [visibilityChoice, setVisibilityChoice] = useState<Visibility | null>(editing?.visibility ?? null);
   const [payer, setPayer] = useState(editing?.payer ?? '');
   const [confirmingVoid, setConfirmingVoid] = useState(false);
+  // *Repeats every month*: after the credit is saved, the rule form opens with what it had (a new credit only).
+  const [repeats, setRepeats] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -143,7 +152,27 @@ export function AddCredit({
         visibility,
         payer: payer.trim() === '' ? null : payer.trim(),
       });
-      onSaved({ id: made.id, category, minor: reading.minor, currency, date });
+      const payerText = payer.trim() === '' ? null : payer.trim();
+      onSaved({
+        id: made.id,
+        category,
+        minor: reading.minor,
+        currency,
+        date,
+        ...(repeats
+          ? {
+              repeat: ruleFromCredit({
+                payer: payerText,
+                category,
+                memberId,
+                accountId: account === null ? null : account.id,
+                amount: money(reading.minor, currency),
+                visibility,
+                date,
+              }),
+            }
+          : {}),
+      });
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'That could not be saved.');
     } finally {
@@ -336,6 +365,29 @@ export function AddCredit({
                     setPayer(event.target.value);
                   }}
                 />
+
+                {!isEdit && canRepeat && (
+                  <div className="setrow">
+                    <span className="setrow-text">
+                      <span className="sk" id="credit-repeats-label">
+                        Repeats every month
+                      </span>
+                      <span className="sd">Makes a rule that reminds you on payday</span>
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={repeats}
+                      aria-labelledby="credit-repeats-label"
+                      className="switch"
+                      onClick={() => {
+                        setRepeats((was) => !was);
+                      }}
+                    >
+                      <span />
+                    </button>
+                  </div>
+                )}
 
                 {isEdit && (
                   <div className="flex flex-col gap-1.5">
