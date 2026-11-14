@@ -1196,7 +1196,8 @@ export interface IncomeRule {
   readonly householdId: Uuid;
   readonly name: string;
   readonly memberId: Uuid;
-  readonly accountId: Uuid;
+  /** The account the money arrives in, or null when the household has added none (LI-I4). */
+  readonly accountId: Uuid | null;
   readonly category: CreditCategory;
   readonly amount: Money;
   readonly cadence: RecurringCadence;
@@ -1212,7 +1213,8 @@ export interface NewIncomeRule {
   readonly householdId: Uuid;
   readonly name: string;
   readonly memberId: Uuid;
-  readonly accountId: Uuid;
+  /** Omitted or null for a household with no accounts. */
+  readonly accountId?: Uuid | null;
   readonly category: CreditCategory;
   readonly amount: Money;
   readonly cadence: RecurringCadence;
@@ -1224,7 +1226,7 @@ export interface NewIncomeRule {
 
 export interface IncomeRulePatch {
   readonly name?: string;
-  readonly accountId?: Uuid;
+  readonly accountId?: Uuid | null;
   readonly amount?: Money;
   readonly cadence?: RecurringCadence;
   readonly nextDue?: IsoDate;

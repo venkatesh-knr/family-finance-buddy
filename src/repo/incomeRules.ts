@@ -52,7 +52,7 @@ export async function addIncomeRule(input: NewIncomeRule): Promise<{ readonly id
       direction: 'credit',
       credit_category: input.category,
       category_id: null,
-      account_id: input.accountId,
+      account_id: input.accountId ?? null,
       member_id: input.memberId,
       amount_minor: input.amount.minor.toString(),
       currency: input.amount.currency,

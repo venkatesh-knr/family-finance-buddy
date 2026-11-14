@@ -115,7 +115,7 @@ export function toIncomeRule(raw: unknown): IncomeRule {
     householdId: requireString(row['household_id'], 'recurring_rule.household_id'),
     name: requireString(row['name'], 'recurring_rule.name'),
     memberId: requireString(row['member_id'], 'recurring_rule.member_id'),
-    accountId: requireString(row['account_id'], 'recurring_rule.account_id'),
+    accountId: optionalString(row['account_id'], 'recurring_rule.account_id'),
     category: requireOneOf(row['credit_category'], CREDIT_CATEGORIES, 'recurring_rule.credit_category'),
     amount: money(toBigIntExact(row['amount_minor'], 'recurring_rule.amount_minor'), currency),
     cadence: requireOneOf(row['cadence'], RECURRING_CADENCES, 'recurring_rule.cadence'),
