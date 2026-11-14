@@ -137,8 +137,9 @@ test('a rule is changed from its row, and a paused rule expects nothing', async 
   await expect(page.getByRole('status').filter({ hasText: 'Rule paused.' })).toBeVisible();
   await expect(expected(page).getByRole('listitem').filter({ hasText: /not counted yet/ }).filter({ hasText: payer })).toHaveCount(0, { timeout: 20_000 });
 
-  // A paused rule is listed, with the way back: it can be resumed, and then it expects its due date again.
-  const paused = expected(page).getByRole('list', { name: 'Paused rules' }).getByRole('listitem').filter({ hasText: payer });
+  // The rules are listed, so a paused one has a way back: it can be resumed, and then it expects its due date again.
+  await expected(page).getByRole('button', { name: /^Rules/ }).click();
+  const paused = expected(page).getByRole('list', { name: 'Rules' }).getByRole('listitem').filter({ hasText: payer });
   await expect(paused).toContainText('paused');
   await paused.getByRole('button', { name: 'Change this rule' }).click();
   await ruleForm(page, 'Change a rule').getByRole('button', { name: 'Resume rule' }).click();
@@ -194,3 +195,33 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(found, found.join('\n')).toEqual([]);
   });
 }
+
+test('Its credits lists the rule’s due dates, and a rule that is not due is reached from Rules', async ({ page }) => {
+  test.setTimeout(150_000);
+  const payer = testName('rule-history');
+  await onLedger(page);
+  const row = await makeRule(page, payer, '60,000', 2);
+  // Two dates are waiting. The oldest is confirmed, the next is marked not this month: the rule is then not due at all.
+  await row.getByRole('button', { name: 'Confirm' }).click();
+  await expect(page.getByRole('status').filter({ hasText: `Confirmed ${payer}.` })).toBeVisible({ timeout: 20_000 });
+  const rest = expected(page).getByRole('listitem').filter({ hasText: payer }).filter({ hasText: 'not counted yet' }).first();
+  await expect(rest.getByRole('button', { name: 'Not this month' })).toBeEnabled({ timeout: 20_000 });
+  await rest.getByRole('button', { name: 'Not this month' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'marked not this month' })).toBeVisible({ timeout: 20_000 });
+  await expect(expected(page).getByRole('listitem').filter({ hasText: payer }).filter({ hasText: 'not counted yet' })).toHaveCount(0, { timeout: 20_000 });
+
+  // Not due: it has no row under Expected, and is reached from Rules.
+  await expected(page).getByRole('button', { name: /^Rules/ }).click();
+  const listed = expected(page).getByRole('list', { name: 'Rules' }).getByRole('listitem').filter({ hasText: payer });
+  await expect(listed).toContainText('next due');
+  await listed.getByRole('button', { name: 'Change this rule' }).click();
+
+  // Its credits: the confirmed date, the date nothing was posted for, and the one still to come.
+  const credits = ruleForm(page, 'Change a rule').getByRole('region', { name: 'Its credits' });
+  await expect(credits).toBeVisible();
+  await expect(credits).toContainText('confirmed');
+  await expect(credits).toContainText('+₹60,000');
+  await expect(credits).toContainText('not this month');
+  await expect(credits).toContainText('nothing posted');
+  await expect(credits).toContainText('upcoming');
+});

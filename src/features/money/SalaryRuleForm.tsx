@@ -17,9 +17,10 @@ import { money } from '../../lib/money.ts';
 import type { IncomeRule } from '../../repo/types.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Button, Field, RequiredKey } from '../../ui/primitives.tsx';
+import { formatShortDate } from '../../lib/dates.ts';
 import { Stepper } from '../../ui/Stepper.tsx';
 import { accountChoices, amountText, creditAmount } from './creditForm.ts';
-import { firstDueAfter, ordinalDay, PAYDAYS, type RuleDraft } from './ruleForm.ts';
+import { firstDueAfter, ordinalDay, PAYDAYS, type HistoryLine, type RuleDraft } from './ruleForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 const NO_ACCOUNT = '';
@@ -28,6 +29,7 @@ export function SalaryRuleForm({
   data,
   draft,
   editing,
+  history = [],
   onSaved,
   onCancel,
 }: {
@@ -36,6 +38,8 @@ export function SalaryRuleForm({
   draft?: RuleDraft;
   /** The rule being changed, or absent for a new one. */
   editing?: IncomeRule;
+  /** The rule's due dates and what came of each (*Its credits*), for a rule being changed. */
+  history?: readonly HistoryLine[];
   onSaved: (outcome: 'made' | 'changed' | 'paused' | 'resumed' | 'archived') => void;
   onCancel: () => void;
 }) {
@@ -253,6 +257,30 @@ export function SalaryRuleForm({
                 On payday a credit waits in Money as <strong>Expected</strong>. It counts nowhere, not in Came in and not in FIRE, until you confirm it.
                 Confirm it, change the amount, or mark it not this month.
               </p>
+
+              {isEdit && history.length > 0 && (
+                <section aria-label="Its credits" className="flex flex-col gap-1">
+                  <h3 className="label">Its credits</h3>
+                  <ul className="recent-rows">
+                    {history.map((line) => (
+                      <li key={line.dueDate} className="flex flex-wrap items-start justify-between gap-x-3 py-2">
+                        <span className="min-w-0 flex-1" style={{ flexBasis: '7rem' }}>
+                          <span className="recent-payee block">{formatShortDate(line.dueDate)}</span>
+                          <span className="note block">{line.word}</span>
+                        </span>
+                        <span className="recent-amount tabular-nums" style={{ textAlign: 'right', ...(line.amount.startsWith('+') ? { color: 'var(--teal)' } : {}) }}>
+                          {line.amount}
+                          {line.note !== null && (
+                            <span className="note block" style={{ fontWeight: 400 }}>
+                              {line.note}
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
               {isEdit && editing !== undefined && (
                 <div className="flex flex-wrap items-center gap-3">

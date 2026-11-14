@@ -10,13 +10,13 @@
 import { useState } from 'react';
 import { confirmExpectedCredit, passOverDue } from '../../repo/credits.ts';
 import type { IncomeRule } from '../../repo/types.ts';
-import { Problem } from '../../ui/primitives.tsx';
-import type { ExpectedRow } from './ruleForm.ts';
+import { Disclosure, Problem } from '../../ui/primitives.tsx';
+import type { ExpectedRow, RuleListRow } from './ruleForm.ts';
 
 export function ExpectedPanel({
   rows,
   rules,
-  paused,
+  ruleRows,
   canChange,
   onChangeAmount,
   onChangeRule,
@@ -24,8 +24,8 @@ export function ExpectedPanel({
 }: {
   rows: readonly ExpectedRow[];
   rules: readonly IncomeRule[];
-  /** The paused rules, which expect nothing and are listed so that there is a way back to one. */
-  paused: readonly IncomeRule[];
+  /** Every rule in use or paused, so that one that is not due, or is paused, can still be reached to change, pause, resume or archive. */
+  ruleRows: readonly RuleListRow[];
   /** Whether the viewer may confirm, pass over or change this rule: only an owner or a partner makes or changes a rule. */
   canChange: (rule: IncomeRule) => boolean;
   onChangeAmount: (rule: IncomeRule, dueDate: string) => void;
@@ -35,9 +35,13 @@ export function ExpectedPanel({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
-  const showPaused = paused.filter(canChange);
-  if (rows.length === 0 && showPaused.length === 0) return null;
+  const listed = ruleRows.filter((row) => {
+    const rule = rules.find((each) => each.id === row.ruleId);
+    return rule !== undefined && canChange(rule);
+  });
+  if (rows.length === 0 && listed.length === 0) return null;
 
   const act = async (key: string, run: () => Promise<void>, said: string): Promise<void> => {
     setBusy(key);
@@ -125,26 +129,43 @@ export function ExpectedPanel({
           );
         })}
       </ul>
-      {showPaused.length > 0 && (
-        <ul className="recent-rows" aria-label="Paused rules">
-          {showPaused.map((rule) => (
-            <li key={rule.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
-              <span className="note">
-                {rule.name} · paused, it expects nothing
-              </span>
-              <button
-                type="button"
-                className="qa-chip"
-                disabled={busy !== null}
-                onClick={() => {
-                  onChangeRule(rule);
-                }}
-              >
-                Change this rule
-              </button>
-            </li>
-          ))}
-        </ul>
+      {listed.length > 0 && (
+        <div className="mt-1">
+          <Disclosure
+            open={rulesOpen}
+            onToggle={() => {
+              setRulesOpen((was) => !was);
+            }}
+          >
+            <h3 className="label">Rules · {listed.length}</h3>
+          </Disclosure>
+          {rulesOpen && (
+            <ul className="recent-rows mt-1" aria-label="Rules">
+              {listed.map((row) => {
+                const rule = rules.find((each) => each.id === row.ruleId);
+                if (rule === undefined) return null;
+                return (
+                  <li key={row.ruleId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+                    <span className="min-w-0 flex-1" style={{ flexBasis: '8rem' }}>
+                      <span className="recent-payee block">{row.title}</span>
+                      <span className="note block">{row.sub}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="qa-chip"
+                      disabled={busy !== null}
+                      onClick={() => {
+                        onChangeRule(rule);
+                      }}
+                    >
+                      Change this rule
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   );

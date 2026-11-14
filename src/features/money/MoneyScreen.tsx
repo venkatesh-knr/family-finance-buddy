@@ -21,7 +21,7 @@ import { MoneyIn } from './MoneyIn.tsx';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
-import { expectedRows, pausedRules, type RuleDraft } from './ruleForm.ts';
+import { expectedRows, ruleHistory, ruleListRows, type RuleDraft } from './ruleForm.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
 export type MoneyTab = 'ledger' | 'accounts';
@@ -120,6 +120,11 @@ function LedgerTab({
           key={editingRule.id}
           data={ledger.data}
           editing={editingRule}
+          history={ruleHistory(
+            editingRule,
+            ledger.credits.map((credit) => ({ ruleId: credit.ruleId, dueDate: credit.dueDate, amount: credit.amount, isVoided: credit.isVoided })),
+            { today, privacy, viewerMemberId: ledger.data?.viewer.memberId ?? '' },
+          )}
           onSaved={(outcome) => {
             setEditingRule(null);
             setSaid(
@@ -173,7 +178,7 @@ function LedgerTab({
               <ExpectedPanel
                 rows={expected}
                 rules={ledger.rules}
-                paused={pausedRules(ledger.rules)}
+                ruleRows={ruleListRows(ledger.rules, { accounts: ledger.data?.accounts ?? [], privacy })}
                 canChange={() => mayRule}
                 onChangeAmount={(rule, dueDate) => {
                   setSaid(null);
