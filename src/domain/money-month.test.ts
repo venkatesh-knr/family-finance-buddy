@@ -160,6 +160,65 @@ describe('closedMonthFigures', () => {
     expect(usd).toMatchObject({ cameIn: 20_000n, spent: 5_000n, saved: 15_000n });
   });
 
+  describe('a credit with no account (LI-I4, LI-I6): came in outside the accounts you added', () => {
+    const outsideSalary = { accountId: null, category: 'other_income', amount: r(20_000), date: '2026-10-20' } as const;
+
+    it('LI-I6 — counts in came in and is added to spent as money outside the accounts: ₹20,000 more of each', () => {
+      const month = closed(example({ credits: [...example().credits, outsideSalary] }));
+      expect(month.outside).toBe(paise(20_000));
+      expect(month.cameIn).toBe(paise(163_250));
+      expect(month.spent).toBe(paise(89_670));
+    });
+
+    it('LI-I6 — leaves saved and its split exactly as they were, to the paisa', () => {
+      const month = closed(example({ credits: [...example().credits, outsideSalary] }));
+      expect(month.saved).toBe(paise(73_580));
+      expect(month.split).toEqual({ spent: paise(89_670), invested: paise(55_000), paidToLoans: 0n, toCashReserve: paise(18_580) });
+      expect(month.gapMinor).toBe(0n);
+    });
+
+    it('is nothing when every credit names an account', () => {
+      expect(closed(example()).outside).toBe(0n);
+    });
+
+    it('a refund with no account takes off the spent it was added to: it is in refunds and in outside, and spent does not move', () => {
+      const month = closed(example({ credits: [...example().credits, { accountId: null, category: 'refund', amount: r(500), date: '2026-10-21' }] }));
+      expect(month.refunds).toBe(paise(1_799));
+      expect(month.outside).toBe(paise(500));
+      expect(month.spent).toBe(paise(69_670));
+      expect(month.cameIn).toBe(paise(143_250));
+      expect(month.gapMinor).toBe(0n);
+    });
+
+    it('is the month it was credited in: one from the month before or after changes nothing', () => {
+      const month = closed(
+        example({
+          credits: [
+            ...example().credits,
+            { ...outsideSalary, date: '2026-09-30' },
+            { ...outsideSalary, date: '2026-11-01' },
+          ],
+        }),
+      );
+      expect(month.outside).toBe(0n);
+      expect(month.cameIn).toBe(paise(143_250));
+    });
+
+    it('stays in its own currency: dollars that came in outside the rupee accounts are their own month, saved nothing', () => {
+      const result = closedMonthFigures(example({ credits: [...example().credits, { accountId: null, category: 'dividend', amount: r(100, 'USD'), date: '2026-10-09' }] }));
+      expect(result.ok && result.currencies.map((c) => c.currency)).toEqual(['INR', 'USD']);
+      const usd = result.ok ? result.currencies.find((c) => c.currency === 'USD') : undefined;
+      expect(usd).toMatchObject({ cameIn: 10_000n, outside: 10_000n, spent: 10_000n, saved: 0n, gapMinor: 0n, left: [] });
+      const inr = result.ok ? result.currencies.find((c) => c.currency === 'INR') : undefined;
+      expect(inr).toMatchObject({ cameIn: paise(143_250), saved: paise(73_580) });
+    });
+
+    it('with no accounts at all there is no close from balances: the month is worked out from what was entered, elsewhere', () => {
+      const result = closedMonthFigures(example({ accounts: [], credits: [outsideSalary], transfers: [], holdingMoves: [] }));
+      expect(result).toEqual({ ok: true, currencies: [] });
+    });
+  });
+
   it('a month that has not ended cannot be closed', () => {
     expect(closedMonthFigures(example({ today: '2026-10-31' }))).toEqual({ ok: false, reason: 'not-ended', missing: [] });
     expect(closedMonthFigures(example({ today: '2026-11-01' })).ok).toBe(true);

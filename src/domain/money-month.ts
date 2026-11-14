@@ -7,10 +7,14 @@
  *   money in (an account) = its credits, the transfers into it, and holding take-outs paid into it
  *   left (a bank account) = opening + money in − closing
  *   left (a card)         = due at the end − due at the start + money in (its payments and its refunds)
- *   spent = Σ left − own transfers out − money into holdings − refunds − paid to loans
+ *   outside = credits with no account (accounts are optional): money that came in, or was refunded, outside the accounts added
+ *   spent = Σ left + outside − own transfers out − money into holdings − refunds − paid to loans
  *   saved = came in − spent
  *         = net invested + paid to loans + the change in the cash reserve, to the paisa (LI-I23)
  *
+ * A credit with no account is in came in as any credit is, and is added to spent as money outside the tracked accounts, the way cash is
+ * when withdrawn; a refund with no account is in refunds, so its two parts cancel in spent. Saved is unchanged by either (LI-I6).
+ * With no accounts at all there is nothing to close from balances, and the month is worked out from what was entered, elsewhere.
  * The last line follows from the others by algebra and is not checked against them, so a gap means a bug: `gapMinor` is there to say so.
  * Every account of the household must be covered, because a move between two of them appears once as an outflow and once as money in.
  * Money, dates and months are as everywhere: integer minor units, IST calendar days, `YYYY-MM`, one currency at a time (LI-I5). Pure.
@@ -32,7 +36,8 @@ export interface MonthAccount {
 }
 
 export interface MonthCredit {
-  readonly accountId: string;
+  /** The account it was credited to, or null for money that came in outside the accounts added. */
+  readonly accountId: string | null;
   readonly category: CreditCategory;
   readonly amount: Money;
   readonly date: IsoDate;
@@ -81,6 +86,8 @@ export interface MonthFigures {
   readonly currency: string;
   readonly cameIn: bigint;
   readonly refunds: bigint;
+  /** Credits with no account, of every category: added to spent, and in came in or refunds as their category says. */
+  readonly outside: bigint;
   readonly left: readonly AccountLeft[];
   readonly leftTotal: bigint;
   readonly ownTransfers: bigint;
@@ -119,14 +126,18 @@ export function closedMonthFigures(input: MonthInput): ClosedMonth {
   const missing = input.accounts.filter((a) => a.opening === null || a.closing === null).map((a) => a.id);
   if (missing.length > 0) return { ok: false, reason: 'missing-balances', missing };
 
-  const currencies = [...new Set(input.accounts.map((a) => a.currency))].sort(byCurrency);
+  // Money that came in outside the accounts is a month of its own in a currency none of them is in. With no accounts there is no close.
+  const outsideCurrencies = input.accounts.length === 0 ? [] : input.credits.filter((c) => c.accountId === null && inMonth(input.month, c.date)).map((c) => c.amount.currency);
+  const currencies = [...new Set([...input.accounts.map((a) => a.currency), ...outsideCurrencies])].sort(byCurrency);
   return { ok: true, currencies: currencies.map((currency) => figuresFor(input, currency)) };
 }
 
 function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const accounts = input.accounts.filter((a) => a.currency === currency);
   const mine = new Set(accounts.map((a) => a.id));
-  const credits = input.credits.filter((c) => mine.has(c.accountId) && c.amount.currency === currency && inMonth(input.month, c.date));
+  const credits = input.credits.filter(
+    (c) => (c.accountId === null || mine.has(c.accountId)) && c.amount.currency === currency && inMonth(input.month, c.date),
+  );
   const transfers = input.transfers.filter((t) => t.amount.currency === currency && inMonth(input.month, t.date) && (mine.has(t.fromId) || mine.has(t.toId)));
   const moves = input.holdingMoves.filter((m) => mine.has(m.accountId) && m.amount.currency === currency && inMonth(input.month, m.date));
   const loans = input.loanPayments.filter((p) => mine.has(p.accountId) && p.amount.currency === currency && inMonth(input.month, p.date));
@@ -150,8 +161,9 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor));
   const paidToLoans = sum(loans.map((p) => p.amount.minor));
   const leftTotal = sum(left.map((l) => l.leftMinor));
+  const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor));
 
-  const spent = leftTotal - ownTransfers - putIntoHoldings - refunds - paidToLoans;
+  const spent = leftTotal + outside - ownTransfers - putIntoHoldings - refunds - paidToLoans;
   const saved = cameIn - spent;
   const invested = putIntoHoldings - takenOutOfHoldings;
   const cashReserveChange = sum(
@@ -165,6 +177,7 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
     currency,
     cameIn,
     refunds,
+    outside,
     left,
     leftTotal,
     ownTransfers,
