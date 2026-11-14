@@ -23,6 +23,7 @@ import {
   type AccountBalance,
   type Credit,
   type IncomeRule,
+  type CashReserve,
   type MoneyTotals,
   type TaxInputRecord,
   type Transfer,
@@ -153,6 +154,17 @@ export function toMoneyTotals(raw: unknown): MoneyTotals {
   return {
     cameIn: money(toBigIntExact(row['came_in_minor'], 'household_money_totals.came_in_minor'), currency),
     refunds: money(toBigIntExact(row['refunds_minor'], 'household_money_totals.refunds_minor'), currency),
+  };
+}
+
+/** A line of `household_cash_reserve`. No account in it: the reserve is reachable only as a total (LI-I27). */
+export function toCashReserve(raw: unknown): CashReserve {
+  const row = requireRecord(raw, 'household_cash_reserve');
+  const currency = requireString(row['currency'], 'household_cash_reserve.currency');
+  return {
+    reserve: money(toBigIntExact(row['reserve_minor'], 'household_cash_reserve.reserve_minor'), currency),
+    counted: requireNumber(row['accounts_counted'], 'household_cash_reserve.accounts_counted'),
+    total: requireNumber(row['accounts_total'], 'household_cash_reserve.accounts_total'),
   };
 }
 

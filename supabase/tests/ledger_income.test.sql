@@ -3,6 +3,7 @@
 -- FOR REVIEW with the migration beside it (20261114120000_ledger_income.sql). Not run locally: Docker is blocked on the maintainer's
 -- machine, so CI's policy suite is the first run.
 --
+-- LI-I27 — a private account is listed only to its owner; its balance reaches others only inside the cash reserve's total.
 -- LI-I4  — a credit names an account of its own household, in the account's own currency, or none (accounts are optional, 14 November 2026).
 -- LI-I26 — an account's type and currency cannot change once a credit, a transfer or a balance refers to it.
 -- LI-I12 — a viewer reads no credit; a contributor reads only their own; nobody reads another member's private credit.
@@ -23,7 +24,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(87);
+select plan(97);
 
 -- ============================================================== the fixture
 --
@@ -607,6 +608,37 @@ select throws_ok(
   'it raises for another household'
 );
 
+-- The cash reserve at 31 October: the household's savings ₹2,12,380 and the owner's own ₹5,000, less the ₹2,200 due on the partner's card
+-- (a private account of each): ₹2,15,180, counted over three of the four rupee accounts (the contributor's has no balance). The dollar account has
+-- no balance at all, so its sum is nothing and its count is none, which the screen says and does not show as a reserve.
+select results_eq(
+  $q$ select currency, reserve_minor, accounts_counted, accounts_total
+        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31')
+       order by currency $q$,
+  $q$ values ('INR'::text, 21518000::bigint, 3, 4), ('USD'::text, 0::bigint, 0, 1) $q$,
+  'LI-I27 — the cash reserve counts a personal account and takes a card’s due off, per currency, with how many accounts it counted'
+);
+
+select is(
+  (select proargnames from pg_proc where proname = 'household_cash_reserve'),
+  array['target_household_id', 'as_of', 'currency', 'reserve_minor', 'accounts_counted', 'accounts_total']::text[],
+  'LI-I27 — its result has a currency, one sum and two counts, and no account, no member and no balance'
+);
+
+select results_eq(
+  $q$ select currency, reserve_minor
+        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-09-30')
+       where currency = 'INR' $q$,
+  $q$ values ('INR'::text, 0::bigint) $q$,
+  'a day before any balance was typed there is nothing to count: a sum of nothing, which the screen does not show as a reserve'
+);
+
+select throws_ok(
+  $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f2', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'LI-I27 — the cash reserve raises for another household'
+);
+
 -- ================================================ the owner without a second factor
 
 set local request.jwt.claims to '{"sub":"c9000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal1"}';
@@ -627,6 +659,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'and the sum function raises'
+);
+
+select throws_ok(
+  $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'LI-I27 — and so does the cash reserve'
 );
 
 -- ===================================================== the partner
@@ -675,6 +713,22 @@ select is(
   'and its yearly income: one line, in rupees'
 );
 
+-- The partner cannot read the owner's personal account or its balance, and the reserve they are given still counts both.
+select is(
+  (select count(*)::int from public.account where id = 'a9000000-0000-4000-8000-000000000002')
+  + (select count(*)::int from public.account_balance where account_id = 'a9000000-0000-4000-8000-000000000002'),
+  0,
+  'LI-I27 — the partner reads no row of the owner’s personal account and no balance of it'
+);
+
+select results_eq(
+  $q$ select reserve_minor, accounts_counted
+        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31')
+       where currency = 'INR' $q$,
+  $q$ values (21518000::bigint, 3) $q$,
+  'LI-I27 — and the cash reserve returned to the partner includes it, as a total'
+);
+
 -- ================================================== the contributor
 
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a3';
@@ -717,6 +771,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I13 — and the sum function raises for a contributor'
+);
+
+select throws_ok(
+  $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'LI-I27 — and the cash reserve raises for a contributor'
 );
 
 select throws_ok(
@@ -766,6 +826,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I13 — and the sum function raises for a viewer'
+);
+
+select throws_ok(
+  $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'LI-I27 — and the cash reserve raises for a viewer'
 );
 
 select throws_ok(
@@ -851,6 +917,12 @@ select throws_ok(
   $q$ select * from public.household_money_totals('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'and the sum function raises for a stranger'
+);
+
+select throws_ok(
+  $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'LI-I27 — and the cash reserve raises for a stranger'
 );
 
 select throws_ok(
