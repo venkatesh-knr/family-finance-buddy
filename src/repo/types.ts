@@ -1251,6 +1251,8 @@ export interface TaxInputRecord {
   readonly source: TaxSource;
   /** Whoever typed it, who can read it as the member can. */
   readonly typedBy: Uuid;
+  /** The day in India it was last typed or corrected: the source pill's date. */
+  readonly updatedOn: IsoDate;
 }
 
 export interface NewTaxInput {

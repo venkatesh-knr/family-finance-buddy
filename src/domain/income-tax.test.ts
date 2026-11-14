@@ -159,6 +159,7 @@ const compute = (
     fy: number;
     salary: number;
     otherIncome: number;
+    business: number;
     parcels: readonly Parcel[];
     rules: readonly TaxRule[];
   }> = {},
@@ -169,6 +170,7 @@ const compute = (
     fy: over.fy ?? 2026,
     salary: inr(over.salary ?? 0),
     otherIncome: inr(over.otherIncome ?? 0),
+    ...(over.business === undefined ? {} : { business: inr(over.business) }),
     gains: gainsFrom(over.parcels ?? [], ruleSet, over.fy ?? 2026),
     rules: ruleSet,
   });
@@ -238,6 +240,40 @@ describe('the new regime', () => {
     expect(result.standardDeduction).toEqual(inr(0));
     expect(result.slabTax).toEqual(inr(5_000));
     expect(result.total).toEqual(inr(0));
+  });
+
+  it('LI-I19 — taxes a business profit at the slab rates with no standard deduction, which is salary’s alone', () => {
+    // ₹10,00,000 of net profit: 5% of the ₹4 lakh from 4 to 8 lakh is 20,000 and 10% of the ₹2 lakh from 8 to 10 lakh is 20,000, so ₹40,000
+    // of slab tax, which the rebate covers up to ₹12 lakh. It takes no ₹75,000 off, and is not counted as salary.
+    const result = compute({ business: 10 * LAKH });
+    expect(result.business).toEqual(inr(10 * LAKH));
+    expect(result.salary).toEqual(inr(0));
+    expect(result.standardDeduction).toEqual(inr(0));
+    expect(result.taxableOrdinary).toEqual(inr(10 * LAKH));
+    expect(result.slabTax).toEqual(inr(40_000));
+    expect(result.total).toEqual(inr(0));
+  });
+
+  it('LI-I19 — adds a business profit to a salary, and the standard deduction is still the salary’s only', () => {
+    // ₹24 lakh salary less ₹75,000 is ₹23,25,000, and ₹2,00,000 of profit makes ₹25,25,000: 2,00,000 to ₹20 lakh, 25% of the 4 lakh to ₹24 lakh
+    // (1,00,000) and 30% of the ₹1,25,000 above it (37,500) is 3,37,500 of slab tax, cess 13,500, total 3,51,000.
+    const result = compute({ salary: 24 * LAKH, business: 2 * LAKH });
+    expect(result.standardDeduction).toEqual(inr(75_000));
+    expect(result.taxableOrdinary).toEqual(inr(2_525_000));
+    expect(result.slabTax).toEqual(inr(337_500));
+    expect(result.cess).toEqual(inr(13_500));
+    expect(result.total).toEqual(inr(351_000));
+  });
+
+  it('LI-I19 — is the same income at the slab as other income of the same size: they differ in what they are called, not in how they are taxed', () => {
+    const asBusiness = compute({ business: 7 * LAKH });
+    const asOther = compute({ otherIncome: 7 * LAKH });
+    expect(asBusiness.taxableOrdinary).toEqual(asOther.taxableOrdinary);
+    expect(asBusiness.total).toEqual(asOther.total);
+  });
+
+  it('counts no business profit when none is given', () => {
+    expect(compute({ salary: 24 * LAKH }).business).toEqual(inr(0));
   });
 
   it('adds a short-term gold gain to the income the slab taxes', () => {
