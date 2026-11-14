@@ -9,6 +9,7 @@
 import { hashFor } from '../../app/route.ts';
 import { ExpensesScreen } from '../expenses/ExpensesScreen.tsx';
 import { AccountsTab } from './AccountsTab.tsx';
+import { MoneyIn } from './MoneyIn.tsx';
 
 export type MoneyTab = 'ledger' | 'accounts';
 
@@ -49,7 +50,10 @@ export function MoneyScreen({
       {tab === 'accounts' ? (
         <AccountsTab householdId={householdId} privacy={privacy} />
       ) : (
-        <ExpensesScreen privacy={privacy} householdId={householdId} recurringMade={recurringMade} displayCurrency={displayCurrency} />
+        <>
+          <MoneyIn householdId={householdId} privacy={privacy} />
+          <ExpensesScreen privacy={privacy} householdId={householdId} recurringMade={recurringMade} displayCurrency={displayCurrency} />
+        </>
       )}
     </>
   );
