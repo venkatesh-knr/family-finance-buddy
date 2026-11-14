@@ -59,7 +59,7 @@ describe('a Needs attention row', () => {
 });
 
 describe('the bottom bar', () => {
-  const screens = ['overview', 'summary', 'expenses', 'holdings', 'tax', 'fire'] as const;
+  const screens = ['overview', 'summary', 'money', 'holdings', 'tax', 'fire'] as const;
 
   it.each(screens)('draws %s as a stroked glyph', (screen) => {
     const glyph = NAV_GLYPHS[screen];

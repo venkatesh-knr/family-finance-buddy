@@ -72,7 +72,7 @@ import { ScreenBar } from './ScreenBar.tsx';
 const ALL_SCREENS: readonly (readonly [Screen, string])[] = [
   ['overview', 'Overview'],
   ['summary', 'Summary'],
-  ['expenses', 'Expenses'],
+  ['money', 'Money'],
   ['holdings', 'Holdings'],
   ['tax', 'Tax'],
   ['fire', 'FIRE'],
@@ -400,7 +400,7 @@ function SignedIn({
             }}
           />
         )}
-        {screen === 'expenses' && (
+        {screen === 'money' && (
           <ExpensesScreen
             privacy={privacy}
             householdId={householdId}

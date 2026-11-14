@@ -22,7 +22,7 @@ import type { HouseholdRole } from '../repo/types.ts';
 export type AppScreen =
   | 'overview'
   | 'summary'
-  | 'expenses'
+  | 'money'
   | 'holdings'
   | 'tax'
   | 'fire'
@@ -39,9 +39,9 @@ export function screensFor(role: HouseholdRole | null): readonly AppScreen[] {
   switch (role) {
     case 'owner':
     case 'partner':
-      return ['overview', 'expenses', 'holdings', 'fire', 'more'];
+      return ['overview', 'money', 'holdings', 'fire', 'more'];
     case 'contributor':
-      return ['summary', 'expenses', 'holdings', 'tax'];
+      return ['summary', 'money', 'holdings', 'tax'];
     case 'viewer':
     case null:
       return ['summary'];

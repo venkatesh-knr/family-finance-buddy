@@ -13,7 +13,7 @@ import type { AppScreen } from '../domain/access.ts';
 const SCREEN_NAMES: readonly AppScreen[] = [
   'overview',
   'summary',
-  'expenses',
+  'money',
   'holdings',
   'tax',
   'fire',
@@ -31,11 +31,22 @@ export interface Route {
   readonly params: URLSearchParams;
 }
 
-/** The screen the hash names, or Expenses, with the filters after its question mark. Never trusts the hash. */
+/** The screen the hash names, or Money, with the filters after its question mark. Never trusts the hash. */
 export function parseHash(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#\/?/, '').split('?', 2);
-  const screen = (SCREEN_NAMES as readonly string[]).includes(path) ? (path as AppScreen) : 'expenses';
+  const screen = (SCREEN_NAMES as readonly string[]).includes(path) ? (path as AppScreen) : 'money';
   return { screen, params: new URLSearchParams(query) };
+}
+
+/**
+ * Where an old link goes (docs/design/ledger-income.md section 3). The screen called Expenses is the Money screen, and a link saved to
+ * `#/expenses` or `#/expenses?…` still works: it is replaced, not added to, by the same query on `#/money`, so the back button does not
+ * return to the old address and loop. `null` for every other hash, which is left alone.
+ */
+export function legacyRedirect(hash: string): string | null {
+  const [path = '', query = ''] = hash.replace(/^#\/?/, '').split('?', 2);
+  if (path !== 'expenses') return null;
+  return query === '' ? '#/money' : `#/money?${query}`;
 }
 
 /** The hash for a screen and its filters; a filter with no value is left out, so All is the bare screen. */
