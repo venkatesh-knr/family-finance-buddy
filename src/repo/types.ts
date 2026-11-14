@@ -1126,7 +1126,8 @@ export interface Credit {
   readonly id: Uuid;
   readonly householdId: Uuid;
   readonly memberId: Uuid;
-  readonly accountId: Uuid;
+  /** The account it was credited to, or null: accounts are optional, and a credit with none still counts as came in (LI-I4). */
+  readonly accountId: Uuid | null;
   readonly category: CreditCategory;
   readonly amount: Money;
   readonly date: IsoDate;
@@ -1143,7 +1144,8 @@ export interface Credit {
 export interface NewCredit {
   readonly householdId: Uuid;
   readonly memberId: Uuid;
-  readonly accountId: Uuid;
+  /** Omitted or null for money that came in outside the accounts added. */
+  readonly accountId?: Uuid | null;
   readonly category: CreditCategory;
   readonly amount: Money;
   readonly date: IsoDate;
@@ -1157,7 +1159,7 @@ export interface NewCredit {
 
 /** What may change on a credit. A credit is corrected here until a figure has been relied on, and voided after. */
 export interface CreditPatch {
-  readonly accountId?: Uuid;
+  readonly accountId?: Uuid | null;
   readonly category?: CreditCategory;
   readonly amount?: Money;
   readonly date?: IsoDate;

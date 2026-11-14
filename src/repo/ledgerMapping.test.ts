@@ -101,6 +101,10 @@ describe('toCredit', () => {
     expect(mapped).toMatchObject({ source: 'rule', ruleId: 'r-1', dueDate: '2026-10-01' });
   });
 
+  it('reads a credit with no account as null: accounts are optional and it still counts as came in (LI-I4)', () => {
+    expect(toCredit({ ...credit, account_id: null }).accountId).toBeNull();
+  });
+
   it('reads a voided credit as voided', () => {
     expect(toCredit({ ...credit, voided_at: '2026-10-02T04:00:00Z' }).isVoided).toBe(true);
   });

@@ -42,7 +42,7 @@ export async function addCredit(input: NewCredit): Promise<{ readonly id: Uuid }
     .insert({
       household_id: input.householdId,
       member_id: input.memberId,
-      account_id: input.accountId,
+      account_id: input.accountId ?? null,
       category: input.category,
       amount_minor: input.amount.minor.toString(),
       currency: input.amount.currency,

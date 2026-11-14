@@ -71,7 +71,7 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
     try {
       locked = await accountHasHistory(account.id);
     } catch {
-      // Not knowing leaves them open. The table does not yet refuse a change of type or currency (LI-I26), so this is a gap until it does.
+      // Not knowing leaves them open; if the account does have history the table refuses the change (LI-I26) and the form shows its message.
       locked = false;
     }
     setForm({ account, locked });
