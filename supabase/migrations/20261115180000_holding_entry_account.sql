@@ -1,8 +1,9 @@
 -- Family Finance Buddy — a holding's entries name the account they were paid from or into (docs/design/ledger-income.md section 4a, LI-I28 to LI-I31;
 -- docs/design/spending-capture.md section 10).
 --
--- FOR REVIEW, not yet applied. Nothing in the app reads or writes the new column until the next change; this one only makes room for it and
--- lets the month close's sum function know about it.
+-- Three tables get an optional account: a purchase lot, a sale (disposal) and a PPF entry. The app writes it from the purchase, sale and PPF forms and
+-- reads it in the month close; household_private_close adds the same entries for what the caller cannot read. Apply it before the code that reads
+-- the new columns is deployed.
 --
 -- A month close works out what was spent from balances. Money that left an account to buy something that is not spending (a fund, a PPF payment)
 -- has to be named, or it reads as spent and "saved" reads low by it; money that came back (a sale, a PPF withdrawal) has to be named, or it reads as

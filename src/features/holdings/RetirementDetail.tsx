@@ -667,7 +667,7 @@ function PpfEntryForm({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   // Which account a payment was paid from, or a withdrawal paid into: optional. A PPF is rupees, so only a rupee account can be named.
-  const accounts = useAccountChoices(householdId);
+  const { accounts, failed: accountsFailed } = useAccountChoices(householdId);
   const rupeeAccounts = useMemo(() => accounts.filter((account) => account.currency === INR), [accounts]);
   const choices = useMemo(() => paidFromChoices(rupeeAccounts), [rupeeAccounts]);
   const [accountId, setAccountId] = useState('');
@@ -745,6 +745,7 @@ function PpfEntryForm({
         entryCurrency={INR}
         accountId={accountId}
         typed=""
+        failed={accountsFailed}
         onAccount={setAccountId}
         onTyped={() => undefined}
       />

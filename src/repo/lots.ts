@@ -118,7 +118,15 @@ export async function addDisposal(input: NewDisposal): Promise<void> {
  */
 export async function updateLot(
   id: Uuid,
-  patch: { acquiredOn?: string; quantity?: string; costMinor?: bigint; note?: string | null },
+  patch: {
+    acquiredOn?: string;
+    quantity?: string;
+    costMinor?: bigint;
+    note?: string | null;
+    /** The account it was paid from: null says none, and left out leaves what is there. The lot's currency is needed with it. */
+    paidVia?: EntryAccount | null;
+    entryCurrency?: string;
+  },
 ): Promise<void> {
   const client = supabase();
 
@@ -131,6 +139,10 @@ export async function updateLot(
   }
   if (patch.costMinor !== undefined) fields['cost_minor'] = patch.costMinor.toString();
   if (patch.note !== undefined) fields['note'] = patch.note;
+  if (patch.paidVia !== undefined) {
+    if (patch.entryCurrency === undefined) throw new Error('A purchase is changed with its currency.');
+    Object.assign(fields, accountColumns(patch.paidVia, patch.entryCurrency));
+  }
 
   if (Object.keys(fields).length === 0) return;
 
@@ -145,7 +157,15 @@ export async function updateLot(
 /** Correct a sale. Same reasoning as updateLot: no delete, so no dead ends. */
 export async function updateDisposal(
   id: Uuid,
-  patch: { disposedOn?: string; quantity?: string; proceedsMinor?: bigint; note?: string | null },
+  patch: {
+    disposedOn?: string;
+    quantity?: string;
+    proceedsMinor?: bigint;
+    note?: string | null;
+    /** The account the proceeds were paid into: null says none, and left out leaves what is there. The sale's currency is needed with it. */
+    paidVia?: EntryAccount | null;
+    entryCurrency?: string;
+  },
 ): Promise<void> {
   const client = supabase();
 
@@ -158,6 +178,10 @@ export async function updateDisposal(
   }
   if (patch.proceedsMinor !== undefined) fields['proceeds_minor'] = patch.proceedsMinor.toString();
   if (patch.note !== undefined) fields['note'] = patch.note;
+  if (patch.paidVia !== undefined) {
+    if (patch.entryCurrency === undefined) throw new Error('A sale is changed with its currency.');
+    Object.assign(fields, accountColumns(patch.paidVia, patch.entryCurrency));
+  }
 
   if (Object.keys(fields).length === 0) return;
 

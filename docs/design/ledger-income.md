@@ -346,6 +346,14 @@ for exactly the entries the caller's own screen cannot add: money from a hidden 
 member's private holding on an account the caller reads. A take-out also adds to *left*, as a private credit does. Still no account, member, holding or
 date in the result.
 
+**Where a person says it, afterwards.** An entry already recorded is changed from its row in the holding's Transactions: each purchase and sale shows
+*paid from* or *paid into* the account it named, or *no account said*, and its edit form carries the same picker. A PPF entry is voided and entered again, as
+any PPF entry is. A lot or a sale that names an account the editor cannot read is shown as *an account you cannot see* and is left as it is.
+
+**What a contributor and a hidden holding do to the count.** A contributor's close is their own accounts, so a purchase of another member's private holding
+paid from the contributor's account reads as spent there. The count of entries that named no account is of the entries the person can read; one on a private
+holding of another member is not in it, though its money is still counted as the close counts what it cannot place.
+
 **Who may name which account.** Only one the writer can read, in the insert and update policies of all three tables, as for a credit: a contributor
 cannot attach a purchase to another member's private account. Editing a row whose account the editor cannot read is refused for that reason; the row
 is fixed by the member who owns the account.

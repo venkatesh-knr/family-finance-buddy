@@ -16,9 +16,29 @@ export interface PaidFromChoice {
   readonly currency: string;
 }
 
-/** The accounts that can be named: those in use, in the order given. An archived account is not offered for a new entry. */
-export function paidFromChoices(accounts: readonly Account[]): PaidFromChoice[] {
-  return accounts.filter((account) => !account.isArchived).map((account) => ({ id: account.id, label: titleOf(account), currency: account.currency }));
+/**
+ * The accounts that can be named: those in use, the one named most recently first (`recent`, most recent first), then the rest in the order given. An
+ * archived account is not offered for a new entry.
+ */
+export function paidFromChoices(accounts: readonly Account[], recent: readonly string[] = []): PaidFromChoice[] {
+  const rank = (id: string): number => {
+    const at = recent.indexOf(id);
+    return at === -1 ? recent.length : at;
+  };
+  return accounts
+    .filter((account) => !account.isArchived)
+    .map((account, order) => ({ account, order }))
+    .sort((a, b) => rank(a.account.id) - rank(b.account.id) || a.order - b.order)
+    .map(({ account }) => ({ id: account.id, label: titleOf(account), currency: account.currency }));
+}
+
+/** The accounts the entries named, the most recently named first, each once: from the rows already read, each with the day it was entered. */
+export function recentlyNamed(entries: readonly { readonly date: string; readonly accountId: string | null }[]): string[] {
+  const seen: string[] = [];
+  for (const entry of [...entries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))) {
+    if (entry.accountId !== null && !seen.includes(entry.accountId)) seen.push(entry.accountId);
+  }
+  return seen;
 }
 
 export type PaidViaResult = { readonly ok: true; readonly value: EntryAccount | null } | { readonly ok: false; readonly problem: string };

@@ -49,6 +49,13 @@ test('a purchase offers the account it was paid from, optional, and a sale the a
   await expect(sale.getByRole('combobox', { name: /Paid into/ })).toBeVisible();
   // Not said is the first and the default: nothing is asked of a person who does not want to say.
   await expect(purchase.getByRole('combobox', { name: /Paid from/ })).toContainText('Not said');
+  // An entry made before this says it named no account, and its edit form can name one.
+  await page.getByRole('button', { name: /^Transactions/ }).first().click();
+  const earlier = page.getByText('no account said').first();
+  await expect(earlier).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: /^Edit the .* entry$/ }).first().click();
+  await expect(page.getByRole('combobox', { name: /Paid (from|into)/ }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
 });
 
 test('a purchase paid from an account is recorded, and the close reads it as into holdings and not as spent', async ({ page }) => {

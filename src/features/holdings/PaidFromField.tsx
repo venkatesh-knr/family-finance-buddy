@@ -14,6 +14,7 @@ export function PaidFromField({
   entryCurrency,
   accountId,
   typed,
+  failed = false,
   onAccount,
   onTyped,
 }: {
@@ -23,10 +24,14 @@ export function PaidFromField({
   entryCurrency: string;
   accountId: string;
   typed: string;
+  /** The accounts could not be read: said, rather than the field being left out as if the household had none. */
+  failed?: boolean;
   onAccount: (id: string) => void;
   onTyped: (text: string) => void;
 }) {
-  if (choices.length === 0) return null;
+  if (choices.length === 0) {
+    return failed ? <p className="note w-full">The accounts could not be read just now, so this will be saved without one.</p> : null;
+  }
   const chosen = choices.find((choice) => choice.id === accountId) ?? null;
   const other = chosen !== null && chosen.currency !== entryCurrency;
   const symbol = chosen === null ? '' : chosen.currency === 'INR' ? '₹' : chosen.currency;
@@ -36,7 +41,11 @@ export function PaidFromField({
         <Select
           label={label}
           value={accountId}
-          hint="Optional. It lets a month close count this as invested, not spent."
+          hint={
+            verb === 'left'
+              ? 'Optional. It lets a month close count this as money put into a holding, not as spent.'
+              : 'Optional. It lets a month close count this as money in to that account, not as income.'
+          }
           onChange={(event) => {
             onAccount(event.target.value);
           }}

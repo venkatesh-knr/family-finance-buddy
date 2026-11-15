@@ -156,8 +156,8 @@ export function MonthSurface({
                   <span className="block">Loan payments are not read yet, so a loan paid from these accounts is counted as spent, and saved reads low by it.</span>
                   {closed.unnamedEntries > 0 && (
                     <span className="block">
-                      {String(closed.unnamedEntries)} {closed.unnamedEntries === 1 ? 'purchase or sale' : 'purchases and sales'} that month named no account, so their money is counted as
-                      spent too. Say which account in Holdings.
+                      {String(closed.unnamedEntries)} {closed.unnamedEntries === 1 ? 'entry' : 'entries'} in Holdings that month (a purchase, a sale or a PPF payment) named no account,
+                      so a purchase among them reads as spent. Open it in Holdings and say which account.
                     </span>
                   )}
                 </Caveat>

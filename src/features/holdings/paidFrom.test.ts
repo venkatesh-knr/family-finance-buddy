@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { Account } from '../../repo/types.ts';
-import { paidViaOf, paidFromChoices } from './paidFrom.ts';
+import { paidViaOf, paidFromChoices, recentlyNamed } from './paidFrom.ts';
 
 const account = (over: Partial<Account> = {}): Account =>
   ({ id: 'hdfc', name: 'HDFC savings', type: 'savings', currency: 'INR', last4: '4821', isArchived: false, ...over }) as Account;
@@ -13,6 +13,25 @@ describe('paidFromChoices — the accounts a purchase or a sale can name', () =>
       { id: 'hdfc', label: 'HDFC savings ••4821', currency: 'INR' },
       { id: 'usd', label: 'Dollar', currency: 'USD' },
     ]);
+  });
+});
+
+describe('paidFromChoices — last used first', () => {
+  it('puts the account named most recently first, then the rest as they were given', () => {
+    const accounts = [account({ id: 'a', name: 'A', last4: null }), account({ id: 'b', name: 'B', last4: null }), account({ id: 'c', name: 'C', last4: null })];
+    expect(paidFromChoices(accounts, ['c', 'b']).map((choice) => choice.id)).toEqual(['c', 'b', 'a']);
+    expect(paidFromChoices(accounts).map((choice) => choice.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('is by the day each entry was made, each account once, and none for an entry that named none', () => {
+    expect(
+      recentlyNamed([
+        { date: '2026-09-01', accountId: 'a' },
+        { date: '2026-10-05', accountId: 'b' },
+        { date: '2026-10-20', accountId: null },
+        { date: '2026-10-01', accountId: 'a' },
+      ]),
+    ).toEqual(['b', 'a']);
   });
 });
 

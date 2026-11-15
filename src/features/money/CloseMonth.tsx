@@ -245,7 +245,7 @@ export function CloseMonth({
                 A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. Loan payments are not read
                 here yet, so a loan paid from these accounts is counted as spent.
                 {entries.unnamed > 0
-                  ? ` ${String(entries.unnamed)} purchase${entries.unnamed === 1 ? '' : 's'} or sale${entries.unnamed === 1 ? '' : 's'} this month name no account, so their money is counted as spent: say which account in Holdings.`
+                  ? ` ${String(entries.unnamed)} ${entries.unnamed === 1 ? 'entry' : 'entries'} in Holdings this month (a purchase, a sale or a PPF payment) name no account, so the close cannot tell where that money went, and a purchase reads as spent. Open it in Holdings and say which account.`
                   : ''}
                 {privateNote}
               </p>
