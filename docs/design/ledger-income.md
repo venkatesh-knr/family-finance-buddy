@@ -310,6 +310,51 @@ month is closed, or shows the open state if nobody has closed it yet.
 in* line in USD. FIRE and Tax read INR only, and say when credits in another currency
 were left out.
 
+## 4a. A holding's entries name the account
+
+**Proposed, 15 November 2026: not built, and the migration is for review.** The close in §4 reads money into a holding as an outflow of the account it
+was paid from, and money taken out as money in to the account it was paid into. Today no holding entry says which account, so a SIP or a fund
+purchase paid from HDFC reads as spent, and *saved* reads low by it. This section is the change that lets an entry say.
+
+**Which entries.** The three that hold money moving into or out of a holding, each with one optional `account_id`:
+
+| Entry | Names | Counts in a month as |
+|---|---|---|
+| `lot`, kind *purchase* | the account it was paid from | put into holdings |
+| `disposal`, kind *sale*, *redemption* or *maturity* | the account the proceeds were paid into | taken out of holdings |
+| `ppf_entry` | a payment in: the account it was paid from. A withdrawal (negative): the account it was paid into | put in, or taken out |
+
+A bonus issue, a split, a transfer, a gift and an ESOP vest moved no money, and name nothing: they never count here, whatever account is on them.
+
+**Optional, always.** An entry that names no account changes nothing from today: it is in *invested* (SC-I11) as it is now, and its money stays in spent
+until it is named. Nothing is required, and a household with no accounts never sees the question (§0). The close says how many of the month's entries
+named an account, so a person can see why *invested* here is less than the Overview's, and fix it.
+
+**The account is in the entry's own currency and household** (the composite key `credit_entry` uses). A US purchase paid from a rupee account cannot
+name it: the rupees that left the account and the dollars the lot records are different figures, and converting one into the other would invent a rate.
+It is left unnamed, and counted among those that named none.
+
+**What the close does with them.** For an account in the close: money into a holding is subtracted from spent, as §4's formula says
+(`− money into holdings`); money taken out is money in to that account, and so adds to what *left* it (`opening + money in − closing`). Nothing else changes:
+*saved* is still *came in − spent*, and still splits exactly into *invested + paid to loans + change in cash reserve* (LI-I23), because *invested* in the
+close is now the figure from the entries that named an account.
+
+**Private accounts and private holdings.** An owner or a partner closes the household's month, but cannot read another member's private account or
+private holding. `household_private_close` already adds what the caller cannot read, as totals. It gains two sums, *into holdings* and *out of holdings*,
+for exactly the entries the caller's own screen cannot add: money from a hidden account that has both balances, and a purchase or sale of another
+member's private holding on an account the caller reads. A take-out also adds to *left*, as a private credit does. Still no account, member, holding or
+date in the result.
+
+**Who may name which account.** Only one the writer can read, in the insert and update policies of all three tables, as for a credit: a contributor
+cannot attach a purchase to another member's private account. Editing a row whose account the editor cannot read is refused for that reason; the row
+is fixed by the member who owns the account.
+
+**Entered where the entry is.** The purchase form, the sale form and the PPF payment form each gain *Paid from* / *Paid into*, an optional picker of
+the household's accounts in that currency, last used first, with *Not said* as the first choice. It is not asked in an import from a template.
+
+**Not in this step.** A deposit's principal and its payout, a bond, and a holding opened with a cost and no purchase are counted in *invested* but are
+not lots, so they do not name an account yet. Loan payments are a step of their own after this.
+
 ## 5. A recurring credit: the salary rule (and any income rule)
 
 A rule that is due shows an **expected** credit. It is not a row, and it counts nowhere,
@@ -613,6 +658,14 @@ functions, which read the totals.
 
 **LI-I7 — Saved equals came in minus spent, and is shown for a closed month, labelled from balances, or, in a household with no accounts, for a month that has ended, labelled from what was entered;** an open month never shows it. (§4)
 
+**LI-I28 — A holding's entry (a purchase lot, a sale, redemption or maturity, a PPF payment or withdrawal) names an account of its own household in its own currency, or none;** naming none changes nothing. (§4a)
+
+**LI-I29 — An entry names only an account its writer can read.** (§4a)
+
+**LI-I30 — A closed month subtracts money into holdings from spent and adds money taken out to the account's money in,** from the entries that name an account, including those the caller cannot read, as sums; an entry that names none is counted as it is today. (§4a)
+
+**LI-I31 — What `household_private_close` returns still has no account, member, holding or date, and is refused to anyone but an owner or a partner with a second factor.** (§4a)
+
 **LI-I24 — An account needs a name, a type and whose it is; its last four digits are optional.** (§0)
 
 **LI-I25 — Accounts are created and managed on the Accounts screen behind More, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
@@ -682,3 +735,7 @@ functions, which read the totals.
 - LI-I25: `#/accounts` renders the Accounts screen, and `#/money?tab=accounts` replaces itself with it; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
 - LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
 - LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it, and so does the month close's, with the account counted as one of one only when both balances are typed.
+- LI-I28: pgTAP: a purchase, a sale and a PPF entry accept no account; a purchase cannot name an account of another household or in another currency; a sale likewise.
+- LI-I29: pgTAP: an owner cannot attach a purchase or a sale to a partner's private account, nor move an existing purchase onto it.
+- LI-I30: pgTAP over the section 4a rules: the sum adds a purchase from a hidden account, a purchase of another member's private holding from a readable account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
+- LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.
