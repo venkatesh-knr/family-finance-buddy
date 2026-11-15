@@ -363,7 +363,43 @@ the household's accounts, last used first, with *Not said* as the first choice. 
 appears: *What left the account, in ₹* (or *What reached it*). It is not asked in an import from a template.
 
 **Not in this step.** A deposit's principal and its payout, a bond, and a holding opened with a cost and no purchase are counted in *invested* but are
-not lots, so they do not name an account yet. Loan payments are a step of their own after this.
+not lots, so they do not name an account here: §4b does that. Loan payments are a step of their own after it.
+
+## 4b. A deposit, a bond and an opening cost name the account
+
+**Built on the migration `20261115200000_deposit_bond_opening_account.sql`; the owner asked for the step on 15 November 2026.** §4a's rule, for the three
+things *invested* counts that are not lots (`src/domain/invested.ts`): money that left an account for a deposit or a bond, money that came back when one
+matured, and the cost of a holding that was opened with a cost and no purchase. Optional, always, as in §4a; naming none changes nothing.
+
+| Entry | Names | Counts in a month as |
+|---|---|---|
+| `fixed_income_terms`, a deposit's principal or a bond's face value | the account it was paid from (`account_id`), on `start_date` | put into holdings |
+| `fixed_income_terms`, a deposit's maturity payout | the account it is paid into (`payout_account_id`) | taken out of holdings, on the day it paid out |
+| `holding`, opened with a cost and no purchase and no terms | the account the cost was paid from (`cost_account_id`), on `opened_on` | put into holdings |
+
+A renewal is the same money and is not counted again, so it names nothing. A recurring deposit is kept out of *invested* altogether, and so out of this.
+
+**Currency.** A principal is stored as a lot's cost is: with the account's currency, and, when that is not the deposit's, what left the account in the
+account's own currency, typed from the statement (`account_amount_minor`). A payout is worked out from the terms in the deposit's own currency and is paid
+into an account in that currency only: there is no typed amount, so a deposit in dollars is not offered a rupee account for its payout, and the person
+records nothing for it. A holding's opening cost is paid from an account in the holding's own currency only; the database holds the account's currency with it
+and the sum ignores one that is not the instrument's.
+
+**What the close does with them.** The principal and the opening cost are money into a holding and come off *spent*, exactly as a purchase does. The
+payout is money taken out of a holding and paid into the account, so it adds to what *left* it, as a sale's proceeds do. The close counts the payout
+on the day the app works out that the deposit paid out, at the amount it works out (`fixedIncomePayouts`).
+
+**What the database cannot sum.** The payout is a figure only the application computes, from the terms and the bank's renewals, and it is never stored
+(a deposit's value is computed and not stored). `household_private_close` therefore adds the principal and the opening cost for what the caller cannot
+read, as it adds a lot's cost, and does *not* add a payout: a payout into a hidden account, or of another member's private deposit, reads in the close
+as it does today. The close says so where it says what it could not read. If that is not good enough, the way out is a recorded maturity (a disposal
+of kind *maturity* naming the account, the amount being the bank's), which the database can sum; it is the owner's to ask for.
+
+**Where a person says it.** The deposit and bond forms gain *Paid from* (and, for a deposit, *Maturity paid into*); the form that opens a holding with a
+cost gains *Paid from*, and so does editing that cost afterwards; each of them an optional picker with *Not said* first, the account named most recently
+next, and the foreign-currency field of §4a when the account is not in the deposit's currency. An account the editor cannot read is shown as *an account
+you cannot see* and is left as it is. **Editing a deposit's terms, or a holding, that names an account the editor cannot read is refused for that
+reason**, as for a lot (§4a); the member who owns the account fixes it. A holding is archived by its owner, who can read their own accounts.
 
 ## 5. A recurring credit: the salary rule (and any income rule)
 
@@ -676,6 +712,14 @@ functions, which read the totals.
 
 **LI-I31 — What `household_private_close` returns still has no account, member, holding or date, and is refused to anyone but an owner or a partner with a second factor.** (§4a)
 
+**LI-I32 — A deposit's principal or a bond's face value names an account of its own household, or none,** and one in another currency than its own carries what left the account in that account's currency; one in its own carries none. (§4b)
+
+**LI-I33 — A deposit's maturity payout is paid into an account of its own household and in its own currency, or none.** It is never stored, and has no typed amount. (§4b)
+
+**LI-I34 — A holding's opening cost names an account only together with a cost and the account's currency, and only an account its writer can read** (LI-I29); the sum counts it only where the account is in the instrument's own currency. (§4b)
+
+**LI-I35 — The close counts a deposit's or a bond's principal and an opening cost from the entries that named an account, including those the caller cannot read, as sums; it counts a payout only for what the caller can read, and says it could not for the rest.** A recurring deposit, an earlier or later month, a holding that has a purchase or terms, and a cost in another currency than its account's are not counted. (§4b)
+
 **LI-I24 — An account needs a name, a type and whose it is; its last four digits are optional.** (§0)
 
 **LI-I25 — Accounts are created and managed on the Accounts screen behind More, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
@@ -748,4 +792,5 @@ functions, which read the totals.
 - LI-I28: pgTAP: a purchase, a sale and a PPF entry accept no account; a purchase cannot name an account of another household or say an account is in a currency it is not in; a dollar purchase from a rupee account needs what left the account, and a rupee purchase from a rupee account refuses one; an amount with no account is refused.
 - LI-I29: pgTAP: an owner cannot attach a purchase or a sale to a partner's private account, nor move an existing purchase onto it.
 - LI-I30: pgTAP over the section 4a rules: the sum adds a purchase from a hidden account, a purchase of another member's private holding from a readable account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
+- LI-I32 to LI-I35: pgTAP over the section 4b rules: a principal and an opening cost refuse an account of another household, one in a currency it is not in, a dollar deposit paid from a rupee account with no amount, and a rupee deposit that states one; a payout refuses an account in another currency; neither can be moved onto another member's private account; the sum adds a principal from a hidden account, one of another member's private deposit from a readable account, a dollar deposit paid from a rupee account at what left it, and an opening cost from a hidden account, and adds nothing for a recurring deposit, a September start, a holding with a purchase, or a cost in dollars named against a rupee account. Pure domain test: the close with a payout named, on the day it paid out.
 - LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.
