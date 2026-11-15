@@ -53,6 +53,19 @@ test('allocation is one section per currency, headed "Allocation" with the curre
   }
 });
 
+test('Needs attention is the last section, on a phone and on a wide screen', async ({ page }) => {
+  await onOverview(page);
+  const cards = page.locator('main section.card');
+  const needs = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Needs attention', exact: true }) });
+  await expect(needs).toBeVisible({ timeout: 20_000 });
+  const mine = await needs.boundingBox();
+  expect(mine, 'Needs attention is drawn').not.toBeNull();
+  for (const box of await cards.evaluateAll((els) => els.map((el) => ({ top: el.getBoundingClientRect().top + window.scrollY, text: (el.textContent ?? '').slice(0, 24) })))) {
+    if (box.text.startsWith('Needs attention')) continue;
+    expect(box.top, `${box.text} starts above Needs attention`).toBeLessThanOrEqual((mine?.y ?? 0) + (await page.evaluate(() => window.scrollY)) + 1);
+  }
+});
+
 test('Needs attention has no year in its header, and closing the month is an action among its rows and not a disclosure', async ({ page }) => {
   await onOverview(page);
   const card = page.locator('section.card').filter({ has: page.getByRole('heading', { name: 'Needs attention', exact: true }) });
