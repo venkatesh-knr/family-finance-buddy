@@ -21,7 +21,7 @@ import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
 import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
-import { accountSteps, closeFigures, isClosed, monthToClose, monthWord } from './closeMonth.ts';
+import { accountSteps, closeFigures, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { VoidMove } from './VoidMove.tsx';
@@ -83,10 +83,13 @@ export function MoneyScreen({
   // Not offered until the credits and moves have been read: money in read as nothing would make spent read low.
   const mayClose =
     ledger.data !== null &&
-    ledger.moneyStatus === 'ready' &&
-    ledger.data.viewer.canRecord &&
-    ledger.data.accounts.some((account) => !account.isArchived) &&
-    !isClosed({ month: closeMonthKey, accounts: ledger.data.accounts, balances: ledger.data.balances });
+    offersClose({
+      month: closeMonthKey,
+      accounts: ledger.data.accounts,
+      balances: ledger.data.balances,
+      canRecord: ledger.data.viewer.canRecord,
+      moneyReady: ledger.moneyStatus === 'ready',
+    });
   // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
   const mayRule = viewer?.role === 'owner' || viewer?.role === 'partner';
   const expected =

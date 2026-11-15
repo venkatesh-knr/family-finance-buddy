@@ -160,6 +160,10 @@ test('LI-I6 — with balances typed the result is derived, the month is closed, 
 
   // The balance is kept on the account: the Accounts screen shows it, as at the last day of the month.
   await page.goto('/#/accounts');
+  // And the cash reserve is as at that day, from the balances just typed, with how many accounts it covers.
+  const reserve = page.getByRole('region', { name: 'Cash reserve' });
+  await expect(reserve.getByTestId('cash-reserve')).toContainText(/from balances at \d+ \w+ · \d+ of \d+ accounts?/, { timeout: 20_000 });
+  await expect(reserve.getByTestId('cash-reserve')).toContainText('₹');
   const row = page.getByRole('region', { name: 'Accounts' }).getByRole('listitem').filter({ hasText: name });
   await expect(row).toContainText('₹5,000', { timeout: 20_000 });
 });

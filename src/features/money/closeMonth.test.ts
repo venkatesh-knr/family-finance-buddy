@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { Account, AccountBalance, Credit, Transfer } from '../../repo/types.ts';
-import { accountSteps, closeFigures, isClosed, itemisedFigures, lastDayOf, monthToClose, monthWord, parseBalance, planYearOf, monthlyPlanned } from './closeMonth.ts';
+import {
+  accountSteps,
+  closeFigures,
+  isClosed,
+  itemisedFigures,
+  lastBalanceMonth,
+  lastDayOf,
+  monthToClose,
+  monthWord,
+  monthlyPlanned,
+  offersClose,
+  parseBalance,
+  planYearOf,
+} from './closeMonth.ts';
 
 /**
  * The month close (docs/design/spending-capture.md sections 2 and 6; ledger-income.md section 4; the MonthClose board): balances at the month's
@@ -250,6 +263,52 @@ describe('an archived account stays in the closes of the months it was in use', 
     const noSbi = balances.filter((b) => !(b.accountId === 'sbi' && b.asAt === '2026-10-31'));
     expect(isClosed({ month: '2026-10', accounts: archivedInNovember, balances: noSbi })).toBe(false);
     expect(isClosed({ month: '2026-10', accounts: archivedInSeptember, balances: noSbi })).toBe(true);
+  });
+});
+
+describe('lastBalanceMonth — the month the cash reserve is as at', () => {
+  it('is the latest month-end on which an account in use has a balance', () => {
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts, balances })).toBe('2026-10');
+  });
+
+  it('is still that month when an account was added after the close and has no balance: the reserve then says it counts 3 of 4, and does not say there was no close', () => {
+    const added = [...accounts, account('new', 'savings', 'New account')];
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts: added, balances })).toBe('2026-10');
+  });
+
+  it('is still that month after a partial close, where only some accounts were typed', () => {
+    const partial = balances.filter((b) => !(b.asAt === '2026-10-31' && b.accountId !== 'hdfc'));
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts, balances: partial })).toBe('2026-10');
+  });
+
+  it('looks back past a month with no balance, and finds the one that has', () => {
+    expect(lastBalanceMonth({ today: '2026-12-14', accounts, balances })).toBe('2026-10');
+  });
+
+  it('is nothing before a first close, and nothing with no account in use', () => {
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts, balances: [] })).toBeNull();
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts: [], balances })).toBeNull();
+  });
+
+  it('does not look further back than a year', () => {
+    const old = [balance('hdfc', '2025-01-31', 1)];
+    expect(lastBalanceMonth({ today: '2026-11-14', accounts, balances: old })).toBeNull();
+  });
+});
+
+describe('offersClose — when Close October is offered', () => {
+  const input = { month: '2026-10', accounts, balances: [] as AccountBalance[], canRecord: true, moneyReady: true };
+
+  it('is offered to someone who can record, once the credits and moves are read, until every account has a closing balance', () => {
+    expect(offersClose(input)).toBe(true);
+    expect(offersClose({ ...input, balances })).toBe(false);
+  });
+
+  it('is not offered before what it needs has been read, to someone who cannot record, or with no account in use', () => {
+    expect(offersClose({ ...input, moneyReady: false })).toBe(false);
+    expect(offersClose({ ...input, canRecord: false })).toBe(false);
+    expect(offersClose({ ...input, accounts: [] })).toBe(false);
+    expect(offersClose({ ...input, accounts: accounts.map((a) => ({ ...a, isArchived: true })) })).toBe(false);
   });
 });
 

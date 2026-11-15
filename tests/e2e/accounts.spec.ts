@@ -40,6 +40,33 @@ test('an old Expenses address becomes the Money address, and replaces itself', a
   expect(new URL(page.url()).hash).toBe('#/money');
 });
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** The month the close offers: the one before this, in India. */
+function monthBefore(): string {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const index = Number(today.slice(0, 4)) * 12 + (Number(today.slice(5, 7)) - 1) - 1;
+  return MONTHS[index % 12] as string;
+}
+
+test('the cash reserve offers the close from the Accounts screen, and says what it will be built from until one is done', async ({ page }) => {
+  test.setTimeout(120_000);
+  await onAccounts(page);
+  await addAccount(page, testName('reserve-acct'));
+  const reserve = page.getByRole('region', { name: 'Cash reserve' });
+  await expect(reserve).toBeVisible({ timeout: 20_000 });
+  // An account with no balance for the month leaves the month open and the close on offer; the reserve is as at the last month-end that has a balance.
+  const close = reserve.getByRole('button', { name: `Close ${monthBefore()} · about 2 minutes` });
+  await expect(close).toBeVisible({ timeout: 20_000 });
+  await close.click();
+  const form = page.getByRole('form', { name: `Close ${monthBefore()}` });
+  await expect(form).toBeVisible();
+  // Leaving it writes nothing.
+  await form.getByRole('button', { name: `Close Close ${monthBefore()}` }).click();
+  await expect(form).toHaveCount(0);
+  await expect(close).toBeVisible();
+});
+
 test('LI-I25 — Money has no tabs, and Accounts is behind More, an address of its own', async ({ page }) => {
   await page.goto('/#/money');
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
