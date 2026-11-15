@@ -13,8 +13,8 @@
 import { MalformedRowError } from '../lib/guards.ts';
 import { supabase } from './client.ts';
 import { asLedgerError } from './ledgerErrors.ts';
-import { toCashReserve, toMoneyTotals, toYearlyIncomeTotals } from './ledgerMapping.ts';
-import type { CashReserve, MoneyTotals, Uuid, YearlyIncomeTotals } from './types.ts';
+import { toCashReserve, toMoneyTotals, toPrivateClose, toYearlyIncomeTotals } from './ledgerMapping.ts';
+import type { CashReserve, MoneyTotals, PrivateClose, Uuid, YearlyIncomeTotals } from './types.ts';
 
 /** What came in and what was refunded between two days, per currency, for the whole household. */
 export async function householdMoneyTotals(householdId: Uuid, from: string, to: string): Promise<readonly MoneyTotals[]> {
@@ -24,6 +24,19 @@ export async function householdMoneyTotals(householdId: Uuid, from: string, to: 
   if (data === null) return [];
   if (!Array.isArray(data)) throw new MalformedRowError('household_money_totals', 'did not return a set of rows');
   return data.map(toMoneyTotals);
+}
+
+/**
+ * What a month close needs of the money the caller cannot read, per currency (another member's private accounts, the private credits into
+ * accounts the caller does read, the moves that touch a hidden account), as totals and two counts. An owner or a partner only; the database
+ * refuses anyone else, so a screen does not ask a contributor.
+ */
+export async function householdPrivateClose(householdId: Uuid, month: string, lastDay: string): Promise<readonly PrivateClose[]> {
+  const { data, error } = await supabase().rpc('household_private_close', { target_household_id: householdId, month_first: `${month}-01`, month_last: lastDay });
+  if (error !== null) throw asLedgerError(error);
+  if (data === null) return [];
+  if (!Array.isArray(data)) throw new MalformedRowError('household_private_close', 'did not return a set of rows');
+  return data.map(toPrivateClose);
 }
 
 /**

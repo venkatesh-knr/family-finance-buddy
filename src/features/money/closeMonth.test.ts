@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { Account, AccountBalance, Credit, Transfer } from '../../repo/types.ts';
-import { accountSteps, closeFigures, isClosed, itemisedFigures, lastDayOf, monthToClose, monthWord, parseBalance } from './closeMonth.ts';
+import { accountSteps, closeFigures, isClosed, itemisedFigures, lastDayOf, monthToClose, monthWord, parseBalance, planYearOf, monthlyPlanned } from './closeMonth.ts';
 
 /**
  * The month close (docs/design/spending-capture.md sections 2 and 6; ledger-income.md section 4; the MonthClose board): balances at the month's
@@ -182,6 +182,32 @@ describe('accountSteps — one row each, with the closing balance as the only in
   });
 });
 
+describe('closeFigures — what the database sums of the accounts the caller cannot read', () => {
+  // The card is another member's private one: the screen reads neither it, nor the refund into it, nor the move into it.
+  const readable = accounts.filter((a) => a.id !== 'card');
+  const readableBalances = balances.filter((b) => b.accountId !== 'card');
+  const hiddenCard = { currency: 'INR', left: 2_173_900n, outside: 0n, ownOut: 1_824_000n, refunds: 129_900n, cameIn: 0n, reserveChange: -220_000n };
+  const visible = { ...base, accounts: readable, balances: readableBalances, credits: credits.filter((c) => c.accountId !== 'card'), transfers: [] };
+
+  it('is the same close as when the card is read', () => {
+    const result = closeFigures({ ...visible, unreadable: [hiddenCard] });
+    expect(result.status === 'figures' && result.currencies[0]?.spent).toBe(6_967_000n);
+    expect(result.status === 'figures' && result.currencies[0]?.saved).toBe(7_358_000n);
+    expect(result.status === 'figures' && result.currencies[0]?.gapMinor).toBe(0n);
+  });
+
+  it('draws no currency in which nothing hidden could be counted: a missing balance is not a month of nothing', () => {
+    const usd = { currency: 'USD', left: 0n, outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: 0n, counted: 0, total: 1 };
+    const result = closeFigures({ ...visible, unreadable: [hiddenCard, usd] });
+    expect(result.status === 'figures' && result.currencies.map((c) => c.currency)).toEqual(['INR']);
+  });
+
+  it('is read wrong without them', () => {
+    const result = closeFigures(visible);
+    expect(result.status === 'figures' && result.currencies[0]?.spent).not.toBe(6_967_000n);
+  });
+});
+
 describe('itemisedFigures — what was itemised, with the month’s refunds taken off as spent has them', () => {
   const expense = (rupees: number, isVoided = false) => ({ amount: r(rupees), isVoided });
 
@@ -224,6 +250,44 @@ describe('an archived account stays in the closes of the months it was in use', 
     const noSbi = balances.filter((b) => !(b.accountId === 'sbi' && b.asAt === '2026-10-31'));
     expect(isClosed({ month: '2026-10', accounts: archivedInNovember, balances: noSbi })).toBe(false);
     expect(isClosed({ month: '2026-10', accounts: archivedInSeptember, balances: noSbi })).toBe(true);
+  });
+});
+
+describe('the plan a month is measured against', () => {
+  const budget = (categoryId: string, cadence: 'monthly' | 'yearly', rupees: number, currency = 'INR') => ({
+    id: `bd-${categoryId}-${cadence}`,
+    categoryId,
+    fy: 2026,
+    cadence,
+    period: null,
+    planned: money(BigInt(rupees) * 100n, currency),
+    memberId: null,
+  });
+  const categories = [
+    { id: 'rent', isArchived: false },
+    { id: 'food', isArchived: false },
+    { id: 'old', isArchived: true },
+  ];
+
+  it('is the planning year the month falls in: April to March', () => {
+    expect(planYearOf('2026-10')).toBe(2026);
+    expect(planYearOf('2027-03')).toBe(2026);
+    expect(planYearOf('2027-04')).toBe(2027);
+  });
+
+  it('SC section 5 — adds the monthly plans of the categories in use, in the currency asked', () => {
+    const budgets = [budget('rent', 'monthly', 40_000), budget('food', 'monthly', 20_000), budget('old', 'monthly', 9_000), budget('food', 'monthly', 500, 'USD')];
+    expect(monthlyPlanned(budgets, categories, 'INR')).toBe(6_000_000n);
+    expect(monthlyPlanned(budgets, categories, 'USD')).toBe(50_000n);
+  });
+
+  it('leaves a yearly plan out of a month, as the Expenses screen does: a twelfth of a school fee is no monthly budget', () => {
+    expect(monthlyPlanned([budget('rent', 'monthly', 40_000), budget('food', 'yearly', 120_000)], categories, 'INR')).toBe(4_000_000n);
+  });
+
+  it('is nothing, not zero, when no monthly plan is set in the currency', () => {
+    expect(monthlyPlanned([budget('food', 'yearly', 120_000)], categories, 'INR')).toBeNull();
+    expect(monthlyPlanned([], categories, 'INR')).toBeNull();
   });
 });
 

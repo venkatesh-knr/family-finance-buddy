@@ -1277,6 +1277,22 @@ export interface CashReserve {
   readonly total: number;
 }
 
+/**
+ * What a month close needs of the money the caller cannot read: sums per currency, and how many hidden accounts had both balances out of how many
+ * there are. No account, no member, no balance. The field names are the domain's `MonthUnreadable` and `counted` and `total` besides.
+ */
+export interface PrivateClose {
+  readonly currency: string;
+  readonly left: bigint;
+  readonly outside: bigint;
+  readonly ownOut: bigint;
+  readonly refunds: bigint;
+  readonly cameIn: bigint;
+  readonly reserveChange: bigint;
+  readonly counted: number;
+  readonly total: number;
+}
+
 /** What came in and what was refunded in a period, for the whole household, private credits included. One line per currency. */
 export interface MoneyTotals {
   readonly cameIn: Money;

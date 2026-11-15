@@ -15,11 +15,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatShortDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
+import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
-import type { Credit, Expense, Transfer } from '../../repo/types.ts';
+import { householdPrivateClose } from '../../repo/moneyTotals.ts';
+import type { Credit, Expense, PlanListing, PrivateClose, Transfer } from '../../repo/types.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { accountSteps, closeFigures, itemisedFigures, lastDayOf, monthWord, parseBalance, type TypedBalances } from './closeMonth.ts';
+import { accountSteps, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, type TypedBalances } from './closeMonth.ts';
 import { titleOf } from './accountRows.ts';
 import { amountText } from './creditForm.ts';
 import type { AccountsData } from './useAccounts.ts';
@@ -67,9 +69,56 @@ export function CloseMonth({
     };
   }, [data.household.id, data.members, month, closesOn]);
 
+  // The plan the month is measured against. A plan that cannot be read leaves the line out and says so; it is no reason to stop a close.
+  const [plan, setPlan] = useState<PlanListing | null>(null);
+  const [planFailed, setPlanFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    listPlan({ householdId: data.household.id, fy: planYearOf(month) })
+      .then((listing) => {
+        if (live) setPlan(listing);
+      })
+      .catch(() => {
+        if (live) setPlanFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [data.household.id, month]);
+
+  // What another member keeps private, as totals, for an owner or a partner: the database adds it, and nobody else may ask. Until it has been read,
+  // or when it could not be, there is no figure: a close that leaves it out reads wrong, and not only low.
+  const asks = data.viewer.role === 'owner' || data.viewer.role === 'partner';
+  const [unread, setUnread] = useState<readonly PrivateClose[] | null>(asks ? null : []);
+  const [unreadFailed, setUnreadFailed] = useState(false);
+  useEffect(() => {
+    if (!asks) return undefined;
+    let live = true;
+    householdPrivateClose(data.household.id, month, closesOn)
+      .then((rows) => {
+        if (live) setUnread(rows);
+      })
+      .catch(() => {
+        if (live) setUnreadFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [asks, data.household.id, month, closesOn]);
+  const blocked = asks && (unread === null || unreadFailed);
+
   const base = useMemo(
-    () => ({ month, today, accounts: data.accounts, balances: data.balances, credits, transfers, typed: {} as TypedBalances }),
-    [month, today, data.accounts, data.balances, credits, transfers],
+    () => ({
+      month,
+      today,
+      accounts: data.accounts,
+      balances: data.balances,
+      credits,
+      transfers,
+      typed: {} as TypedBalances,
+      ...(unread === null || unread.length === 0 ? {} : { unreadable: unread }),
+    }),
+    [month, today, data.accounts, data.balances, credits, transfers, unread],
   );
   const steps = useMemo(() => accountSteps(base), [base]);
 
@@ -96,7 +145,8 @@ export function CloseMonth({
       },
     ]),
   );
-  const live = useMemo(() => closeFigures({ ...base, typed }), [base, typed]);
+  const worked = useMemo(() => closeFigures({ ...base, typed }), [base, typed]);
+  const live: typeof worked = blocked ? { status: 'missing', missing: [] } : worked;
   const rows = useMemo(() => accountSteps({ ...base, typed }), [base, typed]);
 
   const itemised = itemisedFigures(expenses ?? [], credits, month);
@@ -104,7 +154,15 @@ export function CloseMonth({
   const accountsTyped = parsed.filter((p) => p.closing.ok && p.closing.balance !== null).length;
   const names = new Map(data.accounts.map((account) => [account.id, titleOf(account)]));
   // Another member's private account is not readable by anyone else, the owner included: say so wherever there is another member to have one.
-  const privateNote = data.members.length > 1 ? ' An account another member keeps private is not in this close.' : '';
+  const hiddenCounted = (unread ?? []).reduce((total, line) => total + line.counted, 0);
+  const hiddenTotal = (unread ?? []).reduce((total, line) => total + line.total, 0);
+  const privateNote = asks
+    ? hiddenTotal > 0
+      ? ` Another member’s private accounts are counted as totals, ${String(hiddenCounted)} of ${String(hiddenTotal)} with both balances typed${hiddenCounted < hiddenTotal ? ', and the rest are left out' : ''}.`
+      : ''
+    : data.members.length > 1
+      ? ' This close covers only the accounts you can read: your own.'
+      : '';
 
   const finish = async (): Promise<void> => {
     if (live.status !== 'figures' || anyBad) return;
@@ -159,6 +217,17 @@ export function CloseMonth({
                           {shown(money(figures.spent, figures.currency))}
                         </p>
                         <p className="note">from balances</p>
+                        {plan !== null && (() => {
+                          const planned = monthlyPlanned(plan.budgets, plan.categories, figures.currency);
+                          if (planned === null) return null;
+                          const over = figures.spent - planned;
+                          return (
+                            <p className="note tabular-nums" data-testid="close-plan">
+                              Plan {shown(money(planned, figures.currency))} ·{' '}
+                              {over > 0n ? `${shown(money(over, figures.currency))} over the plan` : over < 0n ? `${shown(money(-over, figures.currency))} under the plan` : 'on the plan'}
+                            </p>
+                          );
+                        })()}
                         {expenses !== null && (
                           <p className="note tabular-nums">
                             {shown(money(done, figures.currency))} itemised · {unlisted >= 0n ? shown(money(unlisted, figures.currency)) : `${shown(money(-unlisted, figures.currency))} more itemised than the balances say`}
@@ -168,12 +237,19 @@ export function CloseMonth({
                       </div>
                     );
                   })
+                ) : blocked ? (
+                  <p className="note">
+                    {unreadFailed
+                      ? 'What other members keep private could not be read just now, so there is no figure and the month cannot be closed.'
+                      : 'Reading what other members keep private…'}
+                  </p>
                 ) : live.status === 'missing' ? (
                   <p className="note">Type each account’s balance below to see what was spent. It is not counted as nothing.</p>
                 ) : (
                   <p className="note">There is nothing to close from balances.</p>
                 )}
                 {expensesFailed && <p className="note">What was itemised could not be read just now, so it is not shown beside the result.</p>}
+                {planFailed && <p className="note">The plan could not be read just now, so the month is not measured against it.</p>}
               </section>
 
               <p className="note">

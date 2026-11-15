@@ -10,9 +10,9 @@
 
 import { addMonths } from '../../domain/accrual.ts';
 import { isIncome } from '../../domain/credit.ts';
-import { closedMonthFigures, type MonthFigures, type MonthHoldingMove } from '../../domain/money-month.ts';
+import { closedMonthFigures, type MonthFigures, type MonthHoldingMove, type MonthUnreadable } from '../../domain/money-month.ts';
 import { money, parseAmountToMinor, type Money } from '../../lib/money.ts';
-import type { Account, AccountBalance, Credit, Transfer } from '../../repo/types.ts';
+import type { Account, AccountBalance, Budget, Credit, Transfer } from '../../repo/types.ts';
 import { titleOf } from './accountRows.ts';
 
 const MONTH_WORDS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -36,6 +36,29 @@ export function monthToClose(today: string): string {
   return addMonths(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
 }
 
+/** The planning year a month falls in, named by the year it starts: April to March. */
+export function planYearOf(month: string): number {
+  const year = Number(month.slice(0, 4));
+  return Number(month.slice(5, 7)) >= 4 ? year : year - 1;
+}
+
+/**
+ * What a month is measured against, in a currency: the monthly plans of the categories in use, added. A yearly plan is not spread over twelve (the
+ * Expenses screen does not either). Null when no monthly plan is set in that currency, which is not a plan of nothing.
+ */
+export function monthlyPlanned(
+  budgets: readonly Budget[],
+  categories: readonly { readonly id: string; readonly isArchived: boolean }[],
+  currency: string,
+): bigint | null {
+  const used = new Set(categories.filter((category) => !category.isArchived).map((category) => category.id));
+  const monthly = budgets.filter((budget) => budget.cadence === 'monthly' && used.has(budget.categoryId) && budget.planned.currency === currency);
+  if (monthly.length === 0) return null;
+  const firstOfEach = new Map<string, Budget>();
+  for (const budget of monthly) if (!firstOfEach.has(budget.categoryId)) firstOfEach.set(budget.categoryId, budget);
+  return [...firstOfEach.values()].reduce((total, budget) => total + budget.planned.minor, 0n);
+}
+
 /** What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. */
 export type TypedBalances = Readonly<Record<string, { readonly opening?: Money; readonly closing?: Money }>>;
 
@@ -50,6 +73,8 @@ export interface CloseInput {
   readonly transfers: readonly Transfer[];
   /** Money into holdings and out of them that names an account. The screen does not read these yet and passes none. */
   readonly holdingMoves?: readonly MonthHoldingMove[];
+  /** What the database adds of the money the caller cannot read, for an owner or a partner. None for anyone else. */
+  readonly unreadable?: readonly (MonthUnreadable & { readonly counted?: number })[];
   readonly typed: TypedBalances;
 }
 
@@ -96,6 +121,9 @@ export function closeFigures(input: CloseInput): CloseFigures {
   if (accounts.length === 0) return { status: 'no-accounts' };
   const opensOn = lastDayOf(addMonths(`${input.month}-01`, -1).slice(0, 7));
   const closesOn = lastDayOf(input.month);
+  // A currency in which no account is read and no hidden account had both balances has no honest figure, and is not drawn as a month of nothing.
+  const readIn = new Set(accounts.map((account) => account.currency));
+  const unreadable = (input.unreadable ?? []).filter((line) => readIn.has(line.currency) || line.outside !== 0n || (line.counted ?? 1) > 0);
 
   const result = closedMonthFigures({
     month: input.month,
@@ -113,6 +141,7 @@ export function closeFigures(input: CloseInput): CloseFigures {
     transfers: input.transfers.filter((t) => !t.isVoided).map((t) => ({ fromId: t.fromAccountId, toId: t.toAccountId, amount: t.amount, date: t.date })),
     holdingMoves: input.holdingMoves ?? [],
     loanPayments: [],
+    ...(unreadable.length === 0 ? {} : { unreadable }),
   });
   if (result.ok) return { status: 'figures', currencies: result.currencies };
   if (result.reason === 'not-ended') return { status: 'not-ended' };
