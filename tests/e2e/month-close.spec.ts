@@ -110,6 +110,24 @@ test('with amounts hidden a balance can still be typed, and what is typed is not
   await expect(form(page).getByTestId('close-result')).not.toContainText('5,000');
 });
 
+test('Last month is a control on the month surface: it names the month, and is closed or says it is not', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/#/money');
+  const card = page.getByRole('region', { name: 'The month so far' });
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  await card.getByRole('button', { name: 'Last month' }).click();
+  const last = page.getByRole('region', { name: monthBefore() });
+  await expect(last).toBeVisible({ timeout: 20_000 });
+  await expect(last).toContainText(new RegExp(`${monthBefore()} · (closed|not closed yet)`));
+  for (const id of ['month-came-in', 'month-spent', 'month-saved']) await expect(last.getByTestId(id)).toBeVisible();
+  // Never the open state's dash for a month that is closed, and never a figure for one that is not.
+  if ((await last.getByText(new RegExp(`^${monthBefore()} · closed$`)).count()) > 0) await expect(last).toContainText(/from balances, \d+ of \d+ accounts?/);
+  else await expect(last).toContainText('after the close');
+
+  await last.getByRole('button', { name: 'This month' }).click();
+  await expect(page.getByRole('region', { name: 'The month so far' })).toBeVisible();
+});
+
 test('LI-I6 — with balances typed the result is derived, the month is closed, and the prompt goes', async ({ page }) => {
   test.setTimeout(150_000);
   const name = testName('close-final');
@@ -132,6 +150,13 @@ test('LI-I6 — with balances typed the result is derived, the month is closed, 
   await page.reload();
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   await expect(prompt(page)).toHaveCount(0);
+
+  // Last month now reads as closed, from balances, with how many accounts it covers.
+  await page.getByRole('region', { name: 'The month so far' }).getByRole('button', { name: 'Last month' }).click();
+  const closed = page.getByRole('region', { name: monthBefore() });
+  await expect(closed).toContainText(`${monthBefore()} · closed`, { timeout: 20_000 });
+  await expect(closed).toContainText(/from balances, \d+ of \d+ accounts?/);
+  await expect(closed.getByTestId('month-spent')).toContainText('₹');
 
   // The balance is kept on the account: the Accounts screen shows it, as at the last day of the month.
   await page.goto('/#/accounts');

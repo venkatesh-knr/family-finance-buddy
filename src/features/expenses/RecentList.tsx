@@ -12,11 +12,14 @@ import { formatMoney } from '../../lib/money.ts';
 import type { LiveStatus } from '../../repo/expenses.ts';
 import type { Account, Credit, ExpenseListing, Expense as ExpenseRow, Member, Transfer } from '../../repo/types.ts';
 import { Pill, Problem } from '../../ui/primitives.tsx';
+import type { LastMonthView } from '../money/lastMonth.ts';
 import { creditLine, kindsFor, LEDGER_FILTERS, mergeByDate, spendingWord, transferLine, type LedgerFilter, type LedgerLine } from '../money/ledgerLines.ts';
 import { memberMarks, type MemberMark } from './memberMark.ts';
 
 /** What the Money screen adds to the list: the credits and moves the caller may read, and the accounts they name (ledger-income.md section 1). */
 export interface LedgerMoney {
+  /** Last month, for the month surface's *This month | Last month* control: closed figures or the open state. Null where it cannot be read. */
+  readonly lastMonth?: LastMonthView | null;
   /** *+ Money in*, *Close October* and the way to Accounts, placed directly under the month surface (the owner, 15 November 2026). */
   readonly actions?: React.ReactNode;
   /** The Expected panel: placed under the month surface, where the board draws it, or above the month card where there is no surface. */

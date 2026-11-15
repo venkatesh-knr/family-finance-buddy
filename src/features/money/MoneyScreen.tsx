@@ -21,7 +21,9 @@ import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
 import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
-import { isClosed, monthToClose, monthWord } from './closeMonth.ts';
+import { accountSteps, closeFigures, isClosed, monthToClose, monthWord } from './closeMonth.ts';
+import { lastMonthView, type LastMonthView } from './lastMonth.ts';
+import { usePrivateClose } from './usePrivateClose.ts';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
 import { expectedRows, ruleHistory, ruleListRows, type RuleDraft } from './ruleForm.ts';
@@ -53,6 +55,31 @@ export function MoneyScreen({
   const today = todayInIst();
   // The prompt from the 1st: Close October, until every account in use has a closing balance on October's last day.
   const closeMonthKey = monthToClose(today);
+  // Last month on the month surface, for an owner or a partner: the closed figures, or the open state while nobody has closed it. What another
+  // member keeps private is added by the database as totals (usePrivateClose), and until it is read there is no figure.
+  const lastPrivate = usePrivateClose(ledger.data?.household.id ?? null, ledger.data?.viewer.role ?? null, closeMonthKey);
+  const lastMonth: LastMonthView | null = (() => {
+    if (ledger.data === null || !lastPrivate.asks) return null;
+    const input = {
+      month: closeMonthKey,
+      today,
+      accounts: ledger.data.accounts,
+      balances: ledger.data.balances,
+      credits: ledger.credits,
+      transfers: ledger.transfers,
+      typed: {},
+      ...(lastPrivate.unread === null || lastPrivate.unread.length === 0 ? {} : { unreadable: lastPrivate.unread }),
+    };
+    const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed);
+    const failed = ledger.moneyStatus === 'failed' || lastPrivate.failed;
+    return lastMonthView({
+      month: closeMonthKey,
+      close: closeFigures(input),
+      readable: accountSteps(input).length,
+      hidden: lastPrivate.unread ?? [],
+      ...(failed ? { reading: 'failed' as const } : waiting ? { reading: 'loading' as const } : {}),
+    });
+  })();
   // Not offered until the credits and moves have been read: money in read as nothing would make spent read low.
   const mayClose =
     ledger.data !== null &&
@@ -208,6 +235,7 @@ export function MoneyScreen({
               </p>
             </>
           ),
+          lastMonth,
           expected:
             viewer === null ? undefined : (
               <ExpectedPanel
