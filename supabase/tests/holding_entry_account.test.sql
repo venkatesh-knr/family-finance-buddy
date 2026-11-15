@@ -146,17 +146,17 @@ select is(
 );
 
 select throws_ok(
-  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, created_by)
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, created_by)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000004', 'd8000000-0000-4000-8000-0000000000a1') $q$,
+              'a8000000-0000-4000-8000-000000000004', 'INR', 'd8000000-0000-4000-8000-0000000000a1') $q$,
   '23503'::char(5), null::text,
   'LI-I28 — a purchase cannot name an account of another household'
 );
 
 select throws_ok(
-  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, created_by)
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, account_amount_minor, created_by)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000001', 'USD', 'd8000000-0000-4000-8000-0000000000a1') $q$,
+              'a8000000-0000-4000-8000-000000000001', 'USD', 100, 'd8000000-0000-4000-8000-0000000000a1') $q$,
   '23503'::char(5), null::text,
   'LI-I28 — an entry cannot say an account is in a currency it is not in'
 );
