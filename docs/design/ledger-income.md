@@ -330,9 +330,10 @@ A bonus issue, a split, a transfer, a gift and an ESOP vest moved no money, and 
 until it is named. Nothing is required, and a household with no accounts never sees the question (§0). The close says how many of the month's entries
 named an account, so a person can see why *invested* here is less than the Overview's, and fix it.
 
-**The account is in the entry's own currency and household** (the composite key `credit_entry` uses). A US purchase paid from a rupee account cannot
-name it: the rupees that left the account and the dollars the lot records are different figures, and converting one into the other would invent a rate.
-It is left unnamed, and counted among those that named none.
+**A purchase abroad is usually paid from a rupee account.** The lot records dollars; what left the account was rupees. So a lot and a sale also carry
+*what left the account* (or *reached it*), typed in the account's own currency as its statement shows it, and the account's currency. When the account is
+in the entry's own currency nothing is added: the cost, or the proceeds, is the amount. When it is not, the amount is required. No exchange rate is
+invented and nothing is converted: the bank's own figure is typed, and the close uses it. A PPF entry is rupees only and has neither.
 
 **What the close does with them.** For an account in the close: money into a holding is subtracted from spent, as §4's formula says
 (`− money into holdings`); money taken out is money in to that account, and so adds to what *left* it (`opening + money in − closing`). Nothing else changes:
@@ -350,7 +351,8 @@ cannot attach a purchase to another member's private account. Editing a row whos
 is fixed by the member who owns the account.
 
 **Entered where the entry is.** The purchase form, the sale form and the PPF payment form each gain *Paid from* / *Paid into*, an optional picker of
-the household's accounts in that currency, last used first, with *Not said* as the first choice. It is not asked in an import from a template.
+the household's accounts, last used first, with *Not said* as the first choice. Choose an account in another currency than the entry's and one more field
+appears: *What left the account, in ₹* (or *What reached it*). It is not asked in an import from a template.
 
 **Not in this step.** A deposit's principal and its payout, a bond, and a holding opened with a cost and no purchase are counted in *invested* but are
 not lots, so they do not name an account yet. Loan payments are a step of their own after this.
@@ -658,7 +660,7 @@ functions, which read the totals.
 
 **LI-I7 — Saved equals came in minus spent, and is shown for a closed month, labelled from balances, or, in a household with no accounts, for a month that has ended, labelled from what was entered;** an open month never shows it. (§4)
 
-**LI-I28 — A holding's entry (a purchase lot, a sale, redemption or maturity, a PPF payment or withdrawal) names an account of its own household in its own currency, or none;** naming none changes nothing. (§4a)
+**LI-I28 — A holding's entry (a purchase lot, a sale, redemption or maturity, a PPF payment or withdrawal) names an account of its own household, or none;** naming none changes nothing. A lot or a sale that names an account in another currency than its own also carries what left or reached the account in that account's currency, and one in the same currency carries none. (§4a)
 
 **LI-I29 — An entry names only an account its writer can read.** (§4a)
 
@@ -735,7 +737,7 @@ functions, which read the totals.
 - LI-I25: `#/accounts` renders the Accounts screen, and `#/money?tab=accounts` replaces itself with it; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
 - LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
 - LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it, and so does the month close's, with the account counted as one of one only when both balances are typed.
-- LI-I28: pgTAP: a purchase, a sale and a PPF entry accept no account; a purchase cannot name an account of another household or in another currency; a sale likewise.
+- LI-I28: pgTAP: a purchase, a sale and a PPF entry accept no account; a purchase cannot name an account of another household or say an account is in a currency it is not in; a dollar purchase from a rupee account needs what left the account, and a rupee purchase from a rupee account refuses one; an amount with no account is refused.
 - LI-I29: pgTAP: an owner cannot attach a purchase or a sale to a partner's private account, nor move an existing purchase onto it.
 - LI-I30: pgTAP over the section 4a rules: the sum adds a purchase from a hidden account, a purchase of another member's private holding from a readable account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
 - LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.

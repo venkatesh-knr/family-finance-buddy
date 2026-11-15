@@ -18,7 +18,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(15);
+select plan(18);
 
 -- ============================================================== the fixture
 --
@@ -95,28 +95,46 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
   ('b7000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a2',
    'a7000000-0000-4000-8000-000000000001', 20, 'personal');
 
+-- 03 a dollar holding of the owner's, household-visible.
+insert into public.instrument (id, household_id, name, kind, currency, exposure_currency, is_foreign_asset) values
+  ('a7000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'A US ETF', 'etf', 'USD', 'USD', true);
+insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
+  ('b7000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
+   'a7000000-0000-4000-8000-000000000002', 5, 'household');
+
 -- October 2026, as the month close reads it. The owner is the one asking.
 --   Seen by the owner's own screen, so not in the sum: a ₹7,000 purchase of the shared holding from the shared account.
 --   Not in the sum for another reason: a purchase in November, and a gift (no money moved) paid into the hidden account.
 --   In it: ₹5,000 purchase of the shared holding from the partner's private account, and ₹2,000 of proceeds paid into it;
---          ₹3,000 purchase of the partner's private holding from the shared account, and ₹1,000 of proceeds paid into it.
-insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, kind, account_id, created_by) values
+--          ₹3,000 purchase of the partner's private holding from the shared account, and ₹1,000 of proceeds paid into it;
+--          a $100 purchase of the dollar ETF that took ₹8,500 out of the partner's rupee account, and a $50 sale that paid ₹4,000 into it.
+insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, kind, account_id, account_currency, created_by) values
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-03', 1, 700000, 'INR', 'purchase',
-   'a8000000-0000-4000-8000-000000000001', 'd8000000-0000-4000-8000-0000000000a1'),
+   'a8000000-0000-4000-8000-000000000001', 'INR', 'd8000000-0000-4000-8000-0000000000a1'),
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-10', 1, 500000, 'INR', 'purchase',
-   'a8000000-0000-4000-8000-000000000002', 'd8000000-0000-4000-8000-0000000000a2'),
+   'a8000000-0000-4000-8000-000000000002', 'INR', 'd8000000-0000-4000-8000-0000000000a2'),
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000002', '2026-10-12', 1, 300000, 'INR', 'purchase',
-   'a8000000-0000-4000-8000-000000000001', 'd8000000-0000-4000-8000-0000000000a2'),
+   'a8000000-0000-4000-8000-000000000001', 'INR', 'd8000000-0000-4000-8000-0000000000a2'),
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-11-02', 1, 900000, 'INR', 'purchase',
-   'a8000000-0000-4000-8000-000000000002', 'd8000000-0000-4000-8000-0000000000a2');
+   'a8000000-0000-4000-8000-000000000002', 'INR', 'd8000000-0000-4000-8000-0000000000a2');
 
-insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, kind, account_id, created_by) values
+insert into public.lot
+  (household_id, holding_id, acquired_on, quantity, cost_minor, currency, kind, account_id, account_currency, account_amount_minor, created_by) values
+  ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000003', '2026-10-15', 5, 10000, 'USD', 'purchase',
+   'a8000000-0000-4000-8000-000000000002', 'INR', 850000, 'd8000000-0000-4000-8000-0000000000a2');
+
+insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, kind, account_id, account_currency, created_by) values
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-20', 1, 200000, 'INR', 'sale',
-   'a8000000-0000-4000-8000-000000000002', 'd8000000-0000-4000-8000-0000000000a2'),
+   'a8000000-0000-4000-8000-000000000002', 'INR', 'd8000000-0000-4000-8000-0000000000a2'),
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000002', '2026-10-21', 1, 100000, 'INR', 'redemption',
-   'a8000000-0000-4000-8000-000000000001', 'd8000000-0000-4000-8000-0000000000a2'),
+   'a8000000-0000-4000-8000-000000000001', 'INR', 'd8000000-0000-4000-8000-0000000000a2'),
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-22', 1, 999999, 'INR', 'gift',
-   'a8000000-0000-4000-8000-000000000002', 'd8000000-0000-4000-8000-0000000000a2');
+   'a8000000-0000-4000-8000-000000000002', 'INR', 'd8000000-0000-4000-8000-0000000000a2');
+
+insert into public.disposal
+  (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, kind, account_id, account_currency, account_amount_minor, created_by) values
+  ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000003', '2026-10-25', 2, 5000, 'USD', 'sale',
+   'a8000000-0000-4000-8000-000000000002', 'INR', 400000, 'd8000000-0000-4000-8000-0000000000a2');
 
 -- ============================================== what the tables refuse, as the database owner
 
@@ -136,19 +154,36 @@ select throws_ok(
 );
 
 select throws_ok(
-  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, created_by)
-      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'USD',
-              'a8000000-0000-4000-8000-000000000001', 'd8000000-0000-4000-8000-0000000000a1') $q$,
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, created_by)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
+              'a8000000-0000-4000-8000-000000000001', 'USD', 'd8000000-0000-4000-8000-0000000000a1') $q$,
   '23503'::char(5), null::text,
-  'LI-I28 — nor an account in another currency than the purchase'
+  'LI-I28 — an entry cannot say an account is in a currency it is not in'
 );
 
 select throws_ok(
-  $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id, created_by)
-      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'USD',
-              'a8000000-0000-4000-8000-000000000001', 'd8000000-0000-4000-8000-0000000000a1') $q$,
-  '23503'::char(5), null::text,
-  'LI-I28 — a sale cannot be paid into an account in another currency'
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, created_by)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000003', '2026-10-02', 1, 100, 'USD',
+              'a8000000-0000-4000-8000-000000000001', 'INR', 'd8000000-0000-4000-8000-0000000000a1') $q$,
+  '23514'::char(5), null::text,
+  'LI-I28 — a purchase paid from an account in another currency needs what left the account'
+);
+
+select throws_ok(
+  $q$ insert into public.disposal
+        (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id, account_currency, account_amount_minor, created_by)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
+              'a8000000-0000-4000-8000-000000000001', 'INR', 100, 'd8000000-0000-4000-8000-0000000000a1') $q$,
+  '23514'::char(5), null::text,
+  'LI-I28 — and a sale paid into an account in its own currency does not say it'
+);
+
+select throws_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_amount_minor, created_by)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
+              100, 'd8000000-0000-4000-8000-0000000000a1') $q$,
+  '23514'::char(5), null::text,
+  'LI-I28 — an amount with no account is refused'
 );
 
 -- ============================================== the owner, with a second factor
@@ -158,10 +193,17 @@ set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000a1';
 set local request.jwt.claims   to '{"sub":"c8000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
 
 select lives_ok(
-  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id)
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000001') $q$,
+              'a8000000-0000-4000-8000-000000000001', 'INR') $q$,
   'LI-I28 — a purchase names a shared account of its own household and currency'
+);
+
+select lives_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency, account_amount_minor)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000003', '2026-10-02', 1, 10000, 'USD',
+              'a8000000-0000-4000-8000-000000000001', 'INR', 850000) $q$,
+  'LI-I28 — and a dollar purchase names a rupee account with what left it'
 );
 
 select lives_ok(
@@ -171,49 +213,50 @@ select lives_ok(
 );
 
 select throws_ok(
-  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id)
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000002') $q$,
+              'a8000000-0000-4000-8000-000000000002', 'INR') $q$,
   '42501'::char(5), null::text,
   'LI-I29 — a purchase cannot be paid from another member''s private account'
 );
 
 select throws_ok(
-  $q$ update public.lot set account_id = 'a8000000-0000-4000-8000-000000000002'
+  $q$ update public.lot set account_id = 'a8000000-0000-4000-8000-000000000002', account_currency = 'INR'
        where holding_id = 'b7000000-0000-4000-8000-000000000001' and acquired_on = '2026-10-03' $q$,
   '42501'::char(5), null::text,
   'LI-I29 — nor can an existing purchase be moved onto it'
 );
 
 select lives_ok(
-  $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id)
+  $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-25', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000001') $q$,
+              'a8000000-0000-4000-8000-000000000001', 'INR') $q$,
   'LI-I28 — a sale is paid into a shared account'
 );
 
 select throws_ok(
-  $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id)
+  $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-25', 1, 100, 'INR',
-              'a8000000-0000-4000-8000-000000000002') $q$,
+              'a8000000-0000-4000-8000-000000000002', 'INR') $q$,
   '42501'::char(5), null::text,
   'LI-I29 — but not into another member''s private account'
 );
 
 -- ============================================== the sums, for the owner
 
--- Both rows added above by the owner for October (a ₹1 purchase and a ₹1 sale, both of the shared holding and the shared account) are seen by the
--- owner's own screen and add nothing. What the owner's screen cannot add, for October 2026, per the fixture: the partner's account had ₹10,000 and
--- ₹4,000, so it left ₹10,000 - ₹4,000 + ₹2,000 of proceeds = ₹8,000, and its reserve change is -₹6,000. Add ₹1,000 of proceeds of the partner's
--- private holding paid into the shared account: left is ₹9,000. Money into holdings the owner's screen does not add is ₹5,000 + ₹3,000 = ₹8,000, and
--- money out is ₹2,000 + ₹1,000 = ₹3,000. The ₹7,000 purchase in the shared holding is the owner's to see, the November purchase is another month's,
+-- The rows added above by the owner for October (small purchases and a sale of shared holdings, from the shared account) are seen by the owner's own
+-- screen and add nothing. What the owner's screen cannot add, for October 2026, per the fixture: the partner's account had ₹10,000 and ₹4,000, so it
+-- left ₹10,000 - ₹4,000 = ₹6,000 before any holding money came back, and its reserve change is -₹6,000. Proceeds paid into it are money in: ₹2,000,
+-- and the ₹4,000 of the dollar sale as its statement shows it, so it left ₹12,000. ₹1,000 of proceeds of the partner's private holding paid into the
+-- shared account makes left ₹13,000. Money into holdings that the owner's screen does not add is ₹5,000 + ₹3,000 + the ₹8,500 that left for the
+-- dollar purchase = ₹16,500, and money out is ₹2,000 + ₹1,000 + ₹4,000 = ₹7,000. The ₹7,000 purchase in the shared holding is the owner's to see, the November purchase is another month's,
 -- and the ₹9,999.99 gift moved no money.
 select results_eq(
   $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor,
             into_holdings_minor, out_of_holdings_minor, accounts_counted, accounts_total
         from public.household_private_close('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
        order by currency $q$,
-  $q$ values ('INR'::text, 900000::bigint, 0::bigint, 0::bigint, 0::bigint, 0::bigint, -600000::bigint, 800000::bigint, 300000::bigint, 1, 1) $q$,
+  $q$ values ('INR'::text, 1300000::bigint, 0::bigint, 0::bigint, 0::bigint, 0::bigint, -600000::bigint, 1650000::bigint, 700000::bigint, 1, 1) $q$,
   'LI-I30 — the sum adds a purchase from a hidden account and one of a private holding from a readable account, and the proceeds likewise, and nothing the caller''s screen adds'
 );
 

@@ -15,9 +15,11 @@
 -- Optional, as accounts are (LI-I26): null means "not said", and the month close then counts the money as it does today. It is never required, and
 -- an entry that names none loses nothing.
 --
--- The column is the same shape as credit_entry.account_id: a composite key (household, account, currency), so the account is of the same household
--- and in the entry's own currency. That has a consequence, said in the design: a purchase made in dollars from a rupee account cannot name the
--- account, because its money left the account in rupees and the entry records dollars. It is left unnamed rather than guessed at.
+-- The account is of the entry's own household. A purchase abroad is usually paid from a rupee account while the lot records dollars, so a lot and a
+-- disposal also say what the account was debited or credited, in the account's own currency, as the bank statement shows it: `account_amount_minor`,
+-- in `account_currency`. When the account is in the entry's own currency there is nothing to add (the amount is the cost, or the proceeds) and
+-- both are null apart from the currency. No exchange rate is invented, and nothing is converted: the bank's own figure is typed. A PPF entry is
+-- rupees only and keeps the plain composite key.
 --
 -- What does not change: RLS stays enabled and forced on all three tables and their grants are untouched (select, insert, update; no delete). Each
 -- table already has its audit trigger, from the migration that created it. This migration recreates the six insert and update policies to add one
@@ -29,29 +31,58 @@
 -- ═══════════════════════════════════════════════ 1. the column
 
 alter table public.lot
-  add column account_id uuid;
+  add column account_id uuid,
+  add column account_currency text check (account_currency is null or account_currency ~ '^[A-Z]{3}$'),
+  add column account_amount_minor bigint check (account_amount_minor is null or account_amount_minor > 0);
 alter table public.disposal
-  add column account_id uuid;
+  add column account_id uuid,
+  add column account_currency text check (account_currency is null or account_currency ~ '^[A-Z]{3}$'),
+  add column account_amount_minor bigint check (account_amount_minor is null or account_amount_minor > 0);
 alter table public.ppf_entry
   add column account_id uuid;
 
+-- The account named is of this household and is in the currency the entry says it is in (account_currency), by the composite key. With no account
+-- named, there is no account currency and no amount. With one named in another currency than the entry's, the amount in that currency is needed,
+-- because the cost in the entry's currency is not what left the account; in the entry's own currency it is not given, because the cost is it.
 alter table public.lot
   add constraint lot_account_in_household_fkey
-    foreign key (household_id, account_id, currency)
-    references public.account (household_id, id, currency) on delete restrict;
+    foreign key (household_id, account_id, account_currency)
+    references public.account (household_id, id, currency) on delete restrict,
+  add constraint lot_account_amount_shape
+    check (
+      (account_id is null and account_currency is null and account_amount_minor is null)
+      or (account_id is not null and account_currency is not null
+          and ((account_currency = currency and account_amount_minor is null)
+               or (account_currency <> currency and account_amount_minor is not null)))
+    );
 alter table public.disposal
   add constraint disposal_account_in_household_fkey
-    foreign key (household_id, account_id, currency)
-    references public.account (household_id, id, currency) on delete restrict;
+    foreign key (household_id, account_id, account_currency)
+    references public.account (household_id, id, currency) on delete restrict,
+  add constraint disposal_account_amount_shape
+    check (
+      (account_id is null and account_currency is null and account_amount_minor is null)
+      or (account_id is not null and account_currency is not null
+          and ((account_currency = currency and account_amount_minor is null)
+               or (account_currency <> currency and account_amount_minor is not null)))
+    );
 alter table public.ppf_entry
   add constraint ppf_entry_account_in_household_fkey
     foreign key (household_id, account_id, currency)
     references public.account (household_id, id, currency) on delete restrict;
 
 comment on column public.lot.account_id is
-  'The account the purchase was paid from, when the person says. Null: not said, and the month close counts the money as spent. In the lot''s own currency (LI-I28).';
+  'The account the purchase was paid from, when the person says. Null: not said, and the month close counts the money as spent (LI-I28).';
+comment on column public.lot.account_currency is
+  'The currency of the account named, which may differ from the lot''s (LI-I28).';
+comment on column public.lot.account_amount_minor is
+  'What left the account, in the account''s currency, as its statement shows it. Given only when that currency is not the lot''s; otherwise the cost is it.';
 comment on column public.disposal.account_id is
-  'The account a sale, redemption or maturity was paid into, when the person says. Null: not said. In the disposal''s own currency (LI-I28).';
+  'The account a sale, redemption or maturity was paid into, when the person says. Null: not said (LI-I28).';
+comment on column public.disposal.account_currency is
+  'The currency of the account named, which may differ from the disposal''s (LI-I28).';
+comment on column public.disposal.account_amount_minor is
+  'What reached the account, in the account''s currency, as its statement shows it. Given only when that currency is not the disposal''s; otherwise the proceeds are it.';
 comment on column public.ppf_entry.account_id is
   'The account a payment was paid from, or a withdrawal was paid into, when the person says. Null: not said (LI-I28).';
 
@@ -241,13 +272,13 @@ begin
     -- Money into and out of holdings that names an account, as the holdings' own entries say it: a purchase lot is into, a sale, redemption or maturity
     -- is out, a PPF payment is into and a PPF withdrawal is out. A bonus issue, a split, a transfer, a gift and an ESOP vest moved no money.
     hm as (
-      select l.account_id, l.currency, l.cost_minor as amount_minor, 'into'::text as dir,
+      select l.account_id, l.account_currency as currency, coalesce(l.account_amount_minor, l.cost_minor) as amount_minor, 'into'::text as dir,
              (h.visibility = 'personal' and h.member_id is distinct from v_me) as hidden_entry
         from public.lot l join public.holding h on h.id = l.holding_id
        where l.household_id = target_household_id and l.account_id is not null and l.kind = 'purchase'
          and l.acquired_on between month_first and month_last
       union all
-      select d.account_id, d.currency, d.proceeds_minor, 'out'::text,
+      select d.account_id, d.account_currency, coalesce(d.account_amount_minor, d.proceeds_minor), 'out'::text,
              (h.visibility = 'personal' and h.member_id is distinct from v_me)
         from public.disposal d join public.holding h on h.id = d.holding_id
        where d.household_id = target_household_id and d.account_id is not null and d.kind in ('sale', 'redemption', 'maturity')
