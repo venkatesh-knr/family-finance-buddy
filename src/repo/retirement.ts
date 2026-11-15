@@ -18,7 +18,7 @@ import type { NewPpfEntry, NewRetirement, PpfListing, Uuid } from './types.ts';
 
 const ACCOUNT_COLUMNS =
   'holding_id, institution, account_last4, opening_date, opening_balance_minor::text, currency, note';
-const ENTRY_COLUMNS = 'id, holding_id, entry_date, amount_minor::text, currency, note, voided_at';
+export const ENTRY_COLUMNS = 'id, holding_id, entry_date, amount_minor::text, currency, note, voided_at, account_id';
 const RATE_COLUMNS = 'scheme, effective_from, rate_pct::text';
 
 const LAST4 = /^[0-9A-Za-z]{4}$/;
@@ -124,6 +124,7 @@ export async function addPpfEntry(input: NewPpfEntry): Promise<void> {
     amount_minor: input.amount.minor.toString(),
     currency: input.amount.currency,
     note: input.note === undefined || input.note === null || input.note.trim() === '' ? null : input.note.trim(),
+    account_id: input.accountId ?? null,
   });
   if (error !== null) throw asRepositoryError(error);
 }

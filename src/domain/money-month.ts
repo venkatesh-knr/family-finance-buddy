@@ -80,6 +80,10 @@ export interface MonthUnreadable {
   readonly refunds: bigint;
   readonly cameIn: bigint;
   readonly reserveChange: bigint;
+  /** Money paid into holdings that the caller's own screen does not add (LI-I30). Absent is none. */
+  readonly intoHoldings?: bigint;
+  /** Money taken out of holdings and paid into an account, likewise. It is already in `left`. Absent is none. */
+  readonly outOfHoldings?: bigint;
 }
 
 export interface MonthInput {
@@ -177,8 +181,8 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const cameIn = sum(credits.filter((c) => isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.cameIn));
   const refunds = sum(credits.filter((c) => !isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.refunds));
   const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor)) + sum(hidden.map((u) => u.ownOut));
-  const putIntoHoldings = sum(moves.filter((m) => m.direction === 'into').map((m) => m.amount.minor));
-  const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor));
+  const putIntoHoldings = sum(moves.filter((m) => m.direction === 'into').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.intoHoldings ?? 0n));
+  const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.outOfHoldings ?? 0n));
   const paidToLoans = sum(loans.map((p) => p.amount.minor));
   const leftTotal = sum(left.map((l) => l.leftMinor)) + sum(hidden.map((u) => u.left));
   const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.outside));

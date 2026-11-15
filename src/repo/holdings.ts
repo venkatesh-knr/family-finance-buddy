@@ -65,11 +65,11 @@ const INSTRUMENT_COLUMNS =
 const VALUATION_COLUMNS =
   'id, holding_id, as_of_date, quantity::text, value_minor::text, currency, source, note';
 
-const LOT_COLUMNS =
-  'id, holding_id, acquired_on, quantity::text, cost_minor::text, currency, kind, note';
+export const LOT_COLUMNS =
+  'id, holding_id, acquired_on, quantity::text, cost_minor::text, currency, kind, note, account_id, account_currency, account_amount_minor::text';
 
-const DISPOSAL_COLUMNS =
-  'id, holding_id, disposed_on, quantity::text, proceeds_minor::text, currency, kind, note';
+export const DISPOSAL_COLUMNS =
+  'id, holding_id, disposed_on, quantity::text, proceeds_minor::text, currency, kind, note, account_id, account_currency, account_amount_minor::text';
 
 /**
  * `includeArchived` is for the screens that draw the past: an archived holding is

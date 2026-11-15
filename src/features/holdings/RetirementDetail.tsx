@@ -19,6 +19,9 @@ import { addPpfEntry, updatePpfAccount, addPpfAccount, voidPpfEntry } from '../.
 import type { HoldingListing, NewValuation, PpfAccount, PpfEntryRow, PpfListing } from '../../repo/types.ts';
 import { Button, Caveat, Field, Pill, Problem, Stat } from '../../ui/primitives.tsx';
 import { RecordReading } from './holdingParts.tsx';
+import { paidFromChoices, paidViaOf } from './paidFrom.ts';
+import { PaidFromField } from './PaidFromField.tsx';
+import { useAccountChoices } from './useAccountChoices.ts';
 import type { HoldingRow } from './useHoldings.ts';
 
 interface Shared {
@@ -663,6 +666,11 @@ function PpfEntryForm({
   const [kind, setKind] = useState<'payment' | 'withdrawal'>('payment');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // Which account a payment was paid from, or a withdrawal paid into: optional. A PPF is rupees, so only a rupee account can be named.
+  const accounts = useAccountChoices(householdId);
+  const rupeeAccounts = useMemo(() => accounts.filter((account) => account.currency === INR), [accounts]);
+  const choices = useMemo(() => paidFromChoices(rupeeAccounts), [rupeeAccounts]);
+  const [accountId, setAccountId] = useState('');
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -675,12 +683,16 @@ function PpfEntryForm({
       const minor = parseAmountToMinor(amount, INR);
       if (minor <= 0n) throw new Error('The amount is above nothing: say whether it is a payment or a withdrawal.');
 
+      const via = paidViaOf({ accountId, typed: '', accounts: rupeeAccounts, entry: money(minor, INR), verb: kind === 'withdrawal' ? 'reached' : 'left' });
+      if (!via.ok) throw new Error(via.problem);
+
       setBusy(true);
       await addPpfEntry({
         householdId,
         holdingId,
         date,
         amount: money(kind === 'withdrawal' ? -minor : minor, INR),
+        accountId: via.value === null ? null : via.value.accountId,
       });
       setAmount('');
       await onDone();
@@ -726,6 +738,16 @@ function PpfEntryForm({
           }}
         />
       </div>
+      <PaidFromField
+        label={kind === 'withdrawal' ? 'Paid into' : 'Paid from'}
+        verb={kind === 'withdrawal' ? 'reached' : 'left'}
+        choices={choices}
+        entryCurrency={INR}
+        accountId={accountId}
+        typed=""
+        onAccount={setAccountId}
+        onTyped={() => undefined}
+      />
       <Button type="submit" disabled={busy}>
         {busy ? 'Saving…' : 'Record'}
       </Button>

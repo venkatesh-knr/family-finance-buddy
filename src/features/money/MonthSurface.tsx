@@ -151,11 +151,15 @@ export function MonthSurface({
                     {formatMoney(line, { privacy })}
                   </span>
                 ))}
-                {/* What the close says beside its own figure: an investment made from these accounts is counted as spent until holdings are read. */}
+                {/* What the close says beside its own figure: loan payments are not read yet, and a purchase or a sale that named no account is still in spent. */}
                 <Caveat tone="info" label="What spent from balances leaves out">
-                  <span className="block">
-                    Money into holdings and loan payments are not read yet, so an investment made from these accounts is counted as spent, and saved reads low by it.
-                  </span>
+                  <span className="block">Loan payments are not read yet, so a loan paid from these accounts is counted as spent, and saved reads low by it.</span>
+                  {closed.unnamedEntries > 0 && (
+                    <span className="block">
+                      {String(closed.unnamedEntries)} {closed.unnamedEntries === 1 ? 'purchase or sale' : 'purchases and sales'} that month named no account, so their money is counted as
+                      spent too. Say which account in Holdings.
+                    </span>
+                  )}
                 </Caveat>
               </>
             ) : reading !== null ? (

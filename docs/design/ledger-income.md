@@ -312,7 +312,7 @@ were left out.
 
 ## 4a. A holding's entries name the account
 
-**Proposed, 15 November 2026: not built, and the migration is for review.** The close in §4 reads money into a holding as an outflow of the account it
+**Decided 15 November 2026 by the owner; built on the migration `20261115180000_holding_entry_account.sql`.** The close in §4 reads money into a holding as an outflow of the account it
 was paid from, and money taken out as money in to the account it was paid into. Today no holding entry says which account, so a SIP or a fund
 purchase paid from HDFC reads as spent, and *saved* reads low by it. This section is the change that lets an entry say.
 

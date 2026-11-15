@@ -526,6 +526,18 @@ export interface Lot {
   readonly cost: Money;
   readonly kind: LotKind;
   readonly note: string | null;
+  /** The account it was paid from, when the person said (LI-I28). */
+  readonly paidVia: EntryAccount | null;
+}
+
+/**
+ * The account a holding's entry says its money went from or into, and how much moved there, in that account's own currency as its statement shows it.
+ * For an entry in the account's currency the amount is the entry's own: the cost, the proceeds, the payment. For a purchase abroad paid from a rupee
+ * account it is the rupees that left. Nothing is converted: the figure is the one typed.
+ */
+export interface EntryAccount {
+  readonly accountId: Uuid;
+  readonly amount: Money;
 }
 
 export const LOT_KINDS = ['purchase', 'bonus', 'split', 'transfer', 'gift', 'esop'] as const;
@@ -540,6 +552,8 @@ export interface Disposal {
   readonly proceeds: Money;
   readonly kind: DisposalKind;
   readonly note: string | null;
+  /** The account the proceeds were paid into, when the person said (LI-I28). */
+  readonly paidVia: EntryAccount | null;
 }
 
 export const DISPOSAL_KINDS = ['sale', 'redemption', 'maturity', 'transfer', 'gift'] as const;
@@ -568,6 +582,8 @@ export interface NewLot {
   readonly cost: Money;
   readonly kind?: LotKind;
   readonly note?: string | null;
+  /** The account it was paid from: left out when the person does not say. */
+  readonly paidVia?: EntryAccount | null;
 }
 
 export interface NewDisposal {
@@ -578,6 +594,8 @@ export interface NewDisposal {
   readonly proceeds: Money;
   readonly kind?: DisposalKind;
   readonly note?: string | null;
+  /** The account the proceeds were paid into: left out when the person does not say. */
+  readonly paidVia?: EntryAccount | null;
 }
 
 export interface NewValuation {
@@ -869,6 +887,8 @@ export interface PpfEntryRow {
   readonly amount: Money;
   readonly note: string | null;
   readonly isVoided: boolean;
+  /** The account a payment was paid from, or a withdrawal paid into, when the person said. */
+  readonly paidVia: EntryAccount | null;
 }
 
 /** The rate the government notified, by the day it took effect: the same for every household. */
@@ -945,6 +965,8 @@ export interface NewPpfEntry {
   /** A payment in is positive; a withdrawal is negative. */
   readonly amount: Money;
   readonly note?: string | null;
+  /** The account it was paid from, or into for a withdrawal. Rupees: the account is a rupee account. */
+  readonly accountId?: Uuid | null;
 }
 
 /** What is needed to add a retirement holding: an EPF and an NPS are a holding and a reading, a PPF is also an account. */
@@ -1289,6 +1311,9 @@ export interface PrivateClose {
   readonly refunds: bigint;
   readonly cameIn: bigint;
   readonly reserveChange: bigint;
+  /** Money paid into, and taken out of, holdings that the caller's own screen does not add (LI-I30). */
+  readonly intoHoldings: bigint;
+  readonly outOfHoldings: bigint;
   readonly counted: number;
   readonly total: number;
 }

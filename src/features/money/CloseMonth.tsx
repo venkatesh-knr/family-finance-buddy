@@ -6,9 +6,10 @@
  * use with its closing balance as the only input, and opening, money in and what was left shown beside it. The first close asks for the opening
  * as well. Nothing is written until the last button: closing stores balances, and spent is derived, never stored (SC-I1).
  *
- * What it does not read yet is said, because it moves the figure: money into holdings and loan payments, so an investment made from these
- * accounts reads as spent. A payment that is not listed makes the figure read low; an investment the app does not know about makes it read
- * high. An account another member keeps private is not in this close, and the screen says so.
+ * Money into and out of holdings is read from the holdings' own entries that name an account (ledger-income.md section 4a), and an entry that names none is
+ * counted and said, because its money is still in spent. Loan payments are not read yet, so a loan paid from these accounts reads as spent. A payment
+ * that is not listed makes the figure read low; an investment the app does not know about makes it read high. An account another member keeps
+ * private is not in this close, and the screen says so.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,6 +19,7 @@ import { listExpensesBetween } from '../../repo/expenses.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
 import type { Credit, Expense, PlanListing, Transfer } from '../../repo/types.ts';
+import { useHoldingMoves } from './useHoldingMoves.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
@@ -88,7 +90,10 @@ export function CloseMonth({
 
   // What another member keeps private, as totals, for an owner or a partner: the database adds it, and nobody else may ask. Until it has been read,
   // or when it could not be, there is no figure: a close that leaves it out reads wrong, and not only low.
-  const { asks, unread, failed: unreadFailed, blocked } = usePrivateClose(data.household.id, data.viewer.role, month);
+  const { asks, unread, failed: unreadFailed, blocked: privateBlocked } = usePrivateClose(data.household.id, data.viewer.role, month);
+  // The holdings' entries that named an account: money into a holding is not spent, and money taken out is money in. Without them the figure would read low.
+  const entries = useHoldingMoves(data.household.id, month, data.accounts.some((account) => !account.isArchived));
+  const blocked = privateBlocked || entries.blocked;
 
   const base = useMemo(
     () => ({
@@ -99,9 +104,10 @@ export function CloseMonth({
       credits,
       transfers,
       typed: {} as TypedBalances,
+      holdingMoves: entries.moves,
       ...(unread === null || unread.length === 0 ? {} : { unreadable: unread }),
     }),
-    [month, today, data.accounts, data.balances, credits, transfers, unread],
+    [month, today, data.accounts, data.balances, credits, transfers, unread, entries.moves],
   );
   const steps = useMemo(() => accountSteps(base), [base]);
 
@@ -222,9 +228,9 @@ export function CloseMonth({
                   })
                 ) : blocked ? (
                   <p className="note">
-                    {unreadFailed
-                      ? 'What other members keep private could not be read just now, so there is no figure and the month cannot be closed.'
-                      : 'Reading what other members keep private…'}
+                    {unreadFailed || entries.failed
+                      ? `${unreadFailed ? 'What other members keep private' : 'The holdings'} could not be read just now, so there is no figure and the month cannot be closed.`
+                      : 'Reading what other members keep private and what went into holdings…'}
                   </p>
                 ) : live.status === 'missing' ? (
                   <p className="note">Type each account’s balance below to see what was spent. It is not counted as nothing.</p>
@@ -236,8 +242,12 @@ export function CloseMonth({
               </section>
 
               <p className="note">
-                A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. Money into holdings and loan
-                payments are not read here yet, so an investment made from these accounts is counted as spent.{privateNote}
+                A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. Loan payments are not read
+                here yet, so a loan paid from these accounts is counted as spent.
+                {entries.unnamed > 0
+                  ? ` ${String(entries.unnamed)} purchase${entries.unnamed === 1 ? '' : 's'} or sale${entries.unnamed === 1 ? '' : 's'} this month name no account, so their money is counted as spent: say which account in Holdings.`
+                  : ''}
+                {privateNote}
               </p>
 
               <h2 className="label">Accounts</h2>
@@ -306,7 +316,7 @@ export function CloseMonth({
                       <p className="note tabular-nums">
                         Left the accounts{multi} · {shown(money(figures.leftTotal, figures.currency))}
                       </p>
-                      {(own.length > 0 || figures.outside !== 0n) && (
+                      {(own.length > 0 || figures.outside !== 0n || figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n) && (
                         <section aria-label={`Not spending${multi}`} className="flex flex-col gap-1">
                           <h3 className="label">Not spending{multi}</h3>
                           {own.length > 0 && (
@@ -324,7 +334,12 @@ export function CloseMonth({
                               </ul>
                             </details>
                           )}
-                          <p className="note">Into holdings · not read here yet, so it is counted as spent.</p>
+                          {(figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n) && (
+                            <p className="note tabular-nums">
+                              Into holdings · {shown(money(figures.putIntoHoldings, figures.currency))}
+                              {figures.takenOutOfHoldings !== 0n ? ` · taken out ${shown(money(figures.takenOutOfHoldings, figures.currency))}` : ''}
+                            </p>
+                          )}
                           {figures.outside !== 0n && (
                             <p className="note tabular-nums">
                               {shown(money(figures.outside, figures.currency))} came in outside the accounts you added, and is counted in what was spent.

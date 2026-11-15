@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toExpense, toRecurringRule, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toPpfAccount, toPpfEntry, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange, toSchemeRate } from './mapping.ts';
+import { toDisposal, toExpense, toLot, toRecurringRule, toHolding, toHousehold, toInstrument, toMember, toValuation, toDepositRenewal, toFixedIncomeTerms, toPpfAccount, toPpfEntry, toProperty, toPropertyImprovement, toPropertyValuation, toRatingChange, toSchemeRate } from './mapping.ts';
 import { MalformedRowError } from '../lib/guards.ts';
 import type { Member } from './types.ts';
 
@@ -771,6 +771,13 @@ describe('retirement rows', () => {
     });
   });
 
+  it('reads the account a payment was paid from, or none', () => {
+    expect(toPpfEntry(entry).paidVia).toBeNull();
+    expect(toPpfEntry({ ...entry, account_id: 'a-1' }).paidVia).toEqual({ accountId: 'a-1', amount: { minor: 15_000_000n, currency: 'INR' } });
+    // A withdrawal is money paid into the account: the account's figure is what reached it, never a negative.
+    expect(toPpfEntry({ ...entry, amount_minor: '-5000000', account_id: 'a-1' }).paidVia?.amount.minor).toBe(5_000_000n);
+  });
+
   it('reads a notified rate as text, to three places, however it arrives', () => {
     expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: '7.100' }).ratePct).toBe('7.100');
     expect(toSchemeRate({ scheme: 'ppf', effective_from: '2020-04-01', rate_pct: 7.1 }).ratePct).toBe('7.100');
@@ -812,5 +819,52 @@ describe('toRecurringRule', () => {
   it('refuses a cadence or a status it does not know, rather than guessing one', () => {
     expect(() => toRecurringRule({ ...rule, cadence: 'fortnightly' })).toThrow(/not one of/);
     expect(() => toRecurringRule({ ...rule, status: 'deleted' })).toThrow(/not one of/);
+  });
+});
+
+describe('the account a purchase or a sale names', () => {
+  const lot = {
+    id: 'l-1',
+    holding_id: 'h-1',
+    acquired_on: '2026-10-15',
+    quantity: '5',
+    cost_minor: '10000',
+    currency: 'USD',
+    kind: 'purchase',
+    note: null,
+  };
+  const sale = {
+    id: 'd-1',
+    holding_id: 'h-1',
+    disposed_on: '2026-10-25',
+    quantity: '2',
+    proceeds_minor: '5000',
+    currency: 'USD',
+    kind: 'sale',
+    note: null,
+  };
+
+  it('is none when the row names none', () => {
+    expect(toLot({ ...lot, account_id: null, account_currency: null, account_amount_minor: null }).paidVia).toBeNull();
+    expect(toDisposal(sale).paidVia).toBeNull();
+  });
+
+  it("is the cost itself when the account is in the lot's own currency", () => {
+    const row = { ...lot, currency: 'INR', cost_minor: '700000', account_id: 'a-1', account_currency: 'INR', account_amount_minor: null };
+    expect(toLot(row).paidVia).toEqual({ accountId: 'a-1', amount: { minor: 700_000n, currency: 'INR' } });
+  });
+
+  it("is what left the account, in the account's currency, when that is not the lot's", () => {
+    const row = { ...lot, account_id: 'a-2', account_currency: 'INR', account_amount_minor: '850000' };
+    expect(toLot(row).paidVia).toEqual({ accountId: 'a-2', amount: { minor: 850_000n, currency: 'INR' } });
+    expect(toLot(row).cost).toEqual({ minor: 10_000n, currency: 'USD' });
+    expect(toDisposal({ ...sale, account_id: 'a-2', account_currency: 'INR', account_amount_minor: '400000' }).paidVia).toEqual({
+      accountId: 'a-2',
+      amount: { minor: 400_000n, currency: 'INR' },
+    });
+  });
+
+  it('refuses a row that names an account without saying its currency', () => {
+    expect(() => toLot({ ...lot, account_id: 'a-1', account_currency: null, account_amount_minor: null })).toThrow(MalformedRowError);
   });
 });

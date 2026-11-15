@@ -22,7 +22,7 @@
  *   is correct rather than alarming.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
   formatMoney,
@@ -32,10 +32,13 @@ import {
   percentOfCost,
 } from '../../lib/money.ts';
 import { formatQuantity, formatQuantityGrouped, parseQuantity } from '../../lib/quantity.ts';
-import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
+import type { Account, Disposal, EntryAccount, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Chevron } from '../../ui/primitives.tsx';
 import { Absent, Button, Caveat, EditButton, Field, Notice, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
+import { paidFromChoices, paidViaOf } from './paidFrom.ts';
+import { PaidFromField } from './PaidFromField.tsx';
+import { useAccountChoices } from './useAccountChoices.ts';
 import {
   COST_MISSING_REFUSED_BECAUSE,
   historySentence,
@@ -77,9 +80,11 @@ export function CostAndGains({
   taxRules: readonly TaxRule[];
 }) {
   const [open, setOpen] = useState(false);
+  // The accounts a purchase or a sale can name (optional): read once, and only when the forms are open.
+  const [entering, setEntering] = useState(false);
+  const accounts = useAccountChoices(entering && canWrite ? listing.household.id : null);
   // Entering a purchase by hand is the rare path now that a statement can be
   // imported, so the two forms are behind a toggle rather than always open.
-  const [entering, setEntering] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
   // Null unless the purchases and the statement's closing balance disagree.
@@ -280,13 +285,15 @@ export function CostAndGains({
             amountLabel={`Cost (${currency})`}
             currency={currency}
             today={today}
-            onSubmit={async (quantity, minor, date) => {
+            accounts={accounts}
+            onSubmit={async (quantity, minor, date, paidVia) => {
               await onLot({
                 householdId: listing.household.id,
                 holdingId: holding.id,
                 acquiredOn: date,
                 quantity,
                 cost: money(minor, currency),
+                paidVia,
               });
             }}
           />
@@ -295,13 +302,15 @@ export function CostAndGains({
             amountLabel={`Proceeds (${currency})`}
             currency={currency}
             today={today}
-            onSubmit={async (quantity, minor, date) => {
+            accounts={accounts}
+            onSubmit={async (quantity, minor, date, paidVia) => {
               await onSale({
                 householdId: listing.household.id,
                 holdingId: holding.id,
                 disposedOn: date,
                 quantity,
                 proceeds: money(minor, currency),
+                paidVia,
               });
             }}
           />
@@ -651,17 +660,23 @@ function RecordEvent({
   amountLabel,
   currency,
   today,
+  accounts,
   onSubmit,
 }: {
   what: 'purchase' | 'sale';
   amountLabel: string;
   currency: string;
   today: string;
-  onSubmit: (quantity: string, minor: bigint, date: string) => Promise<void>;
+  /** The household's accounts, to say which one it was paid from or into. None offered: the field is not drawn. */
+  accounts: readonly Account[];
+  onSubmit: (quantity: string, minor: bigint, date: string, paidVia: EntryAccount | null) => Promise<void>;
 }) {
   const [quantity, setQuantity] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
+  const [accountId, setAccountId] = useState('');
+  const [typed, setTyped] = useState('');
+  const choices = useMemo(() => paidFromChoices(accounts), [accounts]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -678,18 +693,25 @@ function RecordEvent({
         return;
       }
 
+      const via = paidViaOf({ accountId, typed, accounts, entry: money(minor, currency), verb: what === 'purchase' ? 'left' : 'reached' });
+      if (!via.ok) {
+        setProblem(via.problem);
+        return;
+      }
+
       setBusy(true);
       try {
-        await onSubmit(quantity, minor, date);
+        await onSubmit(quantity, minor, date, via.value);
         setQuantity('');
         setAmount('');
+        setTyped('');
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not record that.');
       } finally {
         setBusy(false);
       }
     },
-    [amount, currency, date, onSubmit, quantity],
+    [accountId, accounts, amount, currency, date, onSubmit, quantity, typed, what],
   );
 
   return (
@@ -735,6 +757,16 @@ function RecordEvent({
           }}
         />
       </div>
+      <PaidFromField
+        label={what === 'purchase' ? 'Paid from' : 'Paid into'}
+        verb={what === 'purchase' ? 'left' : 'reached'}
+        choices={choices}
+        entryCurrency={currency}
+        accountId={accountId}
+        typed={typed}
+        onAccount={setAccountId}
+        onTyped={setTyped}
+      />
       <Button type="submit" disabled={busy || quantity.trim() === '' || amount.trim() === ''}>
         {busy ? 'Saving…' : what === 'purchase' ? 'Add purchase' : 'Add sale'}
       </Button>

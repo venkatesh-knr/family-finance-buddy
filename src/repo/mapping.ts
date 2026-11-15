@@ -17,7 +17,7 @@ import {
   toBigIntExact,
 } from '../lib/guards.ts';
 import { EARMARKS, SCHEMES } from '../domain/earmark.ts';
-import { money } from '../lib/money.ts';
+import { money, type Money } from '../lib/money.ts';
 import {
   CAPTURED_VIA,
   CATEGORY_NATURES,
@@ -56,6 +56,7 @@ import {
   type Member,
   type PaymentMethod,
   type PpfAccount,
+  type EntryAccount,
   type PpfEntryRow,
   type Property,
   type PropertyImprovement,
@@ -367,7 +368,22 @@ export function toLot(raw: unknown): Lot {
     cost: money(toBigIntExact(row['cost_minor'], 'lot.cost_minor'), currency),
     kind: requireOneOf(row['kind'], LOT_KINDS, 'lot.kind'),
     note: optionalString(row['note'], 'lot.note'),
+    paidVia: toEntryAccount(row, 'lot', money(toBigIntExact(row['cost_minor'], 'lot.cost_minor'), currency)),
   };
+}
+
+/**
+ * The account an entry names. The amount is the one the account saw: typed, when the account is in another currency than the entry, and the entry's
+ * own otherwise. A row that names an account but not its currency is not one the schema can write, so it is refused here, not guessed at.
+ */
+function toEntryAccount(row: Record<string, unknown>, table: string, own: Money): EntryAccount | null {
+  const accountId = optionalString(row['account_id'], `${table}.account_id`);
+  if (accountId === null) return null;
+  const currency = optionalString(row['account_currency'], `${table}.account_currency`);
+  if (currency === null) throw new MalformedRowError(table, 'names an account without its currency');
+  const typed = row['account_amount_minor'];
+  const amount = typed === null || typed === undefined ? { ...own, currency } : money(toBigIntExact(typed, `${table}.account_amount_minor`), currency);
+  return { accountId, amount };
 }
 
 /** A sale row. */
@@ -383,6 +399,7 @@ export function toDisposal(raw: unknown): Disposal {
     proceeds: money(toBigIntExact(row['proceeds_minor'], 'disposal.proceeds_minor'), currency),
     kind: requireOneOf(row['kind'], DISPOSAL_KINDS, 'disposal.kind'),
     note: optionalString(row['note'], 'disposal.note'),
+    paidVia: toEntryAccount(row, 'disposal', money(toBigIntExact(row['proceeds_minor'], 'disposal.proceeds_minor'), currency)),
   };
 }
 
@@ -604,7 +621,16 @@ export function toPpfEntry(raw: unknown): PpfEntryRow {
     amount: money(toBigIntExact(row['amount_minor'], 'ppf_entry.amount_minor'), currency),
     note: optionalString(row['note'], 'ppf_entry.note'),
     isVoided: row['voided_at'] !== null && row['voided_at'] !== undefined,
+    paidVia: toPpfAccountOfEntry(row, currency),
   };
+}
+
+/** A PPF entry's account is a rupee account by the table's key, so its figure is the payment's own, and a withdrawal's is the positive sum that reached it. */
+function toPpfAccountOfEntry(row: Record<string, unknown>, currency: string): EntryAccount | null {
+  const accountId = optionalString(row['account_id'], 'ppf_entry.account_id');
+  if (accountId === null) return null;
+  const minor = toBigIntExact(row['amount_minor'], 'ppf_entry.amount_minor');
+  return { accountId, amount: money(minor < 0n ? -minor : minor, currency) };
 }
 
 export function toSchemeRate(raw: unknown): SchemeRate {
