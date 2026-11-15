@@ -46,7 +46,7 @@ test('a deposit offers where its principal came from and where its maturity goes
   // Not said is the first and the default: nothing is asked of a person who does not want to say.
   await expect(paidFrom).toContainText('Not said');
   await expect(maturity).toContainText('Not said');
-  await form.getByRole('button', { name: 'Cancel' }).click();
+  // Nothing is written until the last step's button, so leaving the form here adds nothing.
 });
 
 test('a deposit paid from an account is read by the close as into holdings and not as spent', async ({ page }) => {
