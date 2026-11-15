@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { formatShortDate } from '../../lib/dates.ts';
+import { formatShortDate, type IsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
 import { listPlan } from '../../repo/planning.ts';
@@ -92,7 +92,7 @@ export function CloseMonth({
   // or when it could not be, there is no figure: a close that leaves it out reads wrong, and not only low.
   const { asks, unread, failed: unreadFailed, blocked: privateBlocked } = usePrivateClose(data.household.id, data.viewer.role, month);
   // The holdings' entries that named an account: money into a holding is not spent, and money taken out is money in. Without them the figure would read low.
-  const entries = useHoldingMoves(data.household.id, month, data.accounts.some((account) => !account.isArchived));
+  const entries = useHoldingMoves(data.household.id, month, data.accounts.some((account) => !account.isArchived), today as IsoDate);
   const blocked = privateBlocked || entries.blocked;
 
   const base = useMemo(
@@ -243,9 +243,9 @@ export function CloseMonth({
 
               <p className="note">
                 A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. Loan payments are not read
-                here yet, so a loan paid from these accounts is counted as spent.
+                here yet, so a loan paid from these accounts is counted as spent. A deposit that matured into an account only its owner can see, or a private deposit of another member that matured into one of these accounts, is not read either.
                 {entries.unnamed > 0
-                  ? ` ${String(entries.unnamed)} ${entries.unnamed === 1 ? 'entry' : 'entries'} in Holdings this month (a purchase, a sale or a PPF payment) name no account, so the close cannot tell where that money went, and a purchase reads as spent. Open it in Holdings and say which account.`
+                  ? ` ${String(entries.unnamed)} ${entries.unnamed === 1 ? 'entry' : 'entries'} in Holdings this month (a purchase, a sale, a PPF payment, a deposit or bond, or an opening cost) name no account, so the close cannot tell where that money went, and a purchase reads as spent. Open it in Holdings and say which account.`
                   : ''}
                 {privateNote}
               </p>

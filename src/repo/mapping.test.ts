@@ -345,6 +345,22 @@ describe('toHolding', () => {
     expect(toHolding({ ...row, cost_minor: null }, members, instruments).cost).toBeNull();
   });
 
+  it('names no cost account when the row names none', () => {
+    expect(toHolding(row, members, instruments).costAccountId).toBeNull();
+  });
+
+  it('reads the account the opening cost was paid from when it is in the instrument currency', () => {
+    expect(toHolding({ ...row, cost_account_id: 'a-1', cost_account_currency: 'USD' }, members, instruments).costAccountId).toBe('a-1');
+  });
+
+  it('does not read an account in another currency than the instrument: nothing counts it, so it is not shown as named', () => {
+    expect(toHolding({ ...row, cost_account_id: 'a-1', cost_account_currency: 'INR' }, members, instruments).costAccountId).toBeNull();
+  });
+
+  it('refuses a cost account named without its currency', () => {
+    expect(() => toHolding({ ...row, cost_account_id: 'a-1', cost_account_currency: null }, members, instruments)).toThrow(/without its currency/);
+  });
+
   describe('the balance a statement reported', () => {
     it('is null on a holding nobody imported, which is nearly all of them', () => {
       expect(toHolding(row, members, instruments).stated).toBeNull();
@@ -474,6 +490,30 @@ describe('toFixedIncomeTerms', () => {
     expect(terms.couponFrequency).toBeNull();
     expect(terms.autoRenew).toBe(true);
     expect(terms.institution).toBe('HDFC Bank');
+  });
+
+  it('names no account when the row names none', () => {
+    const terms = toFixedIncomeTerms(row);
+    expect(terms.paidVia).toBeNull();
+    expect(terms.payoutAccountId).toBeNull();
+  });
+
+  it('reads the account the principal was paid from: the principal itself when the account is in its currency', () => {
+    const terms = toFixedIncomeTerms({ ...row, account_id: 'a-1', account_currency: 'INR', account_amount_minor: null });
+    expect(terms.paidVia).toEqual({ accountId: 'a-1', amount: { minor: 10000000n, currency: 'INR' } });
+  });
+
+  it('reads what left a rupee account for a deposit in dollars, in rupees', () => {
+    const terms = toFixedIncomeTerms({ ...row, currency: 'USD', principal_minor: '10000', account_id: 'a-1', account_currency: 'INR', account_amount_minor: '850000' });
+    expect(terms.paidVia).toEqual({ accountId: 'a-1', amount: { minor: 850000n, currency: 'INR' } });
+  });
+
+  it('reads the account the payout is paid into', () => {
+    expect(toFixedIncomeTerms({ ...row, payout_account_id: 'a-2' }).payoutAccountId).toBe('a-2');
+  });
+
+  it('refuses an account named without its currency, rather than guess one', () => {
+    expect(() => toFixedIncomeTerms({ ...row, account_id: 'a-1', account_currency: null })).toThrow(/without its currency/);
   });
 
   it('refuses a rate that is a double, which has already lost its digits', () => {

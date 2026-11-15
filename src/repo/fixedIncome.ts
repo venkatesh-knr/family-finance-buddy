@@ -14,6 +14,7 @@ import { supabase } from './client.ts';
 import type { IsoDate } from '../lib/dates.ts';
 import type { Money } from '../lib/money.ts';
 import { archiveHolding } from './holdings.ts';
+import { accountColumns } from './lots.ts';
 import { toDepositRenewal, toFixedIncomeTerms, toRatingChange } from './mapping.ts';
 import type {
   FixedIncomeListing,
@@ -24,7 +25,7 @@ import type {
 } from './types.ts';
 
 const TERMS_COLUMNS =
-  'holding_id, household_id, kind, principal_minor::text, currency, rate_pct::text, start_date, maturity_date, compounding, coupon_frequency, rating, repay_mode, auto_renew, renewal_rate_pct::text, institution, account_last4, note';
+  'holding_id, household_id, kind, principal_minor::text, currency, rate_pct::text, start_date, maturity_date, compounding, coupon_frequency, rating, repay_mode, auto_renew, renewal_rate_pct::text, institution, account_last4, note, account_id, account_currency, account_amount_minor::text, payout_account_id';
 
 const RENEWAL_COLUMNS =
   'id, holding_id, start_date, maturity_date, principal_minor::text, currency, rate_pct::text, compounding, note';
@@ -165,6 +166,10 @@ function termsRow(input: NewTermsForHolding) {
       input.kind === 'deposit' && input.autoRenew === true ? emptyToNull(input.renewalRatePct) : null,
     institution: emptyToNull(input.institution),
     account_last4: emptyToNull(input.accountLast4),
+    // The accounts the principal was paid from and the payout is paid into (LI-I32, LI-I33). Left out when the input says nothing, so that correcting
+    // another field of the terms never clears an account somebody named; null names none.
+    ...(input.paidVia === undefined ? {} : accountColumns(input.paidVia, input.principal.currency)),
+    ...(input.payoutAccountId === undefined ? {} : { payout_account_id: input.payoutAccountId }),
   };
 }
 

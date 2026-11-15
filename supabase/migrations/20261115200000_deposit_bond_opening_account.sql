@@ -5,7 +5,7 @@
 -- money into and out of holdings. Three things that count in "invested" are not lots and so could not say:
 --
 --   fixed_income_terms   a deposit's principal, or a bond's face value, paid on `start_date`: `account_id` is the account it was paid from.
---                        A deposit's maturity payout is paid into `payout_account_id`.
+--                        A deposit's or a bond's maturity payout is paid into `payout_account_id`.
 --   holding              a holding opened with a cost and no purchase and no terms: `cost_account_id` is the account the cost was paid from, on `opened_on`.
 --
 -- Optional, as every account on an entry is (LI-I26, LI-I28): null means "not said", and the month close counts the money as it does today.
@@ -18,7 +18,7 @@
 -- What does not change: RLS stays enabled and forced and the grants are as they were (no delete). Both tables already have their audit triggers. The four
 -- write policies are recreated with one clause each: an account named must be one the caller can read (LI-I29), as for a lot.
 --
--- What the database cannot sum, and says so (LI-I35): a deposit's maturity payout. Its amount is the maturity value computed from the terms by
+-- What the database cannot sum, and says so (LI-I35): a deposit's or a bond's maturity payout. Its amount is the maturity value computed from the terms by
 -- src/domain/accrual.ts, which the database does not carry. The month close counts it against the account named for what the caller can read, as it counts
 -- the principal; for a deposit of another member's private holding, or one paid into a hidden account, it is not added here, and the close reads that
 -- money as it does today. Nothing is guessed.
@@ -74,7 +74,7 @@ comment on column public.fixed_income_terms.account_currency is
 comment on column public.fixed_income_terms.account_amount_minor is
   'What left the account, in the account''s currency, as its statement shows it. Given only when that currency is not the deposit''s; otherwise the principal is it.';
 comment on column public.fixed_income_terms.payout_account_id is
-  'The account the maturity payout is paid into, in the deposit''s own currency, when the person says. The payout is worked out from the terms and is not stored (LI-I33, LI-I35).';
+  'The account a deposit''s or a bond''s maturity payout is paid into, in its own currency, when the person says. The payout is worked out from the terms and is not stored (LI-I33, LI-I35).';
 comment on column public.holding.cost_account_id is
   'The account the opening cost was paid from, on opened_on, for a holding opened with a cost and no purchase and no terms. Null: not said (LI-I34).';
 comment on column public.holding.cost_account_currency is

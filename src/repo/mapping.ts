@@ -295,6 +295,7 @@ export function toHolding(
     openedOn: row['opened_on'] === null || row['opened_on'] === undefined
       ? null
       : requireIsoDate(row['opened_on'], 'holding.opened_on'),
+    costAccountId: toCostAccountId(row, instrument.currency),
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'holding.visibility'),
     earmark: requireOneOf(row['earmark'], EARMARKS, 'holding.earmark'),
     isArchived:
@@ -370,6 +371,18 @@ export function toLot(raw: unknown): Lot {
     note: optionalString(row['note'], 'lot.note'),
     paidVia: toEntryAccount(row, 'lot', money(toBigIntExact(row['cost_minor'], 'lot.cost_minor'), currency)),
   };
+}
+
+/**
+ * The account a holding's opening cost was paid from: only one in the instrument's own currency is read, as the database sum reads it. One in another
+ * currency is data nothing counts, and showing it as named would say a close counted money it did not.
+ */
+function toCostAccountId(row: Record<string, unknown>, instrumentCurrency: string): string | null {
+  const accountId = optionalString(row['cost_account_id'], 'holding.cost_account_id');
+  if (accountId === null) return null;
+  const currency = optionalString(row['cost_account_currency'], 'holding.cost_account_currency');
+  if (currency === null) throw new MalformedRowError('holding', 'names a cost account without its currency');
+  return currency === instrumentCurrency ? accountId : null;
 }
 
 /**
@@ -482,6 +495,8 @@ export function toFixedIncomeTerms(raw: unknown): FixedIncomeTerms {
     institution: optionalString(row['institution'], 'fixed_income_terms.institution'),
     accountLast4: optionalString(row['account_last4'], 'fixed_income_terms.account_last4'),
     note: optionalString(row['note'], 'fixed_income_terms.note'),
+    paidVia: toEntryAccount(row, 'fixed_income_terms', money(toBigIntExact(row['principal_minor'], 'fixed_income_terms.principal_minor'), currency)),
+    payoutAccountId: optionalString(row['payout_account_id'], 'fixed_income_terms.payout_account_id'),
   };
 }
 

@@ -57,7 +57,7 @@ const CAN_WRITE: readonly string[] = ['owner', 'partner', 'contributor'];
 // query makes the database hand over the decimal string it already holds, so
 // precision is never a matter of luck about magnitude.
 const HOLDING_COLUMNS =
-  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, opened_on, status, archived_at, visibility, earmark, stated_quantity::text, stated_as_at, stated_source_batch_id';
+  'id, household_id, member_id, instrument_id, quantity::text, cost_minor::text, cost_account_id, cost_account_currency, opened_on, status, archived_at, visibility, earmark, stated_quantity::text, stated_as_at, stated_source_batch_id';
 
 const INSTRUMENT_COLUMNS =
   'id, name, kind, symbol, isin, currency, exposure_currency, is_foreign_asset, scheme, status, tax_asset_class, price_source, price_external_id, retirement_type, gold_form, gold_purity';
@@ -421,6 +421,11 @@ export async function archiveHolding(id: Uuid): Promise<void> {
 export interface HoldingPatch {
   readonly quantity?: Quantity;
   readonly cost?: Money | null;
+  /**
+   * The account the opening cost was paid from, with its currency, which has to be the cost's own. Null names none; clearing the cost clears it too
+   * (LI-I34). Left out, what is there is left.
+   */
+  readonly costAccount?: { readonly accountId: Uuid; readonly currency: string } | null;
   readonly openedOn?: IsoDate | null;
   readonly visibility?: Visibility;
   /** What this household's money here is for. */
@@ -518,6 +523,14 @@ export async function updateHolding(
   }
   if (patch.cost !== undefined) {
     fields['cost_minor'] = patch.cost === null ? null : patch.cost.minor.toString();
+  }
+  if (patch.costAccount !== undefined || patch.cost === null) {
+    const named = patch.cost === null ? null : (patch.costAccount ?? null);
+    if (named !== null && patch.cost !== undefined && patch.cost !== null && named.currency !== patch.cost.currency) {
+      throw new Error('The account the cost was paid from has to be in the same currency as the cost.');
+    }
+    fields['cost_account_id'] = named === null ? null : named.accountId;
+    fields['cost_account_currency'] = named === null ? null : named.currency;
   }
   if (patch.openedOn !== undefined) fields['opened_on'] = patch.openedOn;
   if (patch.visibility !== undefined) fields['visibility'] = patch.visibility;

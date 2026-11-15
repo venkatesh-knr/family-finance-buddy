@@ -247,6 +247,7 @@ export function HoldingDetail({
             listing.disposals.some((sale) => sale.holdingId === holding.id)
           }
           hasLots={listing.lots.some((lot) => lot.holdingId === holding.id)}
+          hasTerms={facts !== undefined}
           currencyOptions={<CurrencyOptions />}
           // Reloaded first and closed after, so the form stays on "Saving…" until the screen has what was saved.
           // Closing it first left the old earmark and terms showing for as long as the read took.

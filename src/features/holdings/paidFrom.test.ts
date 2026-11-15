@@ -69,4 +69,24 @@ describe('paidViaOf — what an entry says of the account its money moved throug
   it('refuses an account the person cannot use', () => {
     expect(paidViaOf({ accountId: 'gone', typed: '', accounts: [account()], entry: rupees }).ok).toBe(false);
   });
+
+  it('refuses an archived account for a new entry, and accepts the one the entry being corrected already names', () => {
+    const archived = account({ id: 'old', name: 'Old', last4: null, isArchived: true });
+    expect(paidViaOf({ accountId: 'old', typed: '', accounts: [archived], entry: rupees }).ok).toBe(false);
+    expect(paidViaOf({ accountId: 'old', typed: '', accounts: [archived], entry: rupees, keep: 'old' })).toEqual({
+      ok: true,
+      value: { accountId: 'old', amount: rupees },
+    });
+    expect(paidViaOf({ accountId: 'old', typed: '', accounts: [archived], entry: rupees, keep: 'another' }).ok).toBe(false);
+  });
+});
+
+describe('paidFromChoices — the account a correction already names', () => {
+  it('offers an archived account the entry names, marked archived, and no other archived one', () => {
+    const accounts = [account(), account({ id: 'old', name: 'Old', last4: null, isArchived: true }), account({ id: 'older', name: 'Older', last4: null, isArchived: true })];
+    expect(paidFromChoices(accounts, [], 'old').map((choice) => [choice.id, choice.label])).toEqual([
+      ['hdfc', 'HDFC savings ••4821'],
+      ['old', 'Old (archived)'],
+    ]);
+  });
 });
