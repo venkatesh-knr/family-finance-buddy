@@ -17,7 +17,7 @@ import { ConfirmAtAmount } from './ConfirmAtAmount.tsx';
 import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
-import { AccountsNudge } from './AccountsNudge.tsx';
+import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
 import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
@@ -163,36 +163,45 @@ export function MoneyScreen({
         recurringMade={recurringMade}
         displayCurrency={displayCurrency}
         money={{
-          // Quick add is first on the screen, then the month; under the month, in this order: money in, the close, the way to Accounts, and what was done.
+          // Quick add is first on the screen, then the month, and inside the month card three actions side by side: money in, the close, and the way
+          // to Accounts (the owner, 15 November 2026). What was done is said under them.
           actions: (
             <>
-              <MoneyIn
-                data={ledger.data}
-                privacy={privacy}
-                onAddAccount={ledger.add}
-                onChangeAccount={ledger.change}
-                onSaved={() => {
-                  setSaid(null);
-                  void ledger.reloadMoney();
-                }}
-                canRepeat={mayRule}
-                onRepeat={(draft) => {
-                  setNewRule(draft);
-                }}
-              />
-              {mayClose && (
-                <button
-                  type="button"
-                  className="btn btn-quiet add-pill"
-                  onClick={() => {
+              <div className="month-actions">
+                <MoneyIn
+                  data={ledger.data}
+                  privacy={privacy}
+                  onAddAccount={ledger.add}
+                  onChangeAccount={ledger.change}
+                  onSaved={() => {
                     setSaid(null);
-                    setClosing(true);
+                    void ledger.reloadMoney();
                   }}
-                >
-                  Close {monthWord(closeMonthKey)} · about 2 minutes
-                </button>
-              )}
-              <AccountsNudge nudge={nudge} />
+                  onSaid={setSaid}
+                  canRepeat={mayRule}
+                  onRepeat={(draft) => {
+                    setNewRule(draft);
+                  }}
+                />
+                {mayClose && (
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    aria-label={`Close ${monthWord(closeMonthKey)} · about 2 minutes`}
+                    onClick={() => {
+                      setSaid(null);
+                      setClosing(true);
+                    }}
+                  >
+                    <span>
+                      Close {monthWord(closeMonthKey)}
+                      <span className="note block">about 2 minutes</span>
+                    </span>
+                  </button>
+                )}
+                <AccountsAction nudge={nudge} />
+              </div>
+              <AccountsHint nudge={nudge} />
               {/* Always in the page, so that what is put into it is announced; under the buttons, where the person is looking. */}
               <p className="note" role="status">
                 {said}

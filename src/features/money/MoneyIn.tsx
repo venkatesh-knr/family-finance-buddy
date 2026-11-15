@@ -19,6 +19,7 @@ export function MoneyIn({
   onAddAccount,
   onChangeAccount,
   onSaved,
+  onSaid,
   onRepeat,
   canRepeat,
 }: {
@@ -28,35 +29,33 @@ export function MoneyIn({
   onChangeAccount: Parameters<typeof AddCredit>[0]['onChangeAccount'];
   /** A credit was written: the list reads it again. */
   onSaved: () => void;
+  /** What was written, in a sentence, for the screen's status line. */
+  onSaid: (message: string) => void;
   /** *Repeats every month* was on: the rule form opens with this. */
   onRepeat: (draft: RuleDraft) => void;
   /** Whether *Repeats every month* is offered: only an owner or a partner makes a rule. */
   canRepeat: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [added, setAdded] = useState<AddedCredit | null>(null);
 
   if (data === null || !data.viewer.canRecord) return null;
 
+  const said = (added: AddedCredit): string =>
+    added.move === true
+      ? `Moved ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}. It is in neither came in nor spent.`
+      : `Added ${CREDIT_LABEL[added.category]}, ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}.`;
+
   return (
-    <div className="flex flex-col gap-2.5">
+    <>
       <button
         type="button"
-        className="btn btn-quiet add-pill"
+        className="btn btn-quiet"
         onClick={() => {
-          setAdded(null);
           setOpen(true);
         }}
       >
         + Money in
       </button>
-      {added !== null && (
-        <p className="note" role="status">
-          {added.move === true
-            ? `Moved ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}. It is in neither came in nor spent.`
-            : `Added ${CREDIT_LABEL[added.category]}, ${formatMoney(money(added.minor, added.currency), { privacy })}, ${formatShortDate(added.date)}.`}
-        </p>
-      )}
       {open && (
         <AddCredit
           data={data}
@@ -64,9 +63,9 @@ export function MoneyIn({
           onAddAccount={onAddAccount}
           onChangeAccount={onChangeAccount}
           onSaved={(credit) => {
-            setAdded(credit);
             setOpen(false);
             onSaved();
+            onSaid(said(credit));
             if (credit.repeat !== undefined) onRepeat(credit.repeat);
           }}
           onCancel={() => {
@@ -74,6 +73,6 @@ export function MoneyIn({
           }}
         />
       )}
-    </div>
+    </>
   );
 }
