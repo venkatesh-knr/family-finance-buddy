@@ -457,9 +457,11 @@ export function OverviewScreen({
     /*
       One column on a phone, in the order the cards are written. From 1024px two
       columns, placed explicitly so the order a phone reads does not change:
-      net worth, the assets and the allocation on the left; the line and what
-      needs attention on the right. Each block keeps its own height, and a
-      wrapper with nothing in it takes no room.
+      net worth and the assets on the left, the line on the right, the
+      allocations side by side (India and abroad), and what needs attention last
+      across the full width, as it is last on a phone (the owner, 15 November
+      2026). Each block keeps its own height, and a wrapper with nothing in it
+      takes no room.
     */
     <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:items-start">
       {problem !== null && (
@@ -871,7 +873,7 @@ export function OverviewScreen({
 
       </div>
 
-      <div className="flex flex-col gap-2.5 empty:hidden lg:col-start-1 lg:row-start-3">
+      <div className="flex flex-col gap-2.5 empty:hidden lg:col-span-2 lg:col-start-1 lg:row-start-3 lg:grid lg:grid-cols-2 lg:items-start">
         {/*
           One card per currency, each as the board draws its one: "Allocation" and the currency with its total,
           the ring with the total inside it, and a row for each class. A ring cannot add rupees to dollars, so
@@ -1055,7 +1057,7 @@ export function OverviewScreen({
 
       </div>
 
-      <div className="lg:col-start-2 lg:row-start-3">
+      <div className="lg:col-span-2 lg:col-start-1 lg:row-start-4">
         <Card
           title="Needs attention"
           aside={
