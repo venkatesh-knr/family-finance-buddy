@@ -25,7 +25,13 @@ describe('lastMonthView', () => {
       saved: [money(7_358_000n, 'INR')],
       counted: 3,
       total: 3,
+      unnamedEntries: 0,
     });
+  });
+
+  it('says how many of the month’s purchases and sales named no account, whose money is still in spent', () => {
+    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3, hidden: [], unnamedEntries: 2 });
+    expect(view.kind === 'closed' && view.unnamedEntries).toBe(2);
   });
 
   it('counts the private accounts the database added, with how many had both balances', () => {

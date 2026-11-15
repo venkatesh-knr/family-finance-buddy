@@ -233,6 +233,8 @@ describe('the sum functions’ rows', () => {
       refunds_minor: '0',
       came_in_minor: '14000000',
       reserve_change_minor: '-120000',
+      into_holdings_minor: '800000',
+      out_of_holdings_minor: '300000',
       accounts_counted: 1,
       accounts_total: 2,
     };
@@ -245,6 +247,8 @@ describe('the sum functions’ rows', () => {
       refunds: 0n,
       cameIn: 14_000_000n,
       reserveChange: -120_000n,
+      intoHoldings: 800_000n,
+      outOfHoldings: 300_000n,
       counted: 1,
       total: 2,
     });

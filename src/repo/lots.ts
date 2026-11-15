@@ -23,7 +23,25 @@
 
 import { supabase } from './client.ts';
 import { quantityToNumeric, parseQuantity } from '../lib/quantity.ts';
-import type { NewDisposal, NewLot, Uuid } from './types.ts';
+import type { EntryAccount, NewDisposal, NewLot, Uuid } from './types.ts';
+
+/**
+ * The columns that say which account an entry's money went from or into. None named: all three null. Named in the entry's own currency: the amount is
+ * the entry's, so it is not stored twice. Named in another currency: the amount typed is stored beside the currency it is in (LI-I28).
+ */
+export function accountColumns(
+  paidVia: EntryAccount | null | undefined,
+  entryCurrency: string,
+): { account_id: string | null; account_currency: string | null; account_amount_minor: string | null } {
+  if (paidVia === null || paidVia === undefined) return { account_id: null, account_currency: null, account_amount_minor: null };
+  const same = paidVia.amount.currency === entryCurrency;
+  if (!same && paidVia.amount.minor <= 0n) throw new Error('Say what left the account, in its own currency.');
+  return {
+    account_id: paidVia.accountId,
+    account_currency: paidVia.amount.currency,
+    account_amount_minor: same ? null : paidVia.amount.minor.toString(),
+  };
+}
 
 /**
  * Record an acquisition.
@@ -53,6 +71,7 @@ export async function addLot(input: NewLot): Promise<void> {
     currency: input.cost.currency,
     kind: input.kind ?? 'purchase',
     note: input.note ?? null,
+    ...accountColumns(input.paidVia, input.cost.currency),
   });
 
   if (error !== null) throw asRepositoryError(error);
@@ -79,6 +98,7 @@ export async function addDisposal(input: NewDisposal): Promise<void> {
     currency: input.proceeds.currency,
     kind: input.kind ?? 'sale',
     note: input.note ?? null,
+    ...accountColumns(input.paidVia, input.proceeds.currency),
   });
 
   if (error !== null) throw asRepositoryError(error);
@@ -98,7 +118,15 @@ export async function addDisposal(input: NewDisposal): Promise<void> {
  */
 export async function updateLot(
   id: Uuid,
-  patch: { acquiredOn?: string; quantity?: string; costMinor?: bigint; note?: string | null },
+  patch: {
+    acquiredOn?: string;
+    quantity?: string;
+    costMinor?: bigint;
+    note?: string | null;
+    /** The account it was paid from: null says none, and left out leaves what is there. The lot's currency is needed with it. */
+    paidVia?: EntryAccount | null;
+    entryCurrency?: string;
+  },
 ): Promise<void> {
   const client = supabase();
 
@@ -111,6 +139,10 @@ export async function updateLot(
   }
   if (patch.costMinor !== undefined) fields['cost_minor'] = patch.costMinor.toString();
   if (patch.note !== undefined) fields['note'] = patch.note;
+  if (patch.paidVia !== undefined) {
+    if (patch.entryCurrency === undefined) throw new Error('A purchase is changed with its currency.');
+    Object.assign(fields, accountColumns(patch.paidVia, patch.entryCurrency));
+  }
 
   if (Object.keys(fields).length === 0) return;
 
@@ -125,7 +157,15 @@ export async function updateLot(
 /** Correct a sale. Same reasoning as updateLot: no delete, so no dead ends. */
 export async function updateDisposal(
   id: Uuid,
-  patch: { disposedOn?: string; quantity?: string; proceedsMinor?: bigint; note?: string | null },
+  patch: {
+    disposedOn?: string;
+    quantity?: string;
+    proceedsMinor?: bigint;
+    note?: string | null;
+    /** The account the proceeds were paid into: null says none, and left out leaves what is there. The sale's currency is needed with it. */
+    paidVia?: EntryAccount | null;
+    entryCurrency?: string;
+  },
 ): Promise<void> {
   const client = supabase();
 
@@ -138,6 +178,10 @@ export async function updateDisposal(
   }
   if (patch.proceedsMinor !== undefined) fields['proceeds_minor'] = patch.proceedsMinor.toString();
   if (patch.note !== undefined) fields['note'] = patch.note;
+  if (patch.paidVia !== undefined) {
+    if (patch.entryCurrency === undefined) throw new Error('A sale is changed with its currency.');
+    Object.assign(fields, accountColumns(patch.paidVia, patch.entryCurrency));
+  }
 
   if (Object.keys(fields).length === 0) return;
 
@@ -159,7 +203,7 @@ function asRepositoryError(error: ProviderError): Error {
     return new Error('Only an owner, partner or contributor can record a purchase or a sale.');
   }
   if (error.code === '23514') {
-    return new Error('A quantity must be above zero and a cost cannot be negative.');
+    return new Error('A quantity must be above zero, a cost cannot be negative, and an account in another currency needs what left it.');
   }
   if (error.code === '23503') {
     return new Error('That holding is not one this household can record against.');

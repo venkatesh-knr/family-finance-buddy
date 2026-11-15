@@ -22,7 +22,7 @@
  *   is correct rather than alarming.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { formatIsoDate } from '../../lib/dates.ts';
 import {
   formatMoney,
@@ -32,10 +32,14 @@ import {
   percentOfCost,
 } from '../../lib/money.ts';
 import { formatQuantity, formatQuantityGrouped, parseQuantity } from '../../lib/quantity.ts';
-import type { Disposal, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
+import type { Account, Disposal, EntryAccount, HoldingListing, Lot, NewDisposal, NewLot } from '../../repo/types.ts';
 import { Chevron } from '../../ui/primitives.tsx';
+import { titleOf } from '../money/accountRows.ts';
 import { Absent, Button, Caveat, EditButton, Field, Notice, Pill, Problem, Stat, Unit } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
+import { paidFromChoices, paidViaOf, recentlyNamed } from './paidFrom.ts';
+import { PaidFromField } from './PaidFromField.tsx';
+import { useAccountChoices } from './useAccountChoices.ts';
 import {
   COST_MISSING_REFUSED_BECAUSE,
   historySentence,
@@ -72,14 +76,25 @@ export function CostAndGains({
   canWrite: boolean;
   onLot: (lot: NewLot) => Promise<void>;
   onSale: (sale: NewDisposal) => Promise<void>;
-  onEditLot: (id: string, patch: { quantity: string; costMinor: bigint; acquiredOn: string }) => Promise<void>;
-  onEditSale: (id: string, patch: { quantity: string; proceedsMinor: bigint; disposedOn: string }) => Promise<void>;
+  onEditLot: (id: string, patch: LotPatch) => Promise<void>;
+  onEditSale: (id: string, patch: SalePatch) => Promise<void>;
   taxRules: readonly TaxRule[];
 }) {
   const [open, setOpen] = useState(false);
+  // The accounts a purchase or a sale can name (optional): read once, and only when the forms are open.
+  const [entering, setEntering] = useState(false);
+  const { accounts, failed: accountsFailed } = useAccountChoices((entering || open) && canWrite ? listing.household.id : null);
+  // The account an entry named most recently comes first in the picker, from the entries already read.
+  const recent = useMemo(
+    () =>
+      recentlyNamed([
+        ...listing.lots.map((lot) => ({ date: lot.acquiredOn, accountId: lot.paidVia?.accountId ?? null })),
+        ...listing.disposals.map((sale) => ({ date: sale.disposedOn, accountId: sale.paidVia?.accountId ?? null })),
+      ]),
+    [listing.lots, listing.disposals],
+  );
   // Entering a purchase by hand is the rare path now that a statement can be
   // imported, so the two forms are behind a toggle rather than always open.
-  const [entering, setEntering] = useState(false);
   const { holding, cost, realisedGain, parcels, shortfalls } = row;
   const currency = holding.instrument.currency;
   // Null unless the purchases and the statement's closing balance disagree.
@@ -270,6 +285,9 @@ export function CostAndGains({
           onEditSale={onEditSale}
           taxRules={taxRules}
           assetClass={holding.instrument.taxAssetClass}
+          accounts={accounts}
+          accountsFailed={accountsFailed}
+          recent={recent}
         />
       )}
 
@@ -280,13 +298,17 @@ export function CostAndGains({
             amountLabel={`Cost (${currency})`}
             currency={currency}
             today={today}
-            onSubmit={async (quantity, minor, date) => {
+            accounts={accounts}
+            accountsFailed={accountsFailed}
+            recent={recent}
+            onSubmit={async (quantity, minor, date, paidVia) => {
               await onLot({
                 householdId: listing.household.id,
                 holdingId: holding.id,
                 acquiredOn: date,
                 quantity,
                 cost: money(minor, currency),
+                paidVia,
               });
             }}
           />
@@ -295,13 +317,17 @@ export function CostAndGains({
             amountLabel={`Proceeds (${currency})`}
             currency={currency}
             today={today}
-            onSubmit={async (quantity, minor, date) => {
+            accounts={accounts}
+            accountsFailed={accountsFailed}
+            recent={recent}
+            onSubmit={async (quantity, minor, date, paidVia) => {
               await onSale({
                 householdId: listing.household.id,
                 holdingId: holding.id,
                 disposedOn: date,
                 quantity,
                 proceeds: money(minor, currency),
+                paidVia,
               });
             }}
           />
@@ -332,6 +358,9 @@ function Workings({
   onEditSale,
   taxRules,
   assetClass,
+  accounts,
+  accountsFailed,
+  recent,
 }: {
   lots: readonly Lot[];
   sales: readonly Disposal[];
@@ -339,10 +368,13 @@ function Workings({
   currency: string;
   privacy: boolean;
   canWrite: boolean;
-  onEditLot: (id: string, patch: { quantity: string; costMinor: bigint; acquiredOn: string }) => Promise<void>;
-  onEditSale: (id: string, patch: { quantity: string; proceedsMinor: bigint; disposedOn: string }) => Promise<void>;
+  onEditLot: (id: string, patch: LotPatch) => Promise<void>;
+  onEditSale: (id: string, patch: SalePatch) => Promise<void>;
   taxRules: readonly TaxRule[];
   assetClass: AssetClass | null;
+  accounts: readonly Account[];
+  accountsFailed: boolean;
+  recent: readonly string[];
 }) {
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -357,15 +389,21 @@ function Workings({
           quantity: showQuantity(lot.quantity),
           amount: lot.cost,
           tag: lot.kind === 'purchase' ? null : lot.kind,
+          paidVia: lot.paidVia,
+          movesMoney: lot.kind === 'purchase',
         }))}
+        verb="left"
+        accounts={accounts}
+        accountsFailed={accountsFailed}
+        recent={recent}
         amountLabel="Cost"
         privacy={privacy}
         canWrite={canWrite}
         editing={editing}
         setEditing={setEditing}
         currency={currency}
-        onSave={async (id, quantity, minor, date) => {
-          await onEditLot(id, { quantity, costMinor: minor, acquiredOn: date });
+        onSave={async (id, quantity, minor, date, paidVia) => {
+          await onEditLot(id, { quantity, costMinor: minor, acquiredOn: date, ...(paidVia === undefined ? {} : { paidVia, entryCurrency: currency }) });
         }}
       />
 
@@ -378,15 +416,21 @@ function Workings({
           quantity: showQuantity(sale.quantity),
           amount: sale.proceeds,
           tag: sale.kind === 'sale' ? null : sale.kind,
+          paidVia: sale.paidVia,
+          movesMoney: sale.kind === 'sale' || sale.kind === 'redemption' || sale.kind === 'maturity',
         }))}
+        verb="reached"
+        accounts={accounts}
+        accountsFailed={accountsFailed}
+        recent={recent}
         amountLabel="Proceeds"
         privacy={privacy}
         canWrite={canWrite}
         editing={editing}
         setEditing={setEditing}
         currency={currency}
-        onSave={async (id, quantity, minor, date) => {
-          await onEditSale(id, { quantity, proceedsMinor: minor, disposedOn: date });
+        onSave={async (id, quantity, minor, date, paidVia) => {
+          await onEditSale(id, { quantity, proceedsMinor: minor, disposedOn: date, ...(paidVia === undefined ? {} : { paidVia, entryCurrency: currency }) });
         }}
       />
 
@@ -473,6 +517,27 @@ interface LedgerRow {
   readonly quantity: string;
   readonly amount: { readonly minor: bigint; readonly currency: string };
   readonly tag: string | null;
+  /** The account it named, and whether it moved money at all (a bonus issue or a gift did not). */
+  readonly paidVia: EntryAccount | null;
+  readonly movesMoney: boolean;
+}
+
+/** What an edit changes of the account: nothing (undefined), none (null), or an account. */
+type AccountEdit = EntryAccount | null | undefined;
+
+export interface LotPatch {
+  quantity: string;
+  costMinor: bigint;
+  acquiredOn: string;
+  paidVia?: EntryAccount | null;
+  entryCurrency?: string;
+}
+export interface SalePatch {
+  quantity: string;
+  proceedsMinor: bigint;
+  disposedOn: string;
+  paidVia?: EntryAccount | null;
+  entryCurrency?: string;
 }
 
 function Ledger({
@@ -485,6 +550,10 @@ function Ledger({
   editing,
   setEditing,
   currency,
+  verb,
+  accounts,
+  accountsFailed,
+  recent,
   onSave,
 }: {
   heading: string;
@@ -496,8 +565,13 @@ function Ledger({
   editing: string | null;
   setEditing: (id: string | null) => void;
   currency: string;
-  onSave: (id: string, quantity: string, minor: bigint, date: string) => Promise<void>;
+  verb: 'left' | 'reached';
+  accounts: readonly Account[];
+  accountsFailed: boolean;
+  recent: readonly string[];
+  onSave: (id: string, quantity: string, minor: bigint, date: string, paidVia: AccountEdit) => Promise<void>;
 }) {
+  const names = new Map(accounts.map((account) => [account.id, titleOf(account)]));
   return (
     <div>
       <h4 className="label">{heading}</h4>
@@ -512,11 +586,15 @@ function Ledger({
                   entry={entry}
                   currency={currency}
                   amountLabel={amountLabel}
+                  verb={verb}
+                  accounts={accounts}
+                  accountsFailed={accountsFailed}
+                  recent={recent}
                   onCancel={() => {
                     setEditing(null);
                   }}
-                  onSave={async (quantity, minor, date) => {
-                    await onSave(entry.id, quantity, minor, date);
+                  onSave={async (quantity, minor, date, paidVia) => {
+                    await onSave(entry.id, quantity, minor, date, paidVia);
                     setEditing(null);
                   }}
                 />
@@ -531,6 +609,13 @@ function Ledger({
                   {formatMoney(money(entry.amount.minor, entry.amount.currency), { privacy })}
                 </span>
                 {entry.tag !== null && <Pill tone="neutral">{entry.tag}</Pill>}
+                {entry.movesMoney && accounts.length > 0 && (
+                  <span className="note">
+                    {entry.paidVia === null
+                      ? 'no account said'
+                      : `${verb === 'left' ? 'paid from' : 'paid into'} ${names.get(entry.paidVia.accountId) ?? 'an account you cannot see'}`}
+                  </span>
+                )}
                 {canWrite && (
                   <EditButton
                     label={`Edit the ${formatIsoDate(entry.date)} entry`}
@@ -560,15 +645,29 @@ function EditRow({
   entry,
   currency,
   amountLabel,
+  verb,
+  accounts,
+  accountsFailed,
+  recent,
   onCancel,
   onSave,
 }: {
   entry: LedgerRow;
   currency: string;
   amountLabel: string;
+  verb: 'left' | 'reached';
+  accounts: readonly Account[];
+  accountsFailed: boolean;
+  recent: readonly string[];
   onCancel: () => void;
-  onSave: (quantity: string, minor: bigint, date: string) => Promise<void>;
+  onSave: (quantity: string, minor: bigint, date: string, paidVia: AccountEdit) => Promise<void>;
 }) {
+  // The account it named, which the person may not be able to read: then it is left as it is, and the row says so, and is not offered a change.
+  const named = entry.paidVia;
+  const unreadable = named !== null && !accounts.some((account) => account.id === named.accountId);
+  const choices = useMemo(() => paidFromChoices(accounts, recent), [accounts, recent]);
+  const [accountId, setAccountId] = useState(named === null || unreadable ? '' : named.accountId);
+  const [typed, setTyped] = useState(named !== null && named.amount.currency !== currency ? toAmountInput(named.amount.minor, named.amount.currency) : '');
   const [quantity, setQuantity] = useState(entry.quantity);
   const [amount, setAmount] = useState(() => toAmountInput(entry.amount.minor, currency));
   const [date, setDate] = useState(entry.date);
@@ -587,15 +686,26 @@ function EditRow({
       return;
     }
 
+    // Nothing is sent of the account for an entry that moved no money, or one whose account the person cannot read.
+    let paidVia: AccountEdit;
+    if (entry.movesMoney && !unreadable) {
+      const via = paidViaOf({ accountId, typed, accounts, entry: money(minor, currency), verb });
+      if (!via.ok) {
+        setProblem(via.problem);
+        return;
+      }
+      paidVia = via.value;
+    }
+
     setBusy(true);
     try {
-      await onSave(quantity, minor, date);
+      await onSave(quantity, minor, date, paidVia);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'Could not save that.');
     } finally {
       setBusy(false);
     }
-  }, [amount, currency, date, onSave, quantity]);
+  }, [accountId, accounts, amount, currency, date, entry.movesMoney, onSave, quantity, typed, unreadable, verb]);
 
   return (
     <div ref={focusRef} className="inset-form flex flex-wrap items-end gap-2.5">
@@ -631,6 +741,20 @@ function EditRow({
           }}
         />
       </div>
+      {entry.movesMoney && !unreadable && (
+        <PaidFromField
+          label={verb === 'left' ? 'Paid from' : 'Paid into'}
+          verb={verb}
+          choices={choices}
+          entryCurrency={currency}
+          accountId={accountId}
+          typed={typed}
+          failed={accountsFailed}
+          onAccount={setAccountId}
+          onTyped={setTyped}
+        />
+      )}
+      {entry.movesMoney && unreadable && <p className="note w-full">It names an account you cannot see, so only its owner can change that.</p>}
       <Button type="button" disabled={busy} onClick={() => void save()}>
         {busy ? 'Saving…' : 'Save'}
       </Button>
@@ -651,17 +775,27 @@ function RecordEvent({
   amountLabel,
   currency,
   today,
+  accounts,
+  accountsFailed,
+  recent,
   onSubmit,
 }: {
   what: 'purchase' | 'sale';
   amountLabel: string;
   currency: string;
   today: string;
-  onSubmit: (quantity: string, minor: bigint, date: string) => Promise<void>;
+  /** The household's accounts, to say which one it was paid from or into. None offered: the field is not drawn. */
+  accounts: readonly Account[];
+  accountsFailed: boolean;
+  recent: readonly string[];
+  onSubmit: (quantity: string, minor: bigint, date: string, paidVia: EntryAccount | null) => Promise<void>;
 }) {
   const [quantity, setQuantity] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
+  const [accountId, setAccountId] = useState('');
+  const [typed, setTyped] = useState('');
+  const choices = useMemo(() => paidFromChoices(accounts, recent), [accounts, recent]);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -678,18 +812,25 @@ function RecordEvent({
         return;
       }
 
+      const via = paidViaOf({ accountId, typed, accounts, entry: money(minor, currency), verb: what === 'purchase' ? 'left' : 'reached' });
+      if (!via.ok) {
+        setProblem(via.problem);
+        return;
+      }
+
       setBusy(true);
       try {
-        await onSubmit(quantity, minor, date);
+        await onSubmit(quantity, minor, date, via.value);
         setQuantity('');
         setAmount('');
+        setTyped('');
       } catch (error) {
         setProblem(error instanceof Error ? error.message : 'Could not record that.');
       } finally {
         setBusy(false);
       }
     },
-    [amount, currency, date, onSubmit, quantity],
+    [accountId, accounts, amount, currency, date, onSubmit, quantity, typed, what],
   );
 
   return (
@@ -735,6 +876,17 @@ function RecordEvent({
           }}
         />
       </div>
+      <PaidFromField
+        label={what === 'purchase' ? 'Paid from' : 'Paid into'}
+        verb={what === 'purchase' ? 'left' : 'reached'}
+        choices={choices}
+        entryCurrency={currency}
+        accountId={accountId}
+        typed={typed}
+        failed={accountsFailed}
+        onAccount={setAccountId}
+        onTyped={setTyped}
+      />
       <Button type="submit" disabled={busy || quantity.trim() === '' || amount.trim() === ''}>
         {busy ? 'Saving…' : what === 'purchase' ? 'Add purchase' : 'Add sale'}
       </Button>

@@ -657,8 +657,8 @@ select results_eq(
 select is(
   (select proargnames from pg_proc where proname = 'household_private_close'),
   array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'own_out_minor', 'refunds_minor',
-        'came_in_minor', 'reserve_change_minor', 'accounts_counted', 'accounts_total']::text[],
-  'its result has a currency, six sums and two counts, and no account, no member, no balance and no date'
+        'came_in_minor', 'reserve_change_minor', 'into_holdings_minor', 'out_of_holdings_minor', 'accounts_counted', 'accounts_total']::text[],
+  'its result has a currency, eight sums and two counts, and no account, no member, no balance and no date'
 );
 
 select throws_ok(

@@ -230,6 +230,9 @@ export const ENTITIES: readonly Entity[] = [
     scope: 'household',
     upload: 'rows',
     rowKey: ['id'],
+    // Which account a purchase was paid from, and what left it (ledger-income.md section 4a): accounts are not in the file (see `account` below), and an
+    // upload from a template never names one, so these come back empty and the month close counts the money as spent until they are said again.
+    leftOut: ['account_id', 'account_currency', 'account_amount_minor'],
     columns: [id(), id('holding_id', 'holding'), date('acquired_on'), decimal('quantity'), money('cost_minor'), currency(), text('kind'), text('note'), id('source_batch_id'), text('source_hash')],
   },
   {
@@ -238,6 +241,8 @@ export const ENTITIES: readonly Entity[] = [
     scope: 'household',
     upload: 'rows',
     rowKey: ['id'],
+    // The account the proceeds were paid into, as for a lot.
+    leftOut: ['account_id', 'account_currency', 'account_amount_minor'],
     columns: [id(), id('holding_id', 'holding'), date('disposed_on'), decimal('quantity'), money('proceeds_minor'), currency(), text('kind'), text('note'), id('source_batch_id'), text('source_hash')],
   },
   {
@@ -397,6 +402,8 @@ export const ENTITIES: readonly Entity[] = [
     scope: 'household',
     upload: 'rows',
     rowKey: ['id'],
+    // The account a payment was paid from or a withdrawal paid into, as for a lot.
+    leftOut: ['account_id'],
     columns: [id(), id('holding_id', 'holding'), date('entry_date'), money('amount_minor'), currency(), text('note'), ts('voided_at')],
   },
 ];

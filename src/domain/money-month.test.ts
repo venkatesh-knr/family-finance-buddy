@@ -268,6 +268,28 @@ describe('closedMonthFigures — what the caller cannot read, added as the datab
     expect(month.gapMinor).toBe(0n);
   });
 
+  it('adds money into a holding that the screen cannot see, so spent and invested are the same as when it is read (LI-I30)', () => {
+    // The ₹55,000 went into another member's private holding. The screen reads no entry for it, and the database sums it.
+    const hidden = { currency: 'INR', left: 0n, outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: 0n, intoHoldings: paise(55_000), outOfHoldings: 0n };
+    const month = closed({ ...example({ holdingMoves: [] }), unreadable: [hidden] });
+    expect(month.spent).toBe(paise(69_670));
+    expect(month.putIntoHoldings).toBe(paise(55_000));
+    expect(month.invested).toBe(paise(55_000));
+    expect(month.saved).toBe(paise(73_580));
+    expect(month.gapMinor).toBe(0n);
+  });
+
+  it('adds proceeds paid into a readable account from a holding the screen cannot see: money in to it, and out of the holding (LI-I30)', () => {
+    // ₹10,000 from a private holding reached HDFC, so its closing is ₹10,000 higher and what left it is the same.
+    const hidden = { currency: 'INR', left: paise(10_000), outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: 0n, intoHoldings: 0n, outOfHoldings: paise(10_000) };
+    const month = closed({ ...example({ accounts: accounts(230_380) }), unreadable: [hidden] });
+    expect(month.spent).toBe(paise(69_670));
+    expect(month.takenOutOfHoldings).toBe(paise(10_000));
+    expect(month.invested).toBe(paise(45_000));
+    expect(month.cashReserveChange).toBe(paise(18_580 + 10_000));
+    expect(month.gapMinor).toBe(0n);
+  });
+
   it('adds a currency only a hidden account is in, and leaves the rest alone', () => {
     const result = closedMonthFigures(
       example({ unreadable: [{ currency: 'USD', left: 5_000n, outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: -5_000n }] }),

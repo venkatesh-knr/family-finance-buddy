@@ -190,6 +190,8 @@ export function toPrivateClose(raw: unknown): PrivateClose {
     refunds: sum('refunds_minor'),
     cameIn: sum('came_in_minor'),
     reserveChange: sum('reserve_change_minor'),
+    intoHoldings: sum('into_holdings_minor'),
+    outOfHoldings: sum('out_of_holdings_minor'),
     counted: requireNumber(row['accounts_counted'], 'household_private_close.accounts_counted'),
     total: requireNumber(row['accounts_total'], 'household_private_close.accounts_total'),
   };

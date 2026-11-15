@@ -20,6 +20,8 @@ export type LastMonthView =
       /** The accounts the figures cover, and the accounts there are: the ones read, and the private ones the database counted. */
       readonly counted: number;
       readonly total: number;
+      /** Purchases, sales and PPF entries of the month that named no account: their money is still in spent. */
+      readonly unnamedEntries: number;
     }
   /** `noAccounts`: the household has no account in use, so the month can never be closed from balances; it is on what was entered. */
   | { readonly kind: 'open'; readonly month: string; readonly noAccounts: boolean }
@@ -36,6 +38,8 @@ export function lastMonthView(input: {
   readonly hidden: readonly { readonly counted: number; readonly total: number }[];
   /** Set while what the figures need is being read, or when it could not be. */
   readonly reading?: 'loading' | 'failed';
+  /** How many of the month's purchases, sales and PPF entries the caller reads named no account. */
+  readonly unnamedEntries?: number;
 }): LastMonthView {
   const { month, close } = input;
   if (input.reading === 'loading') return { kind: 'reading', month };
@@ -49,6 +53,7 @@ export function lastMonthView(input: {
     saved: close.currencies.map((line) => money(line.saved, line.currency)),
     counted: input.readable + input.hidden.reduce((total, line) => total + line.counted, 0),
     total: input.readable + input.hidden.reduce((total, line) => total + line.total, 0),
+    unnamedEntries: input.unnamedEntries ?? 0,
   };
 }
 

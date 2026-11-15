@@ -23,6 +23,7 @@ import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
 import { accountSteps, closeFigures, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
+import { useHoldingMoves } from './useHoldingMoves.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
@@ -58,6 +59,8 @@ export function MoneyScreen({
   // Last month on the month surface, for an owner or a partner: the closed figures, or the open state while nobody has closed it. What another
   // member keeps private is added by the database as totals (usePrivateClose), and until it is read there is no figure.
   const lastPrivate = usePrivateClose(ledger.data?.household.id ?? null, ledger.data?.viewer.role ?? null, closeMonthKey);
+  // And the holdings' entries that named an account: money into a holding is not spent, and without them Last month would read low.
+  const lastEntries = useHoldingMoves(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived));
   const lastMonth: LastMonthView | null = (() => {
     if (ledger.data === null || !lastPrivate.asks) return null;
     const input = {
@@ -68,15 +71,17 @@ export function MoneyScreen({
       credits: ledger.credits,
       transfers: ledger.transfers,
       typed: {},
+      holdingMoves: lastEntries.moves,
       ...(lastPrivate.unread === null || lastPrivate.unread.length === 0 ? {} : { unreadable: lastPrivate.unread }),
     };
-    const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed);
-    const failed = ledger.moneyStatus === 'failed' || lastPrivate.failed;
+    const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed) || (lastEntries.blocked && !lastEntries.failed);
+    const failed = ledger.moneyStatus === 'failed' || lastPrivate.failed || lastEntries.failed;
     return lastMonthView({
       month: closeMonthKey,
       close: closeFigures(input),
       readable: accountSteps(input).length,
       hidden: lastPrivate.unread ?? [],
+      unnamedEntries: lastEntries.unnamed,
       ...(failed ? { reading: 'failed' as const } : waiting ? { reading: 'loading' as const } : {}),
     });
   })();

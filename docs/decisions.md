@@ -590,3 +590,7 @@ Accounts is a screen behind More, the first row there, and Money is one screen w
 accounts*, with a button while no account is in use, and afterwards one quiet line, *Accounts · 3 · Manage*, under the ledger. *+ Money in* sits directly under quick add, and *Money out* is quick add and
 stays one (the owner, the same day). This reverses the owner's decision of 14 November that accounts are managed on Money's second tab. A credit does not remember the amount a rule expected: the owner
 decided it is not required, since a salary recorded for a different amount is recorded as it came.
+- **A holding's entries name the account they were paid from or into (the owner, 15 November 2026).** Optional on a purchase, a sale, redemption or maturity, and a PPF payment or
+  withdrawal (`ledger-income.md` section 4a). A purchase abroad paid from a rupee account carries what left the account, typed in that account's currency from its statement and never worked out.
+  Deposits, bonds and a holding opened with a cost name no account yet: they follow after the purchase, sale and PPF forms. An entry whose account the editor cannot read cannot be edited
+  by them, as for a credit: the account's owner corrects it. Loan payments are the step after this.
