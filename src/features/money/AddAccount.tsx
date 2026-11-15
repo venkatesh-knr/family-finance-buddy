@@ -2,7 +2,7 @@
  * Add an account, and change one (docs/design/ledger-income.md section 1a; the AddAccount board).
  *
  * One short form and not a stepped one, because only three of its seven fields are needed: a name, a type and whose it is. It is opened
- * from the Accounts tab, and from "+ Add an account" at the end of an account picker, which returns to the form it came from with the
+ * from the Accounts screen, and from "+ Add an account" at the end of an account picker, which returns to the form it came from with the
  * new account chosen and every value kept (`onSaved` is given the new account's id).
  *
  * Changing an account keeps its name, bank, last four digits and who sees it open. Its type and currency are fixed once it has a credit,

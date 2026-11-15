@@ -74,8 +74,15 @@ describe('legacyRedirect — a link saved before Expenses became Money', () => {
     expect(legacyRedirect('#/expenses?month=2026-10&category=food')).toBe('#/money?month=2026-10&category=food');
   });
 
+  it('sends Money’s old second tab to the Accounts screen, which moved to More on 15 November', () => {
+    expect(legacyRedirect('#/money?tab=accounts')).toBe('#/accounts');
+    expect(legacyRedirect('#money?tab=accounts')).toBe('#/accounts');
+    expect(legacyRedirect('#/money?tab=ledger')).toBeNull();
+  });
+
   it('leaves every other address alone, the new one included, so the redirect cannot loop', () => {
     expect(legacyRedirect('#/money')).toBeNull();
+    expect(legacyRedirect('#/accounts')).toBeNull();
     expect(legacyRedirect('#/money?month=2026-10')).toBeNull();
     expect(legacyRedirect('#/holdings?kind=deposit')).toBeNull();
     expect(legacyRedirect('#/expenses-x')).toBeNull();

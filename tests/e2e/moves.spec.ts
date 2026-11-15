@@ -13,8 +13,8 @@ import { choiceField, choose, next } from './fields.ts';
 test.use({ actionTimeout: 15_000 });
 
 async function addAccount(page: Page, name: string, type?: 'Card') {
-  await page.goto('/#/money?tab=accounts');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
+  await page.goto('/#/accounts');
+  await expect(page.getByRole('button', { name: '+ Add an account' })).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: '+ Add an account' }).click();
   const form = page.getByRole('form', { name: 'Add an account' });
   await form.getByLabel('Name').fill(name);
@@ -26,7 +26,6 @@ async function addAccount(page: Page, name: string, type?: 'Card') {
 
 async function onLedger(page: Page) {
   await page.goto('/#/money');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
 }
 

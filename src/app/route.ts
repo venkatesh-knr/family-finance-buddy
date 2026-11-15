@@ -14,6 +14,7 @@ const SCREEN_NAMES: readonly AppScreen[] = [
   'overview',
   'summary',
   'money',
+  'accounts',
   'holdings',
   'tax',
   'fire',
@@ -45,6 +46,8 @@ export function parseHash(hash: string): Route {
  */
 export function legacyRedirect(hash: string): string | null {
   const [path = '', query = ''] = hash.replace(/^#\/?/, '').split('?', 2);
+  // Money's second tab was Accounts until it moved behind More (the owner, 15 November 2026).
+  if (path === 'money' && new URLSearchParams(query).get('tab') === 'accounts') return '#/accounts';
   if (path !== 'expenses') return null;
   return query === '' ? '#/money' : `#/money?${query}`;
 }

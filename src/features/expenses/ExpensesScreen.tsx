@@ -109,15 +109,20 @@ export function ExpensesScreen({
   // The household's own currency until this device says otherwise.
   const reading = displayCurrency === '' ? (listing.household.baseCurrency ?? 'INR') : displayCurrency;
 
-  const quickAdd = listing.viewer.canRecord ? (
-    <QuickAdd listing={listing} onAdd={add} />
-  ) : (
-    <Card title="Quick add">
-      <p className="note">
-        Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
-        database enforces that, not this screen.
-      </p>
-    </Card>
+  const quickAdd = (
+    <>
+      {listing.viewer.canRecord ? (
+        <QuickAdd listing={listing} onAdd={add} />
+      ) : (
+        <Card title="Quick add">
+          <p className="note">
+            Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
+            database enforces that, not this screen.
+          </p>
+        </Card>
+      )}
+      {money?.afterQuickAdd}
+    </>
   );
 
   return (

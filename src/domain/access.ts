@@ -23,6 +23,7 @@ export type AppScreen =
   | 'overview'
   | 'summary'
   | 'money'
+  | 'accounts'
   | 'holdings'
   | 'tax'
   | 'fire'
@@ -41,7 +42,8 @@ export function screensFor(role: HouseholdRole | null): readonly AppScreen[] {
     case 'partner':
       return ['overview', 'money', 'holdings', 'fire', 'more'];
     case 'contributor':
-      return ['summary', 'money', 'holdings', 'tax'];
+      // Their own accounts are in the bar: a contributor has no More to keep them behind.
+      return ['summary', 'money', 'accounts', 'holdings', 'tax'];
     case 'viewer':
     case null:
       return ['summary'];
@@ -58,7 +60,7 @@ export function moreFor(role: HouseholdRole | null): readonly AppScreen[] {
   switch (role) {
     case 'owner':
     case 'partner':
-      return ['tax', 'reports', 'insurance', 'property'];
+      return ['accounts', 'tax', 'reports', 'insurance', 'property'];
     case 'contributor':
     case 'viewer':
     case null:

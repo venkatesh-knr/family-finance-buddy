@@ -583,3 +583,10 @@ Questions that had been parked while the ledger and income work was built, answe
   hard-deletes rows an upload made, voided or not, and that makes it a larger and riskier migration than the small one first described. The owner asked for the decision to be mine: hold it. Voided
   rows are final in every screen, and there is no way in the app to edit one. It is raised again if a screen is ever added that could.
 - **Rules, meaning the salary rule:** whether a contributor may confirm their own rule's credits was asked and left, because a contributor has not asked for it. Only an owner or a partner makes or changes a rule.
+
+## Accounts behind More, Money without tabs (15 November 2026, the owner)
+
+Accounts is a screen behind More, the first row there, and Money is one screen with no tabs. A contributor, who has no More, has Accounts in their bar. So that nobody misses it, Money shows a card, *Add your
+accounts*, with a button while no account is in use, and afterwards one quiet line, *Accounts · 3 · Manage*, under the ledger. *+ Money in* sits directly under quick add, and *Money out* is quick add and
+stays one (the owner, the same day). This reverses the owner's decision of 14 November that accounts are managed on Money's second tab. A credit does not remember the amount a rule expected: the owner
+decided it is not required, since a salary recorded for a different amount is recorded as it came.

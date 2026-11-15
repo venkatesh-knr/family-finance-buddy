@@ -4,7 +4,7 @@ import type { Account, AccountBalance, Member } from '../../repo/types.ts';
 import { accountRow, latestBalances, splitAccounts, titleOf } from './accountRows.ts';
 
 /**
- * The Accounts tab's rows, as the MoneyAccounts board draws them (docs/design/ledger-income.md section 1a): a name, with the last four
+ * The Accounts screen's rows, as the MoneyAccounts board draws them (docs/design/ledger-income.md section 1a): a name, with the last four
  * digits when there are some; the type, whose it is and who sees it, in words; and the balance at the last close, or the words that say
  * there is none. Every example below is a row of that board.
  */

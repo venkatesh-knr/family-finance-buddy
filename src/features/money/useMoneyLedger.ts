@@ -1,5 +1,5 @@
 /**
- * The Ledger tab's money in and money moved, beside the accounts they name.
+ * Money's money in and money moved, beside the accounts they name.
  *
  * `useAccounts` supplies the household, who is looking, the members and the accounts; this adds the credits and moves the caller may read, and the
  * household's credit rules (the salary rule), which the Expected panel lists when they are due,

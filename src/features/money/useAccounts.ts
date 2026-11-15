@@ -1,5 +1,5 @@
 /**
- * The Accounts tab's data: the household, who is looking, who the members are, the accounts the caller may read and their balances.
+ * The Accounts screen's data: the household, who is looking, who the members are, the accounts the caller may read and their balances.
  *
  * One read, and one read again after every write. `listExpenses` is asked for one entry only, for what it also carries (the household, the
  * viewer's role and member, the members); the accounts and balances are `src/repo/accounts.ts`, and row-level security decides which of

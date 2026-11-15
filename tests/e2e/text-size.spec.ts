@@ -20,8 +20,8 @@ import { goTo } from './holdings.ts';
  * Read-only: it opens each screen and reads the layout.
  */
 
-// '/money?tab=accounts' is Money's second tab, an address of its own (ledger-income.md section 1a).
-const SCREENS = ['overview', 'money', '/money?tab=accounts', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
+// 'accounts' is behind More, an address of its own (ledger-income.md section 1a).
+const SCREENS = ['overview', 'money', 'accounts', 'holdings', 'holding', 'tax', 'fire', 'insurance', 'more', 'profile', 'settings'] as const;
 
 async function ready(page: Page, screen: string) {
   await goTo(page, screen);
