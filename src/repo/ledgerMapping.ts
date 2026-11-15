@@ -53,7 +53,16 @@ export function toAccount(raw: unknown): Account {
     openedOn: optionalIsoDate(row['opened_on'], 'account.opened_on'),
     visibility: requireOneOf(row['visibility'], VISIBILITIES, 'account.visibility'),
     isArchived: requireOneOf(row['status'], ['active', 'archived'] as const, 'account.status') === 'archived',
+    archivedOn: archivedDay(row['archived_at']),
   };
+}
+
+/** The day, in India, an account was archived; null for one in use. */
+function archivedDay(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const at = new Date(requireString(value, 'account.archived_at'));
+  if (Number.isNaN(at.getTime())) throw new MalformedRowError('account.archived_at', 'is not a time');
+  return istCalendarDate(at);
 }
 
 export function toAccountBalance(raw: unknown): AccountBalance {

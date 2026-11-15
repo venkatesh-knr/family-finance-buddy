@@ -55,7 +55,12 @@ describe('toAccount', () => {
       openedOn: '2019-04-01',
       visibility: 'household',
       isArchived: false,
+      archivedOn: null,
     });
+  });
+
+  it('reads the day an account was archived, in India', () => {
+    expect(toAccount({ ...account, status: 'archived', archived_at: '2026-10-31T20:30:00Z' })).toMatchObject({ isArchived: true, archivedOn: '2026-11-01' });
   });
 
   it('reads an archived account as archived, and a card as a card', () => {

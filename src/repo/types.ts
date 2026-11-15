@@ -1068,6 +1068,8 @@ export interface Account {
   readonly openedOn: IsoDate | null;
   readonly visibility: Visibility;
   readonly isArchived: boolean;
+  /** The day it was archived, in India: an account is in the closes of the months up to and including it. */
+  readonly archivedOn?: IsoDate | null;
 }
 
 export interface NewAccount {

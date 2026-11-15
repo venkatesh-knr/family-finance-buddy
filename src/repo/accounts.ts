@@ -14,7 +14,7 @@ import { asLedgerError } from './ledgerErrors.ts';
 import { toAccount, toAccountBalance } from './ledgerMapping.ts';
 import type { Account, AccountBalance, AccountPatch, NewAccount, NewBalance, Uuid } from './types.ts';
 
-const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, visibility, status';
+const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, visibility, status, archived_at';
 const BALANCE_COLUMNS = 'id, household_id, account_id, as_at, balance_minor::text, currency, source, note';
 
 const text = (value: string | null | undefined): string | null => (value === undefined || value === null || value.trim() === '' ? null : value.trim());

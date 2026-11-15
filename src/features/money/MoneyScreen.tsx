@@ -19,6 +19,8 @@ import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
+import { CloseMonth } from './CloseMonth.tsx';
+import { isClosed, monthToClose, monthWord } from './closeMonth.ts';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
 import { expectedRows, ruleHistory, ruleListRows, type RuleDraft } from './ruleForm.ts';
@@ -68,8 +70,18 @@ function LedgerTab({
   const [confirming, setConfirming] = useState<{ rule: IncomeRule; dueDate: string } | null>(null);
   // A move being voided: its id and the line that names it.
   const [voidingMove, setVoidingMove] = useState<{ id: string; line: LedgerLine } | null>(null);
+  const [closing, setClosing] = useState(false);
   const viewer = ledger.data?.viewer ?? null;
   const today = todayInIst();
+  // The prompt from the 1st: Close October, until every account in use has a closing balance on October's last day.
+  const closeMonthKey = monthToClose(today);
+  // Not offered until the credits and moves have been read: money in read as nothing would make spent read low.
+  const mayClose =
+    ledger.data !== null &&
+    ledger.moneyStatus === 'ready' &&
+    ledger.data.viewer.canRecord &&
+    ledger.data.accounts.some((account) => !account.isArchived) &&
+    !isClosed({ month: closeMonthKey, accounts: ledger.data.accounts, balances: ledger.data.balances });
   // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
   const mayRule = viewer?.role === 'owner' || viewer?.role === 'partner';
   const expected =
@@ -97,6 +109,18 @@ function LedgerTab({
           setNewRule(draft);
         }}
       />
+      {mayClose && (
+        <button
+          type="button"
+          className="btn btn-quiet add-pill"
+          onClick={() => {
+            setSaid(null);
+            setClosing(true);
+          }}
+        >
+          Close {monthWord(closeMonthKey)} · about 2 minutes
+        </button>
+      )}
       {/* Always in the page, so that what is put into it is announced; under the button, where the person is looking. */}
       <p className="note" role="status">
         {said}
@@ -134,6 +158,24 @@ function LedgerTab({
           }}
           onCancel={() => {
             setEditingRule(null);
+          }}
+        />
+      )}
+      {closing && ledger.data !== null && (
+        <CloseMonth
+          data={ledger.data}
+          month={closeMonthKey}
+          today={today}
+          credits={ledger.credits}
+          transfers={ledger.transfers}
+          privacy={privacy}
+          onDone={(message) => {
+            setClosing(false);
+            setSaid(message);
+            void ledger.reload();
+          }}
+          onCancel={() => {
+            setClosing(false);
           }}
         />
       )}
