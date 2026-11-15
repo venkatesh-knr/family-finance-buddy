@@ -9,9 +9,10 @@
 
 import { useEffect, useState } from 'react';
 import { listRates, type FxRate } from '../../repo/rates.ts';
-import type { Expense as ExpenseRow } from '../../repo/types.ts';
+import type { Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Card, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
+import type { LastMonthView } from '../money/lastMonth.ts';
 import { MonthSurface } from '../money/MonthSurface.tsx';
 import { PlanCard, SpentHero, useBudgetComparison } from './budgetView.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -157,7 +158,7 @@ export function ExpensesScreen({
           rates={rates}
           privacy={privacy}
           {...(money !== undefined && (listing.viewer.role === 'owner' || listing.viewer.role === 'partner')
-            ? { month: { householdId: listing.household.id, refreshKey: money.credits } }
+            ? { month: { householdId: listing.household.id, refreshKey: money.credits, last: money.lastMonth ?? null, members: listing.members } }
             : {})}
           {...(money?.expected === undefined ? {} : { afterSurface: money.expected })}
           {...(money?.actions === undefined ? {} : { actions: money.actions })}
@@ -225,7 +226,7 @@ function Budget({
   onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
   /** The household and what to read the month's totals again on, where the month surface is shown: an owner or a partner, with money in. */
-  month?: { householdId: string; refreshKey: unknown };
+  month?: { householdId: string; refreshKey: unknown; last: LastMonthView | null; members: readonly Member[] };
 }) {
   const view = useBudgetComparison(inputs);
   // A second reading of the same inputs that is never moved off the month: the surface is the month, whatever the plan panel shows.
@@ -244,6 +245,8 @@ function Budget({
           today={inputs.today}
           privacy={privacy}
           refreshKey={month.refreshKey}
+          last={month.last}
+          members={month.members}
           {...(actions === undefined ? {} : { actions })}
         />
       )}

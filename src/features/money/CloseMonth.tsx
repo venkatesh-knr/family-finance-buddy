@@ -17,8 +17,8 @@ import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
-import { householdPrivateClose } from '../../repo/moneyTotals.ts';
-import type { Credit, Expense, PlanListing, PrivateClose, Transfer } from '../../repo/types.ts';
+import type { Credit, Expense, PlanListing, Transfer } from '../../repo/types.ts';
+import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
 import { accountSteps, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, type TypedBalances } from './closeMonth.ts';
@@ -88,24 +88,7 @@ export function CloseMonth({
 
   // What another member keeps private, as totals, for an owner or a partner: the database adds it, and nobody else may ask. Until it has been read,
   // or when it could not be, there is no figure: a close that leaves it out reads wrong, and not only low.
-  const asks = data.viewer.role === 'owner' || data.viewer.role === 'partner';
-  const [unread, setUnread] = useState<readonly PrivateClose[] | null>(asks ? null : []);
-  const [unreadFailed, setUnreadFailed] = useState(false);
-  useEffect(() => {
-    if (!asks) return undefined;
-    let live = true;
-    householdPrivateClose(data.household.id, month, closesOn)
-      .then((rows) => {
-        if (live) setUnread(rows);
-      })
-      .catch(() => {
-        if (live) setUnreadFailed(true);
-      });
-    return () => {
-      live = false;
-    };
-  }, [asks, data.household.id, month, closesOn]);
-  const blocked = asks && (unread === null || unreadFailed);
+  const { asks, unread, failed: unreadFailed, blocked } = usePrivateClose(data.household.id, data.viewer.role, month);
 
   const base = useMemo(
     () => ({

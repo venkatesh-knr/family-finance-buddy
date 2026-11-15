@@ -77,7 +77,10 @@ export function surfaceFigures(input: {
  * What may make the spent figure short, in words, and whether the person can put it right: other members' private spending could not be read
  * (reloading may), or the month holds more entries than the screen reads (a limit of the screen). Said on the figure and never left out.
  */
-export function spentShortReasons(input: { readonly privateUnreadable: boolean; readonly partial: boolean }): { readonly reasons: readonly string[]; readonly fixable: boolean } {
+export function spentShortReasons(input: {
+  readonly privateUnreadable: boolean;
+  readonly partial: boolean;
+}): { readonly reasons: readonly string[]; readonly fixable: boolean } {
   const reasons: string[] = [];
   if (input.privateUnreadable) reasons.push('Other members’ private spending could not be read just now, so spent may be short. Reload to read it again.');
   if (input.partial) reasons.push('This month holds more entries than this screen reads, so spent is short by the older ones.');

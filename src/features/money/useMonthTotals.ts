@@ -14,22 +14,26 @@ export type MonthTotals =
   | { readonly status: 'failed' }
   | { readonly status: 'ready'; readonly totals: readonly MoneyTotals[] };
 
+type Keyed = MonthTotals & { readonly span: string };
+
 /** `refreshKey` changes when a credit was written or changed, and the totals are read again. */
 export function useMonthTotals(householdId: string | null, from: string, to: string, refreshKey: unknown): MonthTotals {
-  const [state, setState] = useState<MonthTotals>({ status: 'loading' });
+  const [state, setState] = useState<Keyed>({ status: 'loading', span: '' });
   const asked = useRef(0);
+  const span = `${from}|${to}`;
 
   useEffect(() => {
     if (householdId === null) return;
     const turn = ++asked.current;
     householdMoneyTotals(householdId, from, to)
       .then((totals) => {
-        if (turn === asked.current) setState({ status: 'ready', totals });
+        if (turn === asked.current) setState({ status: 'ready', totals, span });
       })
       .catch(() => {
-        if (turn === asked.current) setState({ status: 'failed' });
+        if (turn === asked.current) setState({ status: 'failed', span });
       });
-  }, [householdId, from, to, refreshKey]);
+  }, [householdId, from, to, refreshKey, span]);
 
-  return state;
+  // Totals read for another span are not this span's: until this one arrives it is still being read, and never the other month's figures.
+  return state.span === span ? state : { status: 'loading' };
 }
