@@ -25,6 +25,7 @@ export function MonthSurface({
   today,
   privacy,
   refreshKey,
+  actions,
 }: {
   /** The month's first and last day. */
   bounds: { readonly start: string; readonly end: string };
@@ -41,6 +42,8 @@ export function MonthSurface({
   privacy: boolean;
   /** Changes when a credit was written or changed. */
   refreshKey: unknown;
+  /** The actions inside the card, under the figures: money in, the close, the way to Accounts. */
+  actions?: React.ReactNode;
 }) {
   const month = useMonthTotals(householdId, bounds.start, bounds.end, refreshKey);
   const itemised = expenses.filter((expense) => !expense.isVoided && expense.date >= bounds.start && expense.date <= bounds.end).map((expense) => expense.amount);
@@ -111,6 +114,7 @@ export function MonthSurface({
         Refunds take away from spent. Money moved between your own accounts, and into holdings, is in neither.
         {month.status === 'failed' && 'Came in could not be read just now; reload to read it again.'}
       </p>
+      {actions !== undefined && <div className="mt-3 flex flex-col gap-2.5">{actions}</div>}
     </section>
   );
 }

@@ -244,9 +244,10 @@ function Budget({
           today={inputs.today}
           privacy={privacy}
           refreshKey={month.refreshKey}
+          {...(actions === undefined ? {} : { actions })}
         />
       )}
-      {actions}
+      {month === undefined && actions}
       {afterSurface}
       <SpentHero view={view} privacy={privacy} soft={month !== undefined} />
       <PlanCard view={view} privacy={privacy} onFile={onFile} />

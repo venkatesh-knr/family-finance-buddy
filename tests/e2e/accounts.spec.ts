@@ -75,21 +75,27 @@ test('Money leads to Accounts: a quiet line to manage them, or a card that asks 
   await expect(page.getByRole('region', { name: 'What an account is' })).toBeVisible({ timeout: 20_000 });
 });
 
-test('Money is quick add first, then the month, then + Money in, the close and the way to Accounts', async ({ page }) => {
+test('Money is quick add first, then the month card with + Money in, the close and the way to Accounts side by side inside it', async ({ page }) => {
   await page.goto('/#/money');
-  const moneyIn = page.getByRole('button', { name: '+ Money in' });
+  const card = page.getByRole('region', { name: 'The month so far' });
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  const quickAdd = page.getByRole('region', { name: 'Add an expense' });
+  await expect(quickAdd).toBeVisible();
+  expect((await quickAdd.boundingBox())?.y ?? Number.NaN, 'quick add is above the month').toBeLessThan((await card.boundingBox())?.y ?? Number.NaN);
+
+  // The three actions are inside the card, in a row: money in, then the way to Accounts (the close is offered between them while a month is due).
+  const moneyIn = card.getByRole('button', { name: '+ Money in' });
+  const accounts = card.getByRole('link', { name: /^Accounts · \d+ · Manage$|^Add accounts$/ });
   await expect(moneyIn).toBeVisible({ timeout: 20_000 });
-  const top = async (locator: ReturnType<typeof page.locator>) => {
-    await expect(locator.first()).toBeVisible({ timeout: 20_000 });
-    return (await locator.first().boundingBox())?.y ?? Number.NaN;
-  };
-  const quickAdd = await top(page.getByRole('region', { name: 'Add an expense' }));
-  const month = await top(page.getByRole('region', { name: 'The month so far' }));
-  const money = await top(moneyIn);
-  const manage = await top(page.getByRole('link', { name: /^Accounts · \d+ · Manage$|^Add accounts$/ }));
-  expect(quickAdd, 'quick add is above the month').toBeLessThan(month);
-  expect(month, 'the month is above Money in').toBeLessThan(money);
-  expect(money, 'Money in is above the way to Accounts').toBeLessThan(manage);
+  await expect(accounts).toBeVisible();
+  const first = await moneyIn.boundingBox();
+  const last = await accounts.boundingBox();
+  expect(first, 'money in is drawn').not.toBeNull();
+  expect(last, 'the way to Accounts is drawn').not.toBeNull();
+  const cardBox = await card.boundingBox();
+  expect((first?.y ?? 0) > (cardBox?.y ?? 0), 'inside the card').toBe(true);
+  // Side by side where there is room for it: on a phone the row may wrap, so only the desktop is held to one line.
+  if ((page.viewportSize()?.width ?? 0) >= 900) expect(Math.abs((first?.y ?? 0) - (last?.y ?? 99))).toBeLessThan(6);
 });
 
 test('the Accounts screen says what is kept, and what an account is not', async ({ page }) => {

@@ -155,13 +155,13 @@ Step 2 then asks *From which account* in place of *Whose income*.
 ## 1a. Accounts: a screen behind More
 
 *Changed by the owner on 15 November 2026. Until then Money had two tabs, Ledger | Accounts.* Money
-is one screen with no tabs: quick add first, then the month (*Came in · Spent · Saved*), and
-directly under the month **+ Money in**, **Close October** where one is due and the way to Accounts,
-then what is expected, and the ledger (the owner, 15 November 2026). **Accounts** is a screen behind More, at `#/accounts`, the first row
+is one screen with no tabs: quick add first, then the month (*Came in · Spent · Saved*), and inside
+the month's card, side by side in one row, three actions: **+ Money in**, **Close October** where one
+is due, and the way to Accounts; then what is expected, and the ledger (the owner, 15 November 2026). **Accounts** is a screen behind More, at `#/accounts`, the first row
 there; a contributor, who has no More, has it in their bar. The old `#/money?tab=accounts` address
-replaces itself with `#/accounts`. So that it is found, Money carries, under the month and after the
-close, a card, **Add your accounts**, with a button, while no account is in use, and afterwards one
-quiet line, **Accounts · 3 · Manage**. Both open the Accounts screen.
+replaces itself with `#/accounts`. So that it is found, the third of the three actions is **Add accounts**,
+with a line under the row that says what accounts give, while no account is in use, and afterwards
+**Accounts · 3 · Manage**. Both open the Accounts screen.
 
 **The Accounts screen** (MoneyAccounts):
 

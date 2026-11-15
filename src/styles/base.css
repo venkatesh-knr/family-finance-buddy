@@ -3854,6 +3854,25 @@
     width: 1.875rem;
   }
 
+  /* The three actions inside the month card, side by side, wrapping on a narrow screen (the owner, 15 November 2026). */
+  .month-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .month-actions > .btn {
+    align-items: center;
+    border-radius: 1.5rem;
+    display: inline-flex;
+    flex: 1 1 6.5rem;
+    justify-content: center;
+    line-height: 1.25;
+    min-height: 2.75rem;
+    padding-inline: 0.5rem;
+    text-align: center;
+  }
+
   /* The Add on the Accounts screen: one line, full width, a pill (simple-layout.md section 1). */
   .add-pill {
     border-radius: 999px;
