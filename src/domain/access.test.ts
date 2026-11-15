@@ -9,7 +9,7 @@ describe('screensFor', () => {
   });
 
   it('keeps Tax and Insurance behind More for the roles that can read the household, and offers nobody else a More', () => {
-    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['tax', 'reports', 'insurance', 'property']);
+    for (const role of ['owner', 'partner'] as const) expect(moreFor(role)).toEqual(['accounts', 'tax', 'reports', 'insurance', 'property']);
     for (const role of ['contributor', 'viewer', null] as const) {
       expect(moreFor(role)).toEqual([]);
       expect(screensFor(role)).not.toContain('more');
@@ -19,7 +19,8 @@ describe('screensFor', () => {
   it('gives a contributor their own records and the summary, and not the household-wide figures', () => {
     // Overview and FIRE are household net worth and the household plan: with only
     // their own rows readable they would show a partial figure that looks whole.
-    expect(screensFor('contributor')).toEqual(['summary', 'money', 'holdings', 'tax']);
+    // Their own accounts are in the bar, since a contributor has no More to keep them behind.
+    expect(screensFor('contributor')).toEqual(['summary', 'money', 'accounts', 'holdings', 'tax']);
   });
 
   it('gives a viewer the summary and nothing else', () => {
@@ -38,6 +39,14 @@ describe('allowedScreen', () => {
     expect(allowedScreen('partner', 'property')).toBe('property');
     expect(allowedScreen('owner', 'more')).toBe('more');
     expect(allowedScreen('contributor', 'money')).toBe('money');
+  });
+
+  it('gives Accounts to whoever can record, and a typed address is a request and not a grant', () => {
+    expect(allowedScreen('owner', 'accounts')).toBe('accounts');
+    expect(allowedScreen('partner', 'accounts')).toBe('accounts');
+    expect(allowedScreen('contributor', 'accounts')).toBe('accounts');
+    expect(allowedScreen('viewer', 'accounts')).toBe('summary');
+    expect(allowedScreen(null, 'accounts')).toBe('summary');
   });
 
   it('sends a role away from a screen it may not see, to the first it may', () => {

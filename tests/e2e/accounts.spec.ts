@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { testName } from './created.ts';
 
 /**
- * Money's Accounts tab (docs/design/ledger-income.md section 1a; LI-I24, LI-I25): the second tab at `#/money?tab=accounts`, an account added
+ * Accounts (docs/design/ledger-income.md section 1a; LI-I24, LI-I25): behind More at `#/accounts`, an account added
  * with a name, a type and whose it is, changed, archived and restored, and the mark on the fields the form needs.
  *
  * The suite's household is reset after every run, which removes the accounts these tests make. Each test names its own account, so the two
@@ -13,8 +13,8 @@ import { testName } from './created.ts';
 test.use({ actionTimeout: 15_000 });
 
 async function onAccounts(page: Page) {
-  await page.goto('/#/money?tab=accounts');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
+  await page.goto('/#/accounts');
+  await expect(page.getByRole('button', { name: '+ Add an account' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/^(Loading|Reading)…$/)).toHaveCount(0, { timeout: 20_000 });
 }
 
@@ -33,30 +33,62 @@ async function addAccount(page: Page, name: string, options: { type?: 'Current' 
 
 test('an old Expenses address becomes the Money address, and replaces itself', async ({ page }) => {
   await page.goto('/#/expenses?x=1');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   expect(new URL(page.url()).hash).toBe('#/money?x=1');
   await page.goto('/#/expenses');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   expect(new URL(page.url()).hash).toBe('#/money');
 });
 
-test('Money has two tabs, Ledger first, and Accounts is an address of its own', async ({ page }) => {
+test('LI-I25 — Money has no tabs, and Accounts is behind More, an address of its own', async ({ page }) => {
   await page.goto('/#/money');
-  const tabs = page.getByRole('navigation', { name: 'Money' });
-  await expect(tabs.getByRole('link', { name: 'Ledger' })).toHaveAttribute('aria-current', 'page', { timeout: 20_000 });
-  await expect(tabs.getByRole('link', { name: 'Accounts' })).not.toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('navigation', { name: 'Money' })).toHaveCount(0);
 
-  await tabs.getByRole('link', { name: 'Accounts' }).click();
-  expect(new URL(page.url()).hash).toBe('#/money?tab=accounts');
-  await expect(tabs.getByRole('link', { name: 'Accounts' })).toHaveAttribute('aria-current', 'page');
+  // More has the row, and it opens the screen.
+  await page.goto('/#/more');
+  await page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: /^Accounts/ }).click();
+  expect(new URL(page.url()).hash).toBe('#/accounts');
   await expect(page.getByRole('region', { name: 'What an account is' })).toBeVisible({ timeout: 20_000 });
 
-  // Back undoes the tab.
+  // Back undoes it.
   await page.goBack();
-  await expect(tabs.getByRole('link', { name: 'Ledger' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('navigation', { name: 'More' })).toBeVisible();
 });
 
-test('the Accounts tab says what is kept, and what an account is not', async ({ page }) => {
+test('the old Accounts tab address replaces itself with the Accounts screen', async ({ page }) => {
+  await page.goto('/#/money?tab=accounts');
+  await expect(page.getByRole('region', { name: 'What an account is' })).toBeVisible({ timeout: 20_000 });
+  expect(new URL(page.url()).hash).toBe('#/accounts');
+});
+
+test('Money leads to Accounts: a quiet line to manage them, or a card that asks for the first one', async ({ page }) => {
+  test.setTimeout(120_000);
+  await onAccounts(page);
+  await addAccount(page, testName('nudge-acct'));
+  await page.goto('/#/money');
+  await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
+  const manage = page.getByRole('link', { name: /^Accounts · \d+ · Manage$/ });
+  await expect(manage).toBeVisible({ timeout: 20_000 });
+  await manage.click();
+  expect(new URL(page.url()).hash).toBe('#/accounts');
+  await expect(page.getByRole('region', { name: 'What an account is' })).toBeVisible({ timeout: 20_000 });
+});
+
+test('+ Money in sits directly under quick add', async ({ page }) => {
+  await page.goto('/#/money');
+  const moneyIn = page.getByRole('button', { name: '+ Money in' });
+  await expect(moneyIn).toBeVisible({ timeout: 20_000 });
+  const quickAdd = page.getByRole('region', { name: 'Add an expense' });
+  await expect(quickAdd).toBeVisible();
+  const above = await quickAdd.boundingBox();
+  const below = await moneyIn.boundingBox();
+  expect(above, 'quick add is drawn').not.toBeNull();
+  expect(below, 'money in is drawn').not.toBeNull();
+  expect((below?.y ?? 0) > (above?.y ?? 0) + (above?.height ?? 0) - 1, 'Money in is below quick add').toBe(true);
+});
+
+test('the Accounts screen says what is kept, and what an account is not', async ({ page }) => {
   await onAccounts(page);
   const kept = page.getByRole('region', { name: 'What an account is' });
   await expect(kept).toContainText('No account number, no bank login, and no link to your bank');
@@ -148,7 +180,7 @@ test('an account is changed, archived and restored, and archived is not deleted'
 });
 
 for (const scheme of ['light', 'dark'] as const) {
-  test(`the Accounts tab and its form have no accessibility violations in the ${scheme} theme`, async ({ page }) => {
+  test(`the Accounts screen and its form have no accessibility violations in the ${scheme} theme`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.emulateMedia({ colorScheme: scheme });
     await onAccounts(page);

@@ -22,8 +22,8 @@ function monthBefore(): string {
 }
 
 async function addAccount(page: Page, name: string) {
-  await page.goto('/#/money?tab=accounts');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
+  await page.goto('/#/accounts');
+  await expect(page.getByRole('button', { name: '+ Add an account' })).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: '+ Add an account' }).click();
   const form = page.getByRole('form', { name: 'Add an account' });
   await form.getByLabel('Name').fill(name);
@@ -33,7 +33,6 @@ async function addAccount(page: Page, name: string) {
 
 async function onLedger(page: Page) {
   await page.goto('/#/money');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
 }
 
@@ -134,8 +133,8 @@ test('LI-I6 — with balances typed the result is derived, the month is closed, 
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   await expect(prompt(page)).toHaveCount(0);
 
-  // The balance is kept on the account: the Accounts tab shows it, as at the last day of the month.
-  await page.goto('/#/money?tab=accounts');
+  // The balance is kept on the account: the Accounts screen shows it, as at the last day of the month.
+  await page.goto('/#/accounts');
   const row = page.getByRole('region', { name: 'Accounts' }).getByRole('listitem').filter({ hasText: name });
   await expect(row).toContainText('₹5,000', { timeout: 20_000 });
 });

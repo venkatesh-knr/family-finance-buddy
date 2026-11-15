@@ -16,8 +16,9 @@ async function onMore(page: Page) {
 test('each place behind More is one link with a name and a line saying what is true now', async ({ page }) => {
   await onMore(page);
   const rows = page.getByRole('navigation', { name: 'More' }).getByRole('link');
-  await expect(rows).toHaveCount(6);
+  await expect(rows).toHaveCount(7);
   for (const [name, line] of [
+    ['Accounts', /Where your money is kept/],
     ['Tax', /\d{4}–\d{2}|gains and income/],
     ['Reports', /Export everything/],
     ['Insurance', /polic|Policies/],

@@ -18,6 +18,16 @@ import { useMoreGlance } from './useMoreGlance.ts';
  */
 
 const GLYPHS: Partial<Record<AppScreen, ReactNode>> = {
+  accounts: (
+    <>
+      <path d="M3 10 12 4l9 6" />
+      <path d="M5.5 10v8" />
+      <path d="M10 10v8" />
+      <path d="M14 10v8" />
+      <path d="M18.5 10v8" />
+      <path d="M3 20.5h18" />
+    </>
+  ),
   tax: (
     <>
       <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
@@ -68,6 +78,7 @@ const GLYPHS: Partial<Record<AppScreen, ReactNode>> = {
 };
 
 const TITLES: Partial<Record<AppScreen, string>> = {
+  accounts: 'Accounts',
   tax: 'Tax',
   insurance: 'Insurance',
   property: 'Property',
@@ -78,6 +89,7 @@ const TITLES: Partial<Record<AppScreen, string>> = {
 
 /** What a row says before its line has arrived, and for a screen that has no live line. */
 const PURPOSE: Partial<Record<AppScreen, string>> = {
+  accounts: 'Where your money is kept: banks and cards, and the balances that close a month.',
   tax: 'What the year’s gains and income come to, on the rules that applied.',
   insurance: 'Policies, what they cover and when they renew.',
   property: 'What each cost, what it is thought to be worth, and how old that is.',

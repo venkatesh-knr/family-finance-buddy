@@ -14,7 +14,6 @@ test.use({ actionTimeout: 15_000 });
 
 async function onLedger(page: Page) {
   await page.goto('/#/money');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
 }
 
@@ -318,14 +317,14 @@ test('a credit on an account that was archived since keeps that account when it 
   await form(page).getByRole('button', { name: 'Add credit' }).click();
   await expect(form(page)).toHaveCount(0, { timeout: 20_000 });
 
-  // The account is archived afterwards, on the Accounts tab.
-  await page.getByRole('navigation', { name: 'Money' }).getByRole('link', { name: 'Accounts' }).click();
+  // The account is archived afterwards, on the Accounts screen, reached from Money.
+  await page.getByRole('link', { name: /^Accounts · \d+ · Manage$/ }).click();
   await page.getByRole('list').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await page.getByRole('form', { name: 'Change an account' }).getByRole('button', { name: 'Archive this account' }).click();
   await expect(page.getByRole('form', { name: 'Change an account' })).toHaveCount(0, { timeout: 20_000 });
 
   // Back on the Ledger the credit is changed: its account is shown, said to be archived, and is still its account afterwards.
-  await page.getByRole('navigation', { name: 'Money' }).getByRole('link', { name: 'Ledger' }).click();
+  await onLedger(page);
   await showAll(page);
   await page.getByRole('region', { name: 'Recent expenses' }).locator('.recent-row').filter({ hasText: payer }).click();
   await expect(choiceField(page, 'Into which account')).toContainText(`${name} ••3311 (archived)`);

@@ -1,7 +1,7 @@
 /**
- * Money's second tab: the household's accounts (docs/design/ledger-income.md section 1a; the MoneyAccounts and MoneyAccountsEmpty boards).
+ * Accounts, behind More: the household's accounts (docs/design/ledger-income.md section 1a; the MoneyAccounts and MoneyAccountsEmpty boards).
  *
- * Accounts are optional: a family can start without any, and the tab says what a month is like without them and what adding them gives.
+ * Accounts are optional: a family can start without any, and the screen says what a month is like without them and what adding them gives.
  * With some, the lifted surface is the cash reserve, which comes from a close's balances and so waits for the first close; a soft panel
  * lists the accounts, each with its type, whose it is, who sees it and its last balance; then the button, the archived ones folded, and
  * what is kept. A private account is listed only to its owner, because row-level security returns nothing else.

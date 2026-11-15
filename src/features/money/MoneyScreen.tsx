@@ -1,14 +1,12 @@
 /**
- * Money, with its two tabs: Ledger and Accounts (docs/design/ledger-income.md section 1a, LI-I25).
+ * Money: the month, quick add with *+ Money in* under it, what is expected, and the ledger (docs/design/ledger-income.md sections 1 and 3).
  *
- * `#/money` is the Ledger and `#/money?tab=accounts` is Accounts, so a tab is an address, Back undoes it, and a link can point at it. Both
- * tabs keep the bar's Money place. The strip is the Holdings tab style (SL-I1): underlined text at 44px, links with `aria-current`. Until
- * the ledger of credits is built, the Ledger tab is the spending screen as it was.
+ * One screen, with no tabs. Accounts moved behind More on 15 November 2026 (the owner), at `#/accounts`; this screen asks for the first account
+ * with a card, and afterwards keeps one quiet line to manage them (`AccountsNudge`). The money in and money moved are listed beside the spending in
+ * the list that was there, and a month is closed from here.
  */
 
-import { hashFor } from '../../app/route.ts';
 import { ExpensesScreen } from '../expenses/ExpensesScreen.tsx';
-import { AccountsTab } from './AccountsTab.tsx';
 import { useState } from 'react';
 import { todayInIst } from '../../repo/expenses.ts';
 import type { Credit } from '../../repo/types.ts';
@@ -18,6 +16,8 @@ import { ConfirmAtAmount } from './ConfirmAtAmount.tsx';
 import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
+import { AccountsNudge } from './AccountsNudge.tsx';
+import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
 import { isClosed, monthToClose, monthWord } from './closeMonth.ts';
@@ -26,31 +26,7 @@ import type { LedgerLine } from './ledgerLines.ts';
 import { expectedRows, ruleHistory, ruleListRows, type RuleDraft } from './ruleForm.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
-export type MoneyTab = 'ledger' | 'accounts';
-
-/** The tab an address names. Anything but `tab=accounts` is the Ledger, so a typed address is a request and never a grant. */
-export function moneyTabOf(params: URLSearchParams): MoneyTab {
-  return params.get('tab') === 'accounts' ? 'accounts' : 'ledger';
-}
-
-export function MoneyTabs({ current }: { current: MoneyTab }) {
-  return (
-    <nav className="tabs" aria-label="Money">
-      <a className="tab" href={hashFor('money')} aria-current={current === 'ledger' ? 'page' : undefined}>
-        Ledger
-      </a>
-      <a className="tab" href={hashFor('money', { tab: 'accounts' })} aria-current={current === 'accounts' ? 'page' : undefined}>
-        Accounts
-      </a>
-    </nav>
-  );
-}
-
-/**
- * The Ledger: the spending screen as it was, with money in and money moved listed beside the spending, and *+ Money in* above it.
- * A component of its own so that the credits are read only when this tab is showing.
- */
-function LedgerTab({
+export function MoneyScreen({
   privacy,
   householdId,
   displayCurrency,
@@ -72,6 +48,7 @@ function LedgerTab({
   const [voidingMove, setVoidingMove] = useState<{ id: string; line: LedgerLine } | null>(null);
   const [closing, setClosing] = useState(false);
   const viewer = ledger.data?.viewer ?? null;
+  const nudge = ledger.data === null ? null : accountsNudge({ accounts: ledger.data.accounts, canRecord: ledger.data.viewer.canRecord });
   const today = todayInIst();
   // The prompt from the 1st: Close October, until every account in use has a closing balance on October's last day.
   const closeMonthKey = monthToClose(today);
@@ -95,20 +72,7 @@ function LedgerTab({
         });
   return (
     <>
-      <MoneyIn
-        data={ledger.data}
-        privacy={privacy}
-        onAddAccount={ledger.add}
-        onChangeAccount={ledger.change}
-        onSaved={() => {
-          setSaid(null);
-          void ledger.reloadMoney();
-        }}
-        canRepeat={mayRule}
-        onRepeat={(draft) => {
-          setNewRule(draft);
-        }}
-      />
+      {nudge?.kind === 'add' && <AccountsNudge nudge={nudge} />}
       {mayClose && (
         <button
           type="button"
@@ -215,6 +179,23 @@ function LedgerTab({
         recurringMade={recurringMade}
         displayCurrency={displayCurrency}
         money={{
+          // Under quick add: money out above it, money in below.
+          afterQuickAdd: (
+            <MoneyIn
+              data={ledger.data}
+              privacy={privacy}
+              onAddAccount={ledger.add}
+              onChangeAccount={ledger.change}
+              onSaved={() => {
+                setSaid(null);
+                void ledger.reloadMoney();
+              }}
+              canRepeat={mayRule}
+              onRepeat={(draft) => {
+                setNewRule(draft);
+              }}
+            />
+          ),
           expected:
             viewer === null ? undefined : (
               <ExpectedPanel
@@ -264,6 +245,7 @@ function LedgerTab({
           },
         }}
       />
+      {nudge?.kind === 'manage' && <AccountsNudge nudge={nudge} />}
       {changing !== null && ledger.data !== null && (
         <AddCredit
           key={changing.id}
@@ -283,31 +265,6 @@ function LedgerTab({
             setChanging(null);
           }}
         />
-      )}
-    </>
-  );
-}
-
-export function MoneyScreen({
-  tab,
-  privacy,
-  householdId,
-  displayCurrency,
-  recurringMade,
-}: {
-  tab: MoneyTab;
-  privacy: boolean;
-  householdId: string | null;
-  displayCurrency: string;
-  recurringMade: number;
-}) {
-  return (
-    <>
-      <MoneyTabs current={tab} />
-      {tab === 'accounts' ? (
-        <AccountsTab householdId={householdId} privacy={privacy} />
-      ) : (
-        <LedgerTab privacy={privacy} householdId={householdId} displayCurrency={displayCurrency} recurringMade={recurringMade} />
       )}
     </>
   );

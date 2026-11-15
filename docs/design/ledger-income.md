@@ -83,7 +83,9 @@ the design is ready for the build of step 6a.
     enough.
 
 - **Where accounts are managed, in chat, 14 November 2026:** on Money, in a second tab,
-  **Ledger | Accounts** (§1a).
+  **Ledger | Accounts** (§1a). **Changed by the owner on 15 November 2026:** Accounts is a screen behind
+  More, and Money is one screen with no tabs; Money asks for the first account with a card and afterwards
+  keeps one quiet line to manage them (§1a).
 
 ## 1. The ledger
 
@@ -150,13 +152,17 @@ credit nor a debit of the household's money.
 **On AddCredit**, the chip *From my own account* makes the form an `account_transfer`.
 Step 2 then asks *From which account* in place of *Whose income*.
 
-## 1a. Accounts: the second tab on Money
+## 1a. Accounts: a screen behind More
 
-Money has two tabs, **Ledger | Accounts**. Ledger opens first. They use the same tab style
-as Holdings' class tabs (SL-I1): underlined, at 44px. `#/money` is the ledger, and
-`#/money?tab=accounts` is Accounts. Both tabs keep the bar's Money place.
+*Changed by the owner on 15 November 2026. Until then Money had two tabs, Ledger | Accounts.* Money
+is one screen with no tabs: the month, what is expected, quick add with **+ Money in** directly
+under it, and the ledger. **Accounts** is a screen behind More, at `#/accounts`, the first row
+there; a contributor, who has no More, has it in their bar. The old `#/money?tab=accounts` address
+replaces itself with `#/accounts`. So that it is found, Money carries a card, **Add your accounts**,
+with a button, while no account is in use, and afterwards one quiet line, **Accounts · 3 · Manage**,
+under the ledger. Both open the Accounts screen.
 
-**The Accounts tab** (MoneyAccounts):
+**The Accounts screen** (MoneyAccounts):
 
 - **The lifted surface is the cash reserve** (state 1): the total from the last closed
   month's balances, with card dues netted. Under it, *from balances at 31 Oct · 3 of 4
@@ -176,7 +182,7 @@ as Holdings' class tabs (SL-I1): underlined, at 44px. `#/money` is the ledger, a
   no bank login and no link to the bank.
 - **With no accounts** (MoneyAccountsEmpty, state 5), the lifted surface says accounts
   are optional, what a month is like without them, and what adding them gives. Below it
-  are *+ Add an account* and *What is kept*. It never nags elsewhere in the app.
+  are *+ Add an account* and *What is kept*. Money's card and line (§1a) are the only places that ask for an account.
 
 **Adding an account** (AddAccount) is one short form, not stepped, because it has seven
 fields and only three are needed:
@@ -207,7 +213,7 @@ new account chosen and every value kept. That is the same promise as SL-I6.
 
 **Who can add and change accounts:** an owner or a partner for any member, and a
 contributor for their own accounts only (the same rule as closing a month, decided 13
-November). A viewer cannot, and does not see the Accounts tab.
+November). A viewer cannot, and does not see the Accounts screen.
 
 ## 2. Adding money in
 
@@ -608,7 +614,7 @@ functions, which read the totals.
 
 **LI-I24 — An account needs a name, a type and whose it is; its last four digits are optional.** (§0)
 
-**LI-I25 — Accounts are created and managed on Money's Accounts tab, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
+**LI-I25 — Accounts are created and managed on the Accounts screen behind More, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
 
 **LI-I26 — An account's type and currency cannot change once it has a credit, a transfer or a balance;** an account is archived, never deleted. (§1a)
 
@@ -672,6 +678,6 @@ functions, which read the totals.
 - LI-I22: pgTAP: a partner reading `audit_log` sees no row for the owner's personal `credit_entry` or the owner's `income_entry`; the owner sees both.
 - LI-I23: the §4 worked example plus a ₹32,000 EMI from HDFC (HDFC then down ₹11,620, so the cash reserve is down ₹13,420) gives spent ₹69,670, paid to loans ₹32,000, and saved ₹73,580 = ₹55,000 + ₹32,000 − ₹13,420.
 - LI-I24: an account with a name, the type savings and a member, and no last four, is accepted (pgTAP); the ledger line shows its name alone.
-- LI-I25: `#/money?tab=accounts` renders the Accounts tab current; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
+- LI-I25: `#/accounts` renders the Accounts screen, and `#/money?tab=accounts` replaces itself with it; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
 - LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
 - LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it, and so does the month close's, with the account counted as one of one only when both balances are typed.

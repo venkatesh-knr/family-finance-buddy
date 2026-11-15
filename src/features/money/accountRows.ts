@@ -1,5 +1,5 @@
 /**
- * The Accounts tab's rows (docs/design/ledger-income.md section 1a; the MoneyAccounts board): what each line says, in words.
+ * The Accounts screen's rows (docs/design/ledger-income.md section 1a; the MoneyAccounts board): what each line says, in words.
  *
  * Pure: the people and the balances are passed in, and nothing here reads a database or a clock. A name is what a ledger line shows, and
  * the last four digits follow it when there are some (LI-I24). A balance is as at a day and is the account's newest; a card's is what is

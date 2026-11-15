@@ -12,7 +12,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MoneyScreen, moneyTabOf } from '../features/money/MoneyScreen.tsx';
+import { AccountsTab } from '../features/money/AccountsTab.tsx';
+import { MoneyScreen } from '../features/money/MoneyScreen.tsx';
 import { usePostRecurring } from './usePostRecurring.ts';
 import { OverviewScreen } from '../features/overview/OverviewScreen.tsx';
 import { HoldingsScreen } from '../features/holdings/HoldingsScreen.tsx';
@@ -73,6 +74,7 @@ const ALL_SCREENS: readonly (readonly [Screen, string])[] = [
   ['overview', 'Overview'],
   ['summary', 'Summary'],
   ['money', 'Money'],
+  ['accounts', 'Accounts'],
   ['holdings', 'Holdings'],
   ['tax', 'Tax'],
   ['fire', 'FIRE'],
@@ -221,9 +223,9 @@ function SignedIn({
   // reaches Tax from the bar itself and has no More to go back to, so keeps the ordinary header.
   const subTitle =
     SCREENS.some(([id]) => id === 'more')
-      ? ({ tax: 'Tax', insurance: 'Insurance', property: 'Property', reports: 'Reports', profile: 'Profile', settings: 'Settings' } as Partial<Record<Screen, string>>)[
-          screen
-        ] ?? null
+      ? ({ accounts: 'Accounts', tax: 'Tax', insurance: 'Insurance', property: 'Property', reports: 'Reports', profile: 'Profile', settings: 'Settings' } as Partial<
+          Record<Screen, string>
+        >)[screen] ?? null
       : null;
 
   /**
@@ -254,7 +256,7 @@ function SignedIn({
           onTogglePrivacy={() => {
             setPrivacy((on) => !on);
           }}
-          showPrivacy={screen === 'tax' || screen === 'insurance' || screen === 'property' || screen === 'profile' || screen === 'reports'}
+          showPrivacy={screen === 'accounts' || screen === 'tax' || screen === 'insurance' || screen === 'property' || screen === 'profile' || screen === 'reports'}
           householdKind={current?.household.kind ?? null}
         />
       )}
@@ -402,13 +404,13 @@ function SignedIn({
         )}
         {screen === 'money' && (
           <MoneyScreen
-            tab={moneyTabOf(params)}
             privacy={privacy}
             householdId={householdId}
             recurringMade={recurringMade}
             displayCurrency={displayCurrency}
           />
         )}
+        {screen === 'accounts' && <AccountsTab householdId={householdId} privacy={privacy} />}
         {(screen === 'holdings' || screen === 'holding') && (
           <HoldingsScreen
             privacy={privacy}

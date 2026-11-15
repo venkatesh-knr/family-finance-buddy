@@ -24,7 +24,6 @@ function firstOfMonth(back: number): string {
 
 async function onLedger(page: Page) {
   await page.goto('/#/money');
-  await expect(page.getByRole('navigation', { name: 'Money' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
 }
 

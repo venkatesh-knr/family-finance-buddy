@@ -19,7 +19,7 @@ export interface NavGlyphPart {
   readonly filled?: true;
 }
 
-type NavScreen = Extract<Screen, 'overview' | 'summary' | 'money' | 'holdings' | 'tax' | 'fire' | 'more'>;
+type NavScreen = Extract<Screen, 'overview' | 'summary' | 'money' | 'accounts' | 'holdings' | 'tax' | 'fire' | 'more'>;
 
 const OVERVIEW: readonly NavGlyphPart[] = [
   { d: 'M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0z' },
@@ -37,6 +37,15 @@ export const NAV_GLYPHS: Record<NavScreen, readonly NavGlyphPart[]> = {
     { d: 'M6 14h6' },
     { d: 'M8 4c4 0 6 2 6 5s-2 5-6 5' },
     { d: 'm11 14 6 6' },
+  ],
+  // A bank: a roof, four pillars and a step. A contributor's bar carries it; an owner reaches Accounts behind More.
+  accounts: [
+    { d: 'M3 10 12 4l9 6' },
+    { d: 'M5.5 10v8' },
+    { d: 'M10 10v8' },
+    { d: 'M14 10v8' },
+    { d: 'M18.5 10v8' },
+    { d: 'M3 20.5h18' },
   ],
   // A ledger spread: a case with a spine.
   holdings: [{ d: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z' }, { d: 'M11 5v14' }],
