@@ -65,6 +65,23 @@ export interface MonthLoanPayment {
   readonly date: IsoDate;
 }
 
+/**
+ * What the database adds for a currency that the caller cannot read: another member's private accounts, the private credits into accounts the caller
+ * does read, and the moves that touch a hidden account. Totals only, as `household_private_close` returns them, worked out so that the rest of the
+ * month is the same as when everything is read.
+ */
+export interface MonthUnreadable {
+  readonly currency: string;
+  /** What left the hidden accounts with both balances, and the money into a readable account that the caller cannot see. */
+  readonly left: bigint;
+  readonly outside: bigint;
+  /** Moves out that the caller cannot see. */
+  readonly ownOut: bigint;
+  readonly refunds: bigint;
+  readonly cameIn: bigint;
+  readonly reserveChange: bigint;
+}
+
 export interface MonthInput {
   readonly month: string;
   /** The day it is asked. A month can be closed only once it has ended, in India. */
@@ -74,6 +91,8 @@ export interface MonthInput {
   readonly transfers: readonly MonthTransfer[];
   readonly holdingMoves: readonly MonthHoldingMove[];
   readonly loanPayments: readonly MonthLoanPayment[];
+  /** What the caller cannot read, summed by the database; none for a household whose accounts are all read. */
+  readonly unreadable?: readonly MonthUnreadable[];
 }
 
 export interface AccountLeft {
@@ -128,7 +147,7 @@ export function closedMonthFigures(input: MonthInput): ClosedMonth {
 
   // Money that came in outside the accounts is a month of its own in a currency none of them is in. With no accounts there is no close.
   const outsideCurrencies = input.accounts.length === 0 ? [] : input.credits.filter((c) => c.accountId === null && inMonth(input.month, c.date)).map((c) => c.amount.currency);
-  const currencies = [...new Set([...input.accounts.map((a) => a.currency), ...outsideCurrencies])].sort(byCurrency);
+  const currencies = [...new Set([...input.accounts.map((a) => a.currency), ...outsideCurrencies, ...(input.unreadable ?? []).map((u) => u.currency)])].sort(byCurrency);
   return { ok: true, currencies: currencies.map((currency) => figuresFor(input, currency)) };
 }
 
@@ -154,24 +173,26 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
     return { accountId: account.id, moneyInMinor: moneyIn, leftMinor };
   });
 
-  const cameIn = sum(credits.filter((c) => isIncome(c.category)).map((c) => c.amount.minor));
-  const refunds = sum(credits.filter((c) => !isIncome(c.category)).map((c) => c.amount.minor));
-  const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor));
+  const hidden = (input.unreadable ?? []).filter((u) => u.currency === currency);
+  const cameIn = sum(credits.filter((c) => isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.cameIn));
+  const refunds = sum(credits.filter((c) => !isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.refunds));
+  const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor)) + sum(hidden.map((u) => u.ownOut));
   const putIntoHoldings = sum(moves.filter((m) => m.direction === 'into').map((m) => m.amount.minor));
   const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor));
   const paidToLoans = sum(loans.map((p) => p.amount.minor));
-  const leftTotal = sum(left.map((l) => l.leftMinor));
-  const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor));
+  const leftTotal = sum(left.map((l) => l.leftMinor)) + sum(hidden.map((u) => u.left));
+  const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.outside));
 
   const spent = leftTotal + outside - ownTransfers - putIntoHoldings - refunds - paidToLoans;
   const saved = cameIn - spent;
   const invested = putIntoHoldings - takenOutOfHoldings;
-  const cashReserveChange = sum(
-    accounts.map((a) => {
-      const change = (a.closing?.minor ?? 0n) - (a.opening?.minor ?? 0n);
-      return a.type === 'card' ? -change : change;
-    }),
-  );
+  const cashReserveChange =
+    sum(
+      accounts.map((a) => {
+        const change = (a.closing?.minor ?? 0n) - (a.opening?.minor ?? 0n);
+        return a.type === 'card' ? -change : change;
+      }),
+    ) + sum(hidden.map((u) => u.reserveChange));
 
   return {
     currency,

@@ -230,6 +230,52 @@ describe('closedMonthFigures', () => {
   });
 });
 
+describe('closedMonthFigures — what the caller cannot read, added as the database sums it', () => {
+  // The card is a member's private one, so the screen reads no card, no refund into it and no move into it. The database adds them as totals.
+  const withoutCard = example({
+    accounts: accounts().filter((a) => a.id !== 'card'),
+    credits: [
+      { accountId: 'hdfc', category: 'salary', amount: r(142_000), date: '2026-10-01' },
+      { accountId: 'sbi', category: 'interest', amount: r(1_250), date: '2026-10-05' },
+    ],
+    transfers: [],
+  });
+  const card = { currency: 'INR', left: paise(21_739), outside: 0n, ownOut: paise(18_240), refunds: paise(1_299), cameIn: 0n, reserveChange: -paise(2_200) };
+
+  it('gives the same month as when the card is read: spent ₹69,670, saved ₹73,580 and nothing unexplained', () => {
+    const month = closed({ ...withoutCard, unreadable: [card] });
+    expect(month.spent).toBe(paise(69_670));
+    expect(month.saved).toBe(paise(73_580));
+    expect(month.gapMinor).toBe(0n);
+    expect(month.ownTransfers).toBe(paise(18_240));
+    expect(month.refunds).toBe(paise(1_299));
+  });
+
+  it('without them the month reads wrong, which is why they are added', () => {
+    const month = closed(withoutCard);
+    expect(month.spent).not.toBe(paise(69_670));
+  });
+
+  it('adds a private credit into a readable account to what came in and to what left it, so saved is unchanged by it', () => {
+    const base = closed(example());
+    // The partner's ₹90,000 salary into HDFC, which the screen cannot read: the account's balance rose by it, so its money in is short by it.
+    const hidden = { currency: 'INR', left: paise(90_000), outside: 0n, ownOut: 0n, refunds: 0n, cameIn: paise(90_000), reserveChange: 0n };
+    const input = example({ accounts: accounts(310_380) });
+    const month = closed({ ...input, unreadable: [hidden] });
+    expect(month.spent).toBe(base.spent);
+    expect(month.cameIn).toBe(base.cameIn + paise(90_000));
+    expect(month.saved).toBe(base.saved + paise(90_000));
+    expect(month.gapMinor).toBe(0n);
+  });
+
+  it('adds a currency only a hidden account is in, and leaves the rest alone', () => {
+    const result = closedMonthFigures(
+      example({ unreadable: [{ currency: 'USD', left: 5_000n, outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: -5_000n }] }),
+    );
+    expect(result.ok && result.currencies.map((c) => c.currency)).toEqual(['INR', 'USD']);
+  });
+});
+
 describe('openMonthFigures', () => {
   it('an open month shows what has come in and what is spent so far, and no saved: after the close', () => {
     const open = openMonthFigures({

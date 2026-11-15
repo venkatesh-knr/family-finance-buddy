@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MalformedRowError } from '../lib/guards.ts';
-import { toAccount, toAccountBalance, toCashReserve, toCredit, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
+import { toAccount, toAccountBalance, toCashReserve, toCredit, toPrivateClose, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
 
 /**
  * The mapping from the ledger's rows to the app's vocabulary (docs/design/ledger-income.md section 12). Rows are as PostgREST returns them:
@@ -222,6 +222,33 @@ describe('the sum functions’ rows', () => {
     const reserve = toCashReserve({ currency: 'INR', reserve_minor: '21518000', accounts_counted: 3, accounts_total: 4 });
     expect(reserve).toEqual({ reserve: { minor: 21_518_000n, currency: 'INR' }, counted: 3, total: 4 });
     expect(Object.keys(reserve)).toEqual(['reserve', 'counted', 'total']);
+  });
+
+  it('reads the month close of what the caller cannot read as sums per currency and two counts, and nothing about an account or a member', () => {
+    const row = {
+      currency: 'INR',
+      left_minor: '15944000',
+      outside_minor: '0',
+      own_out_minor: '1824000',
+      refunds_minor: '0',
+      came_in_minor: '14000000',
+      reserve_change_minor: '-120000',
+      accounts_counted: 1,
+      accounts_total: 2,
+    };
+    const close = toPrivateClose(row);
+    expect(close).toEqual({
+      currency: 'INR',
+      left: 15_944_000n,
+      outside: 0n,
+      ownOut: 1_824_000n,
+      refunds: 0n,
+      cameIn: 14_000_000n,
+      reserveChange: -120_000n,
+      counted: 1,
+      total: 2,
+    });
+    expect(() => toPrivateClose({ ...row, left_minor: 'a lot' })).toThrow(MalformedRowError);
   });
 
   it('refuses a count that is not a whole number, rather than reading it as none', () => {

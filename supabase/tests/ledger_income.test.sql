@@ -24,7 +24,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(97);
+select plan(104);
 
 -- ============================================================== the fixture
 --
@@ -143,7 +143,9 @@ insert into public.account_balance (id, household_id, account_id, as_at, balance
   ('c9000000-0000-4000-8000-0000000000c2', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000002',
    '2026-10-31', 500000, 'INR', 'd9000000-0000-4000-8000-0000000000a1'),
   ('c9000000-0000-4000-8000-0000000000c3', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000003',
-   '2026-10-31', 220000, 'INR', 'd9000000-0000-4000-8000-0000000000a2');
+   '2026-10-31', 220000, 'INR', 'd9000000-0000-4000-8000-0000000000a2'),
+  ('c9000000-0000-4000-8000-0000000000c4', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000003',
+   '2026-09-30', 100000, 'INR', 'd9000000-0000-4000-8000-0000000000a2');
 
 -- Transfers: 01 from the household account to the owner's personal one; 02 from it to the partner's personal card.
 insert into public.account_transfer (id, household_id, from_account_id, to_account_id, transfer_date, amount_minor, currency, created_by) values
@@ -627,7 +629,7 @@ select is(
 
 select results_eq(
   $q$ select currency, reserve_minor
-        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-09-30')
+        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-08-31')
        where currency = 'INR' $q$,
   $q$ values ('INR'::text, 0::bigint) $q$,
   'a day before any balance was typed there is nothing to count: a sum of nothing, which the screen does not show as a reserve'
@@ -637,6 +639,32 @@ select throws_ok(
   $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f2', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I27 — the cash reserve raises for another household'
+);
+
+-- The month close of what the owner cannot read, October 2026. The partner's card is hidden from the owner and has both balances (due ₹1,000 on
+-- 30 September and ₹2,200 on 31 October), so it left ₹2,200 - ₹1,000 + the ₹18,240 moved into it = ₹19,440. The partner's private salary
+-- (₹90,000) into the shared account and the contributor's (₹50,000) into theirs are money in that the owner cannot see, so what left those
+-- accounts reads ₹1,40,000 less than it should without them. The move from the shared account into the card is a move out that the owner cannot
+-- see. Came in is the two salaries, ₹1,40,000, and the card's due rose ₹1,200, which is ₹-1,200 of reserve.
+select results_eq(
+  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor, accounts_counted, accounts_total
+        from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
+       order by currency $q$,
+  $q$ values ('INR'::text, 15944000::bigint, 0::bigint, 1824000::bigint, 0::bigint, 14000000::bigint, -120000::bigint, 1, 1) $q$,
+  'the month close of what the owner cannot read adds the partner''s card, the private salaries into readable accounts and the move into the card, per currency'
+);
+
+select is(
+  (select proargnames from pg_proc where proname = 'household_private_close'),
+  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'own_out_minor', 'refunds_minor',
+        'came_in_minor', 'reserve_change_minor', 'accounts_counted', 'accounts_total']::text[],
+  'its result has a currency, six sums and two counts, and no account, no member, no balance and no date'
+);
+
+select throws_ok(
+  $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f2', '2026-10-01', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'the month close of what a caller cannot read raises for another household'
 );
 
 -- ================================================ the owner without a second factor
@@ -665,6 +693,12 @@ select throws_ok(
   $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I27 — and so does the cash reserve'
+);
+
+select throws_ok(
+  $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'the month close of what a caller cannot read raises for an owner with a password alone'
 );
 
 -- ===================================================== the partner
@@ -729,6 +763,18 @@ select results_eq(
   'LI-I27 — and the cash reserve returned to the partner includes it, as a total'
 );
 
+-- For the partner the hidden account is the owner's own, which has a closing balance and no opening one, so it is counted as none of one and
+-- contributes nothing else. Three private salaries into shared accounts are money in the partner cannot see: the owner's ₹1,42,000 and the
+-- ₹1,42,000 confirmed from the salary rule (a credit is personal unless said otherwise), and the contributor's ₹50,000, ₹3,34,000 in all. The move
+-- from the shared account into the owner's own is a move out the partner cannot see (the move into the partner's own card is theirs to see).
+select results_eq(
+  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor, accounts_counted, accounts_total
+        from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
+       order by currency $q$,
+  $q$ values ('INR'::text, 33400000::bigint, 0::bigint, 1000000::bigint, 0::bigint, 33400000::bigint, 0::bigint, 0, 1) $q$,
+  'for the partner it adds the private salaries into shared accounts, the move into the owner''s own account, and counts that account as not ready'
+);
+
 -- ================================================== the contributor
 
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a3';
@@ -777,6 +823,12 @@ select throws_ok(
   $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I27 — and the cash reserve raises for a contributor'
+);
+
+select throws_ok(
+  $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'the month close of what a caller cannot read raises for a contributor'
 );
 
 select throws_ok(
@@ -832,6 +884,12 @@ select throws_ok(
   $q$ select * from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I27 — and the cash reserve raises for a viewer'
+);
+
+select throws_ok(
+  $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
+  '42501'::char(5), null::text,
+  'the month close of what a caller cannot read raises for a viewer'
 );
 
 select throws_ok(

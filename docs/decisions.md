@@ -574,6 +574,11 @@ Questions that had been parked while the ledger and income work was built, answe
 - **A form of one short screen of one kind of thing may keep more than five fields on one step.** AddAccount (seven) and the salary rule (six). A sequence stays stepped. `docs/design/simple-layout.md` section 4 and `docs/tokens.md` (Stepper) say so.
 - **The month surface's Spent is per currency, never converted:** itemised and private spending in a currency, less the refunds in it, a line each, as Came in is. `ledger-income.md` section 4 says *per currency*. The plan panel under it still converts.
 - **A voided row is final: a mistake in it is fixed by entering a new one.** The screens already work that way. Whether the database should also refuse an edit to a voided row is a migration to be reviewed before it is applied.
+- **The month close, the owner's answers (15 November 2026).** What it does not read yet (money into holdings and loan payments) waits for its own step rather than being pulled
+  forward: a holding's entries naming the account they were paid from or into are in the design (ledger-income.md section 4) and are a slice of their own. The plan comparison is built
+  on the Money tab, and may be redesigned onto FIRE later if it is needed there. A credit with no account has no picker at the close for now. Card wording and the board's layout stay as built. A
+  month reads as open again when an account is added after it, accepted. Another member's private accounts are counted in an owner's or a partner's close, as totals through
+  `household_private_close`.
 - **The database does not refuse an edit to a voided row, for now (held, the owner's call, 15 November 2026).** A trigger that did would have to leave `reverse_template_batch` alone, which
   hard-deletes rows an upload made, voided or not, and that makes it a larger and riskier migration than the small one first described. The owner asked for the decision to be mine: hold it. Voided
   rows are final in every screen, and there is no way in the app to edit one. It is raised again if a screen is ever added that could.

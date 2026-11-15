@@ -612,7 +612,7 @@ functions, which read the totals.
 
 **LI-I26 — An account's type and currency cannot change once it has a credit, a transfer or a balance;** an account is archived, never deleted. (§1a)
 
-**LI-I27 — A private account is listed only to its owner; its balance reaches others only inside the cash reserve's total.** (§1a)
+**LI-I27 — A private account is listed only to its owner; its balance reaches others only inside a total: the cash reserve's, and a month close's (`household_private_close`, which returns sums and counts and no account, member, balance or date).** (§1a)
 
 **LI-I8 — An expected credit counts nowhere until it is confirmed;** a credit rule never auto-posts, and a rule posts at most one credit per due date. (§5)
 
@@ -624,7 +624,7 @@ functions, which read the totals.
 
 **LI-I12 — An income credit is private by default; a viewer reads no credit, a contributor reads only their own, and nobody reads another member's private credit row.** (§1, §12)
 
-**LI-I13 — The household's total of private income is reachable only through the sum function, by an owner or a partner, as totals per currency;** never as rows and never per member. (§7, §12)
+**LI-I13 — The household's total of private income is reachable only through a sum function (`household_money_totals`, and for a month close `household_private_close`), by an owner or a partner, as totals per currency;** never as rows and never per member. (§7, §12)
 
 **LI-I14 — The payday reminder names the rule and never an amount.** (§5)
 
@@ -660,7 +660,7 @@ functions, which read the totals.
 - LI-I10: a member with no Salary or Business income credit sees the FIRE number, no yearly-income figure, and the link to + Money in; the DOM contains no "₹0" in that panel.
 - LI-I11: a member with ₹1,42,000 monthly Salary credits and no typed gross has no salary in the tax estimate; typing a payslip figure then a Form 16 figure uses the Form 16 one and shows "was" with the payslip one.
 - LI-I12: pgTAP, per verb: a viewer selects no `credit_entry`; a contributor selects only rows with their member; an owner does not select a partner's personal credit.
-- LI-I13: `household_money_totals` returns one row per currency to an owner and a partner, and raises for a contributor and a viewer; its result has no member column.
+- LI-I13: `household_money_totals` returns one row per currency to an owner and a partner, and raises for a contributor and a viewer; its result has no member column. `household_private_close` raises for a contributor, a viewer, a password alone and another household, and its result has no account, member, balance or date.
 - LI-I14: the reminder text for a credit rule matches no digit sequence or currency symbol.
 - LI-I15: loading `#/expenses?month=2026-10` lands on `#/money?month=2026-10`, and Back leaves the app rather than returning to `#/expenses`.
 - LI-I16: in each ledger line the accessible name includes "came in", "spent" or "moved", and a greyscale screenshot comparison passes the axe colour rule.
@@ -674,4 +674,4 @@ functions, which read the totals.
 - LI-I24: an account with a name, the type savings and a member, and no last four, is accepted (pgTAP); the ledger line shows its name alone.
 - LI-I25: `#/money?tab=accounts` renders the Accounts tab current; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
 - LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
-- LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it.
+- LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it, and so does the month close's, with the account counted as one of one only when both balances are typed.

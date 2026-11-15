@@ -24,6 +24,7 @@ import {
   type Credit,
   type IncomeRule,
   type CashReserve,
+  type PrivateClose,
   type MoneyTotals,
   type TaxInputRecord,
   type Transfer,
@@ -174,6 +175,23 @@ export function toCashReserve(raw: unknown): CashReserve {
     reserve: money(toBigIntExact(row['reserve_minor'], 'household_cash_reserve.reserve_minor'), currency),
     counted: requireNumber(row['accounts_counted'], 'household_cash_reserve.accounts_counted'),
     total: requireNumber(row['accounts_total'], 'household_cash_reserve.accounts_total'),
+  };
+}
+
+/** A line of `household_private_close`. No account in it: what the caller cannot read is reachable only as sums. */
+export function toPrivateClose(raw: unknown): PrivateClose {
+  const row = requireRecord(raw, 'household_private_close');
+  const sum = (field: string): bigint => toBigIntExact(row[field], `household_private_close.${field}`);
+  return {
+    currency: requireString(row['currency'], 'household_private_close.currency'),
+    left: sum('left_minor'),
+    outside: sum('outside_minor'),
+    ownOut: sum('own_out_minor'),
+    refunds: sum('refunds_minor'),
+    cameIn: sum('came_in_minor'),
+    reserveChange: sum('reserve_change_minor'),
+    counted: requireNumber(row['accounts_counted'], 'household_private_close.accounts_counted'),
+    total: requireNumber(row['accounts_total'], 'household_private_close.accounts_total'),
   };
 }
 
