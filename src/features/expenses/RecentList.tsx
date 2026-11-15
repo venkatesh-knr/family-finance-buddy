@@ -17,8 +17,8 @@ import { memberMarks, type MemberMark } from './memberMark.ts';
 
 /** What the Money screen adds to the list: the credits and moves the caller may read, and the accounts they name (ledger-income.md section 1). */
 export interface LedgerMoney {
-  /** *+ Money in*, placed directly under quick add: money out above it, money in below it. */
-  readonly afterQuickAdd?: React.ReactNode;
+  /** *+ Money in*, *Close October* and the way to Accounts, placed directly under the month surface (the owner, 15 November 2026). */
+  readonly actions?: React.ReactNode;
   /** The Expected panel: placed under the month surface, where the board draws it, or above the month card where there is no surface. */
   readonly expected?: React.ReactNode;
   /** Opens a credit to correct or void. Absent where credits are only read. */

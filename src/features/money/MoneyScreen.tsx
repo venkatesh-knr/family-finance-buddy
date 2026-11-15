@@ -1,5 +1,6 @@
 /**
- * Money: the month, quick add with *+ Money in* under it, what is expected, and the ledger (docs/design/ledger-income.md sections 1 and 3).
+ * Money: quick add, the month, *+ Money in* under it with the close and the way to Accounts, what is expected, and the ledger (docs/design/ledger-income.md
+ * sections 1 and 3).
  *
  * One screen, with no tabs. Accounts moved behind More on 15 November 2026 (the owner), at `#/accounts`; this screen asks for the first account
  * with a card, and afterwards keeps one quiet line to manage them (`AccountsNudge`). The money in and money moved are listed beside the spending in
@@ -72,23 +73,6 @@ export function MoneyScreen({
         });
   return (
     <>
-      {nudge?.kind === 'add' && <AccountsNudge nudge={nudge} />}
-      {mayClose && (
-        <button
-          type="button"
-          className="btn btn-quiet add-pill"
-          onClick={() => {
-            setSaid(null);
-            setClosing(true);
-          }}
-        >
-          Close {monthWord(closeMonthKey)} · about 2 minutes
-        </button>
-      )}
-      {/* Always in the page, so that what is put into it is announced; under the button, where the person is looking. */}
-      <p className="note" role="status">
-        {said}
-      </p>
       {newRule !== null && ledger.data !== null && (
         <SalaryRuleForm
           data={ledger.data}
@@ -179,22 +163,41 @@ export function MoneyScreen({
         recurringMade={recurringMade}
         displayCurrency={displayCurrency}
         money={{
-          // Under quick add: money out above it, money in below.
-          afterQuickAdd: (
-            <MoneyIn
-              data={ledger.data}
-              privacy={privacy}
-              onAddAccount={ledger.add}
-              onChangeAccount={ledger.change}
-              onSaved={() => {
-                setSaid(null);
-                void ledger.reloadMoney();
-              }}
-              canRepeat={mayRule}
-              onRepeat={(draft) => {
-                setNewRule(draft);
-              }}
-            />
+          // Quick add is first on the screen, then the month; under the month, in this order: money in, the close, the way to Accounts, and what was done.
+          actions: (
+            <>
+              <MoneyIn
+                data={ledger.data}
+                privacy={privacy}
+                onAddAccount={ledger.add}
+                onChangeAccount={ledger.change}
+                onSaved={() => {
+                  setSaid(null);
+                  void ledger.reloadMoney();
+                }}
+                canRepeat={mayRule}
+                onRepeat={(draft) => {
+                  setNewRule(draft);
+                }}
+              />
+              {mayClose && (
+                <button
+                  type="button"
+                  className="btn btn-quiet add-pill"
+                  onClick={() => {
+                    setSaid(null);
+                    setClosing(true);
+                  }}
+                >
+                  Close {monthWord(closeMonthKey)} · about 2 minutes
+                </button>
+              )}
+              <AccountsNudge nudge={nudge} />
+              {/* Always in the page, so that what is put into it is announced; under the buttons, where the person is looking. */}
+              <p className="note" role="status">
+                {said}
+              </p>
+            </>
           ),
           expected:
             viewer === null ? undefined : (
@@ -245,7 +248,6 @@ export function MoneyScreen({
           },
         }}
       />
-      {nudge?.kind === 'manage' && <AccountsNudge nudge={nudge} />}
       {changing !== null && ledger.data !== null && (
         <AddCredit
           key={changing.id}

@@ -16,15 +16,15 @@ async function onExpenses(page: Page) {
   await expect(page.getByRole('region', { name: 'Recent expenses' })).toBeVisible({ timeout: 20_000 });
 }
 
-test('the screen runs in the artboard\'s order: the month, quick add, the plan, then recent entries', async ({ page }) => {
+test('the screen runs in the owner\'s order of 15 November: quick add, the month, the plan, then recent entries', async ({ page }) => {
   await onExpenses(page);
   const tops: number[] = [];
-  for (const name of ['Against the plan', 'Add an expense', 'Plan', 'Recent expenses']) {
+  for (const name of ['Add an expense', 'Against the plan', 'Plan', 'Recent expenses']) {
     const box = await page.getByRole('region', { name, exact: true }).boundingBox();
     expect(box, `a region named "${name}"`).not.toBeNull();
     tops.push(box?.y ?? -1);
   }
-  expect([...tops].sort((a, b) => a - b), 'the regions are in the order the board draws them').toEqual(tops);
+  expect([...tops].sort((a, b) => a - b), 'the regions are in the order the owner chose').toEqual(tops);
 });
 
 test('the month says how much was spent, of how much, and whether that is early', async ({ page }) => {
