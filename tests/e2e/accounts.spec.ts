@@ -75,17 +75,21 @@ test('Money leads to Accounts: a quiet line to manage them, or a card that asks 
   await expect(page.getByRole('region', { name: 'What an account is' })).toBeVisible({ timeout: 20_000 });
 });
 
-test('+ Money in sits directly under quick add', async ({ page }) => {
+test('Money is quick add first, then the month, then + Money in, the close and the way to Accounts', async ({ page }) => {
   await page.goto('/#/money');
   const moneyIn = page.getByRole('button', { name: '+ Money in' });
   await expect(moneyIn).toBeVisible({ timeout: 20_000 });
-  const quickAdd = page.getByRole('region', { name: 'Add an expense' });
-  await expect(quickAdd).toBeVisible();
-  const above = await quickAdd.boundingBox();
-  const below = await moneyIn.boundingBox();
-  expect(above, 'quick add is drawn').not.toBeNull();
-  expect(below, 'money in is drawn').not.toBeNull();
-  expect((below?.y ?? 0) > (above?.y ?? 0) + (above?.height ?? 0) - 1, 'Money in is below quick add').toBe(true);
+  const top = async (locator: ReturnType<typeof page.locator>) => {
+    await expect(locator.first()).toBeVisible({ timeout: 20_000 });
+    return (await locator.first().boundingBox())?.y ?? Number.NaN;
+  };
+  const quickAdd = await top(page.getByRole('region', { name: 'Add an expense' }));
+  const month = await top(page.getByRole('region', { name: 'The month so far' }));
+  const money = await top(moneyIn);
+  const manage = await top(page.getByRole('link', { name: /^Accounts · \d+ · Manage$|^Add accounts$/ }));
+  expect(quickAdd, 'quick add is above the month').toBeLessThan(month);
+  expect(month, 'the month is above Money in').toBeLessThan(money);
+  expect(money, 'Money in is above the way to Accounts').toBeLessThan(manage);
 });
 
 test('the Accounts screen says what is kept, and what an account is not', async ({ page }) => {

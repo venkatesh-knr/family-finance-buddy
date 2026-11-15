@@ -109,20 +109,15 @@ export function ExpensesScreen({
   // The household's own currency until this device says otherwise.
   const reading = displayCurrency === '' ? (listing.household.baseCurrency ?? 'INR') : displayCurrency;
 
-  const quickAdd = (
-    <>
-      {listing.viewer.canRecord ? (
-        <QuickAdd listing={listing} onAdd={add} />
-      ) : (
-        <Card title="Quick add">
-          <p className="note">
-            Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
-            database enforces that, not this screen.
-          </p>
-        </Card>
-      )}
-      {money?.afterQuickAdd}
-    </>
+  const quickAdd = listing.viewer.canRecord ? (
+    <QuickAdd listing={listing} onAdd={add} />
+  ) : (
+    <Card title="Quick add">
+      <p className="note">
+        Your role in this household is <strong>{listing.viewer.role}</strong>, which can read but not record. The
+        database enforces that, not this screen.
+      </p>
+    </Card>
   );
 
   return (
@@ -135,6 +130,7 @@ export function ExpensesScreen({
       {listing.viewer.role === 'contributor' ? (
         <>
           {quickAdd}
+          {money?.actions}
           {money?.expected}
           <Card title="This month">
             <p className="note">
@@ -164,6 +160,7 @@ export function ExpensesScreen({
             ? { month: { householdId: listing.household.id, refreshKey: money.credits } }
             : {})}
           {...(money?.expected === undefined ? {} : { afterSurface: money.expected })}
+          {...(money?.actions === undefined ? {} : { actions: money.actions })}
           onFile={(period) => {
             setUncategorisedIn(period);
           }}
@@ -208,8 +205,8 @@ export function ExpensesScreen({
 }
 
 /**
- * The month's figure, quick add, and the plan, in that order. A component of its own because the hook that reads
- * the plan against the spending feeds the first and the third, and quick add sits between them.
+ * Quick add first (the owner, 15 November 2026), then the month's figure, what is done from it (*+ Money in*, the close, the way to Accounts), what
+ * is expected, and the plan. A component of its own because the hook that reads the plan against the spending feeds the figure and the plan.
  */
 function Budget({
   quickAdd,
@@ -217,10 +214,13 @@ function Budget({
   privacy,
   month,
   afterSurface,
+  actions,
   ...inputs
 }: Parameters<typeof useBudgetComparison>[0] & {
   quickAdd: React.ReactNode;
-  /** What sits under the month surface: the Expected panel. */
+  /** What sits under the month surface, above the Expected panel: *+ Money in*, the close, and the way to Accounts. */
+  actions?: React.ReactNode;
+  /** What sits under the actions: the Expected panel. */
   afterSurface?: React.ReactNode;
   onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
@@ -232,6 +232,7 @@ function Budget({
   const monthView = useBudgetComparison(inputs);
   return (
     <>
+      {quickAdd}
       {month !== undefined && (
         <MonthSurface
           bounds={monthView.bounds}
@@ -245,9 +246,9 @@ function Budget({
           refreshKey={month.refreshKey}
         />
       )}
+      {actions}
       {afterSurface}
       <SpentHero view={view} privacy={privacy} soft={month !== undefined} />
-      {quickAdd}
       <PlanCard view={view} privacy={privacy} onFile={onFile} />
     </>
   );
