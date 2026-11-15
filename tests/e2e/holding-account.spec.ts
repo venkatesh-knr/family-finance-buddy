@@ -91,7 +91,11 @@ test('a purchase paid from an account is recorded, and the close reads it as int
   for (let i = 0; i < (await openings.count()); i += 1) await openings.nth(i).fill('1000');
   await expect(close.getByTestId('close-spent').first()).toContainText('₹', { timeout: 20_000 });
   // The purchase named an account, so it is money into a holding, and the close says so; nothing is said to be left unnamed on its account.
-  await expect(close).toContainText('Into holdings · ₹5,000');
+  // The desktop and mobile runs share one household and one month, so an earlier run's purchase is in it too: a multiple of ₹5,000, at least one.
+  await expect(close).toContainText(/Into holdings · ₹[\d,]+/);
+  const into = Number(/Into holdings · ₹([\d,]+)/.exec((await close.textContent()) ?? '')?.[1].replace(/,/g, ''));
+  expect(into).toBeGreaterThanOrEqual(5000);
+  expect(into % 5000).toBe(0);
   // Leaving it writes nothing.
   await close.getByRole('button', { name: `Close Close ${word}` }).click();
   await expect(close).toHaveCount(0);
