@@ -24,7 +24,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(104);
+select plan(106);
 
 -- ============================================================== the fixture
 --
@@ -987,6 +987,35 @@ select throws_ok(
   $q$ select * from public.household_yearly_income('e9000000-0000-4000-8000-0000000000f1', '2026-11-13') $q$,
   '42501'::char(5), null::text,
   'and so does the yearly income'
+);
+
+-- ============================ the cash reserve's archive boundary is IST, and an archived account stays in the month it was archived in
+
+reset role;
+
+-- A euro account archived at 00:30 IST on 1 November (19:00 UTC on 31 October) with a balance on 31 October. A cut-off in the session's time zone, UTC,
+-- would drop it from October's reserve; in India it was archived in November, so it is in October's and in no month after November's.
+insert into public.account (id, household_id, member_id, name, type, currency, visibility, status, archived_at, created_by) values
+  ('a9000000-0000-4000-8000-0000000000e1', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
+   'Archived at dawn', 'savings', 'EUR', 'household', 'archived', '2026-10-31T19:00:00Z', 'd9000000-0000-4000-8000-0000000000a1');
+insert into public.account_balance (household_id, account_id, as_at, balance_minor, currency, created_by) values
+  ('e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-0000000000e1', '2026-10-31', 100000, 'EUR', 'd9000000-0000-4000-8000-0000000000a1');
+
+set local role authenticated;
+set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a1';
+set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
+
+select results_eq(
+  $q$ select currency, reserve_minor, accounts_counted, accounts_total
+        from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31')
+       where currency = 'EUR' $q$,
+  $q$ values ('EUR'::text, 100000::bigint, 1, 1) $q$,
+  'an account archived at 00:30 IST on 1 November is still in October''s cash reserve'
+);
+
+select is_empty(
+  $q$ select 1 from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-12-31') where currency = 'EUR' $q$,
+  'but not in the reserve of a month after the one it was archived in'
 );
 
 -- ================================================ the demo reset clears them

@@ -201,6 +201,38 @@ export function parseBalance(text: string, currency: string): { readonly ok: tru
   }
 }
 
+/**
+ * The latest month-end, going back a year from the month the prompt offers, on which an account in use has a balance: the day the cash reserve is as at
+ * (the owner's board draws *from balances at 31 Oct · 3 of 4 accounts*). It does not need every account closed, so an account added since, or a partial close,
+ * leaves the reserve where it was and lets the count say how many it covers. Null before a first close, and with no account in use.
+ */
+export function lastBalanceMonth(input: { readonly today: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[] }): string | null {
+  let month = monthToClose(input.today);
+  for (let back = 0; back < 12; back += 1) {
+    const closesOn = lastDayOf(month);
+    if (inUse(input.accounts, month).some((account) => balanceOn(input.balances, account.id, closesOn) !== null)) return month;
+    month = addMonths(`${month}-01`, -1).slice(0, 7);
+  }
+  return null;
+}
+
+/** Whether Close October is offered: to someone who can record, once what the close needs has been read, while some account in use has no closing balance. */
+export function offersClose(input: {
+  readonly month: string;
+  readonly accounts: readonly Account[];
+  readonly balances: readonly AccountBalance[];
+  readonly canRecord: boolean;
+  /** The credits and moves have been read: money in read as nothing would make spent read low. */
+  readonly moneyReady: boolean;
+}): boolean {
+  return (
+    input.moneyReady &&
+    input.canRecord &&
+    input.accounts.some((account) => !account.isArchived) &&
+    !isClosed({ month: input.month, accounts: input.accounts, balances: input.balances })
+  );
+}
+
 /** Whether a month has been closed: every account in use has a closing balance on its last day. Nothing in use is nothing closed from balances. */
 export function isClosed(input: { readonly month: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[] }): boolean {
   const used = inUse(input.accounts, input.month);

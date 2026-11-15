@@ -2,21 +2,28 @@
  * Accounts, behind More: the household's accounts (docs/design/ledger-income.md section 1a; the MoneyAccounts and MoneyAccountsEmpty boards).
  *
  * Accounts are optional: a family can start without any, and the screen says what a month is like without them and what adding them gives.
- * With some, the lifted surface is the cash reserve, which comes from a close's balances and so waits for the first close; a soft panel
+ * With some, the lifted surface is the cash reserve: the total of the balances at the last month-end that has any, a card's due taken off, per
+ * currency, with how many accounts it counts and the *Close October* button (a first close is asked for until there is a balance); a soft panel
  * lists the accounts, each with its type, whose it is, who sees it and its last balance; then the button, the archived ones folded, and
  * what is kept. A private account is listed only to its owner, because row-level security returns nothing else.
  *
- * No figure here is worked out. The cash reserve will be the month close's, from balances, with other members' private accounts inside
- * the total through the sum function (LI-I27); until then it says so and shows no number.
+ * No figure here is worked out. The reserve is the database's sum (`household_cash_reserve`), with other members' private accounts inside the
+ * total (LI-I27); a failed or empty read says so and is never a reserve of nothing.
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { formatShortDate } from '../../lib/dates.ts';
+import { formatMoney } from '../../lib/money.ts';
 import { accountHasHistory } from '../../repo/accounts.ts';
+import { todayInIst } from '../../repo/expenses.ts';
 import type { Account } from '../../repo/types.ts';
 import { Chevron, Disclosure } from '../../ui/primitives.tsx';
 import { AddAccount } from './AddAccount.tsx';
+import { CloseMonth } from './CloseMonth.tsx';
 import { accountRow, latestBalances, splitAccounts } from './accountRows.ts';
-import { useAccounts } from './useAccounts.ts';
+import { lastBalanceMonth, lastDayOf, monthToClose, monthWord, offersClose } from './closeMonth.ts';
+import { useCashReserve } from './useCashReserve.ts';
+import { useMoneyLedger } from './useMoneyLedger.ts';
 
 function WhatIsKept() {
   return (
@@ -40,10 +47,19 @@ function Lock() {
 }
 
 export function AccountsTab({ householdId, privacy }: { householdId: string | null; privacy: boolean }) {
-  const { data, loading, problem, add, change } = useAccounts(householdId);
+  // The credits and moves come with the accounts: the close can be opened from here, and it needs them.
+  const ledger = useMoneyLedger(householdId);
+  const { data, loading, problem, add, change } = ledger;
   // The form: closed, a new account, or one being changed with whether its type and currency are fixed.
   const [form, setForm] = useState<{ account: Account | null; locked: boolean } | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [said, setSaid] = useState<string | null>(null);
+  const today = todayInIst();
+  const closeMonthKey = monthToClose(today);
+  // The reserve is as at the last day of the last closed month, and is read again when a close writes balances.
+  const closedMonth = data === null ? null : lastBalanceMonth({ today, accounts: data.accounts, balances: data.balances });
+  const reserve = useCashReserve(data?.household.id ?? null, data?.viewer.role ?? null, closedMonth === null ? null : lastDayOf(closedMonth), data?.balances);
 
   const latest = useMemo(() => latestBalances(data?.balances ?? []), [data]);
   const split = useMemo(() => splitAccounts(data?.accounts ?? []), [data]);
@@ -64,6 +80,14 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
 
   const mayAdd = data.viewer.canRecord;
   const none = split.active.length === 0 && split.archived.length === 0;
+  const readsHousehold = data.viewer.role === 'owner' || data.viewer.role === 'partner';
+  const offer = offersClose({
+    month: closeMonthKey,
+    accounts: data.accounts,
+    balances: data.balances,
+    canRecord: data.viewer.canRecord,
+    moneyReady: ledger.moneyStatus === 'ready',
+  });
 
   const open = async (account: Account): Promise<void> => {
     // Its type and currency are fixed once it has entries; ask before the form opens, so the first sight of it is right.
@@ -124,8 +148,54 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
       ) : (
         <section className="card card-lift" aria-label="Cash reserve">
           <span className="label">Cash reserve</span>
-          <p className="mt-2">After the first month close.</p>
-          <p className="note mt-1">It comes from the balances typed at a close, with card dues taken off.</p>
+          {!readsHousehold ? (
+            <p className="note mt-2">The household’s cash reserve is read by an owner or a partner: it includes accounts you cannot see.</p>
+          ) : closedMonth === null ? (
+            <>
+              <p className="mt-2">After the first month close.</p>
+              <p className="note mt-1">It comes from the balances typed at a close, with card dues taken off.</p>
+            </>
+          ) : reserve.status === 'ready' && reserve.lines.length > 0 ? (
+            <div className="mt-2 flex flex-col gap-2" data-testid="cash-reserve">
+              {reserve.lines.map((line) => (
+                <div key={line.reserve.currency} className="flex flex-col">
+                  {line.counted === 0 ? (
+                    <p className="note">No balance typed in {line.reserve.currency}.</p>
+                  ) : (
+                    <p className="figure tabular-nums">{formatMoney(line.reserve, { privacy })}</p>
+                  )}
+                  <p className="note tabular-nums">
+                    from balances at {formatShortDate(lastDayOf(closedMonth))} · {String(line.counted)} of {String(line.total)} {line.total === 1 ? 'account' : 'accounts'} · card dues
+                    netted
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : reserve.status === 'failed' ? (
+            <p className="note mt-2">The cash reserve could not be read just now. Reload to read it again.</p>
+          ) : reserve.status === 'ready' ? (
+            <p className="note mt-2">No balance typed yet for the accounts in use. It comes from the balances typed at a close.</p>
+          ) : (
+            <p className="note mt-2">Reading…</p>
+          )}
+          {ledger.moneyStatus === 'failed' && data.viewer.canRecord && (
+            <p className="note mt-3">Close {monthWord(closeMonthKey)} cannot be offered just now: the credits and moves could not be read. Reload to try again.</p>
+          )}
+          {offer && (
+            <button
+              type="button"
+              className="btn btn-quiet add-pill mt-3"
+              onClick={() => {
+                setSaid(null);
+                setClosing(true);
+              }}
+            >
+              Close {monthWord(closeMonthKey)} · about 2 minutes
+            </button>
+          )}
+          <p className="note mt-2" role="status">
+            {said}
+          </p>
         </section>
       )}
 
@@ -135,6 +205,9 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
             <h2 className="label">Accounts</h2>
           </div>
           {split.active.length === 0 ? <p className="note">Every account is archived.</p> : <ul className="flat-rows">{split.active.map(row)}</ul>}
+          {readsHousehold && (
+            <p className="note mt-2">Accounts another member keeps private are not listed. Their balances are in the cash reserve, as part of the total.</p>
+          )}
         </section>
       )}
 
@@ -194,6 +267,25 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
       )}
 
       <WhatIsKept />
+
+      {closing && (
+        <CloseMonth
+          data={data}
+          month={closeMonthKey}
+          today={today}
+          credits={ledger.credits}
+          transfers={ledger.transfers}
+          privacy={privacy}
+          onDone={(message) => {
+            setClosing(false);
+            setSaid(message);
+            void ledger.reload();
+          }}
+          onCancel={() => {
+            setClosing(false);
+          }}
+        />
+      )}
 
       {form !== null && (
         <AddAccount
