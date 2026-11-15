@@ -215,6 +215,7 @@ export const ENTITIES: readonly Entity[] = [
       text('status'),
       ts('archived_at'),
     ],
+    leftOut: ['cost_account_id', 'cost_account_currency'],
   },
   {
     key: 'valuation_snapshot',
@@ -269,6 +270,7 @@ export const ENTITIES: readonly Entity[] = [
       text('repay_mode'),
       text('note'),
     ],
+    leftOut: ['account_id', 'account_currency', 'account_amount_minor', 'payout_account_id'],
   },
   {
     key: 'deposit_renewal',
