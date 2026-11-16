@@ -5,9 +5,8 @@
 --
 -- LI-I36 — a payment names a loan of its own household and is in the loan's currency; an account it names is of its household, in that currency, and
 --          one its writer can read; only an owner or a partner writes one.
--- LI-I37 — a payment naming an account is as private as the account, and so is its audit row; one naming none is the household's.
--- LI-I38 — the sum for the close adds the payments that left an account the caller cannot read and that has both balances, and nothing the caller's own
---          screen adds, and not a voided payment, another month's, or one that names no account.
+-- LI-I37 — a payment is the household's; while an account can still be private, one naming a private account is read by whoever reads the account, and
+--          so is its audit row; one naming none is the household's.
 -- LI-I39 — a payment does not change what the loan says is outstanding.
 --
 -- Run: supabase test db
@@ -18,7 +17,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(18);
+select plan(14);
 
 -- ============================================================== the fixture
 --
@@ -91,12 +90,12 @@ insert into public.liability (id, household_id, name, kind, instalment_minor, cu
   ('a7000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'Dollar loan', 'loan',       100000, 'USD', 'monthly', null, null),
   ('a7000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f2', 'Elsewhere',   'loan',       100000, 'INR', 'monthly', null, null);
 
--- The payments, October 2026, as the month close reads it. The owner is the one asking.
---   P1  ₹32,000 from the shared account (the owner's own screen adds it).
---   P2  ₹5,000 from the partner's private account (hidden, both balances): in the sum.
---   P3  ₹32,000 naming no account: not in the sum, and the household's.
---   P4  ₹5,000 from the partner's account, voided: not in the sum.
---   P5  ₹5,000 from the partner's account in September: not in the sum.
+-- The payments, October 2026.
+--   P1  ₹32,000 from the shared account.
+--   P2  ₹5,000 from the partner's private account.
+--   P3  ₹32,000 naming no account.
+--   P4  ₹5,000 from the partner's account, voided.
+--   P5  ₹5,000 from the partner's account in September.
 insert into public.loan_payment (id, household_id, liability_id, paid_on, amount_minor, currency, account_id, voided_at, voided_by, created_by) values
   ('b8000000-0000-4000-8000-000000000001', 'e8000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000001', '2026-10-05', 3200000, 'INR',
    'a8000000-0000-4000-8000-000000000001', null, null, 'd8000000-0000-4000-8000-0000000000a1'),
@@ -205,23 +204,7 @@ select is(
   'LI-I39 — recording payments leaves what the loan says is outstanding as it was'
 );
 
--- ============================================== the sum, for the owner
-
--- Only the partner's account is hidden from the owner. Of its payments in October only P2 is counted: P4 is voided and P5 is September's. P1 is what the
--- owner's own screen adds and P3 names no account.
-select results_eq(
-  $q$ select currency, paid_to_loans_minor from public.household_private_loans('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
-  $q$ values ('INR'::text, 500000::bigint) $q$,
-  'LI-I38 — the sum adds a payment from an account the owner cannot read and not a voided one, another month''s, or one that names no account or a readable one'
-);
-
-select is(
-  (select proargnames from pg_proc where proname = 'household_private_loans'),
-  array['target_household_id', 'month_first', 'month_last', 'currency', 'paid_to_loans_minor']::text[],
-  'LI-I38 — its result is a currency and one sum: no account, no loan, no member and no date'
-);
-
--- ============================================== a contributor, and an owner with a password alone
+-- ============================================== a contributor
 
 set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000a3';
 set local request.jwt.claims   to '{"sub":"c8000000-0000-4000-8000-0000000000a3","role":"authenticated","aal":"aal2"}';
@@ -231,21 +214,6 @@ select throws_ok(
       values ('e8000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000001', '2026-10-21', 100, 'INR') $q$,
   '42501'::char(5), null::text,
   'LI-I36 — a contributor records no payment: only an owner or a partner does, as with a loan'
-);
-
-select throws_ok(
-  $q$ select * from public.household_private_loans('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
-  '42501'::char(5), null::text,
-  'LI-I38 — the sum raises for a contributor'
-);
-
-set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000a1';
-set local request.jwt.claims   to '{"sub":"c8000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal1"}';
-
-select throws_ok(
-  $q$ select * from public.household_private_loans('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
-  '42501'::char(5), null::text,
-  'LI-I38 — and for an owner with a password alone'
 );
 
 select * from finish();

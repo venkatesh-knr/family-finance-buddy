@@ -1,4 +1,4 @@
--- Family Finance Buddy — a loan payment, and the month close's sum of what it cannot read
+-- Family Finance Buddy — a loan payment
 -- (docs/design/ledger-income.md section 4c, LI-I36 to LI-I39).
 --
 -- The month close splits saved into invested, paid to loans and the cash reserve (LI-I23, spending-capture decided 13 November). The close's domain
@@ -12,15 +12,15 @@
 -- amount (a dollar loan is not offered a rupee account). It does not change what the loan says is outstanding, and nothing is worked out from it: what
 -- is owed stays the figure a person states (20260908130000), as of the day they state it.
 --
--- Who sees it. A payment naming an account is as private as that account, as a transfer is (LI-I27): it is read by whoever can read the account, and so
--- is its audit row (LI-I37). A payment naming none is the household's, like the loan. Only an owner or a partner records one, as they alone record a
--- loan, and only against an account they can read (LI-I29). Voided, never deleted.
+-- Who sees it. Accounts are always visible to the household (the owner's decision of 16 November 2026, decisions.md), so a payment is the household's, like
+-- the loan: any member reads it, and only an owner or a partner records or voids one, as they alone record a loan (LI-I36). Voided, never deleted.
 --
--- The close, for an owner or a partner, cannot read another member's private account. `household_private_close` adds what left such an account as a
--- total; the payments among it are one more sum, in a function of its own (`household_private_loans`) so that function's pinned result is left alone:
--- a currency and one number, no account, no loan, no member and no date.
+-- Until the step that makes every account visible has run, a household can still have a private account. For that interval, and only so that nothing leaks, a
+-- payment that names an account is read by whoever can read the account, and so is its audit row, and an account named must be one the writer can read
+-- (LI-I29). Those three clauses go with the private account in that step. No sum is written for the hidden-account case, because that step removes it: the
+-- close counts a payment from an account it reads, and reads a payment from one it cannot as it reads that account's other spending.
 --
--- What does not change: `household_private_close`, and every other table. The audit trigger is in this migration, as for every table that holds
+-- What does not change: household_private_close, and every other table. The audit trigger is in this migration, as for every table that holds
 -- household data. reset_demo_household is re-created with the new table cleared, and the export's list names the table.
 
 -- ═══════════════════════════════════════════════ 1. the table
@@ -135,7 +135,7 @@ comment on policy loan_payment_insert on public.loan_payment is
 
 -- ═══════════════════════════════════════════════ 4. the audit log follows the row
 
--- As 20261114120000 left it, with `loan_payment` among the tables whose audit row is readable only by whoever can read the row it records (LI-I37).
+-- As 20261114120000 left it, with `loan_payment` among the tables whose audit row is readable only by whoever can read the row it records (LI-I37), for as long as an account can be private.
 drop policy if exists audit_log_select_by_role on public.audit_log;
 
 create policy audit_log_select_by_role
@@ -184,62 +184,8 @@ create policy audit_log_select_by_role
 comment on policy audit_log_select_by_role on public.audit_log is
   'Owner and partner: the household''s log, minus other members'' private rows, minus anything about a position or property they cannot read, and minus an audit row for an account, balance, transfer, credit, loan payment or tax input whose row they cannot read. Contributor: entries about their own rows only. Viewer: none.';
 
--- ═══════════════════════════════════════════════ 5. the close's sum of what the caller cannot read
 
--- The loan payments that left an account the caller cannot read, in a month, per currency: a total, and nothing that says which account, which loan,
--- whose or when. Only those whose account is hidden and has both balances at the month's two ends are counted, for those are the accounts whose
--- `left` household_private_close adds (an account missing a balance is only in its count). A payment on an account the caller reads is added by the
--- caller's own screen; one that names no account, or is voided, or is in another month, is not counted. Same guards as the close: a second factor, and
--- an owner or a partner.
-
-create or replace function public.household_private_loans(
-  target_household_id uuid,
-  month_first date,
-  month_last date
-)
-returns table (currency text, paid_to_loans_minor bigint)
-language plpgsql
-security definer
-stable
-set search_path = ''
-as $fn$
-declare
-  v_me uuid;
-  v_open date := month_first - 1;
-begin
-  if not app.has_second_factor() then
-    raise exception 'Reading the household''s month close needs an authenticator code in this session, not only a password.'
-      using errcode = '42501';
-  end if;
-
-  if not coalesce(app.household_role(target_household_id) in ('owner', 'partner'), false) then
-    raise exception 'Only an owner or a partner reads the household''s month close.' using errcode = '42501';
-  end if;
-
-  v_me := app.current_member_id(target_household_id);
-
-  return query
-    select l.currency, sum(l.amount_minor)::bigint
-      from public.loan_payment l
-      join public.account a on a.id = l.account_id
-     where l.household_id = target_household_id
-       and l.voided_at is null
-       and l.paid_on between month_first and month_last
-       and a.visibility = 'personal' and a.member_id is distinct from v_me
-       and (a.status = 'active' or (a.archived_at at time zone 'Asia/Kolkata')::date >= month_first)
-       and exists (select 1 from public.account_balance b where b.account_id = a.id and b.as_at = v_open)
-       and exists (select 1 from public.account_balance b where b.account_id = a.id and b.as_at = month_last)
-     group by l.currency;
-end;
-$fn$;
-
-comment on function public.household_private_loans(uuid, date, date) is
-  'The loan payments of a month that left an account the caller cannot read and that has both balances, per currency: one total each, with no account, loan, member or date. For an owner or a partner with a second factor, beside household_private_close.';
-
-revoke all on function public.household_private_loans(uuid, date, date) from public;
-grant execute on function public.household_private_loans(uuid, date, date) to authenticated;
-
--- ═══════════════════════════════════════════════ 6. reset_demo_household
+-- ═══════════════════════════════════════════════ 5. reset_demo_household
 
 -- Re-created from 20261114120000 with the new table cleared, in foreign-key order. The function raises at run time if a household table is left
 -- uncleared, which CI does not exercise, so the table is named here.
