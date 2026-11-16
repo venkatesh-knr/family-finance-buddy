@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../lib/money.ts';
-import { checkAccount, checkBalance, checkCredit, checkCreditPatch, checkTaxInput, checkTransfer } from './ledgerChecks.ts';
+import { checkAccount, checkBalance, checkCredit, checkCreditPatch, checkLoanPayment, checkTaxInput, checkTransfer } from './ledgerChecks.ts';
 
 /**
  * What the repository refuses before it asks the database, so a person is told in words and not by a constraint's name. The database
@@ -98,6 +98,21 @@ describe('checkTransfer', () => {
   it('LI-I2 — refuses a move from an account to itself, and a move of nothing', () => {
     expect(() => checkTransfer({ ...ok, toAccountId: 'a-1' })).toThrow(/itself/);
     expect(() => checkTransfer({ ...ok, amount: inr(0) })).toThrow(/some amount/);
+  });
+});
+
+describe('checkLoanPayment', () => {
+  const ok = { amount: money(3_200_000n, 'INR'), date: '2026-10-05' };
+
+  it('accepts some amount on a calendar day', () => {
+    expect(() => checkLoanPayment(ok)).not.toThrow();
+  });
+
+  it('refuses nothing, a negative amount, a day that is not one and a long note', () => {
+    expect(() => checkLoanPayment({ ...ok, amount: money(0n, 'INR') })).toThrow(/more than nothing/);
+    expect(() => checkLoanPayment({ ...ok, amount: money(-1n, 'INR') })).toThrow(/more than nothing/);
+    expect(() => checkLoanPayment({ ...ok, date: '2026-02-30' })).toThrow(/calendar date/);
+    expect(() => checkLoanPayment({ ...ok, note: 'x'.repeat(501) })).toThrow(/500/);
   });
 });
 

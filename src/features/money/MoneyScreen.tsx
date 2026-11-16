@@ -24,6 +24,7 @@ import { CloseMonth } from './CloseMonth.tsx';
 import { accountSteps, closeFigures, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
+import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
@@ -61,6 +62,7 @@ export function MoneyScreen({
   const lastPrivate = usePrivateClose(ledger.data?.household.id ?? null, ledger.data?.viewer.role ?? null, closeMonthKey);
   // And the holdings' entries that named an account: money into a holding is not spent, and without them Last month would read low.
   const lastEntries = useHoldingMoves(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived), today);
+  const lastLoans = useLoanPayments(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived));
   const lastMonth: LastMonthView | null = (() => {
     if (ledger.data === null || !lastPrivate.asks) return null;
     const input = {
@@ -72,10 +74,11 @@ export function MoneyScreen({
       transfers: ledger.transfers,
       typed: {},
       holdingMoves: lastEntries.moves,
+      loanPayments: lastLoans.payments,
       ...(lastPrivate.unread === null || lastPrivate.unread.length === 0 ? {} : { unreadable: lastPrivate.unread }),
     };
-    const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed) || (lastEntries.blocked && !lastEntries.failed);
-    const failed = ledger.moneyStatus === 'failed' || lastPrivate.failed || lastEntries.failed;
+    const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed) || (lastEntries.blocked && !lastEntries.failed) || (lastLoans.blocked && !lastLoans.failed);
+    const failed = ledger.moneyStatus === 'failed' || lastPrivate.failed || lastEntries.failed || lastLoans.failed;
     return lastMonthView({
       month: closeMonthKey,
       close: closeFigures(input),

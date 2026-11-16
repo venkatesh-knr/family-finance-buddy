@@ -204,11 +204,12 @@ export async function listPlan(options: {
       id: c.id,
       name: c.name,
       kind: c.kind,
+      currency: requireString(row['currency'], 'liability.currency'),
       instalment: c.amount,
       cadence: c.cadence,
       memberId: c.memberId,
       isClosed: c.closed,
-      outstanding: outstandingOf(row, c.amount?.currency ?? 'INR'),
+      outstanding: outstandingOf(row, requireString(row['currency'], 'liability.currency')),
       outstandingAsOf: optionalString(row['outstanding_as_of'], 'liability.outstanding_as_of') as IsoDate | null,
     };
   });

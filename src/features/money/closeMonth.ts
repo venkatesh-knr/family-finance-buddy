@@ -62,6 +62,14 @@ export function monthlyPlanned(
 /** What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. */
 export type TypedBalances = Readonly<Record<string, { readonly opening?: Money; readonly closing?: Money }>>;
 
+/** A payment on a loan, as the close reads it: the account it left, if one was named, the amount and the day. A voided one is not counted. */
+export interface CloseLoanPayment {
+  readonly accountId: string | null;
+  readonly amount: Money;
+  readonly date: string;
+  readonly isVoided?: boolean;
+}
+
 export interface CloseInput {
   readonly month: string;
   /** The day it is asked. A month can be closed only once it has ended, in India. */
@@ -73,6 +81,8 @@ export interface CloseInput {
   readonly transfers: readonly Transfer[];
   /** Money into holdings and out of them that names an account. The screen does not read these yet and passes none. */
   readonly holdingMoves?: readonly MonthHoldingMove[];
+  /** The payments on loans (ledger-income.md section 4c). Those that name an account are paid to loans, and are not spent. */
+  readonly loanPayments?: readonly CloseLoanPayment[];
   /** What the database adds of the money the caller cannot read, for an owner or a partner. None for anyone else. */
   readonly unreadable?: readonly (MonthUnreadable & { readonly counted?: number })[];
   readonly typed: TypedBalances;
@@ -140,7 +150,9 @@ export function closeFigures(input: CloseInput): CloseFigures {
       .map((credit) => ({ accountId: credit.accountId, category: credit.category, amount: credit.amount, date: credit.date })),
     transfers: input.transfers.filter((t) => !t.isVoided).map((t) => ({ fromId: t.fromAccountId, toId: t.toAccountId, amount: t.amount, date: t.date })),
     holdingMoves: input.holdingMoves ?? [],
-    loanPayments: [],
+    loanPayments: (input.loanPayments ?? []).flatMap((payment) =>
+      payment.isVoided === true || payment.accountId === null ? [] : [{ accountId: payment.accountId, amount: payment.amount, date: payment.date }],
+    ),
     ...(unreadable.length === 0 ? {} : { unreadable }),
   });
   if (result.ok) return { status: 'figures', currencies: result.currencies };

@@ -146,6 +146,39 @@ describe('closeFigures — the worked example', () => {
   });
 });
 
+describe('closeFigures — a loan payment named for an account (LI-I23, LI-I38)', () => {
+  // The ₹32,000 EMI left HDFC, so HDFC closes ₹32,000 lower than the worked example's.
+  const afterEmi = balances.map((b) => (b.accountId === 'hdfc' && b.asAt === '2026-10-31' ? balance('hdfc', '2026-10-31', 188_380) : b));
+  const emi = { accountId: 'hdfc', amount: r(32_000), date: '2026-10-15' };
+
+  it('is paid to loans and not spent: spent and saved are as in the worked example, and the split adds up', () => {
+    const result = closeFigures({ ...base, balances: afterEmi, loanPayments: [emi] });
+    const inr = result.status === 'figures' ? result.currencies[0] : undefined;
+    expect(inr?.spent).toBe(6_967_000n);
+    expect(inr?.paidToLoans).toBe(3_200_000n);
+    expect(inr?.saved).toBe(7_358_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('read as none, the same EMI would sit in spent, which is why the close waits for them', () => {
+    const result = closeFigures({ ...base, balances: afterEmi });
+    expect(result.status === 'figures' && result.currencies[0]?.spent).toBe(6_967_000n + 3_200_000n);
+  });
+
+  it('counts a payment of its month only, and not a voided one', () => {
+    const other = { ...emi, date: '2026-09-15' };
+    const result = closeFigures({ ...base, balances: afterEmi, loanPayments: [other] });
+    expect(result.status === 'figures' && result.currencies[0]?.paidToLoans).toBe(0n);
+    const voided = closeFigures({ ...base, balances: afterEmi, loanPayments: [{ ...emi, isVoided: true }] });
+    expect(voided.status === 'figures' && voided.currencies[0]?.paidToLoans).toBe(0n);
+  });
+
+  it('counts none naming no account', () => {
+    const result = closeFigures({ ...base, balances: afterEmi, loanPayments: [{ ...emi, accountId: null }] });
+    expect(result.status === 'figures' && result.currencies[0]?.paidToLoans).toBe(0n);
+  });
+});
+
 describe('closeFigures — what is typed and what is missing', () => {
   const withoutClosing = balances.filter((b) => !(b.asAt === '2026-10-31' && b.accountId === 'card'));
 

@@ -23,6 +23,7 @@ import {
   type AccountBalance,
   type Credit,
   type IncomeRule,
+  type LoanPayment,
   type CashReserve,
   type PrivateClose,
   type MoneyTotals,
@@ -97,6 +98,21 @@ export function toCredit(raw: unknown): Credit {
     dueDate: optionalIsoDate(row['due_date'], 'credit_entry.due_date'),
     payer: optionalString(row['payer'], 'credit_entry.payer'),
     note: optionalString(row['note'], 'credit_entry.note'),
+    isVoided: row['voided_at'] !== null && row['voided_at'] !== undefined,
+  };
+}
+
+export function toLoanPayment(raw: unknown): LoanPayment {
+  const row = requireRecord(raw, 'loan_payment');
+  const currency = requireString(row['currency'], 'loan_payment.currency');
+  return {
+    id: requireString(row['id'], 'loan_payment.id'),
+    householdId: requireString(row['household_id'], 'loan_payment.household_id'),
+    liabilityId: requireString(row['liability_id'], 'loan_payment.liability_id'),
+    amount: money(toBigIntExact(row['amount_minor'], 'loan_payment.amount_minor'), currency),
+    date: requireIsoDate(row['paid_on'], 'loan_payment.paid_on'),
+    accountId: optionalString(row['account_id'], 'loan_payment.account_id'),
+    note: optionalString(row['note'], 'loan_payment.note'),
     isVoided: row['voided_at'] !== null && row['voided_at'] !== undefined,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MalformedRowError } from '../lib/guards.ts';
-import { toAccount, toAccountBalance, toCashReserve, toCredit, toPrivateClose, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
+import { toAccount, toAccountBalance, toCashReserve, toCredit, toLoanPayment, toPrivateClose, toIncomeRule, toMoneyTotals, toTaxInput, toTransfer, toYearlyIncomeTotals } from './ledgerMapping.ts';
 
 /**
  * The mapping from the ledger's rows to the app's vocabulary (docs/design/ledger-income.md section 12). Rows are as PostgREST returns them:
@@ -150,6 +150,36 @@ describe('toTransfer', () => {
 
   it('refuses a source we do not know', () => {
     expect(() => toTransfer({ ...row, source: 'rule' })).toThrow(MalformedRowError);
+  });
+});
+
+describe('toLoanPayment', () => {
+  const row = {
+    id: 'p-1',
+    household_id: 'h-1',
+    liability_id: 'l-1',
+    amount_minor: '3200000',
+    currency: 'INR',
+    paid_on: '2026-10-05',
+    account_id: 'a-1',
+    note: 'October instalment',
+    voided_at: null,
+  };
+
+  it('maps a payment, the figure kept exact', () => {
+    const mapped = toLoanPayment(row);
+    expect(mapped).toMatchObject({ liabilityId: 'l-1', accountId: 'a-1', date: '2026-10-05', note: 'October instalment', isVoided: false });
+    expect(mapped.amount).toEqual({ minor: 3_200_000n, currency: 'INR' });
+  });
+
+  it('reads no account as none, and a voided one as voided', () => {
+    expect(toLoanPayment({ ...row, account_id: null }).accountId).toBeNull();
+    expect(toLoanPayment({ ...row, voided_at: '2026-10-06T00:00:00Z' }).isVoided).toBe(true);
+  });
+
+  it('refuses a row with no loan or an amount that is not an integer', () => {
+    expect(() => toLoanPayment({ ...row, liability_id: null })).toThrow(MalformedRowError);
+    expect(() => toLoanPayment({ ...row, amount_minor: '32000.5' })).toThrow(MalformedRowError);
   });
 });
 
