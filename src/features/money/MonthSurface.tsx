@@ -153,10 +153,10 @@ export function MonthSurface({
                 ))}
                 {/* What the close says beside its own figure: loan payments are not read yet, and a purchase or a sale that named no account is still in spent. */}
                 <Caveat tone="info" label="What spent from balances leaves out">
-                  <span className="block">Loan payments are not read yet, so a loan paid from these accounts is counted as spent, and saved reads low by it.</span>
+                  <span className="block">Loan payments are not read yet, so a loan paid from these accounts is counted as spent, and saved reads low by it. A deposit that matured into an account only its owner can see, or a private deposit of another member that matured into one of these accounts, is not read either.</span>
                   {closed.unnamedEntries > 0 && (
                     <span className="block">
-                      {String(closed.unnamedEntries)} {closed.unnamedEntries === 1 ? 'entry' : 'entries'} in Holdings that month (a purchase, a sale or a PPF payment) named no account,
+                      {String(closed.unnamedEntries)} {closed.unnamedEntries === 1 ? 'entry' : 'entries'} in Holdings that month (a purchase, a sale, a PPF payment, a deposit or bond, or an opening cost) named no account,
                       so a purchase among them reads as spent. Open it in Holdings and say which account.
                     </span>
                   )}

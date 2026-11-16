@@ -665,7 +665,7 @@ function EditRow({
   // The account it named, which the person may not be able to read: then it is left as it is, and the row says so, and is not offered a change.
   const named = entry.paidVia;
   const unreadable = named !== null && !accounts.some((account) => account.id === named.accountId);
-  const choices = useMemo(() => paidFromChoices(accounts, recent), [accounts, recent]);
+  const choices = useMemo(() => paidFromChoices(accounts, recent, named?.accountId ?? null), [accounts, recent, named]);
   const [accountId, setAccountId] = useState(named === null || unreadable ? '' : named.accountId);
   const [typed, setTyped] = useState(named !== null && named.amount.currency !== currency ? toAmountInput(named.amount.minor, named.amount.currency) : '');
   const [quantity, setQuantity] = useState(entry.quantity);
@@ -689,7 +689,7 @@ function EditRow({
     // Nothing is sent of the account for an entry that moved no money, or one whose account the person cannot read.
     let paidVia: AccountEdit;
     if (entry.movesMoney && !unreadable) {
-      const via = paidViaOf({ accountId, typed, accounts, entry: money(minor, currency), verb });
+      const via = paidViaOf({ accountId, typed, accounts, entry: money(minor, currency), verb, keep: named?.accountId ?? null });
       if (!via.ok) {
         setProblem(via.problem);
         return;

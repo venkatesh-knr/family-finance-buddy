@@ -60,7 +60,7 @@ export function MoneyScreen({
   // member keeps private is added by the database as totals (usePrivateClose), and until it is read there is no figure.
   const lastPrivate = usePrivateClose(ledger.data?.household.id ?? null, ledger.data?.viewer.role ?? null, closeMonthKey);
   // And the holdings' entries that named an account: money into a holding is not spent, and without them Last month would read low.
-  const lastEntries = useHoldingMoves(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived));
+  const lastEntries = useHoldingMoves(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived), today);
   const lastMonth: LastMonthView | null = (() => {
     if (ledger.data === null || !lastPrivate.asks) return null;
     const input = {

@@ -20,6 +20,8 @@ const terms = (over: Partial<FixedIncomeTerms> = {}): FixedIncomeTerms => ({
   institution: null,
   accountLast4: null,
   note: null,
+  paidVia: null,
+  payoutAccountId: null,
   ...over,
 });
 

@@ -18,18 +18,19 @@ export interface PaidFromChoice {
 
 /**
  * The accounts that can be named: those in use, the one named most recently first (`recent`, most recent first), then the rest in the order given. An
- * archived account is not offered for a new entry.
+ * archived account is not offered for a new entry, except the one the entry being corrected already names (`keep`), which is offered as it is and marked
+ * archived: correcting a rate must not need the account taken off, and taking it off would change a month that is over.
  */
-export function paidFromChoices(accounts: readonly Account[], recent: readonly string[] = []): PaidFromChoice[] {
+export function paidFromChoices(accounts: readonly Account[], recent: readonly string[] = [], keep: string | null = null): PaidFromChoice[] {
   const rank = (id: string): number => {
     const at = recent.indexOf(id);
     return at === -1 ? recent.length : at;
   };
   return accounts
-    .filter((account) => !account.isArchived)
+    .filter((account) => !account.isArchived || account.id === keep)
     .map((account, order) => ({ account, order }))
     .sort((a, b) => rank(a.account.id) - rank(b.account.id) || a.order - b.order)
-    .map(({ account }) => ({ id: account.id, label: titleOf(account), currency: account.currency }));
+    .map(({ account }) => ({ id: account.id, label: account.isArchived ? `${titleOf(account)} (archived)` : titleOf(account), currency: account.currency }));
 }
 
 /** The accounts the entries named, the most recently named first, each once: from the rows already read, each with the day it was entered. */
@@ -51,10 +52,12 @@ export function paidViaOf(input: {
   readonly entry: Money;
   /** *left* for money paid out of the account, *reached* for money paid into it. */
   readonly verb?: 'left' | 'reached';
+  /** The account the entry being corrected already names: still accepted when it has been archived since. */
+  readonly keep?: string | null;
 }): PaidViaResult {
   if (input.accountId === '') return { ok: true, value: null };
   const account = input.accounts.find((each) => each.id === input.accountId);
-  if (account === undefined || account.isArchived) return { ok: false, problem: 'That account is not one this can be paid through.' };
+  if (account === undefined || (account.isArchived && account.id !== input.keep)) return { ok: false, problem: 'That account is not one this can be paid through.' };
   if (account.currency === input.entry.currency) return { ok: true, value: { accountId: account.id, amount: input.entry } };
 
   const symbol = account.currency === 'INR' ? '₹' : account.currency;

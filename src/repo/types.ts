@@ -316,6 +316,11 @@ export interface Holding {
   readonly quantity: Quantity;
   readonly cost: Money | null;
   readonly openedOn: IsoDate | null;
+  /**
+   * The account the opening cost was paid from, when the person said (LI-I34). Only for a holding with a cost and no purchase and no terms, and only an
+   * account in the instrument's own currency: one in another is not read, and nothing counts it.
+   */
+  readonly costAccountId: Uuid | null;
   readonly isArchived: boolean;
   /** The IST day it was archived. Its history before this day still counts. */
   readonly archivedOn: IsoDate | null;
@@ -394,6 +399,10 @@ export interface FixedIncomeTerms {
   /** The last four characters of the account or certificate: all this app keeps. */
   readonly accountLast4: string | null;
   readonly note: string | null;
+  /** The account the principal was paid from, when the person said, and what left it in that account's currency (LI-I32). */
+  readonly paidVia: EntryAccount | null;
+  /** The account the maturity payout is paid into, in the principal's own currency, when the person said (LI-I33). */
+  readonly payoutAccountId: Uuid | null;
 }
 
 /** A later term of a deposit, as the bank renewed it. */
@@ -444,6 +453,10 @@ export interface NewFixedIncome {
   readonly renewalRatePct?: string | null;
   readonly institution?: string | null;
   readonly accountLast4?: string | null;
+  /** The account the principal was paid from. Null names none; left out, an update leaves what is there (LI-I32). */
+  readonly paidVia?: EntryAccount | null;
+  /** The account the maturity payout is paid into, in the principal's own currency. Null names none; left out, an update leaves what is there (LI-I33). */
+  readonly payoutAccountId?: Uuid | null;
   /** What the money is for, said when it is added. None when left out. */
   readonly earmark?: Earmark;
   /** What a deposit is: a PPF, an SSY, an FD. Only a deposit has one (PF-C5). */

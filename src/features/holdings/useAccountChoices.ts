@@ -8,9 +8,15 @@ import { useEffect, useState } from 'react';
 import { listAccounts } from '../../repo/accounts.ts';
 import type { Account } from '../../repo/types.ts';
 
-export function useAccountChoices(householdId: string | null): { readonly accounts: readonly Account[]; readonly failed: boolean } {
+export function useAccountChoices(householdId: string | null): {
+  readonly accounts: readonly Account[];
+  readonly failed: boolean;
+  /** The accounts have been read, so an account an entry names that is not among them is one this person cannot read. */
+  readonly loaded: boolean;
+} {
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (householdId === null) return undefined;
     let live = true;
@@ -19,17 +25,19 @@ export function useAccountChoices(householdId: string | null): { readonly accoun
         if (live) {
           setAccounts(rows);
           setFailed(false);
+          setLoaded(true);
         }
       })
       .catch(() => {
         if (live) {
           setAccounts([]);
           setFailed(true);
+          setLoaded(false);
         }
       });
     return () => {
       live = false;
     };
   }, [householdId]);
-  return { accounts, failed };
+  return { accounts, failed, loaded };
 }

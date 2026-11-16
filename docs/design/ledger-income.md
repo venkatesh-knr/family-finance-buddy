@@ -374,7 +374,7 @@ matured, and the cost of a holding that was opened with a cost and no purchase. 
 | Entry | Names | Counts in a month as |
 |---|---|---|
 | `fixed_income_terms`, a deposit's principal or a bond's face value | the account it was paid from (`account_id`), on `start_date` | put into holdings |
-| `fixed_income_terms`, a deposit's maturity payout | the account it is paid into (`payout_account_id`) | taken out of holdings, on the day it paid out |
+| `fixed_income_terms`, a deposit's or a bond's payout at maturity | the account it is paid into (`payout_account_id`) | taken out of holdings, on the day it paid out |
 | `holding`, opened with a cost and no purchase and no terms | the account the cost was paid from (`cost_account_id`), on `opened_on` | put into holdings |
 
 A renewal is the same money and is not counted again, so it names nothing. A recurring deposit is kept out of *invested* altogether, and so out of this.
@@ -392,14 +392,18 @@ on the day the app works out that the deposit paid out, at the amount it works o
 **What the database cannot sum.** The payout is a figure only the application computes, from the terms and the bank's renewals, and it is never stored
 (a deposit's value is computed and not stored). `household_private_close` therefore adds the principal and the opening cost for what the caller cannot
 read, as it adds a lot's cost, and does *not* add a payout: a payout into a hidden account, or of another member's private deposit, reads in the close
-as it does today. The close says so where it says what it could not read. If that is not good enough, the way out is a recorded maturity (a disposal
+as it does today. A purchase lot on a holding that also has terms, or a recorded maturity beside a worked-out payout, would be counted by the close and
+not by *invested* (which counts the terms alone); no screen puts an account-naming lot or disposal on a holding with terms, and the rule is to be settled
+if one ever does. The close says so where it says what it could not read. If that is not good enough, the way out is a recorded maturity (a disposal
 of kind *maturity* naming the account, the amount being the bank's), which the database can sum; it is the owner's to ask for.
 
-**Where a person says it.** The deposit and bond forms gain *Paid from* (and, for a deposit, *Maturity paid into*); the form that opens a holding with a
-cost gains *Paid from*, and so does editing that cost afterwards; each of them an optional picker with *Not said* first, the account named most recently
-next, and the foreign-currency field of §4a when the account is not in the deposit's currency. An account the editor cannot read is shown as *an account
-you cannot see* and is left as it is. **Editing a deposit's terms, or a holding, that names an account the editor cannot read is refused for that
-reason**, as for a lot (§4a); the member who owns the account fixes it. A holding is archived by its owner, who can read their own accounts.
+**Where a person says it.** The deposit and bond forms gain *Paid from* and *Maturity paid into*; the form that opens a holding with a
+cost gains *Paid from* when it is edited (the add form takes no cost); each of them an optional picker with *Not said* first and the accounts in the order they
+come, and the foreign-currency field of §4a when the principal's account is not in the deposit's currency. The same pickers are on the form that gives a
+holding its terms and the one that corrects them. A payout is for a bond as well as a deposit: the close counts either on the day it paid out. An account the editor cannot read is shown as *an account
+you cannot see* in place of the picker, and is left as it is. **Editing a deposit's terms, or a holding, that names an account the editor cannot read is refused
+for that reason**, as for a lot (§4a): the form says so up front and offers no save, and the member who owns the account fixes it. An account the entry names
+that has been archived since is offered as it is, marked archived, so a rate can be corrected without taking the account off a month that is over. A holding is archived by its owner, who can read their own accounts.
 
 ## 5. A recurring credit: the salary rule (and any income rule)
 
@@ -714,7 +718,7 @@ functions, which read the totals.
 
 **LI-I32 — A deposit's principal or a bond's face value names an account of its own household, or none,** and one in another currency than its own carries what left the account in that account's currency; one in its own carries none. (§4b)
 
-**LI-I33 — A deposit's maturity payout is paid into an account of its own household and in its own currency, or none.** It is never stored, and has no typed amount. (§4b)
+**LI-I33 — A deposit's or a bond's maturity payout is paid into an account of its own household and in its own currency, or none.** It is never stored, and has no typed amount. (§4b)
 
 **LI-I34 — A holding's opening cost names an account only together with a cost and the account's currency, and only an account its writer can read** (LI-I29); the sum counts it only where the account is in the instrument's own currency. (§4b)
 

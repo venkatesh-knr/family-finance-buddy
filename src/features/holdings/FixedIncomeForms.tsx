@@ -38,6 +38,7 @@ import {
   type CompoundingKind,
   type CouponFrequencyKind,
   type DepositRenewal,
+  type EntryAccount,
   REPAY_MODES,
   type FixedIncomeTerms,
   type Holding,
@@ -45,6 +46,9 @@ import {
   type RepayMode,
 } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
+import { PaidFromField } from './PaidFromField.tsx';
+import { paidFromChoices, paidViaOf } from './paidFrom.ts';
+import { useAccountChoices } from './useAccountChoices.ts';
 
 export const RATE = /^\d{1,3}(\.\d{1,3})?$/;
 
@@ -139,6 +143,13 @@ export function TermsForm({
   const [repayMode, setRepayMode] = useState<RepayMode>(old?.repayMode ?? 'payout');
   const [institution, setInstitution] = useState(old?.institution ?? '');
   const [last4, setLast4] = useState(old?.accountLast4 ?? '');
+  // The accounts the principal was paid from and the maturity is paid into (docs/design/ledger-income.md section 4b), both optional.
+  const { accounts, failed: accountsFailed, loaded: accountsLoaded } = useAccountChoices(listing.household.id);
+  const [paidAccount, setPaidAccount] = useState(old?.paidVia?.accountId ?? '');
+  const [paidTyped, setPaidTyped] = useState(
+    old?.paidVia != null && old.paidVia.amount.currency !== old.principal.currency ? plainAmount(old.paidVia.amount) : '',
+  );
+  const [payoutAccount, setPayoutAccount] = useState(old?.payoutAccountId ?? '');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Said when it is added, as on the holding's own screen later: what the money is for, and whether to value it now.
@@ -187,6 +198,18 @@ export function TermsForm({
   }
   // Which step each field is on, for a form in steps.
   const STEP_OF = { amount: 1, rate: 1, start: 1, maturity: 1, renewalRate: 2, last4: 3 } as const;
+  // An account the terms already name but the person cannot read is left as it is, and said so: only whoever can read it changes that.
+  const canRead = (id: string): boolean => accounts.some((account) => account.id === id);
+  const namedPaid = old?.paidVia?.accountId ?? null;
+  const namedPayout = old?.payoutAccountId ?? null;
+  const leavePaid = namedPaid !== null && paidAccount === namedPaid && !canRead(paidAccount);
+  const leavePayout = namedPayout !== null && payoutAccount === namedPayout && !canRead(payoutAccount);
+  // Once the accounts have been read, an account the terms name that is not among them is one this person cannot read. The database refuses any change to a
+  // row that names one, so the form says so up front and does not offer a save that would fail with a reason that is not the real one.
+  const blocked = accountsLoaded && (leavePaid || leavePayout);
+  // An account the terms name that has been archived since is offered as it is, so a rate can be corrected without taking the account off.
+  const paidChoices = paidFromChoices(accounts, [], namedPaid);
+  const payoutChoices = paidFromChoices(accounts, [], namedPayout).filter((choice) => choice.currency === currency);
   const rateWhole = RATE.test(rate.trim()) && Number(rate) <= 100;
   const renewalWhole = !autoRenew || renewalRate.trim() === '' || (RATE.test(renewalRate.trim()) && Number(renewalRate) <= 100);
   /** A date's mark: once the field has been left, or a step has been tried. */
@@ -257,6 +280,33 @@ export function TermsForm({
       return;
     }
 
+    if (blocked) {
+      setProblem('These terms name an account you cannot see, so only the member who owns that account can change them.');
+      return;
+    }
+    // Which account, and what left it: the entry's own amount when the account is in its currency, and what the person typed when it is not.
+    let paidVia: EntryAccount | null | undefined;
+    if (leavePaid) paidVia = undefined;
+    else {
+      const named = paidViaOf({ accountId: paidAccount, typed: paidTyped, accounts, entry: money(minor, currency), verb: 'left', keep: namedPaid });
+      if (!named.ok) {
+        setProblem(named.problem);
+        return;
+      }
+      paidVia = named.value;
+    }
+    let payoutAccountId: string | null | undefined;
+    if (leavePayout) payoutAccountId = undefined;
+    else if (payoutAccount === '') payoutAccountId = null;
+    else {
+      const target = accounts.find((account) => account.id === payoutAccount);
+      if (target === undefined || (target.isArchived && target.id !== namedPayout) || target.currency !== currency) {
+        setProblem(`The maturity can be paid into an account in ${currency}, and into no other.`);
+        return;
+      }
+      payoutAccountId = target.id;
+    }
+
     setBusy(true);
     try {
       const terms = {
@@ -271,6 +321,8 @@ export function TermsForm({
           : { couponFrequency: frequency, rating, repayMode }),
         institution,
         accountLast4: last4,
+        ...(paidVia === undefined ? {} : { paidVia }),
+        ...(payoutAccountId === undefined ? {} : { payoutAccountId }),
       } as const;
 
       if (mode.kind === 'new') {
@@ -371,6 +423,8 @@ export function TermsForm({
 
           <Select label="Currency" className="flex min-w-0 flex-col gap-1.5" value={currency} onChange={(event) => {
                 setCurrency(event.target.value);
+                // The maturity is paid into an account in the deposit's own currency: one chosen for the other currency is no longer a choice.
+                setPayoutAccount('');
               }}><option value="INR">INR</option><option value="USD">USD</option></Select>
         </>
   );
@@ -567,6 +621,39 @@ export function TermsForm({
 
     </>
   );
+  const accountFields = (
+    <>
+      {blocked && leavePaid ? (
+        <p className="note col-span-full">Paid from an account you cannot see, so only its owner can change these terms.</p>
+      ) : (
+      <PaidFromField
+        label="Paid from"
+        verb="left"
+        choices={paidChoices}
+        entryCurrency={currency}
+        accountId={leavePaid ? '' : paidAccount}
+        typed={paidTyped}
+        failed={accountsFailed}
+        onAccount={setPaidAccount}
+        onTyped={setPaidTyped}
+      />
+      )}
+      {blocked && leavePayout ? (
+        <p className="note col-span-full">Maturity paid into an account you cannot see, so only its owner can change these terms.</p>
+      ) : (
+      <PaidFromField
+        label="Maturity paid into"
+        verb="reached"
+        choices={payoutChoices}
+        entryCurrency={currency}
+        accountId={leavePayout ? '' : payoutChoices.some((choice) => choice.id === payoutAccount) ? payoutAccount : ''}
+        typed=""
+        onAccount={setPayoutAccount}
+        onTyped={() => undefined}
+      />
+      )}
+    </>
+  );
   const firstReadingField = (
     <>
       {firstReading !== null && (
@@ -631,6 +718,7 @@ export function TermsForm({
 {kind === 'deposit' && schemeField}
 {setAsideField}
 {issuerFields}
+{accountFields}
 {firstReadingField}
               </>
             ),
@@ -658,10 +746,11 @@ export function TermsForm({
       {figureFields}
       {termFields}
       {issuerFields}
+      {accountFields}
       {firstReadingField}
 
       <div className="col-span-full flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={busy || added}>
+        <Button type="submit" disabled={busy || added || blocked}>
           {busy
             ? 'Saving…'
             : added

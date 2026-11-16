@@ -39,6 +39,9 @@ import {
 import { INSTRUMENT_KINDS, type Holding, type InstrumentKind } from '../../repo/types.ts';
 import { Button, Caveat, Field, Problem } from '../../ui/primitives.tsx';
 import { useFocusFirstField } from '../../ui/focus.ts';
+import { PaidFromField } from './PaidFromField.tsx';
+import { paidFromChoices } from './paidFrom.ts';
+import { useAccountChoices } from './useAccountChoices.ts';
 
 export function EditHolding({
   holding,
@@ -46,6 +49,7 @@ export function EditHolding({
   /** Whether anything is already denominated in the current currency. */
   hasHistory,
   hasLots = false,
+  hasTerms = false,
   currencyOptions,
   onDone,
   onCancel,
@@ -62,6 +66,8 @@ export function EditHolding({
    * so a fund an eCAS had just created could not even be given a price feed.
    */
   hasLots?: boolean;
+  /** A deposit or bond with terms: its money is the terms', corrected there, so no opening cost is paid from an account here (ledger-income.md section 4b). */
+  hasTerms?: boolean;
   currencyOptions: React.ReactNode;
   onDone: () => Promise<void>;
   onCancel: () => void;
@@ -83,6 +89,14 @@ export function EditHolding({
   const [personal, setPersonal] = useState(holding.visibility === 'personal');
   const [earmark, setEarmark] = useState<Earmark>(holding.earmark);
   const [scheme, setScheme] = useState<Scheme | ''>(holding.instrument.scheme ?? '');
+  // The account the opening cost was paid from: only for a holding whose money is its cost and nothing else (no purchase, no terms), and only in the cost's own currency.
+  const { accounts, failed: accountsFailed, loaded: accountsLoaded } = useAccountChoices(holding.householdId);
+  const [costAccount, setCostAccount] = useState(holding.costAccountId ?? '');
+  const asksCostAccount = !hasLots && !hasTerms && holding.instrument.kind !== 'retirement' && holding.instrument.kind !== 'gold';
+  const costChoices = paidFromChoices(accounts, [], holding.costAccountId).filter((choice) => choice.currency === currency);
+  // An account the holding names that this person cannot read: the database refuses any change to the holding, so the form says so and does not offer a save.
+  const costBlocked =
+    asksCostAccount && accountsLoaded && holding.costAccountId !== null && costAccount === holding.costAccountId && !accounts.some((account) => account.id === costAccount);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -120,6 +134,26 @@ export function EditHolding({
       }
     }
 
+    if (costBlocked) {
+      setProblem('This holding names an account you cannot see, so only the member who owns that account can change it.');
+      return;
+    }
+    let costAccountPatch: HoldingPatch['costAccount'];
+    if (asksCostAccount) {
+      // The account already named, when the accounts could not be read or it is not one this person can read: left as it is.
+      const unchanged = holding.costAccountId !== null && costAccount === holding.costAccountId && !accounts.some((account) => account.id === costAccount);
+      if (unchanged && costValue !== null) costAccountPatch = undefined;
+      else if (costValue === null || costAccount === '') costAccountPatch = null;
+      else {
+        const named = accounts.find((account) => account.id === costAccount);
+        if (named === undefined || (named.isArchived && named.id !== holding.costAccountId) || named.currency !== currency) {
+          setProblem(`The cost can be paid from an account in ${currency}, and from no other.`);
+          return;
+        }
+        costAccountPatch = { accountId: named.id, currency: named.currency };
+      }
+    }
+
     const patch: HoldingPatch = {
       // Left out entirely when the purchases are the record, for the same
       // reason the currency is below: the form does not show these fields
@@ -127,6 +161,7 @@ export function EditHolding({
       // quantity on a holding with no purchases, which is where that rule
       // belongs.
       ...(hasLots ? {} : { quantity, cost: costValue }),
+      ...(costAccountPatch === undefined ? {} : { costAccount: costAccountPatch }),
       openedOn: openedOn === '' ? null : openedOn,
       // Only where it is yours to set. The policy refuses making somebody
       // else's holding private — "privacy is a decision about your own record;
@@ -160,7 +195,7 @@ export function EditHolding({
       setBusy(false);
     }
   }, [
-    cost, currency, exposure, hasHistory, holding.id, holding.instrument.id, isForeign, isMine,
+    accounts, asksCostAccount, cost, costAccount, costBlocked, currency, exposure, hasHistory, holding.id, holding.instrument.id, isForeign, isMine,
     assetClass, earmark, kind, name, onDone, openedOn, personal, priceId, priceSource, quantity, scheme, symbol,
   ]);
 
@@ -267,6 +302,20 @@ export function EditHolding({
                 />
               </div>
             )}
+            {costBlocked && <p className="note w-full">Paid from an account you cannot see, so only its owner can change this holding.</p>}
+            {asksCostAccount && !costBlocked && cost.trim() !== '' && (
+              <PaidFromField
+                label="Paid from"
+                verb="left"
+                choices={costChoices}
+                entryCurrency={currency}
+                accountId={costChoices.some((choice) => choice.id === costAccount) ? costAccount : ''}
+                typed=""
+                failed={accountsFailed}
+                onAccount={setCostAccount}
+                onTyped={() => undefined}
+              />
+            )}
           </>
         )}
 
@@ -300,6 +349,8 @@ export function EditHolding({
           disabled={hasHistory}
           onChange={(event) => {
             setCurrency(event.target.value);
+            // The cost is paid from an account in its own currency: one chosen for the other currency is no longer a choice.
+            setCostAccount('');
           }}
         >
           {currencyOptions}
@@ -318,7 +369,7 @@ export function EditHolding({
               setAssetClass(event.target.value);
             }}><option value="">Not set</option><option value="listed_equity">Listed equity</option><option value="equity_fund">Equity mutual fund</option><option value="debt_fund">Debt fund</option><option value="gold">Gold</option><option value="foreign_equity">Foreign shares or ETF</option><option value="unlisted_equity">Unlisted shares</option><option value="property">Property</option></Select>
 
-        <Button type="button" disabled={busy} onClick={() => void save()}>
+        <Button type="button" disabled={busy || costBlocked} onClick={() => void save()}>
           {busy ? 'Saving…' : 'Save'}
         </Button>
         <button type="button" className="note underline" onClick={onCancel}>
