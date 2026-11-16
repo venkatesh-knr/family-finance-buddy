@@ -78,3 +78,4 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 - LI-I15 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I17 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+- LI-I38 — not built: the app does not yet give the close its loan payments, which is the next step; the domain function already counts them (money-month.test.ts) — 2026-11-16

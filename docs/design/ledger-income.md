@@ -363,7 +363,7 @@ the household's accounts, last used first, with *Not said* as the first choice. 
 appears: *What left the account, in ₹* (or *What reached it*). It is not asked in an import from a template.
 
 **Not in this step.** A deposit's principal and its payout, a bond, and a holding opened with a cost and no purchase are counted in *invested* but are
-not lots, so they do not name an account here: §4b does that. Loan payments are a step of their own after it.
+not lots, so they do not name an account here: §4b does that. Loan payments are §4c.
 
 ## 4b. A deposit, a bond and an opening cost name the account
 
@@ -404,6 +404,40 @@ holding its terms and the one that corrects them. A payout is for a bond as well
 you cannot see* in place of the picker, and is left as it is. **Editing a deposit's terms, or a holding, that names an account the editor cannot read is refused
 for that reason**, as for a lot (§4a): the form says so up front and offers no save, and the member who owns the account fixes it. An account the entry names
 that has been archived since is offered as it is, marked archived, so a rate can be corrected without taking the account off a month that is over. A holding is archived by its owner, who can read their own accounts.
+
+## 4c. A loan payment
+
+**Built on the migration `20261116120000_loan_payment.sql`; the owner asked for the step on 16 November 2026 and chose a payment record on the loan.** The month's
+split already has a fourth part, *paid to loans* (§4, LI-I23, spending-capture decided 13 November), and the close's domain function has taken loan payments from
+the start (`src/domain/money-month.ts`); nothing recorded one. A `liability` says what is owed and what the instalment is. It says nothing of an instalment having
+been paid. This is that record, and the only thing this step adds to the close.
+
+| | |
+|---|---|
+| **What it is** | `loan_payment`: the loan, the day it was paid, the amount that left and, when the person says, the account it left. All of the amount, principal and interest, as the decided wording has it. |
+| **Whose** | The household's, like the loan. Only an owner or a partner records or voids one, as they alone record a loan. A contributor reads them and records none. |
+| **Optional account** | As every account on an entry is (LI-I26): a payment with no account is recorded, listed on the loan and counted nowhere in the close. |
+| **Currency** | The loan's own, and the account's: a payment leaves an account in the loan's currency only. There is no typed amount, so a dollar loan is not offered a rupee account. |
+| **What it does not do** | It does not change what the loan says is outstanding, and nothing is worked out from it: *what is owed* stays the figure a person states, as of the day they state it (`20260908130000`). It is not an expense and is not itemised: an EMI that a recurring rule also posts as an expense stays an expense for the plan, and the close, which reads balances, is unaffected by it. |
+| **Corrected** | Voided and entered again, as a credit is. A payment is never deleted. |
+
+**What the close does with it.** The payment is money that left the account, so it is already in what *left* (`opening + money in − closing`) and is not added again.
+It is taken off *spent* and shown as *paid to loans*, which is what `closedMonthFigures` does with the payments it is given; the app now gives it the month's. That
+keeps *saved* split exactly (LI-I23): `came in − spent = (put into holdings − taken out) + paid to loans + the change in the cash reserve`.
+
+**Who sees it.** Accounts are always visible to the household (the owner's decision of 16 November 2026, `decisions.md`), so a payment is the household's, like the loan; any
+member reads it. The close adds the payments that name an account, as it adds a transfer, and needs no sum for what it cannot read, because there is no such account. **Until the step
+that makes every account visible has run**, a household can still have a private account, and for that interval alone a payment that names one is read by whoever reads the account,
+and so is its audit row, and an account named must be one the writer can read (LI-I29). Those clauses go with the private account in that step, and in that interval the close does not
+count a payment from an account it cannot read.
+
+**Not in this step.** A recurring loan rule that posts a payment on its due day, a schedule of EMIs on the loan, a payment that reduces the stated outstanding, a loan
+in a currency other than its account's, and *paid to loans* in a household with no accounts added (itemised mode, where the figure comes from EMI entries the
+household has no way to enter yet). Each is the owner's to ask for.
+
+**Where a person says it.** On the loan's own row in the Plan screen (*Loans and policies*): *Record a payment*, a one-step form with the amount (the instalment, if one
+is stated, as a starting figure), the day (today) and *Paid from*, the optional picker of §4a with *Not said* first, offered only for accounts in the loan's currency.
+The loan lists its payments, newest first, each with the account it left, or *no account said*, or *an account you cannot see*, and a way to void one.
 
 ## 5. A recurring credit: the salary rule (and any income rule)
 
@@ -724,6 +758,14 @@ functions, which read the totals.
 
 **LI-I35 — The close counts a deposit's or a bond's principal and an opening cost from the entries that named an account, including those the caller cannot read, as sums; it counts a payout only for what the caller can read, and says it could not for the rest.** A recurring deposit, an earlier or later month, a holding that has a purchase or terms, and a cost in another currency than its account's are not counted. (§4b)
 
+**LI-I36 — A loan payment names a loan of its own household and is in the loan's currency; an account it names is of its household, in that currency, and one its writer can read.** Only an owner or a partner records one. (§4c)
+
+**LI-I37 — A loan payment is the household's, and any member reads it.** While an account can still be private, one that names a private account is read by whoever can read the account, and so is its audit row; that clause goes when every account is visible. (§4c)
+
+**LI-I38 — The close counts the loan payments that left an account it reads, and only those:** not a voided payment, another month's, or one that names no account. (§4c)
+
+**LI-I39 — A loan payment does not change what the loan says is outstanding or its instalment.** (§4c)
+
 **LI-I24 — An account needs a name, a type and whose it is; its last four digits are optional.** (§0)
 
 **LI-I25 — Accounts are created and managed on the Accounts screen behind More, and from the account picker in a form;** saving an account from a form returns to it with the account chosen and every value kept. (§1a)
@@ -797,4 +839,5 @@ functions, which read the totals.
 - LI-I29: pgTAP: an owner cannot attach a purchase or a sale to a partner's private account, nor move an existing purchase onto it.
 - LI-I30: pgTAP over the section 4a rules: the sum adds a purchase from a hidden account, a purchase of another member's private holding from a readable account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
 - LI-I32 to LI-I35: pgTAP over the section 4b rules: a principal and an opening cost refuse an account of another household, one in a currency it is not in, a dollar deposit paid from a rupee account with no amount, and a rupee deposit that states one; a payout refuses an account in another currency; neither can be moved onto another member's private account; the sum adds a principal from a hidden account, one of another member's private deposit from a readable account, a dollar deposit paid from a rupee account at what left it, and an opening cost from a hidden account, and adds nothing for a recurring deposit, a September start, a holding with a purchase, or a cost in dollars named against a rupee account. Pure domain test: the close with a payout named, on the day it paid out.
+- LI-I36 to LI-I39: pgTAP over the section 4c rules: a payment refuses a loan of another household, another currency than the loan's, an account in another currency or of another household, and an amount of nothing; an owner records one from a shared account and not from a partner's private account, nor moves one onto it; a contributor records none; while an account can be private, the owner reads the payments of a shared account and of none, and not those of the partner's private account, nor their audit rows; recording payments leaves the loan's outstanding as it was. Pure domain test: the close with a payment named, which `money-month.test.ts` already holds (₹32,000 from HDFC); and, in the build that gives the close its payments, a voided one, another month's and one naming no account are not counted.
 - LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.

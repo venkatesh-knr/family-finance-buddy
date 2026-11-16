@@ -594,3 +594,12 @@ decided it is not required, since a salary recorded for a different amount is re
   withdrawal (`ledger-income.md` section 4a). A purchase abroad paid from a rupee account carries what left the account, typed in that account's currency from its statement and never worked out.
   Deposits, bonds and a holding opened with a cost name no account yet: they follow after the purchase, sale and PPF forms. An entry whose account the editor cannot read cannot be edited
   by them, as for a credit: the account's owner corrects it. Loan payments are the step after this.
+- **A loan payment is a record on the loan (the owner, 16 November 2026).** Not a tag on an expense: a new row beside the loan with the day, all of the amount that left and, when the person says, the account
+  (`ledger-income.md` section 4c). Owner and partner record it; it can be voided; it does not change what the loan says is outstanding. A loan in another currency than its account's, a recurring payment rule,
+  and *paid to loans* without accounts are not in this step.
+- **Accounts are always visible to the household (the owner, 16 November 2026).** There is no private account and no setting for one: the owner judged it not required, the last four digits being optional and
+  the privacy worth having being in what is spent, received and held. What stays private is the detail: a private credit, a private expense and a private holding are as private as before in every list, and the
+  income entries of the Tax screen are untouched. **What stops being hidden is the total through an account**: a private credit paid into an account shows in that account's balance, and a private holding's
+  purchase in what left it, as the design already said of a joint account (*private in the list only*). The live household's data is dummy, so nothing is lost by the change. **Its own step, not built here:** a
+  migration makes every account household-visible and refuses a private one, removes the hidden-account branches of `household_private_close`, the *an account you cannot see* states and the account-readable clauses,
+  and rewrites the tests that seed a private account. Until it has run, the rules stand as built, and the loan payment carries three small clauses that go with it (`ledger-income.md` section 4c).

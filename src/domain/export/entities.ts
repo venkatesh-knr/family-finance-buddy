@@ -436,6 +436,8 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
     'Step 6a. A move between two of the household’s own accounts. Its sheet arrives with the ledger screen that shows it.',
   income_entry:
     'Step 6a. The Tax screen’s typed gross figures, readable only by the member and whoever typed them (LI-I21). Its sheet is decided with the Tax screen’s change, since a file that held another member’s gross salary would break that rule.',
+  loan_payment:
+    'Step 6a, loan payments (docs/design/ledger-income.md section 4c). A payment naming an account is as private as the account (LI-I37), so its sheet is decided with the screen that records it, as the account’s own is.',
 };
 
 /**
