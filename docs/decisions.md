@@ -594,3 +594,9 @@ decided it is not required, since a salary recorded for a different amount is re
   withdrawal (`ledger-income.md` section 4a). A purchase abroad paid from a rupee account carries what left the account, typed in that account's currency from its statement and never worked out.
   Deposits, bonds and a holding opened with a cost name no account yet: they follow after the purchase, sale and PPF forms. An entry whose account the editor cannot read cannot be edited
   by them, as for a credit: the account's owner corrects it. Loan payments are the step after this.
+- **A loan payment is a record on the loan (the owner, 16 November 2026).** Not a tag on an expense: a new row beside the loan with the day, all of the amount that left and, when the person says, the account
+  (`ledger-income.md` section 4c). Owner and partner record it; it can be voided; it does not change what the loan says is outstanding. A payment naming an account is as private as the account, and the close
+  adds the ones from accounts the caller cannot read as a total, in a function of its own. A loan in another currency than its account's, a recurring payment rule, and *paid to loans* without accounts are not in this step.
+- **Raised, not decided (16 November 2026): whether an account can be made private at all.** The owner asked whether account privacy could be a household setting, off by default and switched on by an owner only
+  if really required. It would hold, with two conditions: it cannot be switched off while any account is private, and the database, not only the form, refuses a new private account while it is off. It removes
+  none of the hidden-account sums, which stay for the households that turn it on; what it removes is the toggle and the *an account you cannot see* states for everyone else. It is a slice of its own, after this one.
