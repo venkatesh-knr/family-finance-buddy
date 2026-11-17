@@ -323,6 +323,10 @@ The maintainer's decision, on the open question above: a deposit reaches net wor
 - **Still true:** the current month is not in net worth until it is closed, or the link on the row is used, and the row's link stores
   source `manual`, since a `computed` source would need a migration.
 
+## A stated spend (17 November 2026, the owner)
+
+- **A person may state a month's total.** The owner asked that a household that does not want to itemise every spend, but knows roughly what a month cost, can give the month's total, including the case of a month partly itemised where the person gives the rest. Designed in `spending-capture.md` section 11 and not built: one typed total per ended month and currency, living costs only (not investments, not loan EMIs, not moves between own accounts); balances win when a month has both, with the stated figure shown beside as a cross-check; the source of every month's spent is named; saved from a stated month is labelled rough and the exact split is not claimed; the rest is a shortcut that saves the total, so itemising later double-counts nothing; changed by voiding and stating again; an owner or a partner reads and writes it. **Not in the first build, by my reading of the owner's answers:** a figure for the open month, and a standing "usual monthly spend". Both are options if asked for.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan

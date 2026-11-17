@@ -169,6 +169,7 @@ unfolded. It never changes the figure, and the caveat survives essential mode
 | `expense_txn` gains | `account_id`, `captured_via` (`typed`, `shared`, `rule`, `import`), `recurring_rule_id`, `upi_ref_last4`, `upi_ref_hash`, `source_batch_id`, `source_hash` |
 | `expense_witness` | expense, batch, line hash. Unique per household and line hash, so the second statement to witness a payment is recognised on re-import too |
 | `recurring_rule` | blueprint §04, plus a unique (rule, due date) on what it posts |
+| `spend_statement` | §11: a person's stated total for a month that has ended, per currency. Voided and stated again, never edited |
 | `import_batch.kind` gains | `gpay_pdf`, `paytm_xlsx`, `paytm_pdf`, `phonepe_pdf` |
 
 Every new table has its audit trigger, RLS enabled, explicit grants, the
@@ -220,6 +221,9 @@ S1 and S2 cut typing now. S3 is what makes the figure right.
    **Superseded the same day by the ledger (`ledger-income.md` §0):** take-home is the
    Salary credit as the bank received it and deductions are not recorded; Tax takes a
    gross salary typed once a year from the payslip; the payroll line is dropped.
+7. **A stated spend (§11).** For households that do not close from balances: one typed total per ended month and currency, living costs only, balances win
+   when both exist, the source always named, saved from a stated month labelled rough, voided and stated again rather than edited, and a form that also
+   takes *just the rest* of an itemised month and saves the total. **Decided 17 November 2026: yes, as proposed.** The open month is not stated (§11.3).
 
 ## 10. Where the month's money went
 
@@ -269,6 +273,92 @@ leads with saved, split four ways (spent · invested · paid to loans · to cash
 invested by class (in the order and colours Holdings groups by), then the cash
 reserve by account. A class with nothing in it this month is folded into one line.
 
+## 11. A stated spend: when a month is not closed from balances
+
+*Added 17 November 2026, at the owner's request. Design only: nothing here is built.*
+
+§1 says knowing the month's total is the right target and itemising is what gets filled in at whatever pace a household manages. The only
+source of that total so far is the balances at a close (§2), which needs accounts and a few minutes. A household with no accounts, or one that does
+not want to type balances, has only the sum of what it itemised, which reads low and is labelled so (SC-I9). Some of those households know roughly
+what they spend in a month, and some have itemised part of it and will not do the rest. This section lets them say it.
+
+### 11.1 What it is
+
+A **stated spend** is one figure a person types for a month that has ended: *we spent ₹82,000 in October*. It is in a currency (one per currency the
+household spends in), it is the household's whole spend on **living costs**, and it is a person's word. It is not derived, it is not a balance, and it
+is never blended with either.
+
+**What the total includes.** The form says it: *what you spent on living, not what you put into investments, not loan EMIs, and not moves between your
+own accounts.* That is exactly what *spent* means in §2 (SC-I4), so the same word means the same thing from every source. A person who states
+everything that left will read a saved figure that is low by their SIPs and EMIs; the hint is there to prevent it, and the figure is labelled rough.
+
+**Private spending is inside it.** It is the household's total, as the close's is. Individual private expenses stay private in every list.
+
+### 11.2 Which source a month's spent comes from
+
+A pure function takes, for one month and currency, the close (when balances at both ends exist), the stated spend (when there is one) and the itemised
+sum, and returns the figure, **which source it came from**, and what sits beside it. The first available wins, and the three are never added or averaged:
+
+| Source | When it applies | What is shown |
+|---|---|---|
+| **Balances** | both ends of the month have balances for every account in use (§2) | spent from balances, as today. A stated spend for the month, if there is one, is shown beside it as a cross-check: *you said ₹82,000; the balances say ₹91,000*. It never changes the figure |
+| **Stated** | no close, and a stated spend | spent is the stated figure, labelled *stated*. *Not yet itemised* is stated minus itemised. If itemised is more than stated, both are shown and the gap is named, and neither is clamped to the other (SC-I3 applies unchanged) |
+| **Itemised** | neither | the sum of the entries, labelled *itemised*, as today (SC-I9) |
+
+Because the stated figure is a total, itemising more afterwards only shrinks *Not yet itemised*; nothing is double counted. That is why it is stored as
+a total and not as a remainder (§11.3).
+
+**Saved from a stated month is rough, and says so.** *Saved* is came in minus spent, as always. With no balances, the exact split of saved into
+invested, paid to loans and the change in the cash reserve (SC-I12) cannot be proved, so the month does not claim it: it shows came in, spent (stated)
+and saved (rough), and the *invested* line from the holdings' own entries (SC-I11), which needs no balance. It does not show a change in the cash
+reserve it has no balances to know.
+
+### 11.3 Saying it, and the rest
+
+The form is on the Money month card, for a month that has ended and was not closed from balances, and in the close for a household with no accounts
+(where it replaces "itemised only" with a one-field step). It is a few seconds, not a stepper.
+
+For a month in which some spending is itemised, the form shows *you have itemised ₹52,000 so far* and offers two linked fields: **Spent in total** and
+**or just the rest**. Typing either fills the other. Typing the rest saves *itemised so far plus the rest* as the stated total. A person who is bored
+or lazy says *and ₹30,000 more*, and the app keeps the total.
+
+A stated spend is **made for a month that has ended** (IST), as a close is (§2). The open month stays *itemised so far* (SC-I9); letting a total be
+stated mid-month would let it contradict entries still to be made, and is a later option if it is asked for.
+
+**Changing it is voiding it and stating again,** never editing in place, so the audit log and the figures that relied on it agree (the standing rule on
+a figure relied upon).
+
+### 11.4 What reads it
+
+- **The Money month card and the close:** the source is named on the figure (*stated*, *from balances*, *itemised*), and the cross-check appears
+  where balances and a stated spend are both there.
+- **The plan against the month (§5):** *Not yet itemised* at the foot of the plan is stated minus itemised for a stated month. Categories show
+  their itemised amounts against their own plans, as before.
+- **Months of cover (PF-C9):** a stated month is used as stated, and the caveat counts the months by source: *of the last twelve, 4 from balances,
+  3 stated, 5 itemised only*. Itemised-only months read low and make the cover read high; stated months are the person's word and are said to be.
+- **Overview's *Saved this month* and anything else that reads a month's spent** takes the same function's answer and its label.
+- **Not affected:** the FIRE target and the plan's own annual expense (they are planned figures, not what was spent), income, holdings, tax, and every
+  month closed from balances.
+
+### 11.5 Data
+
+| Change | Notes |
+|---|---|
+| `spend_statement` | household, `month` (the first day of the month, checked), `currency`, `amount_minor` (> 0), `note` (optional), `voided_at` and `voided_by` as a pair, `created_by`, timestamps. At most one live row per household, month and currency (a partial unique index where not voided) |
+
+Money is integer minor units in its own currency; the month is IST. The table gets its audit trigger in the migration that creates it, RLS enabled and
+forced, explicit grants (select, insert, update; no delete), the second-factor restrictive policy, a line in `reset_demo_household`, and an entry in the
+export list. **Access: an owner or a partner reads and writes it; a contributor and a viewer read nothing**, as for the close (§9, decision 5); a
+household total is not a contributor's to read. A trigger refuses any update that changes more than the void pair and the note, so a statement is
+voided and stated again and never edited. A statement for a month that has not ended is refused by the table, from a date passed in, not read from a
+clock. Every policy has a pgTAP test that proves it denies.
+
+### 11.6 What it does not do
+
+No stated figure per category (the breakdown stays what was itemised, SC-I2). No stated figure for the open month. No "usual monthly spend" applied
+to months with nothing: a person states each month, and a standing figure is a later option if it is asked for. It does not change a month closed from
+balances, and it does not make a month closeable: a close still needs balances.
+
 ## Invariants
 
 **SC-I1 — A closed month's spent is derived from balances and never stored,** and never computed as the sum of entries. (§2)
@@ -287,7 +377,7 @@ reserve by account. A class with nothing in it this month is folded into one lin
 
 **SC-I8 — No payee VPA and no full UPI reference is stored:** the last four and a hash. (§4)
 
-**SC-I9 — A month with no close shows itemised figures labelled as itemised,** and months of cover says how many of its months were itemised only. (§5)
+**SC-I9 — A month with no close and no stated spend shows itemised figures labelled as itemised,** and months of cover says how many of its months were itemised only, and how many were stated. (§5, §11.4)
 
 **SC-I10 — A recurring rule posts once per due date:** running the poster twice, or on two devices, posts once. (§3)
 
@@ -296,6 +386,18 @@ reserve by account. A class with nothing in it this month is folded into one lin
 **SC-I12 — For a closed month, came in minus spent equals net invested plus paid to loans plus the change in cash reserve, to the paisa.** (§10)
 
 **SC-I13 — Invested by class adds up to invested,** and its classes are the classes Holdings groups by (HD-I2). (§10)
+
+**SC-I14 — A stated spend is a person's figure for a month that has ended, one live per household, month and currency, and is changed by voiding it and stating again,** never edited in place. (§11.3, §11.5)
+
+**SC-I15 — A month's spent comes from the first available of balances at the close, the stated spend, and the itemised sum; the source is always named, and the three are never added, averaged or blended.** (§11.2)
+
+**SC-I16 — With a stated spend and no close, Not yet itemised is stated minus itemised;** when itemised is more, both are shown and the gap is named, and neither is clamped to the other. (§11.2)
+
+**SC-I17 — Balances beat a stated spend:** a month closed from balances shows the balances' figure, with the stated one beside it as a cross-check that never changes it. (§11.2)
+
+**SC-I18 — Saved from a stated month is labelled rough, and no split into invested, paid to loans and the change in the cash reserve is claimed for it.** (§11.2)
+
+**SC-I19 — A stated spend is read and written only by an owner or a partner,** and a month for which it is stated is not one that has not ended. (§11.5)
 
 ## Tests
 
@@ -326,3 +428,12 @@ reserve by account. A class with nothing in it this month is folded into one lin
   = invested ₹57,500 + cash reserve ₹69,080.
 - SC-I13: invested by class sums to invested, and a class absent from Holdings
   never appears.
+- SC-I14: pgTAP: a second live statement for the same household, month and currency is refused; an update that changes the amount is refused and a void
+  is allowed; stating again after a void is allowed; a statement for a month that has not ended is refused.
+- SC-I15: pure domain test: the same month with balances, a stated spend and entries returns the balances' figure and names it; without balances, the stated
+  one; with neither, the itemised sum; none of them is ever the sum or the mean of two.
+- SC-I16: pure domain test: stated ₹82,000 and itemised ₹52,000 gives not yet itemised ₹30,000; stated ₹50,000 and itemised ₹55,000 gives both and the
+  ₹5,000 gap, neither clamped; typing the rest (₹30,000) against itemised ₹52,000 saves ₹82,000.
+- SC-I17: pure domain test: a month with balances and a stated ₹82,000 shows the balances' ₹91,000 and the ₹9,000 difference.
+- SC-I18: pure domain test: a stated month returns saved with the rough label and no invested-plus-loans-plus-reserve split.
+- SC-I19: pgTAP: an owner and a partner read and write one; a contributor, a viewer and another household read none and write none.
