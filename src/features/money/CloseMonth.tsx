@@ -7,7 +7,7 @@
  * as well. Nothing is written until the last button: closing stores balances, and spent is derived, never stored (SC-I1).
  *
  * Money into and out of holdings is read from the holdings' own entries that name an account (ledger-income.md section 4a), and an entry that names none is
- * counted and said, because its money is still in spent. Loan payments are not read yet, so a loan paid from these accounts reads as spent. A payment
+ * counted and said, because its money is still in spent. A loan payment is read when it names the account it left, and reads as spent when it does not. A payment
  * that is not listed makes the figure read low; an investment the app does not know about makes it read high. An account another member keeps
  * private is not in this close, and the screen says so.
  */
@@ -20,6 +20,7 @@ import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
 import type { Credit, Expense, PlanListing, Transfer } from '../../repo/types.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
+import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
@@ -93,7 +94,9 @@ export function CloseMonth({
   const { asks, unread, failed: unreadFailed, blocked: privateBlocked } = usePrivateClose(data.household.id, data.viewer.role, month);
   // The holdings' entries that named an account: money into a holding is not spent, and money taken out is money in. Without them the figure would read low.
   const entries = useHoldingMoves(data.household.id, month, data.accounts.some((account) => !account.isArchived), today as IsoDate);
-  const blocked = privateBlocked || entries.blocked;
+  // And the payments on loans: an EMI that left an account is paid to loans, and read as none it would sit in spent.
+  const loans = useLoanPayments(data.household.id, month, data.accounts.some((account) => !account.isArchived));
+  const blocked = privateBlocked || entries.blocked || loans.blocked;
 
   const base = useMemo(
     () => ({
@@ -105,9 +108,10 @@ export function CloseMonth({
       transfers,
       typed: {} as TypedBalances,
       holdingMoves: entries.moves,
+      loanPayments: loans.payments,
       ...(unread === null || unread.length === 0 ? {} : { unreadable: unread }),
     }),
-    [month, today, data.accounts, data.balances, credits, transfers, unread, entries.moves],
+    [month, today, data.accounts, data.balances, credits, transfers, unread, entries.moves, loans.payments],
   );
   const steps = useMemo(() => accountSteps(base), [base]);
 
@@ -228,9 +232,9 @@ export function CloseMonth({
                   })
                 ) : blocked ? (
                   <p className="note">
-                    {unreadFailed || entries.failed
-                      ? `${unreadFailed ? 'What other members keep private' : 'The holdings'} could not be read just now, so there is no figure and the month cannot be closed.`
-                      : 'Reading what other members keep private and what went into holdings…'}
+                    {unreadFailed || entries.failed || loans.failed
+                      ? `${unreadFailed ? 'What other members keep private' : entries.failed ? 'The holdings' : 'The payments on loans'} could not be read just now, so there is no figure and the month cannot be closed.`
+                      : 'Reading what other members keep private, what went into holdings and what was paid to loans…'}
                   </p>
                 ) : live.status === 'missing' ? (
                   <p className="note">Type each account’s balance below to see what was spent. It is not counted as nothing.</p>
@@ -242,8 +246,8 @@ export function CloseMonth({
               </section>
 
               <p className="note">
-                A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. Loan payments are not read
-                here yet, so a loan paid from these accounts is counted as spent. A deposit that matured into an account only its owner can see, or a private deposit of another member that matured into one of these accounts, is not read either.
+                A payment in that isn’t listed makes this read low. An investment the app doesn’t know about makes it read high. A loan payment is read
+                when it names the account it left, and is counted as spent when it does not. A deposit that matured into an account only its owner can see, or a private deposit of another member that matured into one of these accounts, is not read either.
                 {entries.unnamed > 0
                   ? ` ${String(entries.unnamed)} ${entries.unnamed === 1 ? 'entry' : 'entries'} in Holdings this month (a purchase, a sale, a PPF payment, a deposit or bond, or an opening cost) name no account, so the close cannot tell where that money went, and a purchase reads as spent. Open it in Holdings and say which account.`
                   : ''}
@@ -316,7 +320,7 @@ export function CloseMonth({
                       <p className="note tabular-nums">
                         Left the accounts{multi} · {shown(money(figures.leftTotal, figures.currency))}
                       </p>
-                      {(own.length > 0 || figures.outside !== 0n || figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n) && (
+                      {(own.length > 0 || figures.outside !== 0n || figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n || figures.paidToLoans !== 0n) && (
                         <section aria-label={`Not spending${multi}`} className="flex flex-col gap-1">
                           <h3 className="label">Not spending{multi}</h3>
                           {own.length > 0 && (
@@ -333,6 +337,9 @@ export function CloseMonth({
                                 ))}
                               </ul>
                             </details>
+                          )}
+                          {figures.paidToLoans !== 0n && (
+                            <p className="note tabular-nums">Paid to loans · {shown(money(figures.paidToLoans, figures.currency))}</p>
                           )}
                           {(figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n) && (
                             <p className="note tabular-nums">

@@ -10,6 +10,7 @@ import type { PaidFromChoice } from './paidFrom.ts';
 export function PaidFromField({
   label,
   verb,
+  hint: reason,
   choices,
   entryCurrency,
   accountId,
@@ -20,6 +21,8 @@ export function PaidFromField({
 }: {
   label: string;
   verb: 'left' | 'reached';
+  /** What the field says it is for, when it is not a holding's reason. */
+  hint?: string;
   choices: readonly PaidFromChoice[];
   entryCurrency: string;
   accountId: string;
@@ -42,9 +45,10 @@ export function PaidFromField({
           label={label}
           value={accountId}
           hint={
-            verb === 'left'
+            reason ??
+            (verb === 'left'
               ? 'Optional. It lets a month close count this as money put into a holding, not as spent.'
-              : 'Optional. It lets a month close count this as money in to that account, not as income.'
+              : 'Optional. It lets a month close count this as money in to that account, not as income.')
           }
           onChange={(event) => {
             onAccount(event.target.value);

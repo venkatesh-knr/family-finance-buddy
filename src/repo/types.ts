@@ -684,6 +684,8 @@ export interface Liability {
   readonly id: Uuid;
   readonly name: string;
   readonly kind: LiabilityKind;
+  /** What the loan is in, and so what a payment on it is in. */
+  readonly currency: string;
   readonly instalment: Money | null;
   readonly cadence: CommitmentCadence;
   readonly memberId: Uuid | null;
@@ -1204,6 +1206,28 @@ export interface CreditPatch {
   readonly date?: IsoDate;
   readonly visibility?: Visibility;
   readonly payer?: string | null;
+  readonly note?: string | null;
+}
+
+/** One payment on a loan: all of what left, principal and interest (docs/design/ledger-income.md section 4c). */
+export interface LoanPayment {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  readonly liabilityId: Uuid;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  /** The account it left, in the loan's currency, or null: not said, and the close does not count it. */
+  readonly accountId: Uuid | null;
+  readonly note: string | null;
+  readonly isVoided: boolean;
+}
+
+export interface NewLoanPayment {
+  readonly householdId: Uuid;
+  readonly liabilityId: Uuid;
+  readonly amount: Money;
+  readonly date: IsoDate;
+  readonly accountId?: Uuid | null;
   readonly note?: string | null;
 }
 

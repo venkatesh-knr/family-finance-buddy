@@ -37,6 +37,7 @@ const annualOf = (rupees: number, instalments = 0, premiums = 0): AnnualExpense 
 const loan = (over: Partial<Liability> & { id: string }): Liability => ({
   name: over.id,
   kind: 'home_loan',
+  currency: 'INR',
   instalment: inr(40000),
   cadence: 'monthly',
   memberId: null,

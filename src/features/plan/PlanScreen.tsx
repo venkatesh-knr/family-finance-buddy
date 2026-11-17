@@ -35,9 +35,12 @@ import {
   RowAction,
   Stat,
 } from '../../ui/primitives.tsx';
+import { useAccountChoices } from '../holdings/useAccountChoices.ts';
 import { DraftNumber } from './DraftNumber.tsx';
 import { FireIncome } from './FireIncome.tsx';
 import { FireReadout } from './FireReadout.tsx';
+import { LoanPayments } from './LoanPayments.tsx';
+import { useLoanPaymentList } from './useLoanPaymentList.ts';
 import { usePlan, type CategoryPlan } from './usePlan.ts';
 
 const MULTIPLIERS = [25, 30, 50];
@@ -904,6 +907,10 @@ function Commitments({
   editable: boolean;
 }) {
   const { listing } = plan;
+  // The payments on the loans, and the accounts they may leave (ledger-income.md section 4c). Read here, once for the card and not once a loan.
+  const householdId = listing?.household.id ?? null;
+  const paymentList = useLoanPaymentList(householdId);
+  const accountList = useAccountChoices(householdId);
   if (listing === null) return null;
 
   const count = listing.liabilities.length + listing.policies.length;
@@ -926,6 +933,7 @@ function Commitments({
       summary={count === 0 ? 'None yet.' : `${String(count)} recorded.`}
     >
 
+      {paymentList.failed && <p className="note">The payments on loans could not be read just now, so none is listed.</p>}
       {listing.liabilities.length === 0 && listing.policies.length === 0 ? (
         <p className="note">Nothing recorded yet.</p>
       ) : (
@@ -939,7 +947,19 @@ function Commitments({
               cadence={liability.cadence}
               inactive={liability.isClosed}
               privacy={privacy}
-            />
+            >
+              <LoanPayments
+                liability={liability}
+                householdId={listing.household.id}
+                payments={paymentList.payments}
+                accounts={accountList.accounts}
+                accountsFailed={accountList.failed}
+                paymentsState={paymentList.failed ? 'failed' : paymentList.loaded ? 'read' : 'reading'}
+                editable={editable}
+                privacy={privacy}
+                onChanged={paymentList.reload}
+              />
+            </CommitmentRow>
           ))}
           {listing.policies.map((policy) => (
             <CommitmentRow
@@ -967,6 +987,7 @@ function CommitmentRow({
   cadence,
   inactive,
   privacy,
+  children,
 }: {
   name: string;
   kind: string;
@@ -974,6 +995,8 @@ function CommitmentRow({
   cadence: CommitmentCadence;
   inactive: boolean;
   privacy: boolean;
+  /** What sits under the row: a loan's payments. */
+  children?: React.ReactNode;
 }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2.5 py-2.5">
@@ -986,6 +1009,7 @@ function CommitmentRow({
         {amount === null ? <span className="note">not set</span> : formatMoney(amount, { privacy })}
         <span className="note"> / {cadence.replace(/_/g, ' ')}</span>
       </span>
+      {children}
     </li>
   );
 }

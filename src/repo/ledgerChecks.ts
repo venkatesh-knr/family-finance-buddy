@@ -96,3 +96,10 @@ export function checkTaxInput(input: {
   }
   if (input.tds !== undefined && input.tds !== null && input.tds.minor < 0n) throw new Error('The tax deducted is not negative.');
 }
+
+/** A payment on a loan: some amount, on a calendar day, with a note of a sensible length. All of what left, so the amount is the payment and not a part of it. */
+export function checkLoanPayment(input: { readonly amount: Money; readonly date: string; readonly note?: string | null }): void {
+  if (input.amount.minor <= 0n) throw new Error('A payment on a loan is some amount of money: more than nothing.');
+  if (!isIsoDate(input.date)) throw new Error(`${NOT_A_DATE} The date is the day the payment was made.`);
+  if (input.note !== undefined && input.note !== null && input.note.length > 500) throw new Error('A note is up to 500 characters.');
+}
