@@ -56,7 +56,7 @@ test('a deposit paid from an account is read by the close as into holdings and n
   const deposit = testName('fd-close-deposit');
   await addAccount(page, account);
   await page.goto('/#/money');
-  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word} · about 2 minutes$`) });
+  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word}$`) });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   test.skip((await prompt.count()) === 0, 'the month was closed earlier in this run');
 

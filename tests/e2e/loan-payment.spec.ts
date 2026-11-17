@@ -84,7 +84,7 @@ test('a payment that names an account is read by the close as paid to loans and 
   const loan = testName('loan-close-loan');
   await addAccount(page, account);
   await page.goto('/#/money');
-  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word} · about 2 minutes$`) });
+  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word}$`) });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   test.skip((await prompt.count()) === 0, 'the month was closed earlier in this run');
 
