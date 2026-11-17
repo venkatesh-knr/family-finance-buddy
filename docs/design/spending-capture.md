@@ -350,8 +350,8 @@ Money is integer minor units in its own currency; the month is IST. The table ge
 forced, explicit grants (select, insert, update; no delete), the second-factor restrictive policy, a line in `reset_demo_household`, and an entry in the
 export list. **Access: an owner or a partner reads and writes it; a contributor and a viewer read nothing**, as for the close (§9, decision 5); a
 household total is not a contributor's to read. A trigger refuses any update that changes more than the void pair and the note, so a statement is
-voided and stated again and never edited. A statement for a month that has not ended is refused by the table, from a date passed in, not read from a
-clock. Every policy has a pgTAP test that proves it denies.
+voided and stated again and never edited. A statement for a month that has not ended in India is refused by the table, against the time of the write: a trigger cannot be passed a date, so this
+is the one place the database reads a clock. The app's own checks, and the pure rule that picks a month's source, still take their date as an argument. Every policy has a pgTAP test that proves it denies.
 
 ### 11.6 What it does not do
 
