@@ -76,9 +76,9 @@ export function creditVisibility(input: { readonly category: CreditCategory; rea
   return input.chosen ?? defaultVisibility(input.category);
 }
 
-/** AddCredit2, state 1: a private credit on an account the household sees is private in the list only, and the form says so. */
-export function sharedAccountNote(account: Pick<Account, 'name' | 'last4' | 'visibility'> | null, visibility: Visibility): string | null {
-  if (account === null || account.visibility !== 'household' || visibility !== 'personal') return null;
+/** AddCredit2, state 1: every account is the household's, so a private credit on one is private in the list only, and the form says so. */
+export function sharedAccountNote(account: Pick<Account, 'name' | 'last4'> | null, visibility: Visibility): string | null {
+  if (account === null || visibility !== 'personal') return null;
   return `${titleOf(account)} is shared with the household. Its balance is seen by the household, so a private credit there is private in this list only.`;
 }
 

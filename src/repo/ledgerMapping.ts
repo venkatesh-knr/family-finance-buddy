@@ -53,7 +53,6 @@ export function toAccount(raw: unknown): Account {
     last4: optionalString(row['account_last4'], 'account.account_last4'),
     isForeign: requireBoolean(row['is_foreign'], 'account.is_foreign'),
     openedOn: optionalIsoDate(row['opened_on'], 'account.opened_on'),
-    visibility: requireOneOf(row['visibility'], VISIBILITIES, 'account.visibility'),
     isArchived: requireOneOf(row['status'], ['active', 'archived'] as const, 'account.status') === 'archived',
     archivedOn: archivedDay(row['archived_at']),
   };
@@ -202,14 +201,10 @@ export function toPrivateClose(raw: unknown): PrivateClose {
     currency: requireString(row['currency'], 'household_private_close.currency'),
     left: sum('left_minor'),
     outside: sum('outside_minor'),
-    ownOut: sum('own_out_minor'),
     refunds: sum('refunds_minor'),
     cameIn: sum('came_in_minor'),
-    reserveChange: sum('reserve_change_minor'),
     intoHoldings: sum('into_holdings_minor'),
     outOfHoldings: sum('out_of_holdings_minor'),
-    counted: requireNumber(row['accounts_counted'], 'household_private_close.accounts_counted'),
-    total: requireNumber(row['accounts_total'], 'household_private_close.accounts_total'),
   };
 }
 

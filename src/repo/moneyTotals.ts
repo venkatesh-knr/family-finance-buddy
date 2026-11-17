@@ -27,9 +27,8 @@ export async function householdMoneyTotals(householdId: Uuid, from: string, to: 
 }
 
 /**
- * What a month close needs of the money the caller cannot read, per currency (another member's private accounts, the private credits into
- * accounts the caller does read, the moves that touch a hidden account), as totals and two counts. An owner or a partner only; the database
- * refuses anyone else, so a screen does not ask a contributor.
+ * What a month close needs of the money the caller cannot read, per currency (other members' private credits and the entries of their private
+ * holdings), as totals. An owner or a partner only; the database refuses anyone else, so a screen does not ask a contributor.
  */
 export async function householdPrivateClose(householdId: Uuid, month: string, lastDay: string): Promise<readonly PrivateClose[]> {
   const { data, error } = await supabase().rpc('household_private_close', { target_household_id: householdId, month_first: `${month}-01`, month_last: lastDay });
@@ -40,7 +39,7 @@ export async function householdPrivateClose(householdId: Uuid, month: string, la
 }
 
 /**
- * The household's cash reserve as at a day, per currency, other members' private accounts included without their rows (LI-I27): what the
+ * The household's cash reserve as at a day, per currency, over every account of the household (LI-I27): what the
  * accounts hold, a card's due taken off, with how many accounts had a balance and how many there are. A currency with no balance typed returns
  * a sum of nothing and a count of none, which a screen says in words and never shows as a reserve of nothing.
  */

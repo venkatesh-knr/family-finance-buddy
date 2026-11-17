@@ -3,10 +3,9 @@
 -- FOR REVIEW with the migration beside it (20261116120000_loan_payment.sql). Not run locally: Docker is blocked on the maintainer's machine, so CI's
 -- policy suite is the first run.
 --
--- LI-I36 — a payment names a loan of its own household and is in the loan's currency; an account it names is of its household, in that currency, and
---          one its writer can read; only an owner or a partner writes one.
--- LI-I37 — a payment is the household's; while an account can still be private, one naming a private account is read by whoever reads the account, and
---          so is its audit row; one naming none is the household's.
+-- LI-I36 — a payment names a loan of its own household and is in the loan's currency; an account it names is of its household and in that currency;
+--          only an owner or a partner writes one.
+-- LI-I37 — a payment is the household's, whichever account it names (there is no private account, decisions.md 16 November 2026), and so is its audit row.
 -- LI-I39 — a payment does not change what the loan says is outstanding.
 --
 -- Run: supabase test db
@@ -17,12 +16,12 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(14);
+select plan(16);
 
 -- ============================================================== the fixture
 --
 --   owner        household R: a shared account, a loan
---   partner      household R: a private savings account
+--   partner      household R: a savings account
 --   contributor  household R
 --   stranger     owner of household S
 
@@ -68,12 +67,12 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
   ('d8000000-0000-4000-8000-0000000000a3', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a3', 'contributor'),
   ('d8000000-0000-4000-8000-0000000000b1', 'e8000000-0000-4000-8000-0000000000f2', 'f8000000-0000-4000-8000-0000000000b1', 'owner');
 
--- Accounts. 01 the household's, INR. 02 the partner's own savings, private. 03 a household USD account. 04 belongs to household S.
+-- Accounts, all the household's. 01 INR. 02 the partner's own savings. 03 a USD account. 04 belongs to household S.
 insert into public.account (id, household_id, member_id, name, type, currency, visibility, created_by) values
   ('a8000000-0000-4000-8000-000000000001', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'HDFC savings', 'savings', 'INR', 'household', 'd8000000-0000-4000-8000-0000000000a1'),
   ('a8000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a2',
-   'Partner''s own', 'savings', 'INR', 'personal', 'd8000000-0000-4000-8000-0000000000a2'),
+   'Partner''s own', 'savings', 'INR', 'household', 'd8000000-0000-4000-8000-0000000000a2'),
   ('a8000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'Dollar account', 'savings', 'USD', 'household', 'd8000000-0000-4000-8000-0000000000a1'),
   ('a8000000-0000-4000-8000-000000000004', 'e8000000-0000-4000-8000-0000000000f2', 'f8000000-0000-4000-8000-0000000000b1',
@@ -92,7 +91,7 @@ insert into public.liability (id, household_id, name, kind, instalment_minor, cu
 
 -- The payments, October 2026.
 --   P1  ₹32,000 from the shared account.
---   P2  ₹5,000 from the partner's private account.
+--   P2  ₹5,000 from the partner's account.
 --   P3  ₹32,000 naming no account.
 --   P4  ₹5,000 from the partner's account, voided.
 --   P5  ₹5,000 from the partner's account in September.
@@ -166,36 +165,35 @@ select lives_ok(
   'LI-I36 — an owner records a payment from a shared account'
 );
 
-select throws_ok(
+select lives_ok(
   $q$ insert into public.loan_payment (household_id, liability_id, paid_on, amount_minor, currency, account_id)
       values ('e8000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000001', '2026-10-20', 100, 'INR',
               'a8000000-0000-4000-8000-000000000002') $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — but not from the partner''s private account'
+  'LI-I36 — and from the partner''s account: there is no private account'
 );
 
-select throws_ok(
+select lives_ok(
   $q$ update public.loan_payment set account_id = 'a8000000-0000-4000-8000-000000000002' where id = 'b8000000-0000-4000-8000-000000000003' $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — nor can a payment be moved onto it'
+  'LI-I36 — and a payment can be moved onto it'
 );
 
--- Of the five seeded payments and the one just recorded, the owner cannot read P2, P4 and P5 (all from the partner's private account).
+-- Of the five seeded payments and the two just recorded, the owner reads all seven.
 select is(
   (select count(*)::int from public.loan_payment),
-  3,
-  'LI-I37 — the owner reads the payments of a shared account and of none, and not those of the partner''s private account'
+  7,
+  'LI-I37 — the owner reads every payment, whichever account it names'
 );
 
 select is(
   (select count(*)::int from public.audit_log where entity = 'loan_payment' and entity_id = 'b8000000-0000-4000-8000-000000000001'),
   1,
-  'LI-I37 — and the audit row of a payment they can read'
+  'LI-I37 — the owner reads the audit row of a payment'
 );
 
-select is_empty(
-  $q$ select 1 from public.audit_log where entity = 'loan_payment' and entity_id = 'b8000000-0000-4000-8000-000000000002' $q$,
-  'LI-I37 — but not the audit row of a payment from the partner''s private account'
+select is(
+  (select count(*)::int from public.audit_log where entity = 'loan_payment' and entity_id = 'b8000000-0000-4000-8000-000000000002'),
+  1,
+  'LI-I37 — and the audit row of a payment from the partner''s account'
 );
 
 select is(
@@ -214,6 +212,22 @@ select throws_ok(
       values ('e8000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000001', '2026-10-21', 100, 'INR') $q$,
   '42501'::char(5), null::text,
   'LI-I36 — a contributor records no payment: only an owner or a partner does, as with a loan'
+);
+
+select is_empty(
+  $q$ with u as (update public.loan_payment set note = 'x' where id = 'b8000000-0000-4000-8000-000000000001' returning id) select id from u $q$,
+  'LI-I36 — nor changes or voids one: only an owner or a partner does'
+);
+
+-- ============================================== another household
+
+set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000b1';
+set local request.jwt.claims   to '{"sub":"c8000000-0000-4000-8000-0000000000b1","role":"authenticated","aal":"aal2"}';
+
+select is(
+  (select count(*)::int from public.loan_payment),
+  0,
+  'LI-I37 — another household reads none of the payments'
 );
 
 select * from finish();

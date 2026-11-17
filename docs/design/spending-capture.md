@@ -78,10 +78,10 @@ spent = Σ left
 - **Which accounts it covers is shown** ("3 of 3 accounts"). Money spent from an
   account nobody added is in *itemised* only, and is the usual reason for the
   case in SC-I3.
-- **Private accounts stay private.** A member's personal account contributes
-  its `left` to the household figure as a sum through a security-definer total,
-  as `personal_holding_totals` does for holdings. Its rows and balances stay
-  hidden.
+- **There is no private account** (the owner, 16 November 2026). Every account
+  is the household's; what stays private is a private credit, expense or holding
+  in every list, and the close adds those as totals through a security-definer
+  sum, as `personal_holding_totals` does for holdings.
 
 ## 3. Itemising cheaply
 

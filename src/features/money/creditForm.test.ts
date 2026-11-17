@@ -32,7 +32,6 @@ const account = (patch: Partial<Account>): Account => ({
   last4: '4021',
   isForeign: false,
   openedOn: null,
-  visibility: 'household',
   isArchived: false,
   ...patch,
 });
@@ -131,16 +130,15 @@ describe('creditVisibility — who can see the row', () => {
   });
 });
 
-describe('sharedAccountNote — a private credit on an account the household sees (AddCredit2, state 1)', () => {
+describe('sharedAccountNote — a private credit on any account, since every account is the household’s (AddCredit2, state 1)', () => {
   it('warns that the row is private in the list only, naming the account', () => {
     expect(sharedAccountNote(account({ name: 'SBI Savings', last4: '7710' }), 'personal')).toBe(
       'SBI Savings ••7710 is shared with the household. Its balance is seen by the household, so a private credit there is private in this list only.',
     );
   });
 
-  it('says nothing when the credit is the household’s, the account is private, or there is no account', () => {
+  it('says nothing when the credit is the household’s, or there is no account', () => {
     expect(sharedAccountNote(account({}), 'household')).toBeNull();
-    expect(sharedAccountNote(account({ visibility: 'personal' }), 'personal')).toBeNull();
     expect(sharedAccountNote(null, 'personal')).toBeNull();
   });
 });

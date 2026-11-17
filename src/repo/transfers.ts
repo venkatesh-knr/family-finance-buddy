@@ -2,7 +2,7 @@
  * Moves between the household's own accounts, a card payment among them (docs/design/ledger-income.md sections 1 and 12).
  *
  * A move is neither income nor spent (LI-I2). It is one row and the ledger shows it as one line. Row-level security returns it only to
- * someone who can read both of its accounts, so a move into a personal account is not shown to the rest of the household. Both accounts
+ * someone who can read both of its accounts, which for an owner or a partner is every move: a contributor reads only their own accounts. Both accounts
  * must be in the transfer's currency: a move between currencies is not modelled yet.
  */
 

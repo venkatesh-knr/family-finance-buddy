@@ -171,21 +171,18 @@ with a line under the row that says what accounts give, while no account is in u
   (spending-capture §6, MonthClose).
 - **A soft panel lists the accounts.** Each row shows:
   - the name, and the last four digits when given (state 2);
-  - the type, whose it is, and who sees it, in words, with a lock for a private account;
+  - the type and whose it is, in words (there is no private account, so no lock and no *who sees it*: decisions.md, 16 November 2026);
   - the balance at the last close, or *no balance yet*, *not in a close yet* (state 3);
   - for a card, the amount owed, with a minus sign and the word *owed*.
-- **Accounts another member keeps private are not listed** (state 4). Their balances are
-  in the cash reserve as part of the total, through the sum function, as
-  `personal_holding_totals` already does for holdings.
 - **+ Add an account**, then the archived accounts, folded, and a short panel, **What is
-  kept**. It says, in the app's words, what an account is: a name, a type, whose it is
-  and who sees it, with the bank and the last four optional. There is no account number,
+  kept**. It says, in the app's words, what an account is: a name, a type and whose it is,
+  with the bank and the last four optional. There is no account number,
   no bank login and no link to the bank.
 - **With no accounts** (MoneyAccountsEmpty, state 5), the lifted surface says accounts
   are optional, what a month is like without them, and what adding them gives. Below it
   are *+ Add an account* and *What is kept*. Money's card and line (§1a) are the only places that ask for an account.
 
-**Adding an account** (AddAccount) is one short form, not stepped, because it has seven
+**Adding an account** (AddAccount) is one short form, not stepped, because it has six
 fields and only three are needed:
 
 | Field | Rule |
@@ -193,7 +190,6 @@ fields and only three are needed:
 | Name | Required. What the person calls it. Shown on every ledger line from the account. |
 | Type | Required. Savings, Current or Card, as ovals. The help says a card's balance is what is owed. |
 | Whose | Required. A member of the household. |
-| Who can see it | *Only its owner* or *The household*. A joint account is the household's. |
 | Bank | Optional. |
 | Last four digits | Optional. Four characters at most, never the full number. |
 | Currency | INR by default. Another currency is for an account held abroad, and then *Held outside India* (`is_foreign`, Schedule FA) is asked, never inferred. |
@@ -204,7 +200,7 @@ new account chosen and every value kept. That is the same promise as SL-I6.
 
 **Changing and archiving.**
 
-- An account's name, bank, last four and who can see it can be changed at any time.
+- An account's name, bank and last four can be changed at any time.
 - Its **type and currency cannot be changed once it has a credit, a transfer or a
   balance**, because they decide how its past months were worked out. Archive it and add
   a new one instead.
@@ -340,11 +336,10 @@ invented and nothing is converted: the bank's own figure is typed, and the close
 *saved* is still *came in − spent*, and still splits exactly into *invested + paid to loans + change in cash reserve* (LI-I23), because *invested* in the
 close is now the figure from the entries that named an account.
 
-**Private accounts and private holdings.** An owner or a partner closes the household's month, but cannot read another member's private account or
-private holding. `household_private_close` already adds what the caller cannot read, as totals. It gains two sums, *into holdings* and *out of holdings*,
-for exactly the entries the caller's own screen cannot add: money from a hidden account that has both balances, and a purchase or sale of another
-member's private holding on an account the caller reads. A take-out also adds to *left*, as a private credit does. Still no account, member, holding or
-date in the result.
+**Private holdings.** An owner or a partner closes the household's month, but cannot read another member's private holding or private credit. Every account
+is read (there is no private account). `household_private_close` adds what the caller cannot read, as totals: *into holdings* and *out of holdings*, for exactly
+the entries the caller's own screen cannot add, which is a purchase or sale of another member's private holding on an account. A take-out also adds to *left*, as
+a private credit does. Still no account, member, holding or date in the result.
 
 **Where a person says it, afterwards.** An entry already recorded is changed from its row in the holding's Transactions: each purchase and sale shows
 *paid from* or *paid into* the account it named, or *no account said*, and its edit form carries the same picker. A PPF entry is voided and entered again, as
@@ -354,9 +349,9 @@ any PPF entry is. A lot or a sale that names an account the editor cannot read i
 paid from the contributor's account reads as spent there. The count of entries that named no account is of the entries the person can read; one on a private
 holding of another member is not in it, though its money is still counted as the close counts what it cannot place.
 
-**Who may name which account.** Only one the writer can read, in the insert and update policies of all three tables, as for a credit: a contributor
-cannot attach a purchase to another member's private account. Editing a row whose account the editor cannot read is refused for that reason; the row
-is fixed by the member who owns the account.
+**Who may name which account.** Only one the writer can read, in the insert and update policies of all three tables, as for a credit. An owner or a partner reads
+every account of the household; a contributor reads their own, so cannot attach a purchase to another member's. Editing a row whose account the editor cannot read
+is refused for that reason; the row is fixed by the member who owns the account.
 
 **Entered where the entry is.** The purchase form, the sale form and the PPF payment form each gain *Paid from* / *Paid into*, an optional picker of
 the household's accounts, last used first, with *Not said* as the first choice. Choose an account in another currency than the entry's and one more field
@@ -391,7 +386,7 @@ on the day the app works out that the deposit paid out, at the amount it works o
 
 **What the database cannot sum.** The payout is a figure only the application computes, from the terms and the bank's renewals, and it is never stored
 (a deposit's value is computed and not stored). `household_private_close` therefore adds the principal and the opening cost for what the caller cannot
-read, as it adds a lot's cost, and does *not* add a payout: a payout into a hidden account, or of another member's private deposit, reads in the close
+read, as it adds a lot's cost, and does *not* add a payout: a payout of another member's private deposit reads in the close
 as it does today. A purchase lot on a holding that also has terms, or a recorded maturity beside a worked-out payout, would be counted by the close and
 not by *invested* (which counts the terms alone); no screen puts an account-naming lot or disposal on a holding with terms, and the rule is to be settled
 if one ever does. The close says so where it says what it could not read. If that is not good enough, the way out is a recorded maturity (a disposal
@@ -425,11 +420,9 @@ been paid. This is that record, and the only thing this step adds to the close.
 It is taken off *spent* and shown as *paid to loans*, which is what `closedMonthFigures` does with the payments it is given; the app now gives it the month's. That
 keeps *saved* split exactly (LI-I23): `came in − spent = (put into holdings − taken out) + paid to loans + the change in the cash reserve`.
 
-**Who sees it.** Accounts are always visible to the household (the owner's decision of 16 November 2026, `decisions.md`), so a payment is the household's, like the loan; any
-member reads it. The close adds the payments that name an account, as it adds a transfer, and needs no sum for what it cannot read, because there is no such account. **Until the step
-that makes every account visible has run**, a household can still have a private account, and for that interval alone a payment that names one is read by whoever reads the account,
-and so is its audit row, and an account named must be one the writer can read (LI-I29). Those clauses go with the private account in that step, and in that interval the close does not
-count a payment from an account it cannot read.
+**Who sees it.** Accounts are always visible to the household (the owner's decision of 16 November 2026, `decisions.md`; built in `20261117120000`), so a payment is the household's,
+like the loan; any member reads it, and so does its audit row. The close adds the payments that name an account, as it adds a transfer, and needs no sum for what it cannot read,
+because there is no such account. The three clauses that followed the account while one could be private (select, audit, an account named must be readable) went with it.
 
 **Not in this step.** A recurring loan rule that posts a payment on its due day, a schedule of EMIs on the loan, a payment that reduces the stated outstanding, a loan
 in a currency other than its account's, and *paid to loans* in a household with no accounts added (itemised mode, where the figure comes from EMI entries the
@@ -609,7 +602,7 @@ owner*, and no estimate.
 | MoneyAccounts | 1 | The cash reserve from the last close, with Close October |
 | | 2 | An account with no last four |
 | | 3 | An account with no balance yet |
-| | 4 | Other members' private accounts: in the total, not listed |
+| | 4 | Other members' private accounts: in the total, not listed (no private account now: a Departure) |
 | MoneyAccountsEmpty | 5 | No accounts: optional, and what adding them gives |
 | AddAccount | 1 | Opened from a form's account picker: saving returns to it |
 | AddCredit | — | Step 1, amount focused |
@@ -744,7 +737,7 @@ functions, which read the totals.
 
 **LI-I28 — A holding's entry (a purchase lot, a sale, redemption or maturity, a PPF payment or withdrawal) names an account of its own household, or none;** naming none changes nothing. A lot or a sale that names an account in another currency than its own also carries what left or reached the account in that account's currency, and one in the same currency carries none. (§4a)
 
-**LI-I29 — An entry names only an account its writer can read.** (§4a)
+**LI-I29 — An entry names only an account its writer can read.** An owner or a partner reads every account of the household, so may name any; a contributor reads their own. (§4a)
 
 **LI-I30 — A closed month subtracts money into holdings from spent and adds money taken out to the account's money in,** from the entries that name an account, including those the caller cannot read, as sums; an entry that names none is counted as it is today. (§4a)
 
@@ -758,9 +751,9 @@ functions, which read the totals.
 
 **LI-I35 — The close counts a deposit's or a bond's principal and an opening cost from the entries that named an account, including those the caller cannot read, as sums; it counts a payout only for what the caller can read, and says it could not for the rest.** A recurring deposit, an earlier or later month, a holding that has a purchase or terms, and a cost in another currency than its account's are not counted. (§4b)
 
-**LI-I36 — A loan payment names a loan of its own household and is in the loan's currency; an account it names is of its household, in that currency, and one its writer can read.** Only an owner or a partner records one. (§4c)
+**LI-I36 — A loan payment names a loan of its own household and is in the loan's currency; an account it names is of its household and in that currency.** Only an owner or a partner records one. (§4c)
 
-**LI-I37 — A loan payment is the household's, and any member reads it.** While an account can still be private, one that names a private account is read by whoever can read the account, and so is its audit row; that clause goes when every account is visible. (§4c)
+**LI-I37 — A loan payment is the household's, whichever account it names, and any member reads it, and its audit row is read as any row of the household is.** (§4c)
 
 **LI-I38 — The close counts the loan payments that left an account it reads, and only those:** not a voided payment, another month's, or one that names no account. (§4c)
 
@@ -772,7 +765,7 @@ functions, which read the totals.
 
 **LI-I26 — An account's type and currency cannot change once it has a credit, a transfer or a balance;** an account is archived, never deleted. (§1a)
 
-**LI-I27 — A private account is listed only to its owner; its balance reaches others only inside a total: the cash reserve's, and a month close's (`household_private_close`, which returns sums and counts and no account, member, balance or date).** (§1a)
+**LI-I27 — Every account is the household's: there is no private account, and the database refuses to make one.** An owner or a partner reads all of them, a contributor their own. The cash reserve is a total over every account, and a month close adds what the caller cannot read, which is other members' private credits and private holdings' entries, through `household_private_close`, which returns sums and no account, member, balance or date. (§1a)
 
 **LI-I8 — An expected credit counts nowhere until it is confirmed;** a credit rule never auto-posts, and a rule posts at most one credit per due date. (§5)
 
@@ -834,10 +827,10 @@ functions, which read the totals.
 - LI-I24: an account with a name, the type savings and a member, and no last four, is accepted (pgTAP); the ledger line shows its name alone.
 - LI-I25: `#/accounts` renders the Accounts screen, and `#/money?tab=accounts` replaces itself with it; from Add money in step 1, + Add an account, save, and step 1 shows the amount typed before and the new account chosen (e2e).
 - LI-I26: pgTAP: updating `type` or `currency` on an account with an `account_balance` row is refused; a delete on `account` is refused for every role; archiving keeps its ledger lines.
-- LI-I27: pgTAP: a partner selects no row of the owner's personal account and no `account_balance` of it; the cash-reserve sum returned to the partner includes it, and so does the month close's, with the account counted as one of one only when both balances are typed.
+- LI-I27: pgTAP: an account cannot be made `personal`; a partner reads the owner's own account and its balance; the cash-reserve sum includes every account; the month close's sum returns only private credits and private holdings' entries, with no count of accounts.
 - LI-I28: pgTAP: a purchase, a sale and a PPF entry accept no account; a purchase cannot name an account of another household or say an account is in a currency it is not in; a dollar purchase from a rupee account needs what left the account, and a rupee purchase from a rupee account refuses one; an amount with no account is refused.
-- LI-I29: pgTAP: an owner cannot attach a purchase or a sale to a partner's private account, nor move an existing purchase onto it.
-- LI-I30: pgTAP over the section 4a rules: the sum adds a purchase from a hidden account, a purchase of another member's private holding from a readable account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
-- LI-I32 to LI-I35: pgTAP over the section 4b rules: a principal and an opening cost refuse an account of another household, one in a currency it is not in, a dollar deposit paid from a rupee account with no amount, and a rupee deposit that states one; a payout refuses an account in another currency; neither can be moved onto another member's private account; the sum adds a principal from a hidden account, one of another member's private deposit from a readable account, a dollar deposit paid from a rupee account at what left it, and an opening cost from a hidden account, and adds nothing for a recurring deposit, a September start, a holding with a purchase, or a cost in dollars named against a rupee account. Pure domain test: the close with a payout named, on the day it paid out.
-- LI-I36 to LI-I39: pgTAP over the section 4c rules: a payment refuses a loan of another household, another currency than the loan's, an account in another currency or of another household, and an amount of nothing; an owner records one from a shared account and not from a partner's private account, nor moves one onto it; a contributor records none; while an account can be private, the owner reads the payments of a shared account and of none, and not those of the partner's private account, nor their audit rows; recording payments leaves the loan's outstanding as it was. Pure domain test: the close with a payment named, which `money-month.test.ts` already holds (₹32,000 from HDFC); and, in the build that gives the close its payments, a voided one, another month's and one naming no account are not counted.
-- LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.
+- LI-I29: pgTAP: an owner reads the partner's account, so may attach a purchase or a sale to it, or move an existing purchase onto it; a contributor, who reads only their own accounts, may not name another member's.
+- LI-I30: pgTAP over the section 4a rules: the sum adds a purchase of another member's private holding from an account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
+- LI-I32 to LI-I35: pgTAP over the section 4b rules: a principal and an opening cost refuse an account of another household, one in a currency it is not in, a dollar deposit paid from a rupee account with no amount, and a rupee deposit that states one; a payout refuses an account in another currency; the sum adds a principal of another member's private deposit, and adds nothing for a recurring deposit, a September start, a holding with a purchase, or a cost in dollars named against a rupee account. Pure domain test: the close with a payout named, on the day it paid out.
+- LI-I36 to LI-I39: pgTAP over the section 4c rules: a payment refuses a loan of another household, another currency than the loan's, an account in another currency or of another household, and an amount of nothing; an owner records one from any account of the household and moves one onto another; a contributor records none; the owner reads every payment and its audit row; recording payments leaves the loan's outstanding as it was. Pure domain test: the close with a payment named, which `money-month.test.ts` already holds (₹32,000 from HDFC); and, in the build that gives the close its payments, a voided one, another month's and one naming no account are not counted.
+- LI-I31: pgTAP: the result's columns are a currency and six sums, and no count; it raises for a contributor, for another household, and for an owner with a password alone.

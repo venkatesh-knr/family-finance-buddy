@@ -66,20 +66,17 @@ export interface MonthLoanPayment {
 }
 
 /**
- * What the database adds for a currency that the caller cannot read: another member's private accounts, the private credits into accounts the caller
- * does read, and the moves that touch a hidden account. Totals only, as `household_private_close` returns them, worked out so that the rest of the
- * month is the same as when everything is read.
+ * What the database adds for a currency that the caller cannot read: other members' private credits and the entries of their private holdings. Every
+ * account is read, so none is hidden. Totals only, as `household_private_close` returns them, worked out so that the rest of the month is the same as
+ * when everything is read.
  */
 export interface MonthUnreadable {
   readonly currency: string;
-  /** What left the hidden accounts with both balances, and the money into a readable account that the caller cannot see. */
+  /** The money into an account that the caller cannot see (a private credit; proceeds of a private holding), which raised what left it. */
   readonly left: bigint;
   readonly outside: bigint;
-  /** Moves out that the caller cannot see. */
-  readonly ownOut: bigint;
   readonly refunds: bigint;
   readonly cameIn: bigint;
-  readonly reserveChange: bigint;
   /** Money paid into holdings that the caller's own screen does not add (LI-I30). Absent is none. */
   readonly intoHoldings?: bigint;
   /** Money taken out of holdings and paid into an account, likewise. It is already in `left`. Absent is none. */
@@ -95,7 +92,7 @@ export interface MonthInput {
   readonly transfers: readonly MonthTransfer[];
   readonly holdingMoves: readonly MonthHoldingMove[];
   readonly loanPayments: readonly MonthLoanPayment[];
-  /** What the caller cannot read, summed by the database; none for a household whose accounts are all read. */
+  /** What the caller cannot read, summed by the database; none for a household with nothing private. */
   readonly unreadable?: readonly MonthUnreadable[];
 }
 
@@ -180,7 +177,7 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const hidden = (input.unreadable ?? []).filter((u) => u.currency === currency);
   const cameIn = sum(credits.filter((c) => isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.cameIn));
   const refunds = sum(credits.filter((c) => !isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.refunds));
-  const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor)) + sum(hidden.map((u) => u.ownOut));
+  const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor));
   const putIntoHoldings = sum(moves.filter((m) => m.direction === 'into').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.intoHoldings ?? 0n));
   const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.outOfHoldings ?? 0n));
   const paidToLoans = sum(loans.map((p) => p.amount.minor));
@@ -190,13 +187,12 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const spent = leftTotal + outside - ownTransfers - putIntoHoldings - refunds - paidToLoans;
   const saved = cameIn - spent;
   const invested = putIntoHoldings - takenOutOfHoldings;
-  const cashReserveChange =
-    sum(
-      accounts.map((a) => {
-        const change = (a.closing?.minor ?? 0n) - (a.opening?.minor ?? 0n);
-        return a.type === 'card' ? -change : change;
-      }),
-    ) + sum(hidden.map((u) => u.reserveChange));
+  const cashReserveChange = sum(
+    accounts.map((a) => {
+      const change = (a.closing?.minor ?? 0n) - (a.opening?.minor ?? 0n);
+      return a.type === 'card' ? -change : change;
+    }),
+  );
 
   return {
     currency,

@@ -167,7 +167,6 @@ test('LI-I24 — an account is added with a name alone, and its row shows the na
   await expect(row).toBeVisible({ timeout: 20_000 });
   await expect(row).toContainText('Savings');
   await expect(row).toContainText('no last four');
-  await expect(row).toContainText('the household sees it');
   // A nickname is enough: nothing is drawn where the last four would be.
   await expect(row).not.toContainText('••');
   await expect(row).toContainText('no balance yet');

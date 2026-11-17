@@ -1091,7 +1091,10 @@ export interface RecurringRulePatch {
 export type AccountType = 'savings' | 'current' | 'card';
 export const ACCOUNT_TYPES: readonly AccountType[] = ['savings', 'current', 'card'];
 
-/** An account of the household: a savings or current account, or a card. Cash is not one. Only its last four characters are kept. */
+/**
+ * An account of the household: a savings or current account, or a card. Cash is not one. Only its last four characters are kept. There is no private
+ * account (decisions.md, 16 November 2026): every account is the household's, and a contributor reads their own and an owner or a partner reads all.
+ */
 export interface Account {
   readonly id: Uuid;
   readonly householdId: Uuid;
@@ -1103,7 +1106,6 @@ export interface Account {
   readonly last4: string | null;
   readonly isForeign: boolean;
   readonly openedOn: IsoDate | null;
-  readonly visibility: Visibility;
   readonly isArchived: boolean;
   /** The day it was archived, in India: an account is in the closes of the months up to and including it. */
   readonly archivedOn?: IsoDate | null;
@@ -1119,7 +1121,6 @@ export interface NewAccount {
   readonly last4?: string | null;
   readonly isForeign?: boolean;
   readonly openedOn?: IsoDate | null;
-  readonly visibility?: Visibility;
 }
 
 /** What may change on an account. It is archived and never deleted. */
@@ -1131,7 +1132,6 @@ export interface AccountPatch {
   readonly isForeign?: boolean;
   readonly institution?: string | null;
   readonly last4?: string | null;
-  readonly visibility?: Visibility;
   readonly archived?: boolean;
 }
 
@@ -1327,7 +1327,7 @@ export interface NewTaxInput {
 }
 
 /**
- * The cash reserve as at a day, for the whole household, other members' private accounts included: the latest balance of each account, a
+ * The cash reserve as at a day, for the whole household, every account included: the latest balance of each account, a
  * card's taken off, per currency, with how many accounts had a balance and how many there are (*2 of 3 accounts*). No account, no member.
  */
 export interface CashReserve {
@@ -1337,22 +1337,18 @@ export interface CashReserve {
 }
 
 /**
- * What a month close needs of the money the caller cannot read: sums per currency, and how many hidden accounts had both balances out of how many
- * there are. No account, no member, no balance. The field names are the domain's `MonthUnreadable` and `counted` and `total` besides.
+ * What a month close needs of the money the caller cannot read: sums per currency, of other members' private credits and the entries of their
+ * private holdings. Every account is read, so none is hidden. No account, no member, no balance. The field names are the domain's `MonthUnreadable`.
  */
 export interface PrivateClose {
   readonly currency: string;
   readonly left: bigint;
   readonly outside: bigint;
-  readonly ownOut: bigint;
   readonly refunds: bigint;
   readonly cameIn: bigint;
-  readonly reserveChange: bigint;
   /** Money paid into, and taken out of, holdings that the caller's own screen does not add (LI-I30). */
   readonly intoHoldings: bigint;
   readonly outOfHoldings: bigint;
-  readonly counted: number;
-  readonly total: number;
 }
 
 /** What came in and what was refunded in a period, for the whole household, private credits included. One line per currency. */

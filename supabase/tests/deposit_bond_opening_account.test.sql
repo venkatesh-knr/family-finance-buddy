@@ -18,12 +18,12 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(18);
+select plan(16);
 
 -- ============================================================== the fixture
 --
 --   owner        household R: a shared account, shared holdings
---   partner      household R: a private savings account, a private deposit
+--   partner      household R: a savings account, a private deposit
 --   contributor  household R
 --   stranger     owner of household S
 
@@ -69,12 +69,12 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
   ('d9000000-0000-4000-8000-0000000000a3', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3', 'contributor'),
   ('d9000000-0000-4000-8000-0000000000b1', 'e9000000-0000-4000-8000-0000000000f2', 'f9000000-0000-4000-8000-0000000000b1', 'owner');
 
--- Accounts. 01 the household's, INR. 02 the partner's own savings, private. 03 a household USD account. 04 belongs to household S.
+-- Accounts, all the household's. 01 INR. 02 the partner's own savings. 03 a USD account. 04 belongs to household S.
 insert into public.account (id, household_id, member_id, name, type, currency, visibility, created_by) values
   ('a9000000-0000-4000-8000-000000000001', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
    'HDFC savings', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a1'),
   ('a9000000-0000-4000-8000-000000000002', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a2',
-   'Partner''s own', 'savings', 'INR', 'personal', 'd9000000-0000-4000-8000-0000000000a2'),
+   'Partner''s own', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a2'),
   ('a9000000-0000-4000-8000-000000000003', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
    'Dollar account', 'savings', 'USD', 'household', 'd9000000-0000-4000-8000-0000000000a1'),
   ('a9000000-0000-4000-8000-000000000004', 'e9000000-0000-4000-8000-0000000000f2', 'f9000000-0000-4000-8000-0000000000b1',
@@ -97,7 +97,8 @@ insert into public.instrument (id, household_id, name, kind, currency, exposure_
   ('a6000000-0000-4000-8000-000000000011', 'e9000000-0000-4000-8000-0000000000f1', 'Fund one',   'mutual_fund', 'INR', 'INR', false),
   ('a6000000-0000-4000-8000-000000000012', 'e9000000-0000-4000-8000-0000000000f1', 'Fund two',   'mutual_fund', 'INR', 'INR', false),
   ('a6000000-0000-4000-8000-000000000013', 'e9000000-0000-4000-8000-0000000000f1', 'Fund three', 'mutual_fund', 'INR', 'INR', false),
-  ('a6000000-0000-4000-8000-000000000014', 'e9000000-0000-4000-8000-0000000000f1', 'A US ETF',   'etf', 'USD', 'USD', true);
+  ('a6000000-0000-4000-8000-000000000014', 'e9000000-0000-4000-8000-0000000000f1', 'A US ETF',   'etf', 'USD', 'USD', true),
+  ('a6000000-0000-4000-8000-000000000015', 'e9000000-0000-4000-8000-0000000000f1', 'Fund five', 'mutual_fund', 'INR', 'INR', false);
 
 -- Holdings. D1 to D6 the deposits: D2 is the partner's, private; the rest the owner's. H1 to H4 opened with a cost and no purchase (H3 then given one).
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
@@ -107,6 +108,11 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
   ('b6000000-0000-4000-8000-0000000000d4', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000004', 1, 'household'),
   ('b6000000-0000-4000-8000-0000000000d5', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000005', 1, 'household'),
   ('b6000000-0000-4000-8000-0000000000d6', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000006', 1, 'household');
+
+-- The contributor's own holding, with no cost and no account.
+insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
+  ('b6000000-0000-4000-8000-0000000000e5', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
+   'a6000000-0000-4000-8000-000000000015', 1, 'household');
 
 insert into public.holding
   (id, household_id, member_id, instrument_id, quantity, visibility, cost_minor, opened_on, cost_account_id, cost_account_currency) values
@@ -124,9 +130,9 @@ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_mi
   ('e9000000-0000-4000-8000-0000000000f1', 'b6000000-0000-4000-8000-0000000000e3', '2026-10-07', 10, 111111, 'INR', 'd9000000-0000-4000-8000-0000000000a1');
 
 -- The terms. October 2026, as the month close reads it. The owner is the one asking.
---   In the sum:  D1 ₹5,000 from the partner's private account (hidden, both balances); D2 the partner's private deposit, ₹3,000 from the shared account;
---                D6 a $100 deposit paid from the partner's rupee account, ₹8,500 left it.
---   Not in it:   D3 ₹7,000 from the shared account (the owner's screen adds it); D4 a recurring deposit; D5 started in September.
+--   In the sum:  D2 the partner's private deposit, ₹3,000 from the shared account.
+--   Not in it:   D1 ₹5,000 and D6 ₹8,500 from the partner's account, and D3 ₹7,000 from the shared account (the owner's holdings, so the owner's screen adds
+--                them: every account is read); D4 a recurring deposit; D5 started in September.
 insert into public.fixed_income_terms
   (holding_id, household_id, kind, principal_minor, currency, rate_pct, start_date, maturity_date, compounding,
    account_id, account_currency, account_amount_minor, created_by) values
@@ -204,60 +210,36 @@ select throws_ok(
   'LI-I34 — nor an account of another household'
 );
 
--- ============================================== the policies: an account named is one the writer can read
+-- ============================================== the policies: every account of the household is the owner's to read
 
 set local role authenticated;
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a1';
 set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
 
-select throws_ok(
-  $q$ update public.fixed_income_terms set account_id = 'a9000000-0000-4000-8000-000000000002', account_currency = 'INR'
-       where holding_id = 'b6000000-0000-4000-8000-0000000000d3' $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — a deposit cannot be moved onto another member''s private account'
-);
-
-select throws_ok(
-  $q$ update public.fixed_income_terms set payout_account_id = 'a9000000-0000-4000-8000-000000000002'
-       where holding_id = 'b6000000-0000-4000-8000-0000000000d3' $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — nor paid out into it'
-);
-
-select throws_ok(
-  $q$ update public.holding set cost_account_id = 'a9000000-0000-4000-8000-000000000002', cost_account_currency = 'INR'
-       where id = 'b6000000-0000-4000-8000-0000000000e2' $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — nor an opening cost moved onto it'
-);
-
-select throws_ok(
-  $q$ insert into public.holding (household_id, member_id, instrument_id, quantity, cost_minor, cost_account_id, cost_account_currency)
-      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a2', 'a6000000-0000-4000-8000-000000000014', 1, 100,
-              'a9000000-0000-4000-8000-000000000002', 'INR') $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — nor a new holding opened with a cost paid from it'
+select is(
+  (select count(*)::int from public.account where id = 'a9000000-0000-4000-8000-000000000002'),
+  1,
+  'LI-I29 — the owner reads the partner''s account, so a deposit, a payout or an opening cost can name it: there is no private account'
 );
 
 -- ============================================== the sums, for the owner
 
--- Only the partner's account is hidden from the owner, and it had ₹10,000 and ₹4,000, so it left ₹6,000 and its reserve change is -₹6,000. Into holdings
--- that the owner's own screen cannot add: D1 ₹5,000, D2 ₹3,000, D6 the ₹8,500 that left, and H1 ₹4,000 = ₹20,500. Not in it: D3 and H2 (the owner's
--- screen adds them), D4 (a recurring deposit), D5 (September), H3 (it has a purchase), H4 (a cost in dollars named against a rupee account).
+-- No account is hidden from the owner. Into holdings that the owner's own screen cannot add: D2 ₹3,000, the partner's private deposit. Not in it: D1, D3, D6,
+-- H1 and H3 (the owner's own holdings, which the owner's screen adds), D4 (a recurring deposit), D5 (September), H2 (the owner's), H3 (it has a purchase),
+-- H4 (a cost in dollars named against a rupee account).
 select results_eq(
-  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor,
-            into_holdings_minor, out_of_holdings_minor, accounts_counted, accounts_total
+  $q$ select currency, left_minor, outside_minor, refunds_minor, came_in_minor, into_holdings_minor, out_of_holdings_minor
         from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
        order by currency $q$,
-  $q$ values ('INR'::text, 600000::bigint, 0::bigint, 0::bigint, 0::bigint, 0::bigint, -600000::bigint, 2050000::bigint, 0::bigint, 1, 1) $q$,
-  'LI-I35 — the sum adds a principal and an opening cost the owner''s screen cannot, and not a recurring deposit, an earlier month, a holding with a purchase, or a cost in the wrong currency'
+  $q$ values ('INR'::text, 0::bigint, 0::bigint, 0::bigint, 0::bigint, 300000::bigint, 0::bigint) $q$,
+  'LI-I35 — the sum adds only the principal of the partner''s private deposit: what the owner''s own screen adds is not in it, nor a recurring deposit, an earlier month or a cost in the wrong currency'
 );
 
 select is(
   (select proargnames from pg_proc where proname = 'household_private_close'),
-  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'own_out_minor', 'refunds_minor',
-        'came_in_minor', 'reserve_change_minor', 'into_holdings_minor', 'out_of_holdings_minor', 'accounts_counted', 'accounts_total']::text[],
-  'LI-I31 — its result is still a currency, eight sums and two counts, and no account, no member, no holding, no balance and no date'
+  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'refunds_minor',
+        'came_in_minor', 'into_holdings_minor', 'out_of_holdings_minor']::text[],
+  'LI-I31 — its result is a currency and six sums, and no account, no member, no holding, no balance and no date'
 );
 
 select throws_ok(
@@ -275,6 +257,17 @@ select throws_ok(
   $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I31 — it raises for a contributor'
+);
+
+-- LI-I29 for the role that still reads only its own accounts: account 01 is the owner's, so a contributor cannot say their holding's opening cost was paid from it.
+set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a3';
+set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000a3","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ update public.holding set cost_minor = 100, cost_account_id = 'a9000000-0000-4000-8000-000000000001', cost_account_currency = 'INR'
+       where id = 'b6000000-0000-4000-8000-0000000000e5' $q$,
+  '42501'::char(5), null::text,
+  'LI-I29 — a contributor cannot pay an opening cost from an account that is another member''s'
 );
 
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a1';

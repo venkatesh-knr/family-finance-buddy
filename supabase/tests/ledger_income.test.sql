@@ -3,7 +3,7 @@
 -- FOR REVIEW with the migration beside it (20261114120000_ledger_income.sql). Not run locally: Docker is blocked on the maintainer's
 -- machine, so CI's policy suite is the first run.
 --
--- LI-I27 — a private account is listed only to its owner; its balance reaches others only inside the cash reserve's total.
+-- LI-I27 — every account is the household's (there is no private account, decisions.md 16 November 2026); the cash reserve is a total over all of them.
 -- LI-I4  — a credit names an account of its own household, in the account's own currency, or none (accounts are optional, 14 November 2026).
 -- LI-I26 — an account's type and currency cannot change once a credit, a transfer or a balance refers to it.
 -- LI-I12 — a viewer reads no credit; a contributor reads only their own; nobody reads another member's private credit.
@@ -24,12 +24,12 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(106);
+select plan(108);
 
 -- ============================================================== the fixture
 --
---   owner        household R (demo): a household account, a personal account, a private salary, a typed row for a parent
---   partner      household R: a personal card, a private salary, tax inputs of their own
+--   owner        household R (demo): two accounts, a private salary, a typed row for a parent
+--   partner      household R: a card, a private salary, tax inputs of their own
 --   contributor  household R: an account and a salary of their own
 --   viewer       household R
 --   parent       a member of R with no login, whose tax inputs the owner typed
@@ -101,15 +101,15 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
   ('d9000000-0000-4000-8000-0000000000d1', 'e9000000-0000-4000-8000-0000000000f3',
    'f9000000-0000-4000-8000-0000000000c1', 'owner');
 
--- Accounts. 01 household, INR, the owner's. 02 the owner's personal one. 03 the partner's personal card. 04 the contributor's.
+-- Accounts, all the household's. 01 INR, the owner's. 02 the owner's own savings. 03 the partner's card. 04 the contributor's.
 -- 05 a household USD account. 06 belongs to household S.
 insert into public.account (id, household_id, member_id, name, type, currency, visibility, created_by) values
   ('a9000000-0000-4000-8000-000000000001', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
    'HDFC savings', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a1'),
   ('a9000000-0000-4000-8000-000000000002', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
-   'Owner''s own', 'savings', 'INR', 'personal', 'd9000000-0000-4000-8000-0000000000a1'),
+   'Owner''s own', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a1'),
   ('a9000000-0000-4000-8000-000000000003', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a2',
-   'Partner''s card', 'card', 'INR', 'personal', 'd9000000-0000-4000-8000-0000000000a2'),
+   'Partner''s card', 'card', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a2'),
   ('a9000000-0000-4000-8000-000000000004', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
    'Contributor''s', 'savings', 'INR', 'household', 'd9000000-0000-4000-8000-0000000000a3'),
   ('a9000000-0000-4000-8000-000000000005', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
@@ -136,7 +136,7 @@ insert into public.credit_entry
   ('b9000000-0000-4000-8000-000000000007', 'e9000000-0000-4000-8000-0000000000f2', 'f9000000-0000-4000-8000-0000000000b1',
    'a9000000-0000-4000-8000-000000000006', 'salary',    7000000, 'INR', '2026-10-01', 'personal',  'd9000000-0000-4000-8000-0000000000b1');
 
--- Balances: 01 of the household account, 02 of the owner's personal one, 03 of the partner's personal card.
+-- Balances: 01 of the shared account, 02 of the owner's own, 03 of the partner's card.
 insert into public.account_balance (id, household_id, account_id, as_at, balance_minor, currency, created_by) values
   ('c9000000-0000-4000-8000-0000000000c1', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000001',
    '2026-10-31', 21238000, 'INR', 'd9000000-0000-4000-8000-0000000000a1'),
@@ -147,7 +147,7 @@ insert into public.account_balance (id, household_id, account_id, as_at, balance
   ('c9000000-0000-4000-8000-0000000000c4', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000003',
    '2026-09-30', 100000, 'INR', 'd9000000-0000-4000-8000-0000000000a2');
 
--- Transfers: 01 from the household account to the owner's personal one; 02 from it to the partner's personal card.
+-- Transfers: 01 from the shared account to the owner's own; 02 from it to the partner's card.
 insert into public.account_transfer (id, household_id, from_account_id, to_account_id, transfer_date, amount_minor, currency, created_by) values
   ('d9000000-0000-4000-8000-0000000000d1', 'e9000000-0000-4000-8000-0000000000f1', 'a9000000-0000-4000-8000-000000000001',
    'a9000000-0000-4000-8000-000000000002', '2026-10-10', 1000000, 'INR', 'd9000000-0000-4000-8000-0000000000a1'),
@@ -451,6 +451,14 @@ select throws_ok(
 );
 
 select throws_ok(
+  $q$ insert into public.account (household_id, member_id, name, type, currency, visibility, created_by)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'Private', 'savings', 'INR', 'personal',
+              'd9000000-0000-4000-8000-0000000000a1') $q$,
+  '23514'::char(5), null::text,
+  'LI-I27 — there is no private account: the database refuses to make one'
+);
+
+select throws_ok(
   $q$ update public.account set currency = 'USD' where id = 'a9000000-0000-4000-8000-000000000001' $q$,
   '23514'::char(5), null::text,
   'LI-I26 — nor change currency, in words a person can read before the key refuses it'
@@ -485,8 +493,8 @@ set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000a1"
 
 select is(
   (select count(*)::int from public.account),
-  4,
-  'the owner reads the shared accounts and their own personal one, and not the partner''s personal card or another household''s'
+  5,
+  'LI-I27 — the owner reads every account of the household, the partner''s card among them, and not another household''s'
 );
 
 select is(
@@ -503,14 +511,14 @@ select is(
 
 select is(
   (select count(*)::int from public.account_balance),
-  2,
-  'a balance follows its account: the owner reads those of the shared account and their own, not the partner''s card'
+  4,
+  'a balance follows its account: the owner reads every balance of the household''s accounts'
 );
 
 select is(
   (select count(*)::int from public.account_transfer),
-  1,
-  'a transfer is read by whoever can read both of its accounts: the move into the partner''s personal card is not the owner''s to read'
+  2,
+  'a transfer is read by whoever can read both of its accounts, and the owner reads all of them: both moves'
 );
 
 select is_empty(
@@ -533,12 +541,10 @@ select lives_ok(
   'the owner records a parent''s income as the household''s'
 );
 
-select throws_ok(
-  $q$ insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date, visibility)
-      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1',
-              'a9000000-0000-4000-8000-000000000003', 'salary', 100, 'INR', '2026-09-02', 'personal') $q$,
-  '42501'::char(5), null::text,
-  'nor can a credit be put into an account the owner cannot read'
+select is(
+  (select count(*)::int from public.account where id = 'a9000000-0000-4000-8000-000000000003'),
+  1,
+  'LI-I27 — the owner reads the partner''s card, so a credit can be put into it: an account is not private'
 );
 
 select lives_ok(
@@ -577,15 +583,16 @@ select is_empty(
   'LI-I22 — but not the audit row of the partner''s private salary'
 );
 
-select is_empty(
-  $q$ select 1 from public.audit_log where entity = 'account' and entity_id = 'a9000000-0000-4000-8000-000000000003' $q$,
-  'nor of the partner''s personal card'
+select cmp_ok(
+  (select count(*)::int from public.audit_log where entity = 'account' and entity_id = 'a9000000-0000-4000-8000-000000000003'),
+  '>', 0,
+  'but reads the audit row of the partner''s card: an account is the household''s'
 );
 
-select is(
+select cmp_ok(
   (select count(*)::int from public.audit_log where entity = 'account_balance' and entity_id = 'c9000000-0000-4000-8000-0000000000c3'),
-  0,
-  'nor of a balance of that card'
+  '>', 0,
+  'and of a balance of that card'
 );
 
 -- ================================================ the sum function, as the owner
@@ -610,15 +617,15 @@ select throws_ok(
   'it raises for another household'
 );
 
--- The cash reserve at 31 October: the household's savings ₹2,12,380 and the owner's own ₹5,000, less the ₹2,200 due on the partner's card
--- (a private account of each): ₹2,15,180, counted over three of the four rupee accounts (the contributor's has no balance). The dollar account has
+-- The cash reserve at 31 October: the household's savings ₹2,12,380 and the owner's own ₹5,000, less the ₹2,200 due on the partner's card:
+-- ₹2,15,180, counted over three of the four rupee accounts (the contributor's has no balance). The dollar account has
 -- no balance at all, so its sum is nothing and its count is none, which the screen says and does not show as a reserve.
 select results_eq(
   $q$ select currency, reserve_minor, accounts_counted, accounts_total
         from public.household_cash_reserve('e9000000-0000-4000-8000-0000000000f1', '2026-10-31')
        order by currency $q$,
   $q$ values ('INR'::text, 21518000::bigint, 3, 4), ('USD'::text, 0::bigint, 0, 1) $q$,
-  'LI-I27 — the cash reserve counts a personal account and takes a card’s due off, per currency, with how many accounts it counted'
+  'LI-I27 — the cash reserve counts every account and takes a card’s due off, per currency, with how many accounts it counted'
 );
 
 select is(
@@ -641,24 +648,22 @@ select throws_ok(
   'LI-I27 — the cash reserve raises for another household'
 );
 
--- The month close of what the owner cannot read, October 2026. The partner's card is hidden from the owner and has both balances (due ₹1,000 on
--- 30 September and ₹2,200 on 31 October), so it left ₹2,200 - ₹1,000 + the ₹18,240 moved into it = ₹19,440. The partner's private salary
--- (₹90,000) into the shared account and the contributor's (₹50,000) into theirs are money in that the owner cannot see, so what left those
--- accounts reads ₹1,40,000 less than it should without them. The move from the shared account into the card is a move out that the owner cannot
--- see. Came in is the two salaries, ₹1,40,000, and the card's due rose ₹1,200, which is ₹-1,200 of reserve.
+-- The month close of what the owner cannot read, October 2026. Every account is read, so only credits are left: the partner's private salary
+-- (₹90,000) into the shared account and the contributor's (₹50,000) into theirs are money in that the owner cannot see, so what left those accounts
+-- reads ₹1,40,000 less than it should without them. Came in is the two salaries, ₹1,40,000. The move into the partner's card is the owner's to see.
 select results_eq(
-  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor, accounts_counted, accounts_total
+  $q$ select currency, left_minor, outside_minor, refunds_minor, came_in_minor, into_holdings_minor, out_of_holdings_minor
         from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
        order by currency $q$,
-  $q$ values ('INR'::text, 15944000::bigint, 0::bigint, 1824000::bigint, 0::bigint, 14000000::bigint, -120000::bigint, 1, 1) $q$,
-  'the month close of what the owner cannot read adds the partner''s card, the private salaries into readable accounts and the move into the card, per currency'
+  $q$ values ('INR'::text, 14000000::bigint, 0::bigint, 0::bigint, 14000000::bigint, 0::bigint, 0::bigint) $q$,
+  'the month close of what the owner cannot read adds the private salaries into accounts the owner reads, per currency, and nothing of any account'
 );
 
 select is(
   (select proargnames from pg_proc where proname = 'household_private_close'),
-  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'own_out_minor', 'refunds_minor',
-        'came_in_minor', 'reserve_change_minor', 'into_holdings_minor', 'out_of_holdings_minor', 'accounts_counted', 'accounts_total']::text[],
-  'its result has a currency, eight sums and two counts, and no account, no member, no balance and no date'
+  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'refunds_minor',
+        'came_in_minor', 'into_holdings_minor', 'out_of_holdings_minor']::text[],
+  'its result has a currency and six sums, and no account, no member, no balance and no date'
 );
 
 select throws_ok(
@@ -747,12 +752,12 @@ select is(
   'and its yearly income: one line, in rupees'
 );
 
--- The partner cannot read the owner's personal account or its balance, and the reserve they are given still counts both.
+-- The partner reads the owner's own account and its balance: an account is the household's. The reserve they are given counts both.
 select is(
   (select count(*)::int from public.account where id = 'a9000000-0000-4000-8000-000000000002')
   + (select count(*)::int from public.account_balance where account_id = 'a9000000-0000-4000-8000-000000000002'),
-  0,
-  'LI-I27 — the partner reads no row of the owner’s personal account and no balance of it'
+  2,
+  'LI-I27 — the partner reads the owner’s own account and its balance'
 );
 
 select results_eq(
@@ -763,16 +768,14 @@ select results_eq(
   'LI-I27 — and the cash reserve returned to the partner includes it, as a total'
 );
 
--- For the partner the hidden account is the owner's own, which has a closing balance and no opening one, so it is counted as none of one and
--- contributes nothing else. Three private salaries into shared accounts are money in the partner cannot see: the owner's ₹1,42,000 and the
--- ₹1,42,000 confirmed from the salary rule (a credit is personal unless said otherwise), and the contributor's ₹50,000, ₹3,34,000 in all. The move
--- from the shared account into the owner's own is a move out the partner cannot see (the move into the partner's own card is theirs to see).
+-- For the partner no account is hidden. Three private salaries into shared accounts are money in the partner cannot see: the owner's ₹1,42,000 and the
+-- ₹1,42,000 confirmed from the salary rule (a credit is personal unless said otherwise), and the contributor's ₹50,000, ₹3,34,000 in all.
 select results_eq(
-  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor, accounts_counted, accounts_total
+  $q$ select currency, left_minor, outside_minor, refunds_minor, came_in_minor, into_holdings_minor, out_of_holdings_minor
         from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
        order by currency $q$,
-  $q$ values ('INR'::text, 33400000::bigint, 0::bigint, 1000000::bigint, 0::bigint, 33400000::bigint, 0::bigint, 0, 1) $q$,
-  'for the partner it adds the private salaries into shared accounts, the move into the owner''s own account, and counts that account as not ready'
+  $q$ values ('INR'::text, 33400000::bigint, 0::bigint, 0::bigint, 33400000::bigint, 0::bigint, 0::bigint) $q$,
+  'for the partner it adds the private salaries into shared accounts, and nothing of any account'
 );
 
 -- ================================================== the contributor
@@ -811,6 +814,14 @@ select throws_ok(
               'a9000000-0000-4000-8000-000000000004', 'interest', 5000, 'INR', '2026-09-20', 'household') $q$,
   '42501'::char(5), null::text,
   'but not under somebody else''s name'
+);
+
+select throws_ok(
+  $q$ insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date, visibility)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
+              'a9000000-0000-4000-8000-000000000001', 'interest', 5000, 'INR', '2026-09-20', 'household') $q$,
+  '42501'::char(5), null::text,
+  'LI-I4 — nor into an account that is another member''s: a contributor reads only their own'
 );
 
 select throws_ok(

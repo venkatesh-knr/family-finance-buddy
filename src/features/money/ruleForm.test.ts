@@ -19,7 +19,6 @@ const account = (patch: Partial<Account>): Account => ({
   last4: '7710',
   isForeign: false,
   openedOn: null,
-  visibility: 'household',
   isArchived: false,
   ...patch,
 });

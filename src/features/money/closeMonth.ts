@@ -84,7 +84,7 @@ export interface CloseInput {
   /** The payments on loans (ledger-income.md section 4c). Those that name an account are paid to loans, and are not spent. */
   readonly loanPayments?: readonly CloseLoanPayment[];
   /** What the database adds of the money the caller cannot read, for an owner or a partner. None for anyone else. */
-  readonly unreadable?: readonly (MonthUnreadable & { readonly counted?: number })[];
+  readonly unreadable?: readonly MonthUnreadable[];
   readonly typed: TypedBalances;
 }
 
@@ -131,9 +131,9 @@ export function closeFigures(input: CloseInput): CloseFigures {
   if (accounts.length === 0) return { status: 'no-accounts' };
   const opensOn = lastDayOf(addMonths(`${input.month}-01`, -1).slice(0, 7));
   const closesOn = lastDayOf(input.month);
-  // A currency in which no account is read and no hidden account had both balances has no honest figure, and is not drawn as a month of nothing.
+  // A currency in which no account is read has no honest figure, and is not drawn as a month of nothing.
   const readIn = new Set(accounts.map((account) => account.currency));
-  const unreadable = (input.unreadable ?? []).filter((line) => readIn.has(line.currency) || line.outside !== 0n || (line.counted ?? 1) > 0);
+  const unreadable = (input.unreadable ?? []).filter((line) => readIn.has(line.currency) || line.outside !== 0n);
 
   const result = closedMonthFigures({
     month: input.month,

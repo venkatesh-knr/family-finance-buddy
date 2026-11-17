@@ -4,9 +4,9 @@
 -- machine, so CI's policy suite is the first run.
 --
 -- LI-I28 — an entry names an account of its own household, in its own currency, or none.
--- LI-I29 — an entry names only an account its writer can read: a purchase cannot be attached to another member's private account.
--- LI-I30 — the month close's sum function adds the holding entries the caller's own screen cannot, and only those: a purchase from a hidden account,
---          a purchase of another member's private holding from an account the caller reads, and the proceeds of a sale in the same cases.
+-- LI-I29 — an entry may name any account of the household: there is no private account (decisions.md, 16 November 2026).
+-- LI-I30 — the month close's sum function adds the holding entries the caller's own screen cannot, and only those: a purchase of another member's
+--          private holding from an account the caller reads, and the proceeds of a sale in the same case.
 -- LI-I31 — what that function returns has no account, no member, no holding and no date, and it is refused to anyone but an owner or a partner
 --          with a second factor.
 --
@@ -18,12 +18,12 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(18);
+select plan(20);
 
 -- ============================================================== the fixture
 --
 --   owner        household R: a shared account, the shared holding
---   partner      household R: a private savings account, a private holding
+--   partner      household R: a savings account, a private holding
 --   contributor  household R
 --   stranger     owner of household S
 
@@ -69,12 +69,12 @@ insert into public.membership (user_account_id, household_id, member_id, role) v
   ('d8000000-0000-4000-8000-0000000000a3', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a3', 'contributor'),
   ('d8000000-0000-4000-8000-0000000000b1', 'e8000000-0000-4000-8000-0000000000f2', 'f8000000-0000-4000-8000-0000000000b1', 'owner');
 
--- Accounts. 01 the household's, INR. 02 the partner's own savings, private. 03 a household USD account. 04 belongs to household S.
+-- Accounts, all the household's. 01 INR. 02 the partner's own savings. 03 a USD account. 04 belongs to household S.
 insert into public.account (id, household_id, member_id, name, type, currency, visibility, created_by) values
   ('a8000000-0000-4000-8000-000000000001', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'HDFC savings', 'savings', 'INR', 'household', 'd8000000-0000-4000-8000-0000000000a1'),
   ('a8000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a2',
-   'Partner''s own', 'savings', 'INR', 'personal', 'd8000000-0000-4000-8000-0000000000a2'),
+   'Partner''s own', 'savings', 'INR', 'household', 'd8000000-0000-4000-8000-0000000000a2'),
   ('a8000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'Dollar account', 'savings', 'USD', 'household', 'd8000000-0000-4000-8000-0000000000a1'),
   ('a8000000-0000-4000-8000-000000000004', 'e8000000-0000-4000-8000-0000000000f2', 'f8000000-0000-4000-8000-0000000000b1',
@@ -99,15 +99,16 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
 insert into public.instrument (id, household_id, name, kind, currency, exposure_currency, is_foreign_asset) values
   ('a7000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'A US ETF', 'etf', 'USD', 'USD', true);
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
+  ('b7000000-0000-4000-8000-000000000004', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a3',
+   'a7000000-0000-4000-8000-000000000001', 4, 'household'),
   ('b7000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'a7000000-0000-4000-8000-000000000002', 5, 'household');
 
 -- October 2026, as the month close reads it. The owner is the one asking.
---   Seen by the owner's own screen, so not in the sum: a ₹7,000 purchase of the shared holding from the shared account.
---   Not in the sum for another reason: a purchase in November, and a gift (no money moved) paid into the hidden account.
---   In it: ₹5,000 purchase of the shared holding from the partner's private account, and ₹2,000 of proceeds paid into it;
---          ₹3,000 purchase of the partner's private holding from the shared account, and ₹1,000 of proceeds paid into it;
---          a $100 purchase of the dollar ETF that took ₹8,500 out of the partner's rupee account, and a $50 sale that paid ₹4,000 into it.
+--   Seen by the owner's own screen, so not in the sum: a ₹7,000 purchase of the shared holding from the shared account, and everything paid from or into
+--   the partner's account for a holding of the household's, since every account is read.
+--   Not in the sum for another reason: a purchase in November, and a gift (no money moved).
+--   In it: ₹3,000 purchase of the partner's private holding from the shared account, and ₹1,000 of proceeds paid into it.
 insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, kind, account_id, account_currency, created_by) values
   ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-03', 1, 700000, 'INR', 'purchase',
    'a8000000-0000-4000-8000-000000000001', 'INR', 'd8000000-0000-4000-8000-0000000000a1'),
@@ -212,19 +213,17 @@ select lives_ok(
   'LI-I28 — and names none just as well'
 );
 
-select throws_ok(
+select lives_ok(
   $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-02', 1, 100, 'INR',
               'a8000000-0000-4000-8000-000000000002', 'INR') $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — a purchase cannot be paid from another member''s private account'
+  'LI-I29 — a purchase can be paid from the partner''s account: there is no private account'
 );
 
-select throws_ok(
+select lives_ok(
   $q$ update public.lot set account_id = 'a8000000-0000-4000-8000-000000000002', account_currency = 'INR'
        where holding_id = 'b7000000-0000-4000-8000-000000000001' and acquired_on = '2026-10-03' $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — nor can an existing purchase be moved onto it'
+  'LI-I29 — and an existing purchase can be moved onto it'
 );
 
 select lives_ok(
@@ -234,37 +233,32 @@ select lives_ok(
   'LI-I28 — a sale is paid into a shared account'
 );
 
-select throws_ok(
+select lives_ok(
   $q$ insert into public.disposal (household_id, holding_id, disposed_on, quantity, proceeds_minor, currency, account_id, account_currency)
       values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000001', '2026-10-25', 1, 100, 'INR',
               'a8000000-0000-4000-8000-000000000002', 'INR') $q$,
-  '42501'::char(5), null::text,
-  'LI-I29 — but not into another member''s private account'
+  'LI-I29 — and a sale can be paid into it'
 );
 
 -- ============================================== the sums, for the owner
 
--- The rows added above by the owner for October (small purchases and a sale of shared holdings, from the shared account) are seen by the owner's own
--- screen and add nothing. What the owner's screen cannot add, for October 2026, per the fixture: the partner's account had ₹10,000 and ₹4,000, so it
--- left ₹10,000 - ₹4,000 = ₹6,000 before any holding money came back, and its reserve change is -₹6,000. Proceeds paid into it are money in: ₹2,000,
--- and the ₹4,000 of the dollar sale as its statement shows it, so it left ₹12,000. ₹1,000 of proceeds of the partner's private holding paid into the
--- shared account makes left ₹13,000. Money into holdings that the owner's screen does not add is ₹5,000 + ₹3,000 + the ₹8,500 that left for the
--- dollar purchase = ₹16,500, and money out is ₹2,000 + ₹1,000 + ₹4,000 = ₹7,000. The ₹7,000 purchase in the shared holding is the owner's to see, the November purchase is another month's,
--- and the ₹9,999.99 gift moved no money.
+-- The rows added above by the owner for October are of shared holdings and are seen by the owner's own screen: they add nothing. What the owner's screen
+-- cannot add, for October 2026, per the fixture: ₹3,000 into the partner's private holding from the shared account, and ₹1,000 of its proceeds paid into the
+-- shared account, which is money in to that account and so left it: ₹1,000 left, ₹1,000 out of holdings. Everything paid from or into the partner's account
+-- for a shared holding is the owner's to see, the November purchase is another month's, and the ₹9,999.99 gift moved no money.
 select results_eq(
-  $q$ select currency, left_minor, outside_minor, own_out_minor, refunds_minor, came_in_minor, reserve_change_minor,
-            into_holdings_minor, out_of_holdings_minor, accounts_counted, accounts_total
+  $q$ select currency, left_minor, outside_minor, refunds_minor, came_in_minor, into_holdings_minor, out_of_holdings_minor
         from public.household_private_close('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31')
        order by currency $q$,
-  $q$ values ('INR'::text, 1300000::bigint, 0::bigint, 0::bigint, 0::bigint, 0::bigint, -600000::bigint, 1650000::bigint, 700000::bigint, 1, 1) $q$,
-  'LI-I30 — the sum adds a purchase from a hidden account and one of a private holding from a readable account, and the proceeds likewise, and nothing the caller''s screen adds'
+  $q$ values ('INR'::text, 100000::bigint, 0::bigint, 0::bigint, 0::bigint, 300000::bigint, 100000::bigint) $q$,
+  'LI-I30 — the sum adds a purchase of a private holding and its proceeds, and nothing the caller''s screen adds'
 );
 
 select is(
   (select proargnames from pg_proc where proname = 'household_private_close'),
-  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'own_out_minor', 'refunds_minor',
-        'came_in_minor', 'reserve_change_minor', 'into_holdings_minor', 'out_of_holdings_minor', 'accounts_counted', 'accounts_total']::text[],
-  'LI-I31 — its result has a currency, eight sums and two counts, and no account, no member, no holding, no balance and no date'
+  array['target_household_id', 'month_first', 'month_last', 'currency', 'left_minor', 'outside_minor', 'refunds_minor',
+        'came_in_minor', 'into_holdings_minor', 'out_of_holdings_minor']::text[],
+  'LI-I31 — its result has a currency and six sums, and no account, no member, no holding, no balance and no date'
 );
 
 select throws_ok(
@@ -282,6 +276,21 @@ select throws_ok(
   $q$ select * from public.household_private_close('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I31 — it raises for a contributor'
+);
+
+-- LI-I29 for the role that still reads only its own accounts: the contributor holds holding 04, and account 01 is the owner's, not theirs.
+select throws_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000004', '2026-10-02', 1, 100, 'INR',
+              'a8000000-0000-4000-8000-000000000001', 'INR') $q$,
+  '42501'::char(5), null::text,
+  'LI-I29 — a contributor cannot pay a purchase of their own holding from an account that is another member''s'
+);
+
+select lives_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000004', '2026-10-02', 1, 100, 'INR') $q$,
+  'LI-I29 — the same purchase with no account is theirs to record, so it was the account that was refused'
 );
 
 set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000a1';

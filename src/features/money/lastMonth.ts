@@ -17,7 +17,7 @@ export type LastMonthView =
       readonly cameIn: readonly Money[];
       readonly spent: readonly Money[];
       readonly saved: readonly Money[];
-      /** The accounts the figures cover, and the accounts there are: the ones read, and the private ones the database counted. */
+      /** The accounts the figures cover, and the accounts there are: every account is read, so the two are the same. */
       readonly counted: number;
       readonly total: number;
       /** Purchases, sales and PPF entries of the month that named no account: their money is still in spent. */
@@ -34,8 +34,6 @@ export function lastMonthView(input: {
   readonly close: CloseFigures;
   /** The accounts in the close that the caller reads. */
   readonly readable: number;
-  /** What the database counted of the accounts the caller cannot read, for an owner or a partner. */
-  readonly hidden: readonly { readonly counted: number; readonly total: number }[];
   /** Set while what the figures need is being read, or when it could not be. */
   readonly reading?: 'loading' | 'failed';
   /** How many of the month's purchases, sales and PPF entries the caller reads named no account. */
@@ -51,8 +49,8 @@ export function lastMonthView(input: {
     cameIn: close.currencies.map((line) => money(line.cameIn, line.currency)),
     spent: close.currencies.map((line) => money(line.spent, line.currency)),
     saved: close.currencies.map((line) => money(line.saved, line.currency)),
-    counted: input.readable + input.hidden.reduce((total, line) => total + line.counted, 0),
-    total: input.readable + input.hidden.reduce((total, line) => total + line.total, 0),
+    counted: input.readable,
+    total: input.readable,
     unnamedEntries: input.unnamedEntries ?? 0,
   };
 }
