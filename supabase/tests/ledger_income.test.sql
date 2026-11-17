@@ -451,8 +451,9 @@ select throws_ok(
 );
 
 select throws_ok(
-  $q$ insert into public.account (household_id, member_id, name, type, currency, visibility)
-      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'Private', 'savings', 'INR', 'personal') $q$,
+  $q$ insert into public.account (household_id, member_id, name, type, currency, visibility, created_by)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'Private', 'savings', 'INR', 'personal',
+              'd9000000-0000-4000-8000-0000000000a1') $q$,
   '23514'::char(5), null::text,
   'LI-I27 — there is no private account: the database refuses to make one'
 );
