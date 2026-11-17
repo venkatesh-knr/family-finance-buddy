@@ -327,6 +327,15 @@ The maintainer's decision, on the open question above: a deposit reaches net wor
 
 - **A person may state a month's total.** The owner asked that a household that does not want to itemise every spend, but knows roughly what a month cost, can give the month's total, including the case of a month partly itemised where the person gives the rest. Designed in `spending-capture.md` section 11 and not built: one typed total per ended month and currency, living costs only (not investments, not loan EMIs, not moves between own accounts); balances win when a month has both, with the stated figure shown beside as a cross-check; the source of every month's spent is named; saved from a stated month is labelled rough and the exact split is not claimed; the rest is a shortcut that saves the total, so itemising later double-counts nothing; changed by voiding and stating again; an owner or a partner reads and writes it. **Not in the first build, by my reading of the owner's answers:** a figure for the open month, and a standing "usual monthly spend". Both are options if asked for.
 
+## The export and the template (17 November 2026, the owner)
+
+The owner asked for a report with only what a person views and a template with only what a person can understand and add, and decided it, sheets and fields both. Designed in `docs/design/export-redesign.md` (invariants XR-I1 to XR-I12); the build is in slices, each its own PR: the report, its charts, template version 3 with its reader, then the screens.
+
+- **Three files: a report, a template, and a complete backup.** The report is for reading and keeping your figures; the template is for adding data in bulk; the complete backup is today's file, unchanged (template version 2), kept for restoring, moving to another app and the round trip of blueprint §14, and still accepted by upload.
+- **Purchases and sales have a sheet in both the report and the template.** A statement (eCAS) upload in the app still adds them for most people; the sheet is for what a statement does not cover.
+- **Value history has a sheet in the report only.** It was in the template for a day, and the owner removed it there: few people have past values to hand at setup.
+- **Charts are on Summary, Spending and Investments only.** Native Excel charts that read their sheet's own cells, in rupees, never adding currencies. None on Monthly plan, Purchases and sales, Value history, Deposits, Insurance or Property: each is a short list a chart would repeat.
+
 ## Bank and card import (October 2026), not started
 
 - Sources are an HDFC savings account, an ICICI savings account and an ICICI credit card, in the formats listed in the plan
