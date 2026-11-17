@@ -1,6 +1,6 @@
 /**
  * The household's cash reserve as at the last day of a closed month, per currency: the latest balance of each account, a card's due taken off, with how
- * many accounts had a balance and how many there are, other members' private accounts inside the total without their rows (`household_cash_reserve`,
+ * many accounts had a balance and how many there are, over every account of the household (`household_cash_reserve`,
  * LI-I27). An owner or a partner only: the database refuses anyone else. A failed read is `failed` and never a reserve of nothing.
  */
 

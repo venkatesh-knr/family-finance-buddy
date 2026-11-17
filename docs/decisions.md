@@ -603,3 +603,10 @@ decided it is not required, since a salary recorded for a different amount is re
   purchase in what left it, as the design already said of a joint account (*private in the list only*). The live household's data is dummy, so nothing is lost by the change. **Its own step, not built here:** a
   migration makes every account household-visible and refuses a private one, removes the hidden-account branches of `household_private_close`, the *an account you cannot see* states and the account-readable clauses,
   and rewrites the tests that seed a private account. Until it has run, the rules stand as built, and the loan payment carries three small clauses that go with it (`ledger-income.md` section 4c).
+- **Accounts are always visible: built (17 November 2026, migration `20261117120000_accounts_always_visible.sql`).** Every account is made household-visible and a check refuses a `personal` one (the column stays,
+  with one value, so no table that refers to an account changes shape). The account policies lose their visibility clause; the loan payment loses the three interim clauses; `household_private_close` is recreated
+  without its hidden-account branches and without the columns that existed for them (`own_out_minor`, `reserve_change_minor`, `accounts_counted`, `accounts_total`), leaving what it is for: other members' private
+  credits and private holdings' entries. **Where this departs from the wording above:** the account-readable clauses on the credit, balance, transfer, lot, disposal, PPF and deposit policies **stay**, and so do the
+  *an account you cannot see* states on the holding and credit forms. They were never only about privacy: a contributor reads only their own accounts and an owner or a partner read all (the role model, unchanged), so a
+  contributor still cannot name another member's account, and a row that does is still shown as naming one they cannot read. For an owner or a partner they never apply now. Audit rows already written for a personal
+  account keep the visibility they were written with: the log is append-only.

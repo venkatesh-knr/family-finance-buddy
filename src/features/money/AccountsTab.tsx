@@ -4,11 +4,10 @@
  * Accounts are optional: a family can start without any, and the screen says what a month is like without them and what adding them gives.
  * With some, the lifted surface is the cash reserve: the total of the balances at the last month-end that has any, a card's due taken off, per
  * currency, with how many accounts it counts and the *Close October* button (a first close is asked for until there is a balance); a soft panel
- * lists the accounts, each with its type, whose it is, who sees it and its last balance; then the button, the archived ones folded, and
- * what is kept. A private account is listed only to its owner, because row-level security returns nothing else.
+ * lists the accounts, each with its type, whose it is and its last balance; then the button, the archived ones folded, and
+ * what is kept. Every account is the household's: an owner or a partner is listed all of them, a contributor their own.
  *
- * No figure here is worked out. The reserve is the database's sum (`household_cash_reserve`), with other members' private accounts inside the
- * total (LI-I27); a failed or empty read says so and is never a reserve of nothing.
+ * No figure here is worked out. The reserve is the database's sum (`household_cash_reserve`), over every account of the household (LI-I27); a failed or empty read says so and is never a reserve of nothing.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -34,15 +33,6 @@ function WhatIsKept() {
         to your bank. Balances are typed at the month close, or read from a statement on your phone.
       </p>
     </section>
-  );
-}
-
-function Lock() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </svg>
   );
 }
 
@@ -102,7 +92,7 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
   };
 
   const row = (account: Account) => {
-    const parts = accountRow(account, { members: data.members, viewerMemberId: data.viewer.memberId, balance: latest.get(account.id) ?? null, privacy });
+    const parts = accountRow(account, { members: data.members, balance: latest.get(account.id) ?? null, privacy });
     return (
       <li key={account.id}>
         <button
@@ -114,11 +104,6 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
             void open(account);
           }}
         >
-          {parts.private && (
-            <span className="account-badge">
-              <Lock />
-            </span>
-          )}
           <span className="flat-row-main">
             <span className="flat-row-title">{parts.title}</span>
             <span className="note">{parts.sub}</span>
@@ -205,9 +190,6 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
             <h2 className="label">Accounts</h2>
           </div>
           {split.active.length === 0 ? <p className="note">Every account is archived.</p> : <ul className="flat-rows">{split.active.map(row)}</ul>}
-          {readsHousehold && (
-            <p className="note mt-2">Accounts another member keeps private are not listed. Their balances are in the cash reserve, as part of the total.</p>
-          )}
         </section>
       )}
 
@@ -237,7 +219,7 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
           {archivedOpen && (
             <ul className="flat-rows mt-2">
               {split.archived.map((account) => {
-                const parts = accountRow(account, { members: data.members, viewerMemberId: data.viewer.memberId, balance: null, privacy });
+                const parts = accountRow(account, { members: data.members, balance: null, privacy });
                 return (
                   <li key={account.id}>
                     <button

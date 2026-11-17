@@ -427,9 +427,9 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
   membership: 'Who may sign in, and with what role. Access, not records, and it is rebuilt by inviting people.',
   invite: 'An invitation’s code is a credential, and a hash of one.',
   account:
-    'Step 6a (docs/design/ledger-income.md section 12). Its sheet, the template version and what an upload may write to it are decided with the first screen that reads it, as a personal account’s rows stay hidden from everyone else.',
+    'Step 6a (docs/design/ledger-income.md section 12). Its sheet, the template version and what an upload may write to it are decided with the first screen that reads it. There is no private account.',
   account_balance:
-    'Step 6a. As private as the account it is a balance of. Its sheet arrives with the month close that reads it (step 6d), and not before.',
+    'Step 6a. Read as the account it is a balance of is. Its sheet arrives with the month close that reads it (step 6d), and not before.',
   credit_entry:
     'Step 6a. Money in, private by default (blueprint section 20). Its sheet, and whether an upload may write a private credit at all, are decided with the first screen that reads it, so no one is handed a file of other members’ income.',
   account_transfer:

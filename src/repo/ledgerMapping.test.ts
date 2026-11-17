@@ -18,7 +18,6 @@ const account = {
   account_last4: '4821',
   is_foreign: false,
   opened_on: '2019-04-01',
-  visibility: 'household',
   status: 'active',
 };
 
@@ -53,7 +52,6 @@ describe('toAccount', () => {
       last4: '4821',
       isForeign: false,
       openedOn: '2019-04-01',
-      visibility: 'household',
       isArchived: false,
       archivedOn: null,
     });
@@ -71,8 +69,8 @@ describe('toAccount', () => {
     expect(() => toAccount({ ...account, type: 'cash' })).toThrow(MalformedRowError);
   });
 
-  it('refuses a row with no visibility rather than assuming it is shared', () => {
-    expect(() => toAccount({ ...account, visibility: undefined })).toThrow(MalformedRowError);
+  it('reads no visibility: every account is the household’s', () => {
+    expect(toAccount(account)).not.toHaveProperty('visibility');
   });
 });
 
@@ -254,33 +252,25 @@ describe('the sum functions’ rows', () => {
     expect(Object.keys(reserve)).toEqual(['reserve', 'counted', 'total']);
   });
 
-  it('reads the month close of what the caller cannot read as sums per currency and two counts, and nothing about an account or a member', () => {
+  it('reads the month close of what the caller cannot read as sums per currency, and nothing about an account or a member', () => {
     const row = {
       currency: 'INR',
       left_minor: '15944000',
       outside_minor: '0',
-      own_out_minor: '1824000',
       refunds_minor: '0',
       came_in_minor: '14000000',
-      reserve_change_minor: '-120000',
       into_holdings_minor: '800000',
       out_of_holdings_minor: '300000',
-      accounts_counted: 1,
-      accounts_total: 2,
     };
     const close = toPrivateClose(row);
     expect(close).toEqual({
       currency: 'INR',
       left: 15_944_000n,
       outside: 0n,
-      ownOut: 1_824_000n,
       refunds: 0n,
       cameIn: 14_000_000n,
-      reserveChange: -120_000n,
       intoHoldings: 800_000n,
       outOfHoldings: 300_000n,
-      counted: 1,
-      total: 2,
     });
     expect(() => toPrivateClose({ ...row, left_minor: 'a lot' })).toThrow(MalformedRowError);
   });

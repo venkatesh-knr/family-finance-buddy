@@ -18,7 +18,6 @@ const account = (id: string, isArchived = false): Account => ({
   last4: null,
   isForeign: false,
   openedOn: null,
-  visibility: 'household',
   isArchived,
 });
 

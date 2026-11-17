@@ -16,7 +16,7 @@ const closed = { status: 'figures', currencies: [figures('INR', 143_250, 69_670,
 
 describe('lastMonthView', () => {
   it('is the close\u2019s own came in, spent and saved when the month was closed, with how many accounts it covers', () => {
-    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3, hidden: [] });
+    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3 });
     expect(view).toEqual({
       kind: 'closed',
       month: '2026-10',
@@ -30,13 +30,8 @@ describe('lastMonthView', () => {
   });
 
   it('says how many of the month’s purchases and sales named no account, whose money is still in spent', () => {
-    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3, hidden: [], unnamedEntries: 2 });
+    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3, unnamedEntries: 2 });
     expect(view.kind === 'closed' && view.unnamedEntries).toBe(2);
-  });
-
-  it('counts the private accounts the database added, with how many had both balances', () => {
-    const view = lastMonthView({ month: '2026-10', close: closed, readable: 2, hidden: [{ counted: 1, total: 2 }] });
-    expect(view.kind === 'closed' && [view.counted, view.total]).toEqual([3, 4]);
   });
 
   it('keeps one line for each currency, as the close has them', () => {
@@ -44,13 +39,12 @@ describe('lastMonthView', () => {
       month: '2026-10',
       close: { status: 'figures', currencies: [figures('INR', 100, 40, 60), figures('USD', 10, 4, 6)] },
       readable: 2,
-      hidden: [],
     });
     expect(view.kind === 'closed' && view.saved.map((line) => line.currency)).toEqual(['INR', 'USD']);
   });
 
   it('is the open state when a balance is still missing, when there is no account in use, and never a month of nothing', () => {
-    expect(lastMonthView({ month: '2026-10', close: { status: 'missing', missing: ['card'] }, readable: 3, hidden: [] })).toEqual({
+    expect(lastMonthView({ month: '2026-10', close: { status: 'missing', missing: ['card'] }, readable: 3 })).toEqual({
       kind: 'open',
       month: '2026-10',
       noAccounts: false,
@@ -58,12 +52,12 @@ describe('lastMonthView', () => {
   });
 
   it('says a household with no account in use is on what was entered, and not that a month is waiting to be closed: it cannot be', () => {
-    expect(lastMonthView({ month: '2026-10', close: { status: 'no-accounts' }, readable: 0, hidden: [] })).toEqual({ kind: 'open', month: '2026-10', noAccounts: true });
+    expect(lastMonthView({ month: '2026-10', close: { status: 'no-accounts' }, readable: 0 })).toEqual({ kind: 'open', month: '2026-10', noAccounts: true });
   });
 
   it('says it is still being read, or could not be read, instead of showing the open state: a month that is closed must not look open', () => {
-    expect(lastMonthView({ month: '2026-10', close: closed, readable: 3, hidden: [], reading: 'loading' })).toEqual({ kind: 'reading', month: '2026-10' });
-    expect(lastMonthView({ month: '2026-10', close: closed, readable: 3, hidden: [], reading: 'failed' })).toEqual({ kind: 'failed', month: '2026-10' });
+    expect(lastMonthView({ month: '2026-10', close: closed, readable: 3, reading: 'loading' })).toEqual({ kind: 'reading', month: '2026-10' });
+    expect(lastMonthView({ month: '2026-10', close: closed, readable: 3, reading: 'failed' })).toEqual({ kind: 'failed', month: '2026-10' });
   });
 });
 

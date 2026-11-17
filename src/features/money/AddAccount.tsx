@@ -12,7 +12,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { Account, AccountPatch, AccountType, NewAccount, Visibility } from '../../repo/types.ts';
+import type { Account, AccountPatch, AccountType, NewAccount } from '../../repo/types.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Field, Problem, RequiredKey, RequiredMark } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
@@ -57,7 +57,6 @@ export function AddAccount({
   const [name, setName] = useState(editing?.name ?? '');
   const [type, setType] = useState<AccountType>(editing?.type ?? 'savings');
   const [memberId, setMemberId] = useState(editing?.memberId ?? viewer.memberId);
-  const [visibility, setVisibility] = useState<Visibility>(editing?.visibility ?? 'household');
   const [institution, setInstitution] = useState(editing?.institution ?? '');
   const [last4, setLast4] = useState(editing?.last4 ?? '');
   const [currency, setCurrency] = useState(editing?.currency ?? 'INR');
@@ -68,9 +67,6 @@ export function AddAccount({
   const [tried, setTried] = useState(false);
 
   const other = currency !== 'INR';
-  const mine = memberId === viewer.memberId;
-  // Only the member an account belongs to can make it private: the policy refuses it for anyone else.
-  const effectiveVisibility: Visibility = mine ? visibility : 'household';
 
   const nameError = name.trim() === '' ? 'Give it a name, such as Salary account.' : name.trim().length > 80 ? 'A name is up to 80 characters.' : null;
   const last4Error = last4Problem(last4);
@@ -94,7 +90,6 @@ export function AddAccount({
           institution: institution.trim() === '' ? null : institution.trim(),
           last4: last4.trim() === '' ? null : last4.trim(),
           isForeign: other ? foreign === true : false,
-          visibility: effectiveVisibility,
         });
         onSaved(made.id);
       } else {
@@ -102,7 +97,6 @@ export function AddAccount({
           name: name.trim(),
           institution: institution.trim() === '' ? null : institution.trim(),
           last4: last4.trim() === '' ? null : last4.trim(),
-          visibility: effectiveVisibility,
           // Open only while the account has no history: the form disables them after, and does not send them.
           ...(locked ? {} : { type, currency, isForeign: other ? foreign === true : false }),
         });
@@ -201,40 +195,6 @@ export function AddAccount({
                   </option>
                 ))}
               </Select>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="label" id="account-visibility-label">
-                  Who can see it
-                </span>
-                <div className="qa-chips" role="group" aria-labelledby="account-visibility-label">
-                  <button
-                    type="button"
-                    className="qa-chip"
-                    aria-pressed={effectiveVisibility === 'personal'}
-                    disabled={!mine}
-                    onClick={() => {
-                      setVisibility('personal');
-                    }}
-                  >
-                    Only its owner
-                  </button>
-                  <button
-                    type="button"
-                    className="qa-chip"
-                    aria-pressed={effectiveVisibility === 'household'}
-                    onClick={() => {
-                      setVisibility('household');
-                    }}
-                  >
-                    The household
-                  </button>
-                </div>
-                <span className="field-help">
-                  {mine
-                    ? 'A joint account is the household’s. A private account’s lines and balances stay with its owner; the household’s totals still count it.'
-                    : 'Only the member an account belongs to can make it private.'}
-                </span>
-              </div>
 
               <Field
                 label="Bank"

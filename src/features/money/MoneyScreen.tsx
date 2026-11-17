@@ -83,7 +83,6 @@ export function MoneyScreen({
       month: closeMonthKey,
       close: closeFigures(input),
       readable: accountSteps(input).length,
-      hidden: lastPrivate.unread ?? [],
       unnamedEntries: lastEntries.unnamed,
       ...(failed ? { reading: 'failed' as const } : waiting ? { reading: 'loading' as const } : {}),
     });

@@ -19,7 +19,6 @@ const account = (id: string, name: string, currency = 'INR', isArchived = false)
   last4: null,
   isForeign: false,
   openedOn: null,
-  visibility: 'household',
   isArchived,
 });
 

@@ -14,7 +14,7 @@ import { asLedgerError } from './ledgerErrors.ts';
 import { toAccount, toAccountBalance } from './ledgerMapping.ts';
 import type { Account, AccountBalance, AccountPatch, NewAccount, NewBalance, Uuid } from './types.ts';
 
-const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, visibility, status, archived_at';
+const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, status, archived_at';
 const BALANCE_COLUMNS = 'id, household_id, account_id, as_at, balance_minor::text, currency, source, note';
 
 const text = (value: string | null | undefined): string | null => (value === undefined || value === null || value.trim() === '' ? null : value.trim());
@@ -42,7 +42,6 @@ export async function addAccount(input: NewAccount): Promise<{ readonly id: Uuid
       account_last4: text(input.last4),
       is_foreign: input.isForeign ?? false,
       opened_on: input.openedOn ?? null,
-      visibility: input.visibility ?? 'household',
     })
     .select('id')
     .single();
@@ -66,7 +65,6 @@ export async function updateAccount(id: Uuid, patch: AccountPatch): Promise<void
   if (patch.isForeign !== undefined) row['is_foreign'] = patch.isForeign;
   if (patch.institution !== undefined) row['institution'] = text(patch.institution);
   if (patch.last4 !== undefined) row['account_last4'] = text(patch.last4);
-  if (patch.visibility !== undefined) row['visibility'] = patch.visibility;
   if (patch.archived !== undefined) {
     row['status'] = patch.archived ? 'archived' : 'active';
     row['archived_at'] = patch.archived ? new Date().toISOString() : null;

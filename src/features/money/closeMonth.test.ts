@@ -36,7 +36,6 @@ const account = (id: string, type: Account['type'], name: string): Account => ({
   last4: null,
   isForeign: false,
   openedOn: null,
-  visibility: 'household',
   isArchived: false,
 });
 
@@ -228,28 +227,26 @@ describe('accountSteps — one row each, with the closing balance as the only in
   });
 });
 
-describe('closeFigures — what the database sums of the accounts the caller cannot read', () => {
-  // The card is another member's private one: the screen reads neither it, nor the refund into it, nor the move into it.
-  const readable = accounts.filter((a) => a.id !== 'card');
-  const readableBalances = balances.filter((b) => b.accountId !== 'card');
-  const hiddenCard = { currency: 'INR', left: 2_173_900n, outside: 0n, ownOut: 1_824_000n, refunds: 129_900n, cameIn: 0n, reserveChange: -220_000n };
-  const visible = { ...base, accounts: readable, balances: readableBalances, credits: credits.filter((c) => c.accountId !== 'card'), transfers: [] };
+describe('closeFigures — what the database sums of the money the caller cannot read', () => {
+  // The partner's private ₹90,000 salary into HDFC: the screen reads no credit for it, and HDFC's closing balance is ₹90,000 higher with it.
+  const raised = balances.map((b) => (b.accountId === 'hdfc' && b.asAt === '2026-10-31' ? { ...b, balance: r(310_380) } : b));
+  const hiddenSalary = { currency: 'INR', left: 9_000_000n, outside: 0n, refunds: 0n, cameIn: 9_000_000n };
 
-  it('is the same close as when the card is read', () => {
-    const result = closeFigures({ ...visible, unreadable: [hiddenCard] });
+  it('adds a private credit to what came in and to what left, so spent is the same as when it is read and saved is higher by it', () => {
+    const result = closeFigures({ ...base, balances: raised, unreadable: [hiddenSalary] });
     expect(result.status === 'figures' && result.currencies[0]?.spent).toBe(6_967_000n);
-    expect(result.status === 'figures' && result.currencies[0]?.saved).toBe(7_358_000n);
+    expect(result.status === 'figures' && result.currencies[0]?.saved).toBe(7_358_000n + 9_000_000n);
     expect(result.status === 'figures' && result.currencies[0]?.gapMinor).toBe(0n);
   });
 
-  it('draws no currency in which nothing hidden could be counted: a missing balance is not a month of nothing', () => {
-    const usd = { currency: 'USD', left: 0n, outside: 0n, ownOut: 0n, refunds: 0n, cameIn: 0n, reserveChange: 0n, counted: 0, total: 1 };
-    const result = closeFigures({ ...visible, unreadable: [hiddenCard, usd] });
+  it('draws no currency in which no account is read: a private credit alone is not a month', () => {
+    const usd = { currency: 'USD', left: 0n, outside: 0n, refunds: 0n, cameIn: 0n };
+    const result = closeFigures({ ...base, balances: raised, unreadable: [hiddenSalary, usd] });
     expect(result.status === 'figures' && result.currencies.map((c) => c.currency)).toEqual(['INR']);
   });
 
-  it('is read wrong without them', () => {
-    const result = closeFigures(visible);
+  it('is read wrong without it', () => {
+    const result = closeFigures({ ...base, balances: raised });
     expect(result.status === 'figures' && result.currencies[0]?.spent).not.toBe(6_967_000n);
   });
 });
