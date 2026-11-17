@@ -18,7 +18,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(18);
+select plan(20);
 
 -- ============================================================== the fixture
 --
@@ -99,6 +99,8 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
 insert into public.instrument (id, household_id, name, kind, currency, exposure_currency, is_foreign_asset) values
   ('a7000000-0000-4000-8000-000000000002', 'e8000000-0000-4000-8000-0000000000f1', 'A US ETF', 'etf', 'USD', 'USD', true);
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
+  ('b7000000-0000-4000-8000-000000000004', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a3',
+   'a7000000-0000-4000-8000-000000000001', 4, 'household'),
   ('b7000000-0000-4000-8000-000000000003', 'e8000000-0000-4000-8000-0000000000f1', 'f8000000-0000-4000-8000-0000000000a1',
    'a7000000-0000-4000-8000-000000000002', 5, 'household');
 
@@ -274,6 +276,21 @@ select throws_ok(
   $q$ select * from public.household_private_close('e8000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I31 — it raises for a contributor'
+);
+
+-- LI-I29 for the role that still reads only its own accounts: the contributor holds holding 04, and account 01 is the owner's, not theirs.
+select throws_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency, account_id, account_currency)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000004', '2026-10-02', 1, 100, 'INR',
+              'a8000000-0000-4000-8000-000000000001', 'INR') $q$,
+  '42501'::char(5), null::text,
+  'LI-I29 — a contributor cannot pay a purchase of their own holding from an account that is another member''s'
+);
+
+select lives_ok(
+  $q$ insert into public.lot (household_id, holding_id, acquired_on, quantity, cost_minor, currency)
+      values ('e8000000-0000-4000-8000-0000000000f1', 'b7000000-0000-4000-8000-000000000004', '2026-10-02', 1, 100, 'INR') $q$,
+  'LI-I29 — the same purchase with no account is theirs to record, so it was the account that was refused'
 );
 
 set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000a1';

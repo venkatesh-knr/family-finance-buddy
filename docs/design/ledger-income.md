@@ -174,18 +174,15 @@ with a line under the row that says what accounts give, while no account is in u
   - the type and whose it is, in words (there is no private account, so no lock and no *who sees it*: decisions.md, 16 November 2026);
   - the balance at the last close, or *no balance yet*, *not in a close yet* (state 3);
   - for a card, the amount owed, with a minus sign and the word *owed*.
-- **Accounts another member keeps private are not listed** (state 4). Their balances are
-  in the cash reserve as part of the total, through the sum function, as
-  `personal_holding_totals` already does for holdings.
 - **+ Add an account**, then the archived accounts, folded, and a short panel, **What is
-  kept**. It says, in the app's words, what an account is: a name, a type, whose it is
-  and who sees it, with the bank and the last four optional. There is no account number,
+  kept**. It says, in the app's words, what an account is: a name, a type and whose it is,
+  with the bank and the last four optional. There is no account number,
   no bank login and no link to the bank.
 - **With no accounts** (MoneyAccountsEmpty, state 5), the lifted surface says accounts
   are optional, what a month is like without them, and what adding them gives. Below it
   are *+ Add an account* and *What is kept*. Money's card and line (§1a) are the only places that ask for an account.
 
-**Adding an account** (AddAccount) is one short form, not stepped, because it has seven
+**Adding an account** (AddAccount) is one short form, not stepped, because it has six
 fields and only three are needed:
 
 | Field | Rule |
@@ -836,4 +833,4 @@ functions, which read the totals.
 - LI-I30: pgTAP over the section 4a rules: the sum adds a purchase of another member's private holding from an account, and the proceeds likewise, and adds nothing for an entry the caller's own screen counts, a purchase in another month, or a gift. Pure domain test (with the screen slice): the close with the same entries named gives the figures of the section 4 worked example.
 - LI-I32 to LI-I35: pgTAP over the section 4b rules: a principal and an opening cost refuse an account of another household, one in a currency it is not in, a dollar deposit paid from a rupee account with no amount, and a rupee deposit that states one; a payout refuses an account in another currency; the sum adds a principal of another member's private deposit, and adds nothing for a recurring deposit, a September start, a holding with a purchase, or a cost in dollars named against a rupee account. Pure domain test: the close with a payout named, on the day it paid out.
 - LI-I36 to LI-I39: pgTAP over the section 4c rules: a payment refuses a loan of another household, another currency than the loan's, an account in another currency or of another household, and an amount of nothing; an owner records one from any account of the household and moves one onto another; a contributor records none; the owner reads every payment and its audit row; recording payments leaves the loan's outstanding as it was. Pure domain test: the close with a payment named, which `money-month.test.ts` already holds (₹32,000 from HDFC); and, in the build that gives the close its payments, a voided one, another month's and one naming no account are not counted.
-- LI-I31: pgTAP: the result's columns are a currency, eight sums and two counts; it raises for a contributor, for another household, and for an owner with a password alone.
+- LI-I31: pgTAP: the result's columns are a currency and six sums, and no count; it raises for a contributor, for another household, and for an owner with a password alone.

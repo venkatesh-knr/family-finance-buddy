@@ -16,7 +16,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(14);
+select plan(16);
 
 -- ============================================================== the fixture
 --
@@ -212,6 +212,22 @@ select throws_ok(
       values ('e8000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000001', '2026-10-21', 100, 'INR') $q$,
   '42501'::char(5), null::text,
   'LI-I36 — a contributor records no payment: only an owner or a partner does, as with a loan'
+);
+
+select is_empty(
+  $q$ with u as (update public.loan_payment set note = 'x' where id = 'b8000000-0000-4000-8000-000000000001' returning id) select id from u $q$,
+  'LI-I36 — nor changes or voids one: only an owner or a partner does'
+);
+
+-- ============================================== another household
+
+set local request.jwt.claim.sub to 'c8000000-0000-4000-8000-0000000000b1';
+set local request.jwt.claims   to '{"sub":"c8000000-0000-4000-8000-0000000000b1","role":"authenticated","aal":"aal2"}';
+
+select is(
+  (select count(*)::int from public.loan_payment),
+  0,
+  'LI-I37 — another household reads none of the payments'
 );
 
 select * from finish();

@@ -29,7 +29,7 @@ function WhatIsKept() {
     <section className="card" aria-label="What an account is">
       <h2 className="label mb-2">What is kept</h2>
       <p className="note">
-        A name you choose, the type, whose it is and who sees it. The bank and the last four digits are optional. No account number, no bank login, and no link
+        A name you choose, the type and whose it is. The bank and the last four digits are optional. No account number, no bank login, and no link
         to your bank. Balances are typed at the month close, or read from a statement on your phone.
       </p>
     </section>

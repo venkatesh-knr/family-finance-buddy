@@ -5,7 +5,7 @@
  * from the Accounts screen, and from "+ Add an account" at the end of an account picker, which returns to the form it came from with the
  * new account chosen and every value kept (`onSaved` is given the new account's id).
  *
- * Changing an account keeps its name, bank, last four digits and who sees it open. Its type and currency are fixed once it has a credit,
+ * Changing an account keeps its name, bank and last four digits open. Its type and currency are fixed once it has a credit,
  * a transfer or a balance, because they decide how its past months were worked out: archive it and add a new one. It is archived and
  * never deleted, and an archived one can be restored. A contributor makes and changes only their own accounts, and the form offers them
  * only their own name, as the policies would refuse anything else.

@@ -24,7 +24,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(107);
+select plan(108);
 
 -- ============================================================== the fixture
 --
@@ -814,6 +814,14 @@ select throws_ok(
               'a9000000-0000-4000-8000-000000000004', 'interest', 5000, 'INR', '2026-09-20', 'household') $q$,
   '42501'::char(5), null::text,
   'but not under somebody else''s name'
+);
+
+select throws_ok(
+  $q$ insert into public.credit_entry (household_id, member_id, account_id, category, amount_minor, currency, credit_date, visibility)
+      values ('e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
+              'a9000000-0000-4000-8000-000000000001', 'interest', 5000, 'INR', '2026-09-20', 'household') $q$,
+  '42501'::char(5), null::text,
+  'LI-I4 — nor into an account that is another member''s: a contributor reads only their own'
 );
 
 select throws_ok(

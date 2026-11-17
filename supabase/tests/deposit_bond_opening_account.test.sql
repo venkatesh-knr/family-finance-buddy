@@ -18,7 +18,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(15);
+select plan(16);
 
 -- ============================================================== the fixture
 --
@@ -97,7 +97,8 @@ insert into public.instrument (id, household_id, name, kind, currency, exposure_
   ('a6000000-0000-4000-8000-000000000011', 'e9000000-0000-4000-8000-0000000000f1', 'Fund one',   'mutual_fund', 'INR', 'INR', false),
   ('a6000000-0000-4000-8000-000000000012', 'e9000000-0000-4000-8000-0000000000f1', 'Fund two',   'mutual_fund', 'INR', 'INR', false),
   ('a6000000-0000-4000-8000-000000000013', 'e9000000-0000-4000-8000-0000000000f1', 'Fund three', 'mutual_fund', 'INR', 'INR', false),
-  ('a6000000-0000-4000-8000-000000000014', 'e9000000-0000-4000-8000-0000000000f1', 'A US ETF',   'etf', 'USD', 'USD', true);
+  ('a6000000-0000-4000-8000-000000000014', 'e9000000-0000-4000-8000-0000000000f1', 'A US ETF',   'etf', 'USD', 'USD', true),
+  ('a6000000-0000-4000-8000-000000000015', 'e9000000-0000-4000-8000-0000000000f1', 'Fund five', 'mutual_fund', 'INR', 'INR', false);
 
 -- Holdings. D1 to D6 the deposits: D2 is the partner's, private; the rest the owner's. H1 to H4 opened with a cost and no purchase (H3 then given one).
 insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
@@ -107,6 +108,11 @@ insert into public.holding (id, household_id, member_id, instrument_id, quantity
   ('b6000000-0000-4000-8000-0000000000d4', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000004', 1, 'household'),
   ('b6000000-0000-4000-8000-0000000000d5', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000005', 1, 'household'),
   ('b6000000-0000-4000-8000-0000000000d6', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a1', 'a6000000-0000-4000-8000-000000000006', 1, 'household');
+
+-- The contributor's own holding, with no cost and no account.
+insert into public.holding (id, household_id, member_id, instrument_id, quantity, visibility) values
+  ('b6000000-0000-4000-8000-0000000000e5', 'e9000000-0000-4000-8000-0000000000f1', 'f9000000-0000-4000-8000-0000000000a3',
+   'a6000000-0000-4000-8000-000000000015', 1, 'household');
 
 insert into public.holding
   (id, household_id, member_id, instrument_id, quantity, visibility, cost_minor, opened_on, cost_account_id, cost_account_currency) values
@@ -251,6 +257,17 @@ select throws_ok(
   $q$ select * from public.household_private_close('e9000000-0000-4000-8000-0000000000f1', '2026-10-01', '2026-10-31') $q$,
   '42501'::char(5), null::text,
   'LI-I31 — it raises for a contributor'
+);
+
+-- LI-I29 for the role that still reads only its own accounts: account 01 is the owner's, so a contributor cannot say their holding's opening cost was paid from it.
+set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a3';
+set local request.jwt.claims   to '{"sub":"c9000000-0000-4000-8000-0000000000a3","role":"authenticated","aal":"aal2"}';
+
+select throws_ok(
+  $q$ update public.holding set cost_minor = 100, cost_account_id = 'a9000000-0000-4000-8000-000000000001', cost_account_currency = 'INR'
+       where id = 'b6000000-0000-4000-8000-0000000000e5' $q$,
+  '42501'::char(5), null::text,
+  'LI-I29 — a contributor cannot pay an opening cost from an account that is another member''s'
 );
 
 set local request.jwt.claim.sub to 'c9000000-0000-4000-8000-0000000000a1';
