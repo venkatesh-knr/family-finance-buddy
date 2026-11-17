@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENTITIES, type Row } from './entities.ts';
 import { exportFixture as fixture } from './fixture.ts';
 import { planUpload, toApplyPayload, type UploadPlan } from './plan.ts';
-import { buildWorkbook, canonicalRow, readWorkbook, type ExportMeta, type RefMap } from './workbook.ts';
+import { buildBackup, canonicalRow, readWorkbook, type ExportMeta, type RefMap } from './workbook.ts';
 
 const META: ExportMeta = { exportedAt: '2026-10-30T06:30:00.000Z', householdName: 'The Rao household', baseCurrency: 'INR', demo: false };
 
@@ -14,7 +14,7 @@ const PPF_HOLDING = '00000000-0000-4000-8000-0000000000e2';
 type Sheets = { name: string; rows: (string | number | boolean | Date | null)[][] }[];
 
 function sheetsOf(tables: Record<string, Row[]>, refs: RefMap = {}): Sheets {
-  const { workbook, problems } = buildWorkbook(tables, META, refs);
+  const { workbook, problems } = buildBackup(tables, META, refs);
   expect(problems).toEqual([]);
   return workbook.sheets.map((sheet) => ({ name: sheet.name, rows: [[...sheet.headers], ...sheet.rows.map((row) => [...row])] }));
 }
