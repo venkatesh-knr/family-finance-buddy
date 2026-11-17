@@ -261,8 +261,7 @@ function SignedIn({
         />
       )}
       <header
-        className={`inset-safe-top inset-safe-x mb-4.5 ${subTitle === null && screen !== 'holding' ? 'flex' : 'hide-narrow-flex'} flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5`}
-        style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface)' }}
+        className={`app-bar inset-safe-top inset-safe-x mb-4.5 ${subTitle === null && screen !== 'holding' ? 'flex' : 'hide-narrow-flex'} flex-wrap items-center justify-between gap-x-3 gap-y-2.5 pb-3.5`}
       >
         {/*
           The name in full, never shortened — "if a label is tight, let the
@@ -466,6 +465,7 @@ function SignedIn({
               key={id}
               type="button"
               aria-pressed={isPressed(id)}
+              aria-current={isPressed(id) ? 'page' : undefined}
               onClick={() => {
                 setScreen(id);
                 // Back to the top: arriving halfway down a screen you have not

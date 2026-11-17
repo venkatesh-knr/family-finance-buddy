@@ -23,12 +23,20 @@
 
 import { readFileSync } from 'node:fs';
 
+/**
+ * The light theme is Linen (17 November 2026), and the stylesheet follows it. The prototype and the icon document are the canvas, drawn in Mist
+ * (30 October 2026): they are compared against the Mist record that docs/tokens.md keeps, and for a token the record does not hold, against the
+ * authority. A canvas is not redrawn for a palette change, so the check says which palette each file is meant to be in.
+ */
 const SOURCES = [
   { name: 'docs/tokens.md', path: 'docs/tokens.md', authority: true },
   { name: 'src/styles/tokens.css', path: 'src/styles/tokens.css' },
-  { name: 'docs/design/prototype.html', path: 'docs/design/prototype.html' },
-  { name: 'docs/design/icon-concepts.html', path: 'docs/design/icon-concepts.html' },
+  { name: 'docs/design/prototype.html', path: 'docs/design/prototype.html', canvas: true },
+  { name: 'docs/design/icon-concepts.html', path: 'docs/design/icon-concepts.html', canvas: true },
 ];
+
+/** A fenced block that holds this word in a comment is the Mist record: not the authority's palette, and the canvas's. */
+const MIST_MARK = 'MIST-RECORD';
 
 /**
  * Markdown is prose with code in it, and only the code is a declaration.
@@ -102,12 +110,24 @@ function tokensIn(chunks) {
   return found;
 }
 
-const read = SOURCES.map((source) => ({
-  ...source,
-  tokens: tokensIn(codeOnly(source.path, readFileSync(source.path, 'utf8'))),
-}));
+const read = SOURCES.map((source) => {
+  const chunks = codeOnly(source.path, readFileSync(source.path, 'utf8'));
+  if (!source.authority) return { ...source, tokens: tokensIn(chunks) };
+  // The authority's palette is every fenced block but the Mist record; the record is the other.
+  return {
+    ...source,
+    tokens: tokensIn(chunks.filter((chunk) => !chunk.includes(MIST_MARK))),
+    mist: tokensIn(chunks.filter((chunk) => chunk.includes(MIST_MARK))),
+  };
+});
 
 const authority = read.find((source) => source.authority);
+
+/** The record must exist and be read: a canvas compared against nothing would pass for the wrong reason. */
+if (authority.mist.size < 15) {
+  console.log(`  ✗ Only ${String(authority.mist.size)} tokens were read from the ${MIST_MARK} block of ${authority.name}. Has the record moved, or changed shape?`);
+  process.exit(1);
+}
 
 /**
  * A check that can pass by comparing nothing is worse than no check: it is a
@@ -131,9 +151,10 @@ for (const source of read) {
 const disagreements = [];
 
 for (const key of [...authority.tokens.keys()].sort()) {
-  const expected = authority.tokens.get(key);
   for (const source of read) {
     if (source.authority) continue;
+    // The canvas is in Mist where the record holds the token, and in the authority's value where it does not.
+    const expected = source.canvas === true ? (authority.mist.get(key) ?? authority.tokens.get(key)) : authority.tokens.get(key);
     const actual = source.tokens.get(key);
     // Absent is not wrong. The prototype has no need for --radius-pill and the
     // icon document declares only the handful of colours it draws with.

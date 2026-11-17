@@ -18,28 +18,28 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
 `--surface-lift`, `--lift-edge`, `--shadow-lift`, `--gutter`, `--inset` and `--radius-panel`.
 
 ```css
-:root{
+:root{                                    /* Linen: the light theme, chosen 17 November 2026 */
   /* surfaces */
-  --bg:#E3E8EF;          /* page ground */
-  --surface:#F5F7FA;     /* cards, panels */
-  --surface-2:#EDF1F6;   /* table headers, insets, code */
-  --surface-3:#DCE2EA;   /* segmented-control track, progress track */
-  --inset:#E8ECF2;       /* the ground of an editable row: darker than its card, in both themes */
+  --bg:#F1ECE1;          /* page ground: linen */
+  --surface:#FFFDF8;     /* soft panels, header, bar: warm off-white, never #FFFFFF */
+  --surface-2:#F5F1E8;   /* table headers, insets, code */
+  --surface-3:#E8E2D5;   /* segmented-control track, progress track */
+  --inset:#F5F1E7;       /* the ground of an editable row: darker than its card, in both themes */
 
   /* text */
-  --ink:#131A27;         /* primary */
-  --ink-2:#394250;       /* body, secondary */
-  --muted:#5A6371;       /* captions, labels, axis text — NEUTRAL, see rules */
+  --ink:#1D2823;         /* primary */
+  --ink-2:#3A4741;       /* body, secondary */
+  --muted:#5A655F;       /* captions, labels, axis text: NEUTRAL, see rules */
 
   /* lines */
-  --line:#D6DCE5;        /* hairlines, borders */
-  --line-strong:#747D8A; /* control outlines, chip edges — 3:1, see §2 */
+  --line:#E2DBCB;        /* hairlines, borders */
+  --line-strong:#7B857F; /* control outlines, chip edges: 3:1, see §2 */
 
-  /* brand + semantic */
-  --brass:#835A00;       --brass-soft:#F6E9C8;   /* accent, targets, "plan" */
-  --teal:#066F5C;        --teal-soft:#D2EEE6;    /* gain, positive, "ok" */
-  --coral:#AD3728;       --coral-soft:#F9E0DB;   /* loss, overspend, "due" */
-  --indigo:#3752CC;      --indigo-soft:#E0E6FD;  /* attribution, ownership */
+  /* brand + semantic: in Linen the accent is forest, and gain is a blue-teal so it is never the accent's green */
+  --brass:#025F4C;       --brass-soft:#DCEDE5;   /* accent, targets, "plan" */
+  --teal:#00707A;        --teal-soft:#D3ECEC;    /* gain, positive, "ok" */
+  --coral:#B03A2E;       --coral-soft:#FBE3DD;   /* loss, overspend, "due" */
+  --indigo:#5A3EC2;      --indigo-soft:#ECE6FC;  /* attribution, ownership */
 
   /* categorical — charts only, in this order */
   --c1:#3752CC;  /* periwinkle */
@@ -52,11 +52,57 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
   --c8:#AD3C70;  /* rose       */
   --c9:#4E7417;  /* lime       */
 
-  /* depth */
-  --surface-lift:radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%);
-  --lift-edge:linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
+  /* depth, the bars and the buttons: the lifted surface is dark in Linen, so what sits on it, on a bar and on a button has its own tokens */
   --shadow:0 1px 2px rgba(19,26,39,.05), 0 8px 22px -16px rgba(19,26,39,.22);
-  --shadow-lift:0 2px 4px rgba(19,26,39,.05), 0 16px 34px -22px rgba(55,82,204,.35);
+  --shadow-lift:0 2px 4px rgba(1,58,47,.12), 0 16px 34px -22px rgba(1,63,51,.55);
+  --surface-panel:linear-gradient(180deg, #FFFDF8 0%, #FFFDF8 35%, #F8F3E8 100%);  /* a soft panel's fill: warm off-white to a faint linen at its foot; flat in dark */
+  --surface-lift:linear-gradient(180deg, #013F33 0%, #025F4C 45%, #0B6F58 100%);  /* the one lifted card: deep forest at the top to a fresher green at its foot */
+  --lift-edge:linear-gradient(90deg, rgba(1,58,47,0), #013A2F 10%, #013A2F 90%, rgba(1,58,47,0));  /* the lift's 1px top edge */
+  --lift-border:#013A2F;  /* the lift's outline */
+  --lift-ink:#F6F2E4;  /* on the lift: primary text */
+  --lift-ink-2:#E6EEE8;  /* on the lift: body text */
+  --lift-muted:#D6E5DC;  /* on the lift: captions and labels */
+  --lift-accent:#C9E35A;  /* on the lift: a focus underline, a link */
+  --lift-line:rgba(246,242,228,.55);  /* on the lift: the edge of a quiet button */
+  --lift-press:#C9E35A;  /* on the lift: the pressed oval */
+  --lift-press-ink:#023F33;  /* on the lift: text on the pressed oval */
+  --lift-press-edge:#C9E35A;  /* on the lift: the pressed oval's edge */
+  --lift-track:rgba(0,0,0,.16);  /* on the lift: a segmented control's track */
+  --lift-track-line:rgba(246,242,228,.28);  /* on the lift: the track's edge */
+  --lift-teal:#9BF0D8;  /* on the lift: a gain */
+  --lift-teal-soft:rgba(255,255,255,.14);  /* on the lift: a gain's fill */
+  --lift-coral:#FFD3CB;  /* on the lift: a loss */
+  --lift-coral-soft:rgba(255,255,255,.14);  /* on the lift: a loss's fill */
+  --lift-indigo:#E2DBFF;  /* on the lift: attribution */
+  --lift-indigo-soft:rgba(255,255,255,.14);  /* on the lift: attribution's fill */
+  --lift-brass:#C9E35A;  /* on the lift: attention */
+  --lift-brass-soft:rgba(255,255,255,.14);  /* on the lift: attention's fill */
+  --lift-chip:rgba(255,255,255,.10);  /* on the lift: a chip */
+  --lift-chip-on:#C9E35A;  /* on the lift: a pressed chip */
+  --lift-chip-on-ink:#023F33;  /* on the lift: text on a pressed chip */
+  --lift-cta:#C9E35A;  /* on the lift: the one primary action (Close October) */
+  --lift-cta-ink:#023F33;  /* on the lift: text on the primary action */
+  --lift-hair:rgba(246,242,228,.22);  /* on the lift: a hairline between its figures and its footer */
+  --lift-btn:#C9E35A;  /* on the lift: a button */
+  --lift-btn-ink:#023F33;  /* on the lift: text on a button */
+  --btn:#025F4C;  /* the primary button */
+  --btn-ink:#FFFDF8;  /* text on the primary button */
+  --bar:#025F4C;  /* the app header, the desktop top strip and the bottom menu: the flat value, for forced colours */
+  --bar-ink:#F6F2E4;  /* on a bar: text */
+  --bar-ink-2:#E6EEE8;  /* on a bar: a back link */
+  --bar-avatar:#C9E35A;  /* on a bar: the account control's disc */
+  --bar-avatar-ink:#023F33;  /* on a bar: the initial on the disc */
+  --bar-muted:#D6E5DC;  /* on a bar: a label that is not the current place */
+  --bar-current:#F6F2E4;  /* on a bar: the current place's label */
+  --bar-line:rgba(246,242,228,.4);  /* on a bar: a control's edge */
+  --bar-line-wide:rgba(246,242,228,.4);  /* on a bar: a control's edge on a wide screen, where dark draws none */
+  --bar-control:rgba(246,242,228,.12);  /* on a bar: a control */
+  --bar-top:linear-gradient(180deg, #013A2F 0%, #025F4C 60%, #0B6F58 100%);  /* the header: darkest at the top edge, lightens towards the content */
+  --bar-bottom:linear-gradient(180deg, #0B6F58 0%, #025F4C 40%, #013A2F 100%);  /* the menu: lightens upwards from the bottom edge */
+  --bar-rule:#C9E35A;  /* the rule on the edge facing the page */
+  --bar-rule-width:3px;  /* the rule's width */
+  --bar-pill:#C9E35A;  /* the current place in the bottom menu */
+  --bar-pill-ink:#023F33;  /* the current place's icon */
 
   --radius:12px;
   --radius-panel:16px;   /* a section's soft panel, and the lifted card (docs/design/simple-layout.md section 1) */
@@ -82,10 +128,76 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
     --lift-edge:linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.95);
     --shadow-lift:0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
+    --surface-panel:#121825;
+    --lift-border:#222C41;
+    --lift-ink:#EEF3FB;
+    --lift-ink-2:#C3CEDF;
+    --lift-muted:#9AA3B2;
+    --lift-accent:#F0B429;
+    --lift-line:#6D7683;
+    --lift-press:#121825;
+    --lift-press-ink:#EEF3FB;
+    --lift-press-edge:#6D7683;
+    --lift-track:#222C41;
+    --lift-track-line:transparent;
+    --lift-teal:#2ED3A8;
+    --lift-teal-soft:#0C2F28;
+    --lift-coral:#FF6F61;
+    --lift-coral-soft:#33130F;
+    --lift-indigo:#7B9CFF;
+    --lift-indigo-soft:#182448;
+    --lift-brass:#F0B429;
+    --lift-brass-soft:#3A2C0C;
+    --lift-chip:#1A2234;
+    --lift-chip-on:#EEF3FB;
+    --lift-chip-on-ink:#080B12;
+    --lift-cta:#EEF3FB;
+    --lift-cta-ink:#121825;
+    --lift-hair:#222C41;
+    --lift-btn:#F0B429;
+    --lift-btn-ink:#121825;
+    --btn:#F0B429;
+    --btn-ink:#121825;
+    --bar:#121825;
+    --bar-ink:#EEF3FB;
+    --bar-ink-2:#C3CEDF;
+    --bar-avatar:linear-gradient(140deg, #F0B429, #FF9D4D);
+    --bar-avatar-ink:#121825;
+    --bar-muted:#9AA3B2;
+    --bar-current:#F0B429;
+    --bar-line:#222C41;
+    --bar-line-wide:transparent;
+    --bar-control:#222C41;
+    --bar-top:#121825;
+    --bar-bottom:#121825;
+    --bar-rule:#222C41;
+    --bar-rule-width:1px;
+    --bar-pill:transparent;
+    --bar-pill-ink:#F0B429;
   }
 }
 
 :root[data-theme="dark"]{ /* same block as above, repeated */ }
+```
+
+**Mist, the record of the 30 October 2026 decision.** Linen replaced Mist as the light theme on 17 November 2026. Mist stays here, and
+on `prototype.html` and `icon-concepts.html`, whose light palette is still Mist: they are the canvas, and a canvas is not rebuilt for a
+palette change. `scripts/check-design-tokens.mjs` compares the canvas against this block and the stylesheet against the Linen block above.
+
+```css
+/* MIST-RECORD: the canvas's light theme, 30 October 2026. Not used by the app. */
+:root{
+  --bg:#E3E8EF;  --surface:#F5F7FA;  --surface-2:#EDF1F6;  --surface-3:#DCE2EA;  --inset:#E8ECF2;
+  --ink:#131A27;  --ink-2:#394250;  --muted:#5A6371;
+  --line:#D6DCE5;  --line-strong:#747D8A;
+  --brass:#835A00;  --brass-soft:#F6E9C8;
+  --teal:#066F5C;  --teal-soft:#D2EEE6;
+  --coral:#AD3728;  --coral-soft:#F9E0DB;
+  --indigo:#3752CC;  --indigo-soft:#E0E6FD;
+  --surface-lift:radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%);
+  --lift-edge:linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
+  --shadow-lift:0 2px 4px rgba(19,26,39,.05), 0 16px 34px -22px rgba(55,82,204,.35);
+}
 ```
 
 ### Rules
@@ -98,9 +210,15 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
 - Dark is *not* an inversion. Both palettes were tuned separately; keep them that way.
   The dark accents are the saturated ones; their light counterparts are darkened to hold
   4.5:1 on the card and are not the same hex.
-- **In the light theme a card is off-white, never `#FFFFFF`.** The light theme is **Mist**
-  (chosen 30 October 2026): a cool grey-blue ground (`--bg`), a card one step lighter
-  (`--surface`), and the one lifted card painted with a pale periwinkle light and not white.
+- **In the light theme a card is off-white, never `#FFFFFF`.** The light theme is **Linen**
+  (chosen 17 November 2026, in place of **Mist**, chosen 30 October 2026, whose record is kept
+  below): a warm linen ground (`--bg`), a panel one step lighter (`--surface`), a forest app
+  header and bottom menu (`--bar-*`), and the one lifted card painted deep forest with cream
+  text (`--lift-*`). The owner asked for the light version to follow the mood of
+  loophealth.com, and chose option A of four; the decision, the contrast measured for every
+  pair and what was not taken from the reference are in `docs/drafts/linen-light-theme.md`,
+  and the pictures are the LinenTokens and LightOptionsHeader boards in
+  `docs/design/stated-spend-boards.html`.
   The brightest thing on a light screen should be its content, not the background of every
   card; a screen of pure-white cards makes a figure no brighter than the box around it, and
   it is what a tidy-up would drift back to. `--surface` stays below white, and no component
@@ -130,10 +248,13 @@ The gradient is painted across the whole card, and a figure may sit on it. The r
 measured and not drawn: **a figure on the lifted surface holds 4.5:1 against the gradient
 in both themes** — against the stop it is hardest to read on, which is the brightest in
 dark, where the figures are light, and the dimmest in light, where they are dark. The test
-(`src/ui/liftContrast.test.ts`) reads the shipped values of `--surface-lift`, `--ink`,
-`--ink-2` and `--muted` and measures every stop, so a lighter glow or a dimmer ink fails the
-build rather than a review. (Today the worst pair is `--muted` at 4.75:1 on the light
-theme's dimmest stop, `#DCE3FB`, and 5.02:1 on the dark theme's brightest, `#26324C`.) An earlier version of this
+(`src/ui/liftContrast.test.ts`) reads the shipped values of `--surface-lift`, `--lift-ink`,
+`--lift-ink-2` and `--lift-muted` and measures every stop, so a lighter glow or a dimmer ink fails the
+build rather than a review. In Linen the lift is dark and its text is light, so the worst
+stop is the lightest, `#0B6F58`, where `--lift-muted` holds 4.7:1; in dark the worst pair is `--lift-muted`
+at 5.02:1 on the brightest stop, `#26324C`. (The Mist figures were 4.75:1 on the dimmest stop, `#DCE3FB`.)
+Inside the lift, `--ink`, `--ink-2` and `--muted` are set to the `--lift-*` values, so everything a
+component draws with them follows. An earlier version of this
 section said the gradient "never crosses a figure"; the canvas it described did, and the rule
 was the part that was wrong. One lifted surface per screen — a second one is two things
 claiming to be the most important, which is §4's "not everything is a card" in another

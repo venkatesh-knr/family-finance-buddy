@@ -60,11 +60,12 @@ for (const scheme of ['dark', 'light'] as const) {
 
         // §1: "One lifted surface per screen — a second one is two things
         // claiming to be the most important." A gradient background is the
-        // signature; nothing else in the system uses one.
+        // signature. Linen also paints a soft panel (a faint warming to its foot) and the bars (dark at one edge) with a gradient, on purpose:
+        // those are told by what they are, not counted.
         const lifted = await page.evaluate(() =>
           Array.from(document.querySelectorAll('*')).filter((el) => {
             const bg = getComputedStyle(el).backgroundImage;
-            return bg.includes('gradient') && el.getBoundingClientRect().height > 60;
+            return bg.includes('gradient') && el.getBoundingClientRect().height > 60 && !el.matches('.card:not(.card-lift), .app-bar, .screen-bar, .bottom-nav');
           }).length,
         );
 
@@ -81,7 +82,10 @@ test('SL-I7 — a screen has at most one lifted surface, and Holdings has exactl
   const lifted = async () =>
     page.evaluate(() => ({
       byClass: document.querySelectorAll('.card-lift').length,
-      byGradient: Array.from(document.querySelectorAll('*')).filter((el) => getComputedStyle(el).backgroundImage.includes('gradient') && el.getBoundingClientRect().height > 60).length,
+      // Not a soft panel's faint warming or a bar's dark edge: Linen paints those with a gradient on purpose, and they are not lifted surfaces.
+      byGradient: Array.from(document.querySelectorAll('*')).filter(
+        (el) => getComputedStyle(el).backgroundImage.includes('gradient') && el.getBoundingClientRect().height > 60 && !el.matches('.card:not(.card-lift), .app-bar, .screen-bar, .bottom-nav'),
+      ).length,
     }));
 
   for (const screen of [...SCREENS, 'property', 'insurance', 'reports', 'more']) {
