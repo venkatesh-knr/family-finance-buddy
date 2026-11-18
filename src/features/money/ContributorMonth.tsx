@@ -12,7 +12,7 @@ import { addMonths } from '../../domain/accrual.ts';
 import { monthBounds } from '../../domain/budget.ts';
 import { formatMoney, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
-import type { Expense, Member } from '../../repo/types.ts';
+import type { Credit, Expense, Member } from '../../repo/types.ts';
 import { monthWord } from './closeMonth.ts';
 import { ownMonthSpend } from './contributorMonth.ts';
 import { monthLabel } from './monthSurface.ts';
@@ -26,6 +26,7 @@ export function ContributorMonth({
   today,
   currency,
   privacy,
+  credits = [],
 }: {
   householdId: string;
   memberId: string;
@@ -34,6 +35,8 @@ export function ContributorMonth({
   /** The currency read first. */
   currency: string;
   privacy: boolean;
+  /** The credits the contributor can read, for the refunds that take away from what they spent. */
+  credits?: readonly Credit[];
 }) {
   const [period, setPeriod] = useState<'this' | 'last'>('this');
   const month = period === 'this' ? today.slice(0, 7) : addMonths(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
@@ -58,7 +61,7 @@ export function ContributorMonth({
   }, [key, members]);
 
   const current = read.key === key ? read : ({ status: 'loading' } as const);
-  const lines: readonly Money[] | null = current.status === 'ready' ? ownMonthSpend({ expenses: current.expenses, memberId, bounds, currency }) : null;
+  const lines: readonly Money[] | null = current.status === 'ready' ? ownMonthSpend({ expenses: current.expenses, refunds: credits, memberId, bounds, currency }) : null;
   const title = period === 'this' ? monthLabel(today) : monthWord(month);
 
   return (
@@ -101,6 +104,7 @@ export function ContributorMonth({
         </dd>
         {lines !== null && <dd className="note">itemised by you</dd>}
       </dl>
+      {current.status === 'failed' && <p className="note mt-2.5">This month could not be read just now; reload to read it again.</p>}
       <p className="note mt-2.5">The household&rsquo;s month, its total and how it was worked out are kept by the owner and the partner.</p>
     </section>
   );

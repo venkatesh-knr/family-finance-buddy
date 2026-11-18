@@ -132,8 +132,6 @@ export function ExpensesScreen({
       {listing.viewer.role === 'contributor' ? (
         <>
           {quickAdd}
-          {money?.actions}
-          {money?.expected}
           <ContributorMonth
             householdId={listing.household.id}
             memberId={listing.viewer.memberId}
@@ -141,7 +139,11 @@ export function ExpensesScreen({
             today={today}
             currency={reading}
             privacy={privacy}
+            credits={money?.credits ?? []}
           />
+          {/* Under the month, as on the owner's screen, and then what is expected. */}
+          {money?.actions}
+          {money?.expected}
           <Card title="By category">
             <p className="note">The household&rsquo;s spending, by category, is on the Summary screen.</p>
           </Card>
