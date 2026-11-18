@@ -1,5 +1,7 @@
 import { ENTITY_BY_KEY } from '../../domain/export/entities.ts';
 import { planUpload, toApplyPayload, type UploadPlan } from '../../domain/export/plan.ts';
+import { isTemplateV3, readTemplateV3 } from '../../domain/export/templateReadV3.ts';
+import { templateListsFrom } from '../../domain/export/templateV3.ts';
 import { readWorkbook, type Problem } from '../../domain/export/workbook.ts';
 import { readWorkbookFile } from '../../lib/workbookFile.ts';
 import { verifyTotpCode } from '../../repo/auth.ts';
@@ -25,10 +27,12 @@ export async function previewUpload(householdId: string, file: File): Promise<Pr
   } catch {
     throw new Error('That is not an .xlsx workbook, or it is damaged. Export the household, or download the template, and use that.');
   }
-  const read = readWorkbook(sheets);
+  // A version 3 template (the one a person fills) and a version 2 file (the complete backup) are told apart by their first sheet; the household is read
+  // first because a template's names are matched to it.
+  const source = await readEverything(householdId);
+  const read = isTemplateV3(sheets) ? readTemplateV3(sheets, { investments: templateListsFrom(source.tables).investments }) : readWorkbook(sheets);
   if (read.problems.length > 0) return { filename: file.name, readProblems: read.problems, plan: null };
 
-  const source = await readEverything(householdId);
   const plan = planUpload({ read, existing: source.tables, existingRefs: source.refs, newId: () => crypto.randomUUID() });
   return { filename: file.name, readProblems: [], plan };
 }
