@@ -92,3 +92,26 @@ export function countBySource(sources: readonly SpendSource[]): Record<SpendSour
   for (const source of sources) counts[source] += 1;
   return counts;
 }
+
+/**
+ * The source of each month of the window months of cover is averaged over (section 11.4): *stated* where the month has a statement, whose figure the average
+ * then takes as stated, and *itemised* for every other. A month closed from balances is not told apart here: months of cover is averaged over what was itemised,
+ * and says so, rather than naming a source it does not use.
+ */
+export function coverSources(window: readonly string[], statedMonths: ReadonlySet<string>): readonly SpendSource[] {
+  return window.map((month) => (statedMonths.has(month) ? 'stated' : 'itemised'));
+}
+
+/** The words under months of cover that say how its months were made, and why the itemised ones matter; null when there are no months to say. */
+export function coverCaveat(counts: Record<SpendSource, number>): { readonly counts: string; readonly reading: string | null } | null {
+  const total = counts.balances + counts.stated + counts.itemised;
+  if (total === 0) return null;
+  const parts: string[] = [];
+  if (counts.balances > 0) parts.push(`${String(counts.balances)} from balances`);
+  if (counts.stated > 0) parts.push(`${String(counts.stated)} stated`);
+  if (counts.itemised > 0) parts.push(`${String(counts.itemised)} itemised`);
+  return {
+    counts: `Of the ${String(total)} ${total === 1 ? 'month' : 'months'}: ${parts.join(', ')}.`,
+    reading: counts.itemised > 0 ? 'Itemised months read low, which makes the cover read high.' : null,
+  };
+}

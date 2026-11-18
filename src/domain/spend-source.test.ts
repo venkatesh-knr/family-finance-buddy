@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countBySource, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
+import { countBySource, coverCaveat, coverSources, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
 
 /**
  * A month's spent and where it came from (docs/design/spending-capture.md section 11; SC-I15 to SC-I18). Amounts are paise: ₹82,000 is 8_200_000n.
@@ -127,5 +127,35 @@ describe('the months of cover caveat counts a year’s months by source', () => 
 
   it('counts none as none', () => {
     expect(countBySource([])).toEqual({ balances: 0, stated: 0, itemised: 0 });
+  });
+});
+
+describe('SC-I9 — months of cover says how many of its months were stated and how many itemised', () => {
+  it('takes a month as stated when it has a statement, and as itemised otherwise', () => {
+    expect(coverSources(['2026-08', '2026-09', '2026-10'], new Set(['2026-09']))).toEqual(['itemised', 'stated', 'itemised']);
+  });
+
+  it('ignores a statement for a month outside the window', () => {
+    expect(coverSources(['2026-09'], new Set(['2025-01']))).toEqual(['itemised']);
+  });
+
+  it('says the months by source, and why the itemised ones matter, when any are itemised', () => {
+    expect(coverCaveat({ balances: 0, stated: 3, itemised: 9 })).toEqual({
+      counts: 'Of the 12 months: 3 stated, 9 itemised.',
+      reading: 'Itemised months read low, which makes the cover read high.',
+    });
+  });
+
+  it('leaves out a source with no months, and has no reading when nothing is itemised', () => {
+    expect(coverCaveat({ balances: 0, stated: 12, itemised: 0 })).toEqual({ counts: 'Of the 12 months: 12 stated.', reading: null });
+    expect(coverCaveat({ balances: 0, stated: 0, itemised: 1 })).toEqual({ counts: 'Of the 1 month: 1 itemised.', reading: 'Itemised months read low, which makes the cover read high.' });
+  });
+
+  it('names the balances too when any month is from them', () => {
+    expect(coverCaveat({ balances: 4, stated: 3, itemised: 5 })?.counts).toBe('Of the 12 months: 4 from balances, 3 stated, 5 itemised.');
+  });
+
+  it('has no caveat for no months', () => {
+    expect(coverCaveat({ balances: 0, stated: 0, itemised: 0 })).toBeNull();
   });
 });

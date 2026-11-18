@@ -141,3 +141,26 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(found, found.join('\n')).toEqual([]);
   });
 }
+
+test('months of cover counts a stated month as stated, under its figure', async ({ page }) => {
+  test.setTimeout(180_000);
+  const card = await onLastMonth(page);
+  test.skip(!(await offered(card)), 'the month was closed from balances earlier in this run');
+  const action = card.getByTestId('month-state-action');
+  // The month is stated here if no earlier test has stated it.
+  if ((await action.getByRole('button', { name: 'Change' }).count()) === 0) {
+    await action.getByRole('button', { name: new RegExp(`^State ${monthBefore()}’s spend`) }).click();
+    const form = page.getByRole('form', { name: `State ${monthBefore()}’s spend` });
+    await form.getByLabel('Spent in total').fill('1,20,000');
+    await form.getByRole('button', { name: 'Save' }).click();
+    await expect(card.getByTestId('month-stated-said')).toBeVisible({ timeout: 20_000 });
+  }
+
+  await page.goto('/#/overview');
+  const cover = page.getByTestId('months-of-cover');
+  await expect(cover).toBeVisible({ timeout: 20_000 });
+  const sources = cover.getByTestId('cover-sources');
+  test.skip((await sources.count()) === 0, 'the demo household has too little history for a months-of-cover figure');
+  await expect(sources).toContainText(/Of the \d+ months?: .*\d+ stated/);
+  await expect(sources).toContainText('Itemised months read low, which makes the cover read high.');
+});

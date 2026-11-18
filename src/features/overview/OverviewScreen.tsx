@@ -47,6 +47,7 @@ import { assetHistory, movementSince } from '../../domain/history.ts';
 import { AllocationDonut } from './AllocationDonut.tsx';
 import { useOverviewData } from './useOverviewData.ts';
 import { coverPhrase } from '../../domain/earmark.ts';
+import { coverCaveat } from '../../domain/spend-source.ts';
 import { useMonthsOfCover } from './useMonthsOfCover.ts';
 import { insuranceFacts } from '../insurance/insuranceFacts.ts';
 import { annualFromListing } from '../plan/annualFromListing.ts';
@@ -221,6 +222,8 @@ export function OverviewScreen({
     rates,
     emergency,
   });
+  // How the months the cover is averaged over were made: said only beside a figure.
+  const coverNote = cover.status === 'ready' && cover.months !== null ? coverCaveat(countsOf(cover.sources)) : null;
 
   // Protection: the cover in force and the gap, from the same facts the Insurance screen reads, so the two
   // cannot say different things. A policy has a cover and no value, and it is read here and nowhere near
@@ -867,6 +870,15 @@ export function OverviewScreen({
                     </>
                   )}
               </div>
+              {/* How the months were made, said under the figure with the marker (docs/design/spending-capture.md section 11.4; SC-I9). */}
+              {coverNote !== null && (
+                <div className="stat-card-sub" data-testid="cover-sources">
+                  <Caveat tone="info" label="How these months were made">
+                    <span className="block">A month is stated when the household said what it cost, and itemised when it is worked from what was entered.</span>
+                  </Caveat>{' '}
+                  {coverNote.counts} {coverNote.reading}
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -1370,3 +1382,5 @@ function renewalHeadline(renewals: readonly { overdue: boolean }[]): string {
   }
   return parts.join(' and ');
 }
+
+const countsOf = (sources: { readonly stated: number; readonly itemised: number }) => ({ balances: 0, stated: sources.stated, itemised: sources.itemised });
