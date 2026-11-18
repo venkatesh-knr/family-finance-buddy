@@ -267,7 +267,7 @@ guessing.
 
 **XR-I10 — The example row and any row whose visible cells are all empty are never uploaded.** (§3)
 
-**XR-I11 — A contributor's report holds only what a contributor can read, and a contributor is not offered the template.** The policies already decide the first. (§2, §4)
+**XR-I11 — A contributor is offered no file: neither the report, nor the template, nor the complete backup.** Decided by the owner, 18 November 2026. A contributor has no Reports screen, and what a role is offered is one function. (§2, §4)
 
 **XR-I12 — The complete backup is byte-for-byte today's export** (template version 2), and upload still accepts it. (§1)
 
@@ -283,7 +283,7 @@ guessing.
 - XR-I8: reader unit tests, then pgTAP through `public.apply_template` where the rows land: a *Sold* row, a *Bought* row, a bonus with no amount, and a name matching two holdings.
 - XR-I9: a version 3 workbook and the equivalent version 2 rows produce the same rows through the reader; the second upload reports every row unchanged.
 - XR-I10: reader unit: the EXAMPLE row and a row of pre-filled keys with nothing visible are skipped.
-- XR-I11: e2e: a contributor's report has no sheet that holds another member's row, and the Reports screen offers a contributor no template.
+- XR-I11: unit: the offer for each role (an owner and a partner are offered all three; a contributor, a viewer and a person with no role none) and the access rules that keep them from the Reports screen (`exportOffer.test.ts`); e2e: an owner's Reports screen offers the report and the template and not the backup, and Settings offers the backup.
 - XR-I12: unit: the complete backup written for a stored fixture household equals a stored fixture file, byte for byte; the version 2 file is accepted by the reader.
 
 ## 6. Departure, decided

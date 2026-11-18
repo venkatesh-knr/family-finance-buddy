@@ -1351,6 +1351,19 @@ export interface PrivateClose {
   readonly outOfHoldings: bigint;
 }
 
+/**
+ * A person's stated total of what the household spent on living in a month that has ended, in one currency (docs/design/spending-capture.md section 11).
+ * Not derived and not a balance. Voided and stated again, never edited; an owner and a partner read and write it, nobody else.
+ */
+export interface SpendStatement {
+  readonly id: Uuid;
+  readonly householdId: Uuid;
+  /** The month it is about, `YYYY-MM` (IST). */
+  readonly month: string;
+  readonly amount: Money;
+  readonly note: string | null;
+}
+
 /** What came in and what was refunded in a period, for the whole household, private credits included. One line per currency. */
 export interface MoneyTotals {
   readonly cameIn: Money;
