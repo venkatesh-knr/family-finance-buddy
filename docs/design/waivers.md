@@ -31,6 +31,21 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - PF-C15 — half built: the cover half is asserted in tests/e2e/insurance.spec.ts, which does not carry the ID because the rule also names income, and the income ledger arrives with slice 6a (build-plan step 6a) — 2026-10-11
 - PF-C16 — not built: the Overview's stock and flow regions arrive with slice 6a — 2026-10-10
 
+## export-redesign.md
+
+- XR-I1 — not built: the report writer is slice 1 of docs/design/export-redesign.md — 2026-11-17
+- XR-I2 — not built: the report writer is slice 1 — 2026-11-17
+- XR-I3 — not built: the report writer is slice 1 — 2026-11-17
+- XR-I4 — not built: the report’s charts are slice 2 — 2026-11-17
+- XR-I5 — not built: the report’s charts are slice 2 — 2026-11-17
+- XR-I6 — not built: the report’s charts are slice 2 — 2026-11-17
+- XR-I7 — not built: template version 3 is slice 3 — 2026-11-17
+- XR-I8 — not built: template version 3’s reader is slice 3 — 2026-11-17
+- XR-I9 — not built: template version 3’s reader is slice 3 — 2026-11-17
+- XR-I10 — not built: template version 3’s reader is slice 3 — 2026-11-17
+- XR-I11 — not built: the report is slice 1 and the screens are slice 4 — 2026-11-17
+- XR-I12 — not built: the complete backup is renamed in slice 1, with its fixture — 2026-11-17
+
 ## goals.md
 
 - GL-I1 — not built: goals (a holding links to at most one goal) are build-plan step 9, and goals.md replaces the earmark when they land — 2026-10-15
@@ -48,12 +63,10 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I2 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I3 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I4 — not built: needs the transfer rule and account from slice 6a (spending-capture.md §8, S3) — 2026-10-30
-- SC-I14 — not built: the stated spend is designed (spending-capture.md section 11, 17 November 2026) and arrives with its own slice (build-plan step 6e) — 2026-11-17
 - SC-I15 — not built: the source rule arrives with the stated spend (build-plan step 6e) — 2026-11-17
 - SC-I16 — not built: arrives with the stated spend (build-plan step 6e) — 2026-11-17
 - SC-I17 — not built: arrives with the stated spend (build-plan step 6e) — 2026-11-17
 - SC-I18 — not built: arrives with the stated spend (build-plan step 6e) — 2026-11-17
-- SC-I19 — not built: arrives with the stated spend (build-plan step 6e) — 2026-11-17
 - SC-I5 — not built: witnesses arrive with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
 - SC-I6 — not built: matching arrives with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
 - SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30

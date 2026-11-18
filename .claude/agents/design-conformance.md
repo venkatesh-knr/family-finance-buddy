@@ -108,6 +108,10 @@ not specification:
   not obeyed. Where a board and `spending-capture.md` differ the document is the authority, and values come from `tokens.md`, which names Linen
   as the light theme. The boards' colours are drawn as literals; they are pictures, and the stylesheet's are tokens. Its departures are
   listed in `docs/drafts/stated-spend-departures.md` and, once recorded, in `conformance.md`.
+- `docs/design/export-redesign.md` is the specification of the report, the template and the complete backup (invariants XR-I1 to XR-I12). Its two
+  sample workbooks, `docs/drafts/samples/family-finance-buddy-report-demo-household-2026-11-17-fixed-axes.xlsx` and
+  `docs/drafts/samples/family-finance-buddy-template-demo-household.xlsx`, are the target output: a build is read against their sheets, headers,
+  order, formats and charts. Where a sample and the document differ the document is the authority.
 
 <!-- authority-exclusions:start -->
 Documents in `docs/design/` this brief deliberately does not treat as part of the
