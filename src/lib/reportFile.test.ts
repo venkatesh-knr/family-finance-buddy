@@ -6,7 +6,7 @@ import { cellRef, writeReportFile } from './reportFile.ts';
 
 /**
  * The report as a file (docs/design/export-redesign.md section 2): the parts of the .xlsx are listed and related as Excel needs them, the sheets are the
- * report's, in its order, and the formulas are formulas in the file. Charts are the next slice; this file has none, and says so by having no drawing part.
+ * report's, in its order, and the formulas are formulas in the file. The charts, which are added to the finished file, are tested in `reportCharts.test.ts`.
  */
 
 const written = async () => {
@@ -41,8 +41,8 @@ describe('the report file', { timeout: 30_000 }, () => {
     for (const sheet of sheets) expect(types, sheet).toContain(`PartName="/${sheet}"`);
     const rels = (await zip.file('xl/_rels/workbook.xml.rels')?.async('string')) ?? '';
     for (const sheet of sheets) expect(rels, sheet).toContain(`Target="${sheet.replace('xl/', '/xl/')}"`.replace('/xl/', '') === '' ? sheet : sheet.replace('xl/', ''));
-    // No drawing and no chart part: charts are the next slice, and a half-made one is what makes Excel repair a file.
-    expect(Object.keys(zip.files).some((name) => name.startsWith('xl/charts/') || name.startsWith('xl/drawings/'))).toBe(false);
+    // Charts are in the file, and each is in the content types.
+    for (const part of Object.keys(zip.files).filter((name) => /^xl\/charts\/chart\d+\.xml$/.test(name) || /^xl\/drawings\/drawing\d+\.xml$/.test(name))) expect(types, part).toContain(`PartName="/${part}"`);
   });
 
   it('writes the gains and totals as formulas, not values', async () => {

@@ -86,8 +86,8 @@ describe('XR-I1 — the report shows a person’s figures, not the database', ()
 
   it('merges kind, scheme and retirement type into one Type, and shows no units for a deposit or a retirement scheme', () => {
     const investments = sheetOf(build(), 'Investments');
-    expect(column(investments, 2)).toEqual(['ETF', 'Fixed deposit (FD)', 'Mutual fund', 'NPS']);
-    expect(investments.cells.filter((cell) => cell.col === 4 && cell.row > 1).map((cell) => [cell.row, cell.value])).toEqual([[2, 12.5], [4, 600]]);
+    expect(column(investments, 2)).toEqual(['Fixed deposit (FD)', 'Mutual fund', 'NPS', 'ETF']);
+    expect(investments.cells.filter((cell) => cell.col === 4 && cell.row > 1).map((cell) => [cell.row, cell.value])).toEqual([[3, 600], [5, 12.5]]);
   });
 
   it('marks the reader’s own private entries Yes, and leaves the column blank for the household’s', () => {
@@ -153,13 +153,13 @@ describe('XR-I3 — gains and totals are formulas, and the Summary is built from
       expect(valueAt(investments, row, 8)).toEqual({ formula: `IF(OR(E${r}="",F${r}=""),"",F${r}-E${r})` });
       expect(valueAt(investments, row, 9)).toEqual({ formula: `IF(OR(E${r}="",E${r}=0,F${r}=""),"",(F${r}-E${r})/E${r})` });
     }
-    expect(valueAt(investments, 4, 5)).toBe(90000);
-    expect(valueAt(investments, 4, 6)).toBe(224000);
+    expect(valueAt(investments, 3, 5)).toBe(90000);
+    expect(valueAt(investments, 3, 6)).toBe(224000);
     expect(valueAt(sheetOf(report, 'Property'), 2, 8)).toEqual({ formula: 'SUM(E2:G2)' });
   });
 
   it('groups amounts in lakhs and crores and keeps them numbers', () => {
-    expect(at(sheetOf(build(), 'Investments'), 4, 6)?.format).toBe(INR_WHOLE);
+    expect(at(sheetOf(build(), 'Investments'), 3, 6)?.format).toBe(INR_WHOLE);
     expect(INR_WHOLE).toContain('##\\,##\\,##0');
     expect(at(sheetOf(build(), 'Spending'), 2, 7)?.format).toContain('0.00');
   });
