@@ -33,9 +33,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## export-redesign.md
 
-- XR-I4 — not built: the report’s charts are slice 2 — 2026-11-17
-- XR-I5 — not built: the report’s charts are slice 2 — 2026-11-17
-- XR-I6 — not built: the report’s charts are slice 2 — 2026-11-17
 - XR-I7 — not built: template version 3 is slice 3 — 2026-11-17
 - XR-I8 — not built: template version 3’s reader is slice 3 — 2026-11-17
 - XR-I9 — not built: template version 3’s reader is slice 3 — 2026-11-17

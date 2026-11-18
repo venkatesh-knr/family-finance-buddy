@@ -8,6 +8,7 @@
  */
 
 import type { ReportCell, ReportSheet, ReportStyle, ReportWorkbook } from '../domain/export/report.ts';
+import { addCharts } from './reportCharts.ts';
 
 const FOREST = 'FF025F4C';
 const CREAM = 'FFF6F2E4';
@@ -87,8 +88,9 @@ export async function writeReportFile(report: ReportWorkbook, options: { readonl
     if (sheet.tab === 'data') worksheet.getRow(1).height = 30;
   }
 
+  // ExcelJS writes the sheets and has no chart API, so the charts are added to the finished file (reportCharts.ts).
   const buffer = await book.xlsx.writeBuffer();
-  return new Uint8Array(buffer);
+  return addCharts(new Uint8Array(buffer), report);
 }
 
 export type { ReportSheet };

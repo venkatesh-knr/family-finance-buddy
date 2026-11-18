@@ -54,6 +54,8 @@ export interface ReportBlock {
   readonly lastRow: number;
   readonly firstCol: number;
   readonly lastCol: number;
+  /** For the gain chart: the positions, counted from the first row, of the rows whose gain is a loss, which the chart colours apart. */
+  readonly losses?: readonly number[];
 }
 
 export interface ReportSheet {
@@ -372,7 +374,11 @@ function investmentRows(index: Index): InvestmentRow[] {
       name: instrument['name'] ?? '',
     });
   }
-  return out.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type.localeCompare(b.type)));
+  // Rupees first, so a chart over the rupee rows is one range and never adds a currency to another; then by type, then name.
+  return out.sort((a, b) => {
+    if ((a.currency === 'INR') !== (b.currency === 'INR')) return a.currency === 'INR' ? -1 : 1;
+    return a.type === b.type ? a.name.localeCompare(b.name) : a.type.localeCompare(b.type);
+  });
 }
 
 function investments(index: Index, rowsOfInvestments: readonly InvestmentRow[]): Built | null {
@@ -399,6 +405,19 @@ function investments(index: Index, rowsOfInvestments: readonly InvestmentRow[]):
       currency,
     ];
   });
+  // The gain chart reads the rupee rows, which come first (see investmentRows); a loss is a row whose latest value is below what was put in.
+  const rupees = rowsOfInvestments.filter((entry) => entry.currency === 'INR');
+  const losses: number[] = [];
+  let anyGain = false;
+  rupees.forEach((entry, position) => {
+    const cost = entry.holding['cost_minor'];
+    const reading = readings.get(entry.holding['id'] ?? '');
+    const value = reading?.['value_minor'];
+    if (cost === null || cost === undefined || value === null || value === undefined) return;
+    anyGain = true;
+    if (BigInt(value) < BigInt(cost)) losses.push(position);
+  });
+  const blocks: ReportBlock[] = anyGain ? [{ key: 'gain-by-investment', headerRow: 1, firstRow: 2, lastRow: rupees.length + 1, firstCol: 1, lastCol: 8, losses }] : [];
   return dataSheet(
     'Investments',
     ['Name', 'Type', 'Whose', 'Units', 'Invested', 'Latest value', 'Value as at', 'Gain', 'Gain %', 'Kept for', 'Held abroad', 'Currency'],
@@ -406,6 +425,8 @@ function investments(index: Index, rowsOfInvestments: readonly InvestmentRow[]):
     rows,
     [undefined, undefined, undefined, undefined, undefined, undefined, DATE_FORMAT, undefined, undefined, undefined, undefined, undefined],
     'Latest value is the last one recorded or worked out; a blank means it has not been valued yet. Gain is latest value minus invested.',
+    [],
+    blocks,
   );
 }
 
