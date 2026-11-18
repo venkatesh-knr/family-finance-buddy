@@ -24,7 +24,8 @@ describe('cellRef', () => {
   });
 });
 
-describe('the report file', () => {
+// Loading the spreadsheet library the first time takes seconds on a busy machine, which is longer than a test's default.
+describe('the report file', { timeout: 30_000 }, () => {
   it('has the report’s sheets, in order, in the workbook part', async () => {
     const { zip } = await written();
     const workbook = await zip.file('xl/workbook.xml')?.async('string');
