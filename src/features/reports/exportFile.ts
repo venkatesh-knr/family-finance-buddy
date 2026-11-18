@@ -20,6 +20,11 @@ export function exportFilename(householdName: string, isoDate: string, sample: b
   return `family-finance-buddy-${slug === '' ? 'household' : slug}-${day}${sample ? '-sample' : ''}.xlsx`;
 }
 
+/** The name of a report: the same, with *report* in it, as the sample workbook is named. */
+export function reportFilename(householdName: string, isoDate: string, sample: boolean): string {
+  return exportFilename(householdName, isoDate, sample).replace('family-finance-buddy-', 'family-finance-buddy-report-');
+}
+
 // ── the last export, kept on this device only ───────────────────────────────────────────────────────────────────
 
 const keyFor = (householdId: string) => `ffb.lastExport.${householdId}`;
