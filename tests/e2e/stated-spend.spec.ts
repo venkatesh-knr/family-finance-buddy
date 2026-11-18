@@ -90,6 +90,7 @@ test('stating a month shows it as stated, rough in saved, and with what is not y
   // What went into holdings needs no balance, so it is said under a rough saved, from the holdings' own entries (SC-I11).
   await expect(card.getByTestId('month-invested').first()).toContainText('from your holdings’ entries.', { timeout: 20_000 });
   await expect(card.getByTestId('month-invested').first()).toContainText(/^Invested /);
+  await expect(card.getByTestId('month-invested-left-out')).toContainText('NPS and EPF contributions and recurring deposits are not counted.');
 
   // It is changed by stating again, and one figure is live for the month.
   await card.getByTestId('month-state-action').getByRole('button', { name: 'Change' }).click();

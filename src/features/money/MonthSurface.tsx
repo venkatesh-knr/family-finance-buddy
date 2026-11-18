@@ -20,7 +20,7 @@ import { Button, Caveat } from '../../ui/primitives.tsx';
 import { lastDayOf, monthWord } from './closeMonth.ts';
 import { modeLine, type LastMonthView } from './lastMonth.ts';
 import { monthLabel, spentShortReasons, surfaceFigures } from './monthSurface.ts';
-import { crossCheckLines, investedLines, monthLines, sourceNote } from './spendSourceView.ts';
+import { crossCheckLines, investedLeftOut, investedLines, monthLines, sourceNote } from './spendSourceView.ts';
 import { stateSpendChoices } from './stateSpendForm.ts';
 import { StateSpend } from './StateSpend.tsx';
 import { useInvestedInMonth } from './useInvestedInMonth.ts';
@@ -281,9 +281,13 @@ export function MonthSurface({
               {line.sentence}
             </p>
           ))}
+      {statedCurrencies.length > 0 && investedRead.status === 'loading' && (
+        <p className="note mt-2.5" role="status">
+          Reading what went into holdings…
+        </p>
+      )}
       {statedCurrencies.length > 0 &&
-        investedRead.status !== 'idle' &&
-        investedRead.status !== 'loading' &&
+        (investedRead.status === 'ready' || investedRead.status === 'failed') &&
         investedLines({
           currencies: statedCurrencies,
           invested: investedRead.status === 'ready' ? investedRead.invested : null,
@@ -294,6 +298,11 @@ export function MonthSurface({
             {line}
           </p>
         ))}
+      {statedCurrencies.length > 0 && investedRead.status === 'ready' && (
+        <p className="note mt-1.5" data-testid="month-invested-left-out">
+          {investedLeftOut({ privateLeftOut: investedRead.privateLeftOut }).join(' ')}
+        </p>
+      )}
       {closed !== null &&
         crossCheckLines({ closedSpent: closed.spent, statements: stated, privacy }).map((line) => (
           <p key={line} className="note mt-2.5" data-testid="month-cross-check">

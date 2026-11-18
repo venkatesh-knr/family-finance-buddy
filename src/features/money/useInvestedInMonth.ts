@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { investedInMonth, type Invested } from '../../domain/invested.ts';
 import { listFixedIncome } from '../../repo/fixedIncome.ts';
-import { listHoldings } from '../../repo/holdings.ts';
+import { listHoldings, listPersonalHoldingTotals } from '../../repo/holdings.ts';
 import { listPpf } from '../../repo/retirement.ts';
 import { investedInput } from '../overview/investedInput.ts';
 
@@ -17,7 +17,7 @@ export type InvestedRead =
   | { readonly status: 'idle' }
   | { readonly status: 'loading' }
   | { readonly status: 'failed' }
-  | { readonly status: 'ready'; readonly invested: Invested; readonly unread: readonly string[] };
+  | { readonly status: 'ready'; readonly invested: Invested; readonly unread: readonly string[]; readonly privateLeftOut: boolean };
 
 export function useInvestedInMonth(householdId: string | null, month: string | null, today: string, asks: boolean): InvestedRead {
   const [state, setState] = useState<InvestedRead & { readonly key?: string }>({ status: 'idle' });
@@ -26,10 +26,10 @@ export function useInvestedInMonth(householdId: string | null, month: string | n
   useEffect(() => {
     if (key === null || householdId === null || month === null) return undefined;
     let live = true;
-    Promise.all([listHoldings({ householdId, includeArchived: true }), Promise.allSettled([listFixedIncome(householdId), listPpf(householdId)])])
-      .then(([listing, [fixed, ppf]]) => {
+    Promise.all([listHoldings({ householdId, includeArchived: true }), Promise.allSettled([listFixedIncome(householdId), listPpf(householdId), listPersonalHoldingTotals(householdId)])])
+      .then(([listing, [fixed, ppf, personal]]) => {
         if (!live) return;
-        const unread = [fixed.status === 'rejected' ? 'deposits and bonds' : null, ppf.status === 'rejected' ? 'PPF payments' : null].filter((name): name is string => name !== null);
+        const unread = [fixed.status === 'rejected' ? 'deposits and bonds' : null, ppf.status === 'rejected' ? 'PPF payments' : null, personal.status === 'rejected' ? 'other members\u2019 private holdings' : null].filter((name): name is string => name !== null);
         const invested = investedInMonth(
           investedInput({
             listing,
@@ -42,7 +42,9 @@ export function useInvestedInMonth(householdId: string | null, month: string | n
             today,
           }),
         );
-        setState({ status: 'ready', key, invested, unread });
+        // Another member's private holdings this device cannot read: the database says there are some, and their purchases are not in the figure.
+        const privateLeftOut = personal.status === 'fulfilled' && personal.value.length > 0;
+        setState({ status: 'ready', key, invested, unread, privateLeftOut });
       })
       .catch(() => {
         if (live) setState({ status: 'failed', key });
