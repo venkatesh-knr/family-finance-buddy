@@ -6,6 +6,7 @@
  * beside it. Per currency, never added across them (LI-I5).
  */
 
+import type { Invested } from '../../domain/invested.ts';
 import { monthSpend, savedFor, type SpendSource } from '../../domain/spend-source.ts';
 import { formatMoney, money, type Money } from '../../lib/money.ts';
 import type { SpendStatement } from '../../repo/types.ts';
@@ -80,4 +81,35 @@ export function crossCheckLines(input: { readonly closedSpent: readonly Money[];
     if (stated !== undefined) lines.push(`Spent ${show(closed)} from balances. You said ${show(stated.amount)}.`);
   }
   return lines;
+}
+
+/**
+ * *Invested ₹55,000, from your holdings' entries.* under a stated month's rough Saved (section 11.2): the invested half that needs no balance (SC-I11), and the only
+ * part of the usual split that is claimed for such a month (SC-I18). One line for each currency stated; `invested` is null when it could not be read, which is said
+ * and never a figure of nothing, and `unread` names what could not be read of it, so it says it may be short.
+ */
+export function investedLines(input: {
+  readonly currencies: readonly string[];
+  readonly invested: Invested | null;
+  readonly privacy: boolean;
+  readonly unread?: readonly string[];
+}): readonly string[] {
+  if (input.currencies.length === 0) return [];
+  if (input.invested === null) return ['Invested could not be read just now; reload to read it again.'];
+  const invested = input.invested;
+  const lines = input.currencies.map((currency) => {
+    const net = invested.currencies.find((line) => line.currency === currency)?.net ?? 0n;
+    return `Invested ${formatMoney(money(net, currency), { privacy: input.privacy })}, from your holdings\u2019 entries.`;
+  });
+  // Once, after the lines, and not on each: what could not be read is the same for every currency.
+  if (input.unread !== undefined && input.unread.length > 0) lines.push(`This may be short: ${input.unread.join(' and ')} could not be read. Reload to read it again.`);
+  return lines;
+}
+
+/** What the Invested line leaves out, as the Overview's Invested card says it: other members' private holdings this device cannot read, and what is never counted. */
+export function investedLeftOut(input: { readonly privateLeftOut: boolean }): readonly string[] {
+  return [
+    ...(input.privateLeftOut ? ['Other members\u2019 private holdings are not here: this device cannot read their purchases.'] : []),
+    'Market gains are not investing, and NPS and EPF contributions and recurring deposits are not counted.',
+  ];
 }

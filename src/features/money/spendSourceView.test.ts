@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { SpendStatement } from '../../repo/types.ts';
-import { crossCheckLines, monthLines, sourceNote } from './spendSourceView.ts';
+import { crossCheckLines, investedLeftOut, investedLines, monthLines, sourceNote } from './spendSourceView.ts';
 
 /**
  * What the month card says of where a month's spent came from (docs/design/spending-capture.md section 11.2 and 11.4; the MoneyMonthStated boards).
@@ -85,5 +85,44 @@ describe('SC-I17 — the cross-check beside a month closed from balances', () =>
   it('says nothing when nothing was stated, or in a currency that was not', () => {
     expect(crossCheckLines({ closedSpent: [inr(91_000)], statements: [] })).toEqual([]);
     expect(crossCheckLines({ closedSpent: [inr(91_000)], statements: [statement(5, 'USD')] })).toEqual([]);
+  });
+});
+
+describe('SC-I11, SC-I18 — the invested line under a rough saved', () => {
+  const invested = { month: '2026-10', currencies: [{ currency: 'INR', putIn: rupees(60_000), takenOut: rupees(5_000), net: rupees(55_000), classes: [] }], leftOut: { lots: 0, disposals: 0 } };
+
+  it('says what went into holdings, net, from the holdings’ own entries, for each currency stated', () => {
+    expect(investedLines({ currencies: ['INR'], invested, privacy: false })).toEqual(['Invested ₹55,000, from your holdings’ entries.']);
+  });
+
+  it('says nothing was invested as a figure of nothing when the currency has no movement', () => {
+    expect(investedLines({ currencies: ['USD'], invested, privacy: false })).toEqual(['Invested $0, from your holdings’ entries.']);
+  });
+
+  it('masks the amount under privacy mode', () => {
+    expect(investedLines({ currencies: ['INR'], invested, privacy: true })[0]).toMatch(/^Invested ₹•+, from/);
+  });
+
+  it('says it could not be read, and that a part of it could not, and is never a figure of nothing for either', () => {
+    expect(investedLines({ currencies: ['INR'], invested: null, privacy: false })).toEqual(['Invested could not be read just now; reload to read it again.']);
+    expect(investedLines({ currencies: ['INR'], invested, privacy: false, unread: ['deposits and bonds'] })).toEqual([
+      'Invested \u20b955,000, from your holdings\u2019 entries.',
+      'This may be short: deposits and bonds could not be read. Reload to read it again.',
+    ]);
+  });
+
+  it('says what could not be read once, however many currencies are stated', () => {
+    const lines = investedLines({ currencies: ['INR', 'USD'], invested, privacy: false, unread: ['PPF payments'] });
+    expect(lines).toHaveLength(3);
+    expect(lines.filter((line) => line.includes('may be short'))).toHaveLength(1);
+  });
+
+  it('says what it leaves out, as the Overview’s card does: other members’ private holdings only when there are some, and what is never counted', () => {
+    expect(investedLeftOut({ privateLeftOut: false })).toEqual(['Market gains are not investing, and NPS and EPF contributions and recurring deposits are not counted.']);
+    expect(investedLeftOut({ privateLeftOut: true })[0]).toBe('Other members\u2019 private holdings are not here: this device cannot read their purchases.');
+  });
+
+  it('has no line for a month that is not stated', () => {
+    expect(investedLines({ currencies: [], invested, privacy: false })).toEqual([]);
   });
 });
