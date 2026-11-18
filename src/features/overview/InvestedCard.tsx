@@ -17,12 +17,11 @@ import { money } from '../../lib/money.ts';
 import { listPpf } from '../../repo/retirement.ts';
 import type { DepositRenewal, FixedIncomeTerms, HoldingListing, PpfEntryRow, Uuid } from '../../repo/types.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
-import { ASSET_CLASSES, assetClass } from '../../ui/assetClass.ts';
+import { assetClass } from '../../ui/assetClass.ts';
 import { kindLabel } from '../../ui/labels.ts';
 import { Amount, Card, Unit } from '../../ui/primitives.tsx';
-import { fixedIncomePayouts } from '../holdings/fixedIncomeRows.ts';
+import { CLASS_ORDER, investedInput } from './investedInput.ts';
 
-const CLASS_ORDER = ASSET_CLASSES.map((c) => c.kind);
 const MONTH_NAMES = [
   'January',
   'February',
@@ -115,28 +114,10 @@ export function InvestedCard({
     };
   }, [householdId]);
 
-  const invested = useMemo(() => {
-    const held = listing.holdings.filter((h) => scope === 'household' || h.member.id === mine);
-    const ids = new Set(held.map((h) => String(h.id)));
-    const scopedTerms = (terms ?? []).filter((t) => ids.has(String(t.holdingId)));
-    return investedInMonth({
-      month,
-      classOrder: CLASS_ORDER,
-      holdings: held.map((h) => ({ id: String(h.id), kind: h.instrument.kind, openedOn: h.openedOn, cost: h.cost, scheme: h.instrument.scheme })),
-      lots: listing.lots
-        .filter((l) => ids.has(String(l.holdingId)))
-        .map((l) => ({ holdingId: String(l.holdingId), acquiredOn: l.acquiredOn, cost: l.cost, kind: l.kind })),
-      disposals: listing.disposals
-        .filter((d) => ids.has(String(d.holdingId)))
-        .map((d) => ({ holdingId: String(d.holdingId), disposedOn: d.disposedOn, proceeds: d.proceeds, kind: d.kind })),
-      terms: scopedTerms.map((t) => ({ holdingId: String(t.holdingId), start: t.start, principal: t.principal })),
-      // A deposit or bond cannot record a sale, so what it paid out is worked out from its terms, as Holdings does.
-      payouts: fixedIncomePayouts(scopedTerms, renewals, today).map((p) => ({ holdingId: String(p.holdingId), paidOn: p.paidOn, amount: p.amount })),
-      ppfEntries: (ppf ?? [])
-        .filter((e) => ids.has(String(e.holdingId)))
-        .map((e) => ({ holdingId: String(e.holdingId), date: e.date, amount: e.amount, isVoided: e.isVoided })),
-    });
-  }, [listing, terms, renewals, ppf, month, scope, mine, today]);
+  const invested = useMemo(
+    () => investedInMonth(investedInput({ listing, terms, renewals, ppf, month, scope, mine, today })),
+    [listing, terms, renewals, ppf, month, scope, mine, today],
+  );
 
   // The classes this household holds in each currency, so the line of what had nothing in it names only classes that exist here.
   const held = useMemo(() => {

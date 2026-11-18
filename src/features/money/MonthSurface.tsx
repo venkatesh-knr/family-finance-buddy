@@ -20,9 +20,10 @@ import { Button, Caveat } from '../../ui/primitives.tsx';
 import { lastDayOf, monthWord } from './closeMonth.ts';
 import { modeLine, type LastMonthView } from './lastMonth.ts';
 import { monthLabel, spentShortReasons, surfaceFigures } from './monthSurface.ts';
-import { crossCheckLines, monthLines, sourceNote } from './spendSourceView.ts';
+import { crossCheckLines, investedLines, monthLines, sourceNote } from './spendSourceView.ts';
 import { stateSpendChoices } from './stateSpendForm.ts';
 import { StateSpend } from './StateSpend.tsx';
+import { useInvestedInMonth } from './useInvestedInMonth.ts';
 import { useLastMonthSpend } from './useLastMonthSpend.ts';
 import { useSpendStatements } from './useSpendStatements.ts';
 import { useMonthTotals } from './useMonthTotals.ts';
@@ -94,6 +95,9 @@ export function MonthSurface({
   // A month that is not closed is itemised or stated; until the statements are read, it is neither, and says it is being read.
   const statedReady = openLast === null || statements.read.status === 'ready' || statements.read.status === 'failed';
   const lines = openLast !== null && figures !== null && statements.read.status === 'ready' ? monthLines({ spent: figures.spent, cameIn: figures.cameIn, statements: stated, privacy }) : null;
+  // A stated month claims no split of saved, but what went into holdings needs no balance, so it is said (SC-I11, SC-I18): read only for a month that is stated.
+  const statedCurrencies = lines === null ? [] : lines.filter((line) => line.stated !== null).map((line) => line.spent.currency);
+  const investedRead = useInvestedInMonth(householdId, openLast === null ? null : openLast.month, today, statedCurrencies.length > 0);
   const statedHere = lines?.find((line) => line.spent.currency === currency)?.stated ?? null;
   // An open Last month names its source, and cannot until the statements are read: it says it is being read, or that it could not be, and never an itemised figure.
   const statedWaiting = openLast !== null && statements.read.status !== 'ready';
@@ -277,6 +281,19 @@ export function MonthSurface({
               {line.sentence}
             </p>
           ))}
+      {statedCurrencies.length > 0 &&
+        investedRead.status !== 'idle' &&
+        investedRead.status !== 'loading' &&
+        investedLines({
+          currencies: statedCurrencies,
+          invested: investedRead.status === 'ready' ? investedRead.invested : null,
+          privacy,
+          ...(investedRead.status === 'ready' ? { unread: investedRead.unread } : {}),
+        }).map((line) => (
+          <p key={line} className="note mt-2.5" data-testid="month-invested">
+            {line}
+          </p>
+        ))}
       {closed !== null &&
         crossCheckLines({ closedSpent: closed.spent, statements: stated, privacy }).map((line) => (
           <p key={line} className="note mt-2.5" data-testid="month-cross-check">
