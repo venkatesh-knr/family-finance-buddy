@@ -9,7 +9,8 @@
  * include private amounts, or the numbers disagree between members. Each is converted at the rate for
  * that month's last day, so a month does not change because the rupee moved today.
  *
- * Thirteen months are read and twelve are averaged: the oldest is a probe that says whether recording
+ * A month the household has stated is taken as stated, in each currency it was stated in, and itemised in any other, unless the month was closed from balances, which a statement never stands in for; the caveat on the card counts the months
+ * by source. Thirteen months are read and twelve are averaged: the oldest is a probe that says whether recording
  * began inside the window (see `coverMonths`).
  */
 
@@ -17,9 +18,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { convert, type Rate } from '../../domain/fx.ts';
 import { COVER_WINDOW_MONTHS, coverMonths, monthsOfCover, priorMonths } from '../../domain/earmark.ts';
 import { monthBounds } from '../../domain/budget.ts';
+import { countBySource, coverSources, statementsForCover, type SpendSource } from '../../domain/spend-source.ts';
 import { money, type Money } from '../../lib/money.ts';
+import { listAccounts, listBalances } from '../../repo/accounts.ts';
 import { listOwnPrivateSpend, listPersonalSpend } from '../../repo/expenses.ts';
+import { listSpendStatements } from '../../repo/spendStatements.ts';
 import { householdSpending } from '../../repo/summary.ts';
+import type { SpendStatement } from '../../repo/types.ts';
+import { isClosed } from '../money/closeMonth.ts';
 
 export type Cover =
   | { readonly status: 'loading' }
@@ -32,6 +38,8 @@ export type Cover =
       readonly history: number;
       /** Why it is null, when it is, in words for the screen. */
       readonly why: string | null;
+      /** How many of the months the average is over are stated, and how many itemised (docs/design/spending-capture.md section 11.4). */
+      readonly sources: Readonly<Record<SpendSource, number>>;
     };
 
 export function useMonthsOfCover(options: {
@@ -44,7 +52,7 @@ export function useMonthsOfCover(options: {
   emergency: Money | null;
 }): Cover {
   const { householdId, today, display, rates, emergency } = options;
-  const [raw, setRaw] = useState<ReadonlyMap<string, readonly Money[]> | 'failed' | null>(null);
+  const [raw, setRaw] = useState<{ readonly byMonth: ReadonlyMap<string, readonly Money[]>; readonly stated: readonly SpendStatement[] } | 'failed' | null>(null);
 
   useEffect(() => {
     if (householdId === null) return;
@@ -56,6 +64,8 @@ export function useMonthsOfCover(options: {
     if (first === undefined || last === undefined) return;
 
     Promise.all([
+      listSpendStatements(householdId, months),
+      Promise.all([listAccounts(householdId, { includeArchived: true }), listBalances(householdId, { from: monthBounds(`${first}-01`).start, to: monthBounds(`${last}-01`).end })]),
       Promise.all(
         months.map(async (month) => {
           const { start, end } = monthBounds(`${month}-01`);
@@ -72,11 +82,13 @@ export function useMonthsOfCover(options: {
         to: monthBounds(`${last}-01`).end,
       }),
     ])
-      .then(([entries, own]) => {
+      .then(([statements, [accounts, balances], entries, own]) => {
         if (!live) return;
         const byMonth = new Map<string, Money[]>(entries.map(([month, amounts]) => [month, [...amounts]]));
         for (const entry of own) byMonth.get(entry.date.slice(0, 7))?.push(entry.amount);
-        setRaw(byMonth);
+        // Balances beat a stated spend (SC-I17): a statement for a month closed from balances is not used, and the month is itemised like any other.
+        const closed = new Set(months.filter((month) => isClosed({ month, accounts, balances })));
+        setRaw({ byMonth, stated: statementsForCover(statements, closed) });
       })
       .catch(() => {
         if (live) setRaw('failed');
@@ -90,22 +102,29 @@ export function useMonthsOfCover(options: {
     if (raw === null) return { status: 'loading' };
     if (raw === 'failed') return { status: 'failed' };
 
-    const spendMonths = [...raw.entries()]
-      .filter(([, amounts]) => amounts.some((amount) => amount.minor !== 0n))
+    const statedMonths = new Set(raw.stated.map((statement) => statement.month));
+    const spendMonths = [...raw.byMonth.entries()]
+      .filter(([month, amounts]) => statedMonths.has(month) || amounts.some((amount) => amount.minor !== 0n))
       .map(([month]) => month);
-    const window = coverMonths({ today, spendMonths });
+    const window = coverMonths({ today, spendMonths, stated: [...statedMonths] });
+    const sources = countBySource(coverSources(window, statedMonths));
 
     const monthlyExpenses: { month: string; spent: Money }[] = [];
     for (const month of window) {
       const { end } = monthBounds(`${month}-01`);
       let total = 0n;
-      for (const amount of raw.get(month) ?? []) {
+      // Each currency is stated or itemised on its own: a statement stands in for what was itemised in its currency, and in no other.
+      const stated = raw.stated.filter((statement) => statement.month === month);
+      const statedIn = new Set(stated.map((statement) => statement.amount.currency));
+      const amounts = [...stated.map((statement) => statement.amount), ...(raw.byMonth.get(month) ?? []).filter((amount) => !statedIn.has(amount.currency))];
+      for (const amount of amounts) {
         const converted = convert(amount, display, rates, end);
         if (!converted.ok) {
           return {
             status: 'ready',
             months: null,
             history: window.length,
+            sources,
             why: `A rate to convert ${converted.missing.base} spending into ${display} is missing, so the monthly average cannot be added up.`,
           };
         }
@@ -119,17 +138,19 @@ export function useMonthsOfCover(options: {
         status: 'ready',
         months: null,
         history: window.length,
+        sources,
         why: 'The emergency fund could not be added into one figure, so there is nothing to divide.',
       };
     }
 
     const months = monthsOfCover({ emergency, monthlyExpenses });
-    if (months !== null) return { status: 'ready', months, history: window.length, why: null };
+    if (months !== null) return { status: 'ready', months, history: window.length, sources, why: null };
 
     return {
       status: 'ready',
       months: null,
       history: window.length,
+      sources,
       why:
         window.length < 3
           ? `It needs three whole months with spending recorded in them; there ${window.length === 1 ? 'is' : 'are'} ${String(window.length)} so far. The month spending began in and months with nothing recorded do not count.`

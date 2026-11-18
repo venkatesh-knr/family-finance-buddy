@@ -246,19 +246,23 @@ export function priorMonths(today: string, count: number): readonly string[] {
  * `spendMonths` is every month among the thirteen before `today` that has any spending in it. The
  * thirteenth, oldest, month is a probe and not part of the window: spending in it means recording began
  * before the window opens, so the window's oldest month is a whole month and stays. Without spending in
- * it, the earliest month with any is where recording began, and it is dropped.
+ * it, the earliest month with any is where recording began, and it is dropped, unless that month is one the household *stated*: a statement is a whole month's
+ * total and not the first entry of one, so it stays.
  */
 export function coverMonths(options: {
   /** An IST calendar date, passed in. */
   readonly today: string;
   readonly spendMonths: readonly string[];
+  /** The months among them that are stated, which are whole months. */
+  readonly stated?: readonly string[];
 }): readonly string[] {
   const prior = priorMonths(options.today, COVER_WINDOW_MONTHS + 1);
   const has = new Set(options.spendMonths);
   const [probe, ...window] = prior;
   const earliest = prior.find((month) => has.has(month));
   const beganInside = earliest !== undefined && earliest !== probe;
-  return window.filter((month) => has.has(month) && !(beganInside && month === earliest));
+  const whole = new Set(options.stated ?? []);
+  return window.filter((month) => has.has(month) && !(beganInside && month === earliest && !whole.has(month)));
 }
 
 export interface EarmarkedHoldings {
