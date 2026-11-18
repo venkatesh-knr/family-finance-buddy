@@ -145,6 +145,12 @@
     width: 100%;
   }
 
+  /* The report and the template side by side where they fit, and one above the other where they do not. */
+  .export-row > * {
+    flex: 1 1 11rem;
+    width: auto;
+  }
+
   .card-title {
     color: var(--ink);
     font-family: var(--font-ui);

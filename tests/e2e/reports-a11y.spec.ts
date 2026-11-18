@@ -15,10 +15,10 @@ for (const scheme of ['light', 'dark'] as const) {
     };
 
     await page.goto('/#/reports');
-    await expect(page.getByRole('region', { name: 'Export everything' })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('region', { name: 'Download a report' })).toBeVisible({ timeout: 20_000 });
     await scan('closed');
-    await page.getByRole('button', { name: 'Export everything · Excel' }).click();
-    await expect(page.getByRole('form', { name: 'Confirm the export' })).toBeVisible();
+    await page.getByRole('button', { name: 'Download a report' }).click();
+    await expect(page.getByRole('form', { name: 'Confirm the download' })).toBeVisible();
     await scan('asking for the code');
     expect(found, found.join('\n')).toEqual([]);
   });

@@ -93,7 +93,7 @@ const PURPOSE: Partial<Record<AppScreen, string>> = {
   tax: 'What the year’s gains and income come to, on the rules that applied.',
   insurance: 'Policies, what they cover and when they renew.',
   property: 'What each cost, what it is thought to be worth, and how old that is.',
-  reports: 'Export everything, or bring an edited workbook back.',
+  reports: 'Download a report, or bring a filled template back.',
   settings: 'Theme, how amounts show, members',
 };
 
@@ -146,7 +146,7 @@ export function MoreScreen({
         // Remembered by this device alone, so it says so (docs/design/conformance.md, Departures).
         const last = householdId === null ? null : readLastExport(householdId);
         return {
-          text: last === null ? (PURPOSE.reports ?? '') : `Export everything · last on this device ${formatIsoDate(istCalendarDate(new Date(last)))}`,
+          text: last === null ? (PURPOSE.reports ?? '') : `Last download on this device ${formatIsoDate(istCalendarDate(new Date(last)))}`,
           pill: null,
         };
       }

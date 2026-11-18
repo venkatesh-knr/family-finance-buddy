@@ -20,7 +20,7 @@ test('each place behind More is one link with a name and a line saying what is t
   for (const [name, line] of [
     ['Accounts', /Where your money is kept/],
     ['Tax', /\d{4}–\d{2}|gains and income/],
-    ['Reports', /Export everything/],
+    ['Reports', /Download a report/],
     ['Insurance', /polic|Policies/],
     ['Property', /What each cost, what it is thought to be worth/],
     ['Profile', /two-step sign-in on/],

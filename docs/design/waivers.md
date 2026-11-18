@@ -33,7 +33,7 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## export-redesign.md
 
-- XR-I11 — not built: the report is slice 1 and the screens are slice 4 — 2026-11-17
+- XR-I11 — half built: what each role is offered is unit-tested (src/features/reports/exportOffer.test.ts) and an owner's screens are e2e-tested, but a contributor has no way to the Reports screen today (no Reports in their bar, no More) and none signs in to the e2e suite, so the contributor's report waits on the owner's decision where a contributor reaches it — 2026-11-18
 
 ## goals.md
 
