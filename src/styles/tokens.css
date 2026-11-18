@@ -8,34 +8,36 @@
  *
  * Three theme states: light on bare :root, dark by preference, and an explicit
  * [data-theme] override so a manual toggle wins in both directions.
+ *
+ * The light theme is Linen (the owner, 17 November 2026); it replaced Mist (30 October 2026), which docs/tokens.md keeps as a record.
  */
 
 :root {
   /* surfaces */
-  --bg: #E3E8EF;          /* page ground */
-  --surface: #F5F7FA;     /* cards, panels */
-  --surface-2: #EDF1F6;   /* table headers, insets, code */
-  --surface-3: #DCE2EA;   /* segmented-control track, progress track */
-  --inset: #E8ECF2;       /* the ground of an editable row: darker than its card, in both themes */
+  --bg: #F1ECE1;          /* page ground: linen */
+  --surface: #FFFDF8;     /* soft panels, header, bar */
+  --surface-2: #F5F1E8;   /* table headers, insets, code */
+  --surface-3: #E8E2D5;   /* segmented-control track, progress track */
+  --inset: #F5F1E7;       /* the ground of an editable row: darker than its card, in both themes */
 
   /* text */
-  --ink: #131A27;         /* primary */
-  --ink-2: #394250;       /* body, secondary */
-  --muted: #5A6371;       /* captions, labels, axis text */
+  --ink: #1D2823;         /* primary */
+  --ink-2: #3A4741;       /* body, secondary */
+  --muted: #5A655F;       /* captions, labels, axis text */
 
   /* lines */
-  --line: #D6DCE5;        /* hairlines, borders */
-  --line-strong: #747D8A; /* chip borders, list markers */
+  --line: #E2DBCB;        /* hairlines, borders */
+  --line-strong: #7B857F; /* chip borders, list markers */
 
   /* brand + semantic */
-  --brass: #835A00;
-  --brass-soft: #F6E9C8;  /* accent, targets, "plan" */
-  --teal: #066F5C;
-  --teal-soft: #D2EEE6;   /* gain, positive, "ok" */
-  --coral: #AD3728;
-  --coral-soft: #F9E0DB;  /* loss, overspend, "due" */
-  --indigo: #3752CC;
-  --indigo-soft: #E0E6FD; /* attribution, ownership */
+  --brass: #025F4C;
+  --brass-soft: #DCEDE5;  /* accent, targets, "plan": forest in Linen */
+  --teal: #00707A;
+  --teal-soft: #D3ECEC;   /* gain, positive, "ok": a blue-teal, so never the accent's green */
+  --coral: #B03A2E;
+  --coral-soft: #FBE3DD;  /* loss, overspend, "due" */
+  --indigo: #5A3EC2;
+  --indigo-soft: #ECE6FC; /* attribution, ownership */
 
   /* categorical — charts only, in this order */
   --c1: #3752CC; /* indigo */
@@ -49,14 +51,60 @@
   --c9: #4E7417; /* lime   */
 
   --shadow: 0 1px 2px rgba(19,26,39,.05), 0 8px 22px -16px rgba(19,26,39,.22);
+  --shadow-lift: 0 2px 4px rgba(1,58,47,.12), 0 16px 34px -22px rgba(1,63,51,.55);
   --radius: 12px;
   --radius-panel: 16px;
   --radius-pill: 100px;
 
-  /* depth: one lifted surface a screen (docs/tokens.md §1, Depth) */
-  --surface-lift: radial-gradient(120% 140% at 8% 0%, #DCE3FB 0%, #E9EDF9 48%, #F5F7FA 100%);
-  --lift-edge: linear-gradient(90deg, rgba(154,107,0,0), rgba(154,107,0,.35), rgba(61,91,217,.22), rgba(154,107,0,0));
-  --shadow-lift: 0 2px 4px rgba(19,26,39,.05), 0 16px 34px -22px rgba(55,82,204,.35);
+  /* depth, the bars and the buttons (docs/tokens.md §1): the lifted surface is dark in Linen, so what sits on it, on a bar and on a button has its own tokens */
+  --surface-panel: linear-gradient(180deg, #FFFDF8 0%, #FFFDF8 35%, #F8F3E8 100%);   /* a soft panel's fill: warm off-white to a faint linen at its foot; flat in dark */
+  --surface-lift: linear-gradient(180deg, #013F33 0%, #025F4C 45%, #0B6F58 100%);   /* the one lifted card: deep forest at the top to a fresher green at its foot */
+  --lift-edge: linear-gradient(90deg, rgba(1,58,47,0), #013A2F 10%, #013A2F 90%, rgba(1,58,47,0));   /* the lift's 1px top edge */
+  --lift-border: #013A2F;   /* the lift's outline */
+  --lift-ink: #F6F2E4;   /* on the lift: primary text */
+  --lift-ink-2: #E6EEE8;   /* on the lift: body text */
+  --lift-muted: #D6E5DC;   /* on the lift: captions and labels */
+  --lift-accent: #C9E35A;   /* on the lift: a focus underline, a link */
+  --lift-line: rgba(246,242,228,.55);   /* on the lift: the edge of a quiet button */
+  --lift-press: #C9E35A;   /* on the lift: the pressed oval */
+  --lift-press-ink: #023F33;   /* on the lift: text on the pressed oval */
+  --lift-press-edge: #C9E35A;   /* on the lift: the pressed oval's edge */
+  --lift-track: rgba(0,0,0,.16);   /* on the lift: a segmented control's track */
+  --lift-track-line: rgba(246,242,228,.28);   /* on the lift: the track's edge */
+  --lift-teal: #9BF0D8;   /* on the lift: a gain */
+  --lift-teal-soft: rgba(255,255,255,.14);   /* on the lift: a gain's fill */
+  --lift-coral: #FFD3CB;   /* on the lift: a loss */
+  --lift-coral-soft: rgba(255,255,255,.14);   /* on the lift: a loss's fill */
+  --lift-indigo: #E2DBFF;   /* on the lift: attribution */
+  --lift-indigo-soft: rgba(255,255,255,.14);   /* on the lift: attribution's fill */
+  --lift-brass: #C9E35A;   /* on the lift: attention */
+  --lift-brass-soft: rgba(255,255,255,.14);   /* on the lift: attention's fill */
+  --lift-chip: rgba(255,255,255,.10);   /* on the lift: a chip */
+  --lift-chip-on: #C9E35A;   /* on the lift: a pressed chip */
+  --lift-chip-on-ink: #023F33;   /* on the lift: text on a pressed chip */
+  --lift-cta: #C9E35A;   /* on the lift: the one primary action (Close October) */
+  --lift-cta-ink: #023F33;   /* on the lift: text on the primary action */
+  --lift-hair: rgba(246,242,228,.22);   /* on the lift: a hairline between its figures and its footer */
+  --lift-btn: #C9E35A;   /* on the lift: a button */
+  --lift-btn-ink: #023F33;   /* on the lift: text on a button */
+  --btn: #025F4C;   /* the primary button */
+  --btn-ink: #FFFDF8;   /* text on the primary button */
+  --bar: #025F4C;   /* the app header, the desktop top strip and the bottom menu: the flat value, for forced colours */
+  --bar-ink: #F6F2E4;   /* on a bar: text */
+  --bar-ink-2: #E6EEE8;   /* on a bar: a back link */
+  --bar-avatar: #C9E35A;   /* on a bar: the account control's disc */
+  --bar-avatar-ink: #023F33;   /* on a bar: the initial on the disc */
+  --bar-muted: #D6E5DC;   /* on a bar: a label that is not the current place */
+  --bar-current: #F6F2E4;   /* on a bar: the current place's label */
+  --bar-line: rgba(246,242,228,.4);   /* on a bar: a control's edge */
+  --bar-line-wide: rgba(246,242,228,.4);   /* on a bar: a control's edge on a wide screen, where dark draws none */
+  --bar-control: rgba(246,242,228,.12);   /* on a bar: a control */
+  --bar-top: linear-gradient(180deg, #013A2F 0%, #025F4C 60%, #0B6F58 100%);   /* the header: darkest at the top edge, lightens towards the content */
+  --bar-bottom: linear-gradient(180deg, #0B6F58 0%, #025F4C 40%, #013A2F 100%);   /* the menu: lightens upwards from the bottom edge */
+  --bar-rule: #C9E35A;   /* the rule on the edge facing the page */
+  --bar-rule-width: 3px;   /* the rule's width */
+  --bar-pill: #C9E35A;   /* the current place in the bottom menu */
+  --bar-pill-ink: #023F33;   /* the current place's icon */
 
   /* the page's side gutter on a phone; widened below */
   --gutter: 12px;
@@ -116,6 +164,52 @@
     --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
     --lift-edge: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
     --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
+    --surface-panel: #121825;
+    --lift-border: #222C41;
+    --lift-ink: #EEF3FB;
+    --lift-ink-2: #C3CEDF;
+    --lift-muted: #9AA3B2;
+    --lift-accent: #F0B429;
+    --lift-line: #6D7683;
+    --lift-press: #121825;
+    --lift-press-ink: #EEF3FB;
+    --lift-press-edge: #6D7683;
+    --lift-track: #222C41;
+    --lift-track-line: transparent;
+    --lift-teal: #2ED3A8;
+    --lift-teal-soft: #0C2F28;
+    --lift-coral: #FF6F61;
+    --lift-coral-soft: #33130F;
+    --lift-indigo: #7B9CFF;
+    --lift-indigo-soft: #182448;
+    --lift-brass: #F0B429;
+    --lift-brass-soft: #3A2C0C;
+    --lift-chip: #1A2234;
+    --lift-chip-on: #EEF3FB;
+    --lift-chip-on-ink: #080B12;
+    --lift-cta: #EEF3FB;
+    --lift-cta-ink: #121825;
+    --lift-hair: #222C41;
+    --lift-btn: #F0B429;
+    --lift-btn-ink: #121825;
+    --btn: #F0B429;
+    --btn-ink: #121825;
+    --bar: #121825;
+    --bar-ink: #EEF3FB;
+    --bar-ink-2: #C3CEDF;
+    --bar-avatar: linear-gradient(140deg, #F0B429, #FF9D4D);
+    --bar-avatar-ink: #121825;
+    --bar-muted: #9AA3B2;
+    --bar-current: #F0B429;
+    --bar-line: #222C41;
+    --bar-line-wide: transparent;
+    --bar-control: #222C41;
+    --bar-top: #121825;
+    --bar-bottom: #121825;
+    --bar-rule: #222C41;
+    --bar-rule-width: 1px;
+    --bar-pill: transparent;
+    --bar-pill-ink: #F0B429;
 
     color-scheme: dark;
   }
@@ -159,6 +253,52 @@
   --surface-lift: radial-gradient(120% 140% at 8% 0%, #26324C 0%, #141C2B 48%, #121825 100%);
   --lift-edge: linear-gradient(90deg, rgba(240,180,41,0), rgba(240,180,41,.55), rgba(123,156,255,.35), rgba(240,180,41,0));
   --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 18px 38px -24px rgba(0,0,0,.9);
+  --surface-panel: #121825;
+  --lift-border: #222C41;
+  --lift-ink: #EEF3FB;
+  --lift-ink-2: #C3CEDF;
+  --lift-muted: #9AA3B2;
+  --lift-accent: #F0B429;
+  --lift-line: #6D7683;
+  --lift-press: #121825;
+  --lift-press-ink: #EEF3FB;
+  --lift-press-edge: #6D7683;
+  --lift-track: #222C41;
+  --lift-track-line: transparent;
+  --lift-teal: #2ED3A8;
+  --lift-teal-soft: #0C2F28;
+  --lift-coral: #FF6F61;
+  --lift-coral-soft: #33130F;
+  --lift-indigo: #7B9CFF;
+  --lift-indigo-soft: #182448;
+  --lift-brass: #F0B429;
+  --lift-brass-soft: #3A2C0C;
+  --lift-chip: #1A2234;
+  --lift-chip-on: #EEF3FB;
+  --lift-chip-on-ink: #080B12;
+  --lift-cta: #EEF3FB;
+  --lift-cta-ink: #121825;
+  --lift-hair: #222C41;
+  --lift-btn: #F0B429;
+  --lift-btn-ink: #121825;
+  --btn: #F0B429;
+  --btn-ink: #121825;
+  --bar: #121825;
+  --bar-ink: #EEF3FB;
+  --bar-ink-2: #C3CEDF;
+  --bar-avatar: linear-gradient(140deg, #F0B429, #FF9D4D);
+  --bar-avatar-ink: #121825;
+  --bar-muted: #9AA3B2;
+  --bar-current: #F0B429;
+  --bar-line: #222C41;
+  --bar-line-wide: transparent;
+  --bar-control: #222C41;
+  --bar-top: #121825;
+  --bar-bottom: #121825;
+  --bar-rule: #222C41;
+  --bar-rule-width: 1px;
+  --bar-pill: transparent;
+  --bar-pill-ink: #F0B429;
 
   color-scheme: dark;
 }

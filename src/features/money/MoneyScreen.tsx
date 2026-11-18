@@ -18,10 +18,12 @@ import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
 import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
+import { MonthFooter } from './MonthFooter.tsx';
+import { monthFooterStatus } from './monthFooter.ts';
 import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
-import { accountSteps, closeFigures, monthToClose, monthWord, offersClose } from './closeMonth.ts';
+import { accountSteps, closeFigures, monthToClose, offersClose } from './closeMonth.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
 import { useLoanPayments } from './useLoanPayments.ts';
@@ -204,40 +206,32 @@ export function MoneyScreen({
           // to Accounts (the owner, 15 November 2026). What was done is said under them.
           actions: (
             <>
-              <div className="month-actions">
-                <MoneyIn
-                  data={ledger.data}
-                  privacy={privacy}
-                  onAddAccount={ledger.add}
-                  onChangeAccount={ledger.change}
-                  onSaved={() => {
-                    setSaid(null);
-                    void ledger.reloadMoney();
-                  }}
-                  onSaid={setSaid}
-                  canRepeat={mayRule}
-                  onRepeat={(draft) => {
-                    setNewRule(draft);
-                  }}
-                />
-                {mayClose && (
-                  <button
-                    type="button"
-                    className="btn btn-quiet"
-                    aria-label={`Close ${monthWord(closeMonthKey)} · about 2 minutes`}
-                    onClick={() => {
+              <MonthFooter
+                closeMonthKey={closeMonthKey}
+                status={monthFooterStatus({ closeMonthKey, mayClose, lastMonth })}
+                onClose={() => {
+                  setSaid(null);
+                  setClosing(true);
+                }}
+                moneyIn={
+                  <MoneyIn
+                    data={ledger.data}
+                    privacy={privacy}
+                    onAddAccount={ledger.add}
+                    onChangeAccount={ledger.change}
+                    onSaved={() => {
                       setSaid(null);
-                      setClosing(true);
+                      void ledger.reloadMoney();
                     }}
-                  >
-                    <span>
-                      Close {monthWord(closeMonthKey)}
-                      <span className="note block">about 2 minutes</span>
-                    </span>
-                  </button>
-                )}
-                <AccountsAction nudge={nudge} />
-              </div>
+                    onSaid={setSaid}
+                    canRepeat={mayRule}
+                    onRepeat={(draft) => {
+                      setNewRule(draft);
+                    }}
+                  />
+                }
+                accounts={<AccountsAction nudge={nudge} />}
+              />
               <AccountsHint nudge={nudge} />
               {/* Always in the page, so that what is put into it is announced; under the buttons, where the person is looking. */}
               <p className="note" role="status">

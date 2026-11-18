@@ -318,7 +318,7 @@ test('a credit on an account that was archived since keeps that account when it 
   await expect(form(page)).toHaveCount(0, { timeout: 20_000 });
 
   // The account is archived afterwards, on the Accounts screen, reached from Money.
-  await page.getByRole('link', { name: /^Accounts · \d+ · Manage$/ }).click();
+  await page.getByRole('link', { name: /^Accounts \d+ accounts?$/ }).click();
   await page.getByRole('list').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await page.getByRole('form', { name: 'Change an account' }).getByRole('button', { name: 'Archive this account' }).click();
   await expect(page.getByRole('form', { name: 'Change an account' })).toHaveCount(0, { timeout: 20_000 });
