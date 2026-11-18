@@ -13,6 +13,7 @@ import type { Expense as ExpenseRow, Member } from '../../repo/types.ts';
 import { Card, Problem } from '../../ui/primitives.tsx';
 import { JoinHousehold } from '../household/JoinHousehold.tsx';
 import type { LastMonthView } from '../money/lastMonth.ts';
+import { ContributorMonth } from '../money/ContributorMonth.tsx';
 import { MonthSurface } from '../money/MonthSurface.tsx';
 import { PlanCard, SpentHero, useBudgetComparison } from './budgetView.tsx';
 import { EditExpense, type ExpensePatch } from './EditExpense.tsx';
@@ -133,10 +134,16 @@ export function ExpensesScreen({
           {quickAdd}
           {money?.actions}
           {money?.expected}
-          <Card title="This month">
-            <p className="note">
-              You can read your own entries. The household&rsquo;s spending, by category, is on the Summary screen.
-            </p>
+          <ContributorMonth
+            householdId={listing.household.id}
+            memberId={listing.viewer.memberId}
+            members={listing.members}
+            today={today}
+            currency={reading}
+            privacy={privacy}
+          />
+          <Card title="By category">
+            <p className="note">The household&rsquo;s spending, by category, is on the Summary screen.</p>
           </Card>
         </>
       ) : (
