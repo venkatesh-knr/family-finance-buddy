@@ -15,11 +15,16 @@
 import { useState } from 'react';
 import { formatMoney } from '../../lib/money.ts';
 import type { Expense, Member, PersonalSpendPeriods } from '../../repo/types.ts';
-import { Caveat } from '../../ui/primitives.tsx';
+import type { SpendStatement } from '../../repo/types.ts';
+import { Button, Caveat } from '../../ui/primitives.tsx';
 import { lastDayOf, monthWord } from './closeMonth.ts';
 import { modeLine, type LastMonthView } from './lastMonth.ts';
 import { monthLabel, spentShortReasons, surfaceFigures } from './monthSurface.ts';
+import { crossCheckLines, monthLines, sourceNote } from './spendSourceView.ts';
+import { stateSpendChoices } from './stateSpendForm.ts';
+import { StateSpend } from './StateSpend.tsx';
 import { useLastMonthSpend } from './useLastMonthSpend.ts';
+import { useSpendStatements } from './useSpendStatements.ts';
 import { useMonthTotals } from './useMonthTotals.ts';
 
 export function MonthSurface({
@@ -59,9 +64,14 @@ export function MonthSurface({
   actions?: React.ReactNode;
 }) {
   const [period, setPeriod] = useState<'this' | 'last'>('this');
+  // The form that states, or changes, a month's spend, and what was done: said where the person is looking.
+  const [stating, setStating] = useState<SpendStatement | 'new' | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
   const showingLast = period === 'last' && last !== undefined && last !== null;
   const span = showingLast ? { start: `${last.month}-01`, end: lastDayOf(last.month) } : bounds;
   const month = useMonthTotals(householdId, span.start, span.end, refreshKey);
+  // A stated spend belongs to a month that has ended, which is Last month, and is read only where Last month is: by an owner or a partner (SC-I19).
+  const statements = useSpendStatements(householdId, showingLast ? [last.month] : [], showingLast);
 
   const closed = showingLast && last.kind === 'closed' ? last : null;
   const openLast = showingLast && last.kind === 'open' ? last : null;
@@ -80,6 +90,11 @@ export function MonthSurface({
   const figures = month.status === 'ready' && spendReady ? surfaceFigures({ totals: month.totals, itemised, privateSpend, currency }) : null;
   const shortBy = spentShortReasons({ privateUnreadable: !showingLast && personalSpend === null, partial: !showingLast && partial });
 
+  const stated: readonly SpendStatement[] = statements.read.status === 'ready' ? statements.read.statements : [];
+  // A month that is not closed is itemised or stated; until the statements are read, it is neither, and says it is being read.
+  const statedReady = openLast === null || statements.read.status === 'ready' || statements.read.status === 'failed';
+  const lines = openLast !== null && figures !== null && statements.read.status === 'ready' ? monthLines({ spent: figures.spent, cameIn: figures.cameIn, statements: stated }) : null;
+  const statedHere = lines?.find((line) => line.spent.currency === currency)?.stated ?? null;
   const reading = showingLast && (last.kind === 'reading' || last.kind === 'failed') ? last.kind : null;
   const noAccounts = openLast !== null && openLast.noAccounts;
   const title = !showingLast
@@ -168,7 +183,7 @@ export function MonthSurface({
               waiting(unreadable)
             ) : (
               <>
-                {figures.spent.map((line) => (
+                {(lines === null ? figures.spent : lines.map((line) => line.spent)).map((line) => (
                   <span key={line.currency} className="block">
                     {formatMoney(line, { privacy })}
                   </span>
@@ -187,7 +202,9 @@ export function MonthSurface({
             )}
           </dd>
           {(closed !== null || (reading === null && figures !== null)) && (
-            <dd className="note">{closed !== null ? 'from balances' : noAccounts ? 'from what you entered' : 'itemised so far'}</dd>
+            <dd className="note">
+              {closed !== null ? 'from balances' : lines === null ? (noAccounts ? 'from what you entered' : 'itemised so far') : sourceNoteParts(sourceNote(lines, noAccounts ? 'from what you entered' : 'itemised so far'))}
+            </dd>
           )}
         </div>
         <div>
@@ -208,6 +225,22 @@ export function MonthSurface({
             <dd className="stat-card-value" data-testid="month-saved">
               {waiting(reading === 'failed' || unreadable)}
             </dd>
+          ) : lines !== null && lines.some((line) => line.saved !== null) ? (
+            // A stated month: came in less the stated figure, and it says it is rough. No split is claimed, since no balances prove one (SC-I18).
+            <>
+              <dd className="stat-card-value tabular-nums" data-testid="month-saved">
+                {lines.map((line) =>
+                  line.saved === null ? null : (
+                    <span key={line.spent.currency} className="block">
+                      {formatMoney(line.saved.value, { privacy })}
+                    </span>
+                  ),
+                )}
+              </dd>
+              <dd className="note">
+                <strong>rough</strong>
+              </dd>
+            </>
           ) : (
             <>
               <dd className="stat-card-value absent" data-testid="month-saved">
@@ -225,7 +258,75 @@ export function MonthSurface({
         {!showingLast && month.status === 'failed' && 'Came in could not be read just now; reload to read it again.'}
         {showingLast && (reading === 'failed' || unreadable) && ' Last month could not be read just now; reload to read it again.'}
       </p>
+      {lines !== null &&
+        lines
+          .filter((line) => line.sentence !== null)
+          .map((line) => (
+            <p key={line.spent.currency} className="note mt-2.5" data-testid="month-stated-sentence">
+              {line.sentence}
+            </p>
+          ))}
+      {closed !== null &&
+        crossCheckLines({ closedSpent: closed.spent, statements: stated }).map((line) => (
+          <p key={line} className="note mt-2.5" data-testid="month-cross-check">
+            {line}
+          </p>
+        ))}
+      {openLast !== null && statements.read.status === 'failed' && <p className="note mt-2.5">A stated spend could not be read just now; reload to read it again.</p>}
+      {openLast !== null && statedReady && lines !== null && (
+        <div className="mt-2.5 flex flex-col items-start gap-1.5" data-testid="month-state-action">
+          {statedHere === null && <p className="note">Only what was itemised. If you know what {monthWord(openLast.month)} cost, you can say it.</p>}
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => {
+              setSaid(null);
+              setStating(statedHere ?? 'new');
+            }}
+          >
+            {statedHere === null ? `State ${monthWord(openLast.month)}’s spend` : 'Change'}
+          </Button>
+        </div>
+      )}
+      {said !== null && (
+        <p className="note mt-2.5" role="status" data-testid="month-stated-said">
+          {said}
+        </p>
+      )}
       {actions !== undefined && <div className="mt-3 flex flex-col gap-2.5">{actions}</div>}
+      {stating !== null && openLast !== null && householdId !== null && figures !== null && (
+        <StateSpend
+          key={stating === 'new' ? 'new' : stating.id}
+          householdId={householdId}
+          month={openLast.month}
+          year={openLast.month.slice(0, 4)}
+          currencies={stateSpendChoices({
+            reading: currency,
+            itemisedIn: figures.spent.map((line) => line.currency),
+            statedIn: stated.map((statement) => statement.amount.currency),
+          })}
+          itemised={figures.spent.map((line) => (line.minor < 0n ? { ...line, minor: 0n } : line))}
+          editing={stating === 'new' ? null : stating}
+          onDone={(message) => {
+            setStating(null);
+            setSaid(message);
+            statements.reload();
+          }}
+          onCancel={() => {
+            setStating(null);
+          }}
+        />
+      )}
     </section>
   );
+}
+
+/** The source in words, with *stated* in bold: a word and never a colour (SC-I15). */
+function sourceNoteParts(note: string): React.ReactNode {
+  return note.split(' · ').map((part, index) => (
+    <span key={part}>
+      {index > 0 && ' · '}
+      {part === 'stated' ? <strong>stated</strong> : part}
+    </span>
+  ));
 }
