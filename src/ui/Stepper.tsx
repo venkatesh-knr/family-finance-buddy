@@ -31,6 +31,7 @@ export function Stepper({
   problem = null,
   done = false,
   show = null,
+  secondary = null,
   onFinish,
   onCancel,
 }: {
@@ -50,6 +51,8 @@ export function Stepper({
    * an earlier one, which must not leave the person to go back and look for it. `key` changes for each request, so the same step can be asked for twice.
    */
   show?: { readonly step: number; readonly key: number } | null;
+  /** A quiet second button under the last step's, for the way out that is a choice and not a cancel: *Keep it itemised only*. */
+  secondary?: { readonly label: string; readonly onClick: () => void } | null;
   onFinish: () => void | Promise<void>;
   /** Back from the first step, and Escape: closes the form, having written nothing. */
   onCancel: () => void;
@@ -168,6 +171,11 @@ export function Stepper({
           <Button type="submit" disabled={!done && (!step.ready || busy)}>
             {done ? 'Done' : last ? (busy ? busyLabel : finishLabel) : 'Next'}
           </Button>
+          {secondary !== null && last && !done && (
+            <Button type="button" variant="quiet" className="mt-2" disabled={busy} onClick={secondary.onClick}>
+              {secondary.label}
+            </Button>
+          )}
         </div>
       </form>
     </div>,

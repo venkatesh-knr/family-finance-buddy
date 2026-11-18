@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountsBadgeName, monthFooterStatus } from './monthFooter.ts';
+import { accountsBadgeName, monthFooterStatus, offersStatedClose } from './monthFooter.ts';
 import type { LastMonthView } from './lastMonth.ts';
 
 /**
@@ -41,5 +41,38 @@ describe('accountsBadgeName', () => {
   it('names what the figure counts', () => {
     expect(accountsBadgeName(1)).toBe('1 account');
     expect(accountsBadgeName(3)).toBe('3 accounts');
+  });
+});
+
+describe('a household with no accounts closes by saying what the month cost (spending-capture.md section 11.3)', () => {
+  const noAccountsLast: LastMonthView = { kind: 'open', month: '2026-10', noAccounts: true };
+
+  it('offers the close when the month cannot be closed from balances, was not stated, and the person may state it', () => {
+    expect(offersStatedClose({ lastMonth: noAccountsLast, mayState: true, read: 'ready', stated: [] })).toBe(true);
+  });
+
+  it('does not offer it once the month is stated, or while the statements are being read or could not be', () => {
+    expect(offersStatedClose({ lastMonth: noAccountsLast, mayState: true, read: 'ready', stated: ['INR'] })).toBe(false);
+    expect(offersStatedClose({ lastMonth: noAccountsLast, mayState: true, read: 'loading', stated: [] })).toBe(false);
+    expect(offersStatedClose({ lastMonth: noAccountsLast, mayState: true, read: 'failed', stated: [] })).toBe(false);
+  });
+
+  it('does not offer it for a household that has accounts, a closed month, or a person who may not state', () => {
+    expect(offersStatedClose({ lastMonth: openLast, mayState: true, read: 'ready', stated: [] })).toBe(false);
+    expect(offersStatedClose({ lastMonth: closedLast, mayState: true, read: 'ready', stated: [] })).toBe(false);
+    expect(offersStatedClose({ lastMonth: noAccountsLast, mayState: false, read: 'ready', stated: [] })).toBe(false);
+    expect(offersStatedClose({ lastMonth: null, mayState: true, read: 'ready', stated: [] })).toBe(false);
+  });
+
+  it('says the month is ready to close, and what the close asks, instead of the balances line', () => {
+    expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: false, closeStated: true, lastMonth: noAccountsLast })).toEqual({
+      kind: 'ready',
+      title: 'October is ready to close',
+      sub: 'say what it cost · about a minute',
+    });
+  });
+
+  it('leads with a close from balances when both are possible', () => {
+    expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: true, closeStated: true, lastMonth: noAccountsLast })?.sub).toBe('from your balances · about 2 minutes');
   });
 });

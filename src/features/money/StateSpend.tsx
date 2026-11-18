@@ -29,6 +29,7 @@ export function StateSpend({
   itemised,
   editing = null,
   privacy = false,
+  variant = 'state',
   onDone,
   onCancel,
 }: {
@@ -44,6 +45,8 @@ export function StateSpend({
   editing?: SpendStatement | null;
   /** Privacy mode: what is said afterwards masks the amount. */
   privacy?: boolean;
+  /** `close`: the close of a household with no account, which asks what the month cost and can be left itemised only (section 11.3). */
+  variant?: 'state' | 'close';
   onDone: (said: string) => void;
   onCancel: () => void;
 }) {
@@ -89,7 +92,8 @@ export function StateSpend({
     setProblem(null);
     try {
       await stateSpend({ householdId, month, amount: money(read.amountMinor, currency), note: read.note });
-      onDone(`${name}’s spend stated: ${formatMoney(money(read.amountMinor, currency), { privacy })}.`);
+      const figure = formatMoney(money(read.amountMinor, currency), { privacy });
+      onDone(variant === 'close' ? `${name} closed. Spent ${figure}, as you stated it.` : `${name}’s spend stated: ${figure}.`);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'That could not be saved.');
     } finally {
@@ -99,19 +103,28 @@ export function StateSpend({
 
   return (
     <Stepper
-      title={editing === null ? `State ${name}’s spend` : `Change ${name}’s spend`}
-      finishLabel="Save"
-      busyLabel="Saving…"
+      title={variant === 'close' ? `Close ${name}` : editing === null ? `State ${name}’s spend` : `Change ${name}’s spend`}
+      finishLabel={variant === 'close' ? `Close ${name}` : 'Save'}
+      busyLabel={variant === 'close' ? 'Closing…' : 'Saving…'}
+      secondary={variant === 'close' ? { label: 'Keep it itemised only', onClick: onCancel } : null}
       busy={busy}
       problem={problem}
       onCancel={onCancel}
       onFinish={finish}
       steps={[
         {
-          name: `${name} ${year} · the month has ended`,
+          name: variant === 'close' ? 'What the month cost' : `${name} ${year} · the month has ended`,
           ready: totalReading.ok,
           content: (
             <>
+              {variant === 'close' && (
+                <>
+                  <p className="font-semibold">
+                    Close {name}: what did the month cost?
+                  </p>
+                  <p className="note">No accounts are added, so a close cannot work from balances. Say what the month cost, or leave it itemised only.</p>
+                </>
+              )}
               <RequiredKey />
               {editing === null && currencies.length > 1 ? (
                 <Select
