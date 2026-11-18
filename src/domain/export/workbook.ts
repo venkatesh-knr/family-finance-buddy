@@ -1,7 +1,11 @@
 /**
  * The workbook as a plain model: the full export going out, and the same sheets coming back.
  *
- * `buildWorkbook` turns the rows of every entity into sheets of cells, and `readWorkbook` turns sheets of cells (however a person
+ * This is the **complete backup** (docs/design/export-redesign.md, XR-I12): every entity, every column, ids and refs, template version 2. It is the
+ * round-trip file of blueprint section 14 and is accepted by upload. It is not the report a person reads (`report.ts`) and not the template they fill
+ * (version 3, `templateV3.ts`); its output is held to a stored fixture, `backup.test.ts`.
+ *
+ * `buildBackup` turns the rows of every entity into sheets of cells, and `readWorkbook` turns sheets of cells (however a person
  * has been at them in Excel) into rows again, in the same text the database uses. The two are held to each other by a round-trip
  * test: what is written reads back to exactly the same rows. A library writes and reads the actual file (`src/repo`'s caller does
  * that); nothing here knows one, so all of it is testable without a file.
@@ -153,7 +157,7 @@ function toCell(column: Column, value: string | null, row: Row, lookup: Lookup):
 /** The references a household has given its rows: entity, then the row's key, then the reference. */
 export type RefMap = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
-export function buildWorkbook(tables: Readonly<Record<string, readonly Row[]>>, meta: ExportMeta, refs: RefMap = {}): BuiltWorkbook {
+export function buildBackup(tables: Readonly<Record<string, readonly Row[]>>, meta: ExportMeta, refs: RefMap = {}): BuiltWorkbook {
   const lookup = makeLookup(tables);
   const problems: Problem[] = [];
 

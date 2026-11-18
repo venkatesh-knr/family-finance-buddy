@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
 import { Button, Field, Problem, SampleBar } from '../../ui/primitives.tsx';
 import { readLastExport } from './exportFile.ts';
-import { ExportBlocked, runFullExport } from './runExport.ts';
+import { ExportBlocked, runBackup } from './runExport.ts';
 import { UploadPanel } from './UploadPanel.tsx';
 
 /**
@@ -37,7 +37,7 @@ export function ReportsScreen({ householdId, isDemo, privacy }: { householdId: s
     setBlocked(null);
     setSaved(null);
     try {
-      const made = await runFullExport(householdId, code);
+      const made = await runBackup(householdId, code);
       setSaved(made.filename);
       setLastExport(made.exportedAt);
       setCode('');

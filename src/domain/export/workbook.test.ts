@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENTITIES, NOT_EXPORTED, SHEETED, TEMPLATE_VERSION, headerOf, sheetColumns, type Row } from './entities.ts';
 import { exportFixture as fixture } from './fixture.ts';
-import { buildWorkbook, canonicalRow, readWorkbook, type ExportMeta, type SheetModel } from './workbook.ts';
+import { buildBackup, canonicalRow, readWorkbook, type ExportMeta, type SheetModel } from './workbook.ts';
 
 const META: ExportMeta = {
   exportedAt: '2026-10-30T06:30:00.000Z',
@@ -14,7 +14,7 @@ const sheetsFor = (workbook: { sheets: readonly SheetModel[] }) => workbook.shee
 
 describe('the shape of the file', () => {
   it('has a sheet for every entity, uniquely named, within a spreadsheet’s limit, and an About sheet first', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     expect(workbook.sheets[0]?.name).toBe('About');
     const names = workbook.sheets.map((sheet) => sheet.name);
     expect(new Set(names).size).toBe(names.length);
@@ -25,7 +25,7 @@ describe('the shape of the file', () => {
   });
 
   it('writes the version, the household and when, so a file says what it is', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const about = Object.fromEntries((workbook.sheets[0]?.rows ?? []).map((row) => [row[0], row[1]]));
     expect(about['Template version']).toBe(TEMPLATE_VERSION);
     expect(about['Household']).toBe('The Rao household');
@@ -35,13 +35,13 @@ describe('the shape of the file', () => {
   });
 
   it('marks a demo household’s file as illustrative, so it cannot be mistaken for a real one', () => {
-    const { workbook } = buildWorkbook(fixture(), { ...META, demo: true });
+    const { workbook } = buildBackup(fixture(), { ...META, demo: true });
     const about = Object.fromEntries((workbook.sheets[0]?.rows ?? []).map((row) => [row[0], row[1]]));
     expect(about['Sample figures']).toMatch(/^Yes/);
   });
 
   it('writes an amount in major units with its currency beside it, not in minor units', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const expenses = workbook.sheets.find((sheet) => sheet.name === 'Expenses');
     const amount = expenses?.headers.indexOf('amount') ?? -1;
     expect(amount).toBeGreaterThan(-1);
@@ -51,7 +51,7 @@ describe('the shape of the file', () => {
   });
 
   it('writes a withdrawal as a negative amount and a quantity with its eight places', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const payments = workbook.sheets.find((sheet) => sheet.name === 'PPF payments');
     const amount = payments?.headers.indexOf('amount') ?? -1;
     expect(payments?.rows.map((row) => row[amount])).toEqual([50000, -10000]);
@@ -63,7 +63,7 @@ describe('the shape of the file', () => {
   });
 
   it('writes a name beside every column that points at another record, so a person need not read an id', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const expenses = workbook.sheets.find((sheet) => sheet.name === 'Expenses');
     expect(expenses?.headers).toContain('member_name');
     expect(expenses?.headers).toContain('category_name');
@@ -79,7 +79,7 @@ describe('the shape of the file', () => {
   it('shows an amount with the places its currency has, and never fewer than its rows carry', () => {
     const tables = fixture();
     const format = (name: string, header: string) => {
-      const { workbook } = buildWorkbook(tables, META);
+      const { workbook } = buildBackup(tables, META);
       const sheet = workbook.sheets.find((s) => s.name === name);
       return sheet?.formats[sheet.headers.indexOf(header)];
     };
@@ -93,13 +93,13 @@ describe('the shape of the file', () => {
   });
 
   it('keeps text that looks like a formula as text, whole', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const expenses = workbook.sheets.find((sheet) => sheet.name === 'Expenses');
     expect(expenses?.rows[0]?.[expenses.headers.indexOf('payee')]).toBe('=SUM(A1:A9)');
   });
 
   it('marks the sheets the upload will not accept as read-only', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     expect(workbook.sheets.find((sheet) => sheet.name === 'Bond ratings')?.readOnly).toBe(true);
     // Reference data the app keeps is not in the file at all.
     const names = workbook.sheets.map((sheet) => sheet.name);
@@ -110,7 +110,7 @@ describe('the shape of the file', () => {
   it('refuses a figure a cell cannot hold exactly instead of writing it rounded', () => {
     const tables = fixture();
     tables['holding'] = [{ ...(tables['holding']?.[0] as Row), quantity: '1234567.12345678901' }];
-    const { problems } = buildWorkbook(tables, META);
+    const { problems } = buildBackup(tables, META);
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatchObject({ sheet: 'Holdings', row: 2, column: 'quantity' });
     expect(problems[0]?.message).toMatch(/significant digits/);
@@ -120,7 +120,7 @@ describe('the shape of the file', () => {
 describe('the round trip', () => {
   it('reads back exactly what was written', () => {
     const tables = fixture();
-    const { workbook } = buildWorkbook(tables, META);
+    const { workbook } = buildBackup(tables, META);
     const back = readWorkbook(sheetsFor(workbook));
     expect(back.problems).toEqual([]);
     // The entities with a sheet, and the instrument that is written inside the Holdings sheet.
@@ -133,7 +133,7 @@ describe('the round trip', () => {
 
   it('reads the same when the columns are in a different order, and when helper columns are removed or added', () => {
     const tables = fixture();
-    const { workbook } = buildWorkbook(tables, META);
+    const { workbook } = buildBackup(tables, META);
     const shuffled = sheetsFor(workbook).map((sheet) => {
       if (sheet.name === 'About') return sheet;
       const headers = [...(sheet.rows[0] ?? [])];
@@ -150,7 +150,7 @@ describe('the round trip', () => {
   });
 
   it('reads an amount a person retyped in Excel the way people type it', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook);
     const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
     const amount = (expenses?.rows[0] ?? []).indexOf('amount');
@@ -167,7 +167,7 @@ describe('the round trip', () => {
     const first = tables['holding']?.[0] as Row;
     // A second member's holding of the same fund: two holdings, one instrument.
     tables['holding'] = [...(tables['holding'] ?? []), { ...first, id: '00000000-0000-4000-8000-0000000000e9', folio_last4: '9999' }];
-    const { workbook } = buildWorkbook(tables, META);
+    const { workbook } = buildBackup(tables, META);
     const back = readWorkbook(sheetsFor(workbook));
     expect(back.problems).toEqual([]);
     expect(back.tables['holding']).toHaveLength(3);
@@ -175,7 +175,7 @@ describe('the round trip', () => {
   });
 
   it('reads a holding’s cost in the currency of its instrument', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const back = readWorkbook(sheetsFor(workbook));
     expect(back.tables['holding']?.[0]).toMatchObject({ cost_minor: '15000000', quantity: '1234.5678' });
   });
@@ -185,7 +185,7 @@ describe('a reference of the person\u2019s own, and the names written beside ids
   const CATEGORY = '00000000-0000-4000-8000-0000000000c1';
 
   it('writes a ref column beside the key of every sheet an upload takes, and not on the others', () => {
-    const { workbook } = buildWorkbook(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
+    const { workbook } = buildBackup(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
     const categories = workbook.sheets.find((sheet) => sheet.name === 'Categories');
     expect(categories?.headers.slice(0, 2)).toEqual(['id', 'ref']);
     expect(categories?.rows[0]?.[1]).toBe('CAT-1');
@@ -195,7 +195,7 @@ describe('a reference of the person\u2019s own, and the names written beside ids
   });
 
   it('reads the reference and the names back with the row, by the sheet row they are on', () => {
-    const { workbook } = buildWorkbook(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
+    const { workbook } = buildBackup(fixture(), META, { expense_category: { [CATEGORY]: 'CAT-1' } });
     const back = readWorkbook(sheetsFor(workbook));
     expect(back.problems).toEqual([]);
     expect(back.sheets['expense_category']?.[0]).toMatchObject({ sheetRow: 2, ref: 'CAT-1', values: { name: 'Groceries' } });
@@ -205,7 +205,7 @@ describe('a reference of the person\u2019s own, and the names written beside ids
   });
 
   it('refuses a sheet that has lost its ref column, as a version-1 file has', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook).map((sheet) => {
       if (sheet.name !== 'Categories') return sheet;
       const drop = (sheet.rows[0] ?? []).indexOf('ref');
@@ -216,7 +216,7 @@ describe('a reference of the person\u2019s own, and the names written beside ids
   });
 
   it('reads the names a person typed to find a record, where the id is empty', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook);
     const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
     const headers = expenses?.rows[0] ?? [];
@@ -230,7 +230,7 @@ describe('a reference of the person\u2019s own, and the names written beside ids
 
 describe('what the reader refuses, and says where', () => {
   it('names the sheet, the row and the column of a cell that is wrong, and goes on to read the rest', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook);
     const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
     const headers = expenses?.rows[0] ?? [];
@@ -244,7 +244,7 @@ describe('what the reader refuses, and says where', () => {
   });
 
   it('refuses an amount with no currency to read it in', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook);
     const expenses = sheets.find((sheet) => sheet.name === 'Expenses');
     (expenses!.rows[1] as unknown[])[(expenses?.rows[0] ?? []).indexOf('currency')] = null;
@@ -253,7 +253,7 @@ describe('what the reader refuses, and says where', () => {
   });
 
   it('refuses a sheet that has lost a column, instead of reading by position', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook).map((sheet) => {
       if (sheet.name !== 'Expenses') return sheet;
       const drop = (sheet.rows[0] ?? []).indexOf('payee');
@@ -264,7 +264,7 @@ describe('what the reader refuses, and says where', () => {
   });
 
   it('refuses a workbook of another template version, or of none, and reads nothing from it', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const older = sheetsFor(workbook).map((sheet) => (sheet.name === 'About' ? { name: 'About', rows: sheet.rows.map((row) => (row[0] === 'Template version' ? ['Template version', 0] : row)) } : sheet));
     const refused = readWorkbook(older);
     expect(refused.problems[0]?.message).toContain(`version 0; this app reads version ${String(TEMPLATE_VERSION)}`);
@@ -275,7 +275,7 @@ describe('what the reader refuses, and says where', () => {
   });
 
   it('skips a row that is empty throughout and refuses a duplicated header', () => {
-    const { workbook } = buildWorkbook(fixture(), META);
+    const { workbook } = buildBackup(fixture(), META);
     const sheets = sheetsFor(workbook);
     const categories = sheets.find((sheet) => sheet.name === 'Categories');
     categories!.rows.push((categories!.rows[0] ?? []).map(() => null));

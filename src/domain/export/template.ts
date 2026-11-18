@@ -7,7 +7,7 @@
  */
 
 import { TEMPLATE_VERSION } from './entities.ts';
-import { buildWorkbook, type SheetModel } from './workbook.ts';
+import { buildBackup, type SheetModel } from './workbook.ts';
 import type { Cell } from './cells.ts';
 
 const EXAMPLE = 'EXAMPLE: delete this row';
@@ -44,7 +44,7 @@ const EXAMPLES: Readonly<Record<string, Readonly<Record<string, Cell>>[]>> = {
 
 /** The template's sheets, ready to be written as a file. */
 export function buildTemplate(exportedAt: string): { readonly sheets: readonly SheetModel[] } {
-  const { workbook } = buildWorkbook({}, { exportedAt, householdName: 'Blank template', baseCurrency: 'INR', demo: false });
+  const { workbook } = buildBackup({}, { exportedAt, householdName: 'Blank template', baseCurrency: 'INR', demo: false });
   const sheets: SheetModel[] = [];
   for (const sheet of workbook.sheets) {
     if (sheet.entity === null) {

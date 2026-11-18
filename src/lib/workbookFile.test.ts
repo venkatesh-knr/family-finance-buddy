@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENTITIES } from '../domain/export/entities.ts';
 import { exportFixture } from '../domain/export/fixture.ts';
-import { buildWorkbook, canonicalRow, readWorkbook } from '../domain/export/workbook.ts';
+import { buildBackup, canonicalRow, readWorkbook } from '../domain/export/workbook.ts';
 import { readWorkbookFile, writeWorkbookFile } from './workbookFile.ts';
 
 const META = { exportedAt: '2026-10-30T06:30:00.000Z', householdName: 'The Rao household', baseCurrency: 'INR', demo: false };
@@ -9,7 +9,7 @@ const META = { exportedAt: '2026-10-30T06:30:00.000Z', householdName: 'The Rao h
 describe('the workbook as an .xlsx file', { timeout: 30_000 }, () => {
   it('is read back from the file to exactly the rows that were written', async () => {
     const tables = exportFixture();
-    const { workbook, problems } = buildWorkbook(tables, META);
+    const { workbook, problems } = buildBackup(tables, META);
     expect(problems).toEqual([]);
 
     const bytes = await writeWorkbookFile(workbook.sheets, { sample: false });
@@ -26,14 +26,14 @@ describe('the workbook as an .xlsx file', { timeout: 30_000 }, () => {
   });
 
   it('keeps a text that looks like a formula as text, and a negative amount negative', async () => {
-    const { workbook } = buildWorkbook(exportFixture(), META);
+    const { workbook } = buildBackup(exportFixture(), META);
     const back = readWorkbook(await readWorkbookFile(await writeWorkbookFile(workbook.sheets, { sample: false })));
     expect(back.tables['expense_txn']?.[0]?.['payee']).toBe('=SUM(A1:A9)');
     expect(back.tables['ppf_entry']?.map((row) => row['amount_minor'])).toEqual(['5000000', '-1000000']);
   });
 
   it('marks the first sheet of a sample household’s file, and still reads back', async () => {
-    const { workbook } = buildWorkbook(exportFixture(), { ...META, demo: true });
+    const { workbook } = buildBackup(exportFixture(), { ...META, demo: true });
     const sheets = await readWorkbookFile(await writeWorkbookFile(workbook.sheets, { sample: true }));
     const about = sheets.find((sheet) => sheet.name === 'About');
     expect(about?.rows.some((row) => typeof row[1] === 'string' && row[1].startsWith('Yes'))).toBe(true);

@@ -33,9 +33,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## export-redesign.md
 
-- XR-I1 — not built: the report writer is slice 1 of docs/design/export-redesign.md — 2026-11-17
-- XR-I2 — not built: the report writer is slice 1 — 2026-11-17
-- XR-I3 — not built: the report writer is slice 1 — 2026-11-17
 - XR-I4 — not built: the report’s charts are slice 2 — 2026-11-17
 - XR-I5 — not built: the report’s charts are slice 2 — 2026-11-17
 - XR-I6 — not built: the report’s charts are slice 2 — 2026-11-17
@@ -44,7 +41,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - XR-I9 — not built: template version 3’s reader is slice 3 — 2026-11-17
 - XR-I10 — not built: template version 3’s reader is slice 3 — 2026-11-17
 - XR-I11 — not built: the report is slice 1 and the screens are slice 4 — 2026-11-17
-- XR-I12 — not built: the complete backup is renamed in slice 1, with its fixture — 2026-11-17
 
 ## goals.md
 
