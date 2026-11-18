@@ -28,6 +28,7 @@ export function StateSpend({
   currencies,
   itemised,
   editing = null,
+  privacy = false,
   onDone,
   onCancel,
 }: {
@@ -41,6 +42,8 @@ export function StateSpend({
   itemised: readonly Money[];
   /** A statement being changed: its figure and note are in the form, and its currency is kept. */
   editing?: SpendStatement | null;
+  /** Privacy mode: what is said afterwards masks the amount. */
+  privacy?: boolean;
   onDone: (said: string) => void;
   onCancel: () => void;
 }) {
@@ -86,7 +89,7 @@ export function StateSpend({
     setProblem(null);
     try {
       await stateSpend({ householdId, month, amount: money(read.amountMinor, currency), note: read.note });
-      onDone(`${name}’s spend stated: ${formatMoney(money(read.amountMinor, currency))}.`);
+      onDone(`${name}’s spend stated: ${formatMoney(money(read.amountMinor, currency), { privacy })}.`);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'That could not be saved.');
     } finally {

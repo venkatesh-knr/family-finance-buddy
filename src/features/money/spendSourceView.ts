@@ -23,10 +23,15 @@ export interface MonthLine {
   readonly saved: { readonly value: Money; readonly label: 'rough' } | null;
 }
 
-const show = (value: Money): string => formatMoney(value);
-
 /** One line for each currency that was itemised or stated in an ended month with no close, the itemised ones in the order given. */
-export function monthLines(input: { readonly spent: readonly Money[]; readonly cameIn: readonly Money[]; readonly statements: readonly SpendStatement[] }): readonly MonthLine[] {
+export function monthLines(input: {
+  readonly spent: readonly Money[];
+  readonly cameIn: readonly Money[];
+  readonly statements: readonly SpendStatement[];
+  /** Privacy mode: every amount in a sentence is masked, as the figures are (tokens.md section 8). */
+  readonly privacy?: boolean;
+}): readonly MonthLine[] {
+  const show = (value: Money): string => formatMoney(value, { privacy: input.privacy === true });
   const currencies = [...input.spent.map((line) => line.currency)];
   for (const statement of input.statements) if (!currencies.includes(statement.amount.currency)) currencies.push(statement.amount.currency);
 
@@ -67,7 +72,8 @@ export function sourceNote(lines: readonly MonthLine[], itemisedWords: string): 
 }
 
 /** Beside a month closed from balances: what was stated, said once per currency it was stated in (SC-I17). Nothing is changed by it. */
-export function crossCheckLines(input: { readonly closedSpent: readonly Money[]; readonly statements: readonly SpendStatement[] }): readonly string[] {
+export function crossCheckLines(input: { readonly closedSpent: readonly Money[]; readonly statements: readonly SpendStatement[]; readonly privacy?: boolean }): readonly string[] {
+  const show = (value: Money): string => formatMoney(value, { privacy: input.privacy === true });
   const lines: string[] = [];
   for (const closed of input.closedSpent) {
     const stated = input.statements.find((statement) => statement.amount.currency === closed.currency);

@@ -44,8 +44,10 @@ test('an ended month that is only itemised offers to state it, and says what the
   await expect(card).toBeVisible();
   const action = card.getByTestId('month-state-action');
   test.skip(!(await offered(card)), 'the month was closed from balances earlier in this run');
+  // The other project may have stated the month already in this run: the line is for a month that is only itemised.
+  test.skip((await action.getByRole('button', { name: 'Change' }).count()) > 0, 'the month was stated earlier in this run');
   await expect(action).toContainText(`If you know what ${monthBefore()} cost, you can say it.`);
-  await action.getByRole('button', { name: `State ${monthBefore()}’s spend` }).click();
+  await action.getByRole('button', { name: new RegExp(`^State ${monthBefore()}’s spend`) }).click();
 
   const form = page.getByRole('form', { name: `State ${monthBefore()}’s spend` });
   await expect(form).toBeVisible();

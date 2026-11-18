@@ -65,6 +65,18 @@ describe('the words under Spent', () => {
   });
 });
 
+describe('privacy mode masks every amount in a sentence, as it does in the figures', () => {
+  it('masks the amounts of the not-yet-itemised, the over-itemised and the cross-check sentences', () => {
+    const [short] = monthLines({ spent: [inr(52_000)], cameIn: [inr(1)], statements: [statement(82_000)], privacy: true });
+    const [over] = monthLines({ spent: [inr(55_000)], cameIn: [inr(1)], statements: [statement(50_000)], privacy: true });
+    const cross = crossCheckLines({ closedSpent: [inr(91_000)], statements: [statement(82_000)], privacy: true });
+    for (const text of [short?.sentence, over?.sentence, ...cross]) {
+      expect(text).toMatch(/\u20b9\u2022+/);
+      expect(text).not.toMatch(/\d/);
+    }
+  });
+});
+
 describe('SC-I17 — the cross-check beside a month closed from balances', () => {
   it('says what the balances say and what was stated, and changes neither', () => {
     expect(crossCheckLines({ closedSpent: [inr(91_000)], statements: [statement(82_000)] })).toEqual(['Spent ₹91,000 from balances. You said ₹82,000.']);

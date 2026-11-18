@@ -93,8 +93,15 @@ export function MonthSurface({
   const stated: readonly SpendStatement[] = statements.read.status === 'ready' ? statements.read.statements : [];
   // A month that is not closed is itemised or stated; until the statements are read, it is neither, and says it is being read.
   const statedReady = openLast === null || statements.read.status === 'ready' || statements.read.status === 'failed';
-  const lines = openLast !== null && figures !== null && statements.read.status === 'ready' ? monthLines({ spent: figures.spent, cameIn: figures.cameIn, statements: stated }) : null;
+  const lines = openLast !== null && figures !== null && statements.read.status === 'ready' ? monthLines({ spent: figures.spent, cameIn: figures.cameIn, statements: stated, privacy }) : null;
   const statedHere = lines?.find((line) => line.spent.currency === currency)?.stated ?? null;
+  // An open Last month names its source, and cannot until the statements are read: it says it is being read, or that it could not be, and never an itemised figure.
+  const statedWaiting = openLast !== null && statements.read.status !== 'ready';
+  const statedFailed = openLast !== null && statements.read.status === 'failed';
+  const stateChoices =
+    openLast !== null && figures !== null
+      ? stateSpendChoices({ reading: currency, itemisedIn: figures.spent.map((line) => line.currency), statedIn: stated.map((statement) => statement.amount.currency) })
+      : [];
   const reading = showingLast && (last.kind === 'reading' || last.kind === 'failed') ? last.kind : null;
   const noAccounts = openLast !== null && openLast.noAccounts;
   const title = !showingLast
@@ -102,7 +109,9 @@ export function MonthSurface({
     : last.kind === 'closed'
       ? `${monthWord(last.month)} · closed`
       : last.kind === 'open'
-        ? `${monthWord(last.month)} · ${last.noAccounts ? 'from what you entered' : 'not closed yet'}`
+        ? lines?.some((line) => line.stated !== null) === true
+          ? monthWord(last.month)
+          : `${monthWord(last.month)} · ${last.noAccounts ? 'from what you entered' : 'not closed yet'}`
         : monthWord(last.month);
 
   const waiting = (failed: boolean) => <span className="note">{failed ? 'could not be read' : 'Reading…'}</span>;
@@ -181,6 +190,8 @@ export function MonthSurface({
               waiting(reading === 'failed')
             ) : figures === null ? (
               waiting(unreadable)
+            ) : statedWaiting ? (
+              waiting(statedFailed)
             ) : (
               <>
                 {(lines === null ? figures.spent : lines.map((line) => line.spent)).map((line) => (
@@ -201,7 +212,7 @@ export function MonthSurface({
               </>
             )}
           </dd>
-          {(closed !== null || (reading === null && figures !== null)) && (
+          {(closed !== null || (reading === null && figures !== null && !statedWaiting)) && (
             <dd className="note">
               {closed !== null ? 'from balances' : lines === null ? (noAccounts ? 'from what you entered' : 'itemised so far') : sourceNoteParts(sourceNote(lines, noAccounts ? 'from what you entered' : 'itemised so far'))}
             </dd>
@@ -220,10 +231,10 @@ export function MonthSurface({
               </dd>
               <dd className="note">{modeLine(closed.counted, closed.total)}</dd>
             </>
-          ) : reading !== null || (showingLast && figures === null) ? (
+          ) : reading !== null || (showingLast && figures === null) || statedWaiting ? (
             // Still being read, or not readable: neither an open month's dash nor a figure.
             <dd className="stat-card-value" data-testid="month-saved">
-              {waiting(reading === 'failed' || unreadable)}
+              {waiting(reading === 'failed' || unreadable || statedFailed)}
             </dd>
           ) : lines !== null && lines.some((line) => line.saved !== null) ? (
             // A stated month: came in less the stated figure, and it says it is rough. No split is claimed, since no balances prove one (SC-I18).
@@ -267,7 +278,7 @@ export function MonthSurface({
             </p>
           ))}
       {closed !== null &&
-        crossCheckLines({ closedSpent: closed.spent, statements: stated }).map((line) => (
+        crossCheckLines({ closedSpent: closed.spent, statements: stated, privacy }).map((line) => (
           <p key={line} className="note mt-2.5" data-testid="month-cross-check">
             {line}
           </p>
@@ -276,16 +287,33 @@ export function MonthSurface({
       {openLast !== null && statedReady && lines !== null && (
         <div className="mt-2.5 flex flex-col items-start gap-1.5" data-testid="month-state-action">
           {statedHere === null && <p className="note">Only what was itemised. If you know what {monthWord(openLast.month)} cost, you can say it.</p>}
-          <Button
-            type="button"
-            variant="quiet"
-            onClick={() => {
-              setSaid(null);
-              setStating(statedHere ?? 'new');
-            }}
-          >
-            {statedHere === null ? `State ${monthWord(openLast.month)}’s spend` : 'Change'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {statedHere !== null && (
+              <Button
+                type="button"
+                variant="quiet"
+                onClick={() => {
+                  setSaid(null);
+                  setStating(statedHere);
+                }}
+              >
+                Change
+              </Button>
+            )}
+            {/* One statement is live for each currency, so another currency the month was itemised in can still be stated. */}
+            {stateChoices.length > 0 && (
+              <Button
+                type="button"
+                variant="quiet"
+                onClick={() => {
+                  setSaid(null);
+                  setStating('new');
+                }}
+              >
+                {statedHere === null ? `State ${monthWord(openLast.month)}’s spend` : `State ${monthWord(openLast.month)}’s spend in ${stateChoices[0] ?? ''}`}
+              </Button>
+            )}
+          </div>
         </div>
       )}
       {said !== null && (
@@ -307,6 +335,7 @@ export function MonthSurface({
           })}
           itemised={figures.spent.map((line) => (line.minor < 0n ? { ...line, minor: 0n } : line))}
           editing={stating === 'new' ? null : stating}
+          privacy={privacy}
           onDone={(message) => {
             setStating(null);
             setSaid(message);
