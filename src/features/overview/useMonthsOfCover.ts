@@ -9,7 +9,7 @@
  * include private amounts, or the numbers disagree between members. Each is converted at the rate for
  * that month's last day, so a month does not change because the rupee moved today.
  *
- * A month the household has stated is taken as stated, in each currency it was stated in, and itemised in any other; the caveat on the card counts the months
+ * A month the household has stated is taken as stated, in each currency it was stated in, and itemised in any other, unless the month was closed from balances, which a statement never stands in for; the caveat on the card counts the months
  * by source. Thirteen months are read and twelve are averaged: the oldest is a probe that says whether recording
  * began inside the window (see `coverMonths`).
  */
@@ -18,12 +18,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { convert, type Rate } from '../../domain/fx.ts';
 import { COVER_WINDOW_MONTHS, coverMonths, monthsOfCover, priorMonths } from '../../domain/earmark.ts';
 import { monthBounds } from '../../domain/budget.ts';
-import { countBySource, coverSources, type SpendSource } from '../../domain/spend-source.ts';
+import { countBySource, coverSources, statementsForCover, type SpendSource } from '../../domain/spend-source.ts';
 import { money, type Money } from '../../lib/money.ts';
+import { listAccounts, listBalances } from '../../repo/accounts.ts';
 import { listOwnPrivateSpend, listPersonalSpend } from '../../repo/expenses.ts';
 import { listSpendStatements } from '../../repo/spendStatements.ts';
 import { householdSpending } from '../../repo/summary.ts';
 import type { SpendStatement } from '../../repo/types.ts';
+import { isClosed } from '../money/closeMonth.ts';
 
 export type Cover =
   | { readonly status: 'loading' }
@@ -63,6 +65,7 @@ export function useMonthsOfCover(options: {
 
     Promise.all([
       listSpendStatements(householdId, months),
+      Promise.all([listAccounts(householdId, { includeArchived: true }), listBalances(householdId, { from: monthBounds(`${first}-01`).start, to: monthBounds(`${last}-01`).end })]),
       Promise.all(
         months.map(async (month) => {
           const { start, end } = monthBounds(`${month}-01`);
@@ -79,11 +82,13 @@ export function useMonthsOfCover(options: {
         to: monthBounds(`${last}-01`).end,
       }),
     ])
-      .then(([stated, entries, own]) => {
+      .then(([statements, [accounts, balances], entries, own]) => {
         if (!live) return;
         const byMonth = new Map<string, Money[]>(entries.map(([month, amounts]) => [month, [...amounts]]));
         for (const entry of own) byMonth.get(entry.date.slice(0, 7))?.push(entry.amount);
-        setRaw({ byMonth, stated });
+        // Balances beat a stated spend (SC-I17): a statement for a month closed from balances is not used, and the month is itemised like any other.
+        const closed = new Set(months.filter((month) => isClosed({ month, accounts, balances })));
+        setRaw({ byMonth, stated: statementsForCover(statements, closed) });
       })
       .catch(() => {
         if (live) setRaw('failed');
@@ -101,7 +106,7 @@ export function useMonthsOfCover(options: {
     const spendMonths = [...raw.byMonth.entries()]
       .filter(([month, amounts]) => statedMonths.has(month) || amounts.some((amount) => amount.minor !== 0n))
       .map(([month]) => month);
-    const window = coverMonths({ today, spendMonths });
+    const window = coverMonths({ today, spendMonths, stated: [...statedMonths] });
     const sources = countBySource(coverSources(window, statedMonths));
 
     const monthlyExpenses: { month: string; spent: Money }[] = [];

@@ -344,6 +344,14 @@ describe('PF-C9 — the window is whole months with spending in them, at most tw
     ]);
   });
 
+  it('keeps a stated month that spending began in: a statement is a whole month, not one day of it', () => {
+    expect(coverMonths({ today, spendMonths: ['2026-07', '2026-08', '2026-09'], stated: ['2026-07'] })).toEqual(['2026-07', '2026-08', '2026-09']);
+    // The rule still applies to the earliest month when that month is only itemised.
+    expect(coverMonths({ today, spendMonths: ['2026-07', '2026-08', '2026-09'], stated: ['2026-08'] })).toEqual(['2026-08', '2026-09']);
+    // A statement for last month, with nothing else, is a whole month, and one month is still too few for a figure (PF-C9) but is in the window.
+    expect(coverMonths({ today, spendMonths: ['2026-09'], stated: ['2026-09'] })).toEqual(['2026-09']);
+  });
+
   it('is empty when nothing has been spent, and when the first spend is last month', () => {
     expect(coverMonths({ today, spendMonths: [] })).toEqual([]);
     expect(coverMonths({ today, spendMonths: ['2026-09'] })).toEqual([]);

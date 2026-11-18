@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countBySource, coverCaveat, coverSources, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
+import { countBySource, coverCaveat, coverSources, statementsForCover, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
 
 /**
  * A month's spent and where it came from (docs/design/spending-capture.md section 11; SC-I15 to SC-I18). Amounts are paise: ₹82,000 is 8_200_000n.
@@ -127,6 +127,19 @@ describe('the months of cover caveat counts a year’s months by source', () => 
 
   it('counts none as none', () => {
     expect(countBySource([])).toEqual({ balances: 0, stated: 0, itemised: 0 });
+  });
+});
+
+describe('SC-I15, SC-I17 — a statement never stands in for a month closed from balances', () => {
+  const statement = (month: string) => ({ month });
+  it('leaves out the statements of closed months, which then count as itemised', () => {
+    const kept = statementsForCover([statement('2026-08'), statement('2026-09')], new Set(['2026-09']));
+    expect(kept.map((entry) => entry.month)).toEqual(['2026-08']);
+    expect(coverSources(['2026-08', '2026-09'], new Set(kept.map((entry) => entry.month)))).toEqual(['stated', 'itemised']);
+  });
+
+  it('keeps every statement when no month is closed', () => {
+    expect(statementsForCover([statement('2026-08')], new Set())).toHaveLength(1);
   });
 });
 

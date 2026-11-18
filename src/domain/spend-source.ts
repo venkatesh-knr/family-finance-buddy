@@ -94,6 +94,14 @@ export function countBySource(sources: readonly SpendSource[]): Record<SpendSour
 }
 
 /**
+ * The statements months of cover may use: those of months that were not closed from balances. Balances beat a statement (SC-I17), so a closed month is never
+ * averaged at its stated figure; it is averaged as it is for every month, itemised, and counted so.
+ */
+export function statementsForCover<T extends { readonly month: string }>(statements: readonly T[], closedMonths: ReadonlySet<string>): readonly T[] {
+  return statements.filter((statement) => !closedMonths.has(statement.month));
+}
+
+/**
  * The source of each month of the window months of cover is averaged over (section 11.4): *stated* where the month has a statement, whose figure the average
  * then takes as stated, and *itemised* for every other. A month closed from balances is not told apart here: months of cover is averaged over what was itemised,
  * and says so, rather than naming a source it does not use.
