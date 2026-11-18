@@ -19,6 +19,9 @@ import { DemoBadge, useHouseholdChoice } from '../../app/household.tsx';
 import { resetDemoHousehold } from '../../repo/households.ts';
 import { listRates } from '../../repo/rates.ts';
 import { RecurringRules } from '../recurring/RecurringRules.tsx';
+import { CodeForm } from '../reports/CodeForm.tsx';
+import { exportOffer } from '../reports/exportOffer.ts';
+import { runBackup } from '../reports/runExport.ts';
 
 function Chevron() {
   return (
@@ -211,28 +214,105 @@ export function SettingsScreen({
       <RecurringRules key={`rules-${String(resets)}`} householdId={householdId} privacy={privacy} recurringMade={recurringMade} />
 
       {/*
-        Data. The prototype's group also holds the template, the upload, the export and deleting a household; each
-        arrives with the thing behind it. Only the reset exists today, and only a demo household has one: on a real
-        household the row would be offering something the database will always refuse.
+        Data. The prototype's group also holds the upload and deleting a household; the upload is on Reports, beside the template, and deleting a household arrives
+        with what is behind it. Here: the complete backup, for those who can read all of the household, and the reset, for a demo household only: on a real
+        household it would be offering something the database will always refuse.
       */}
-      {household?.kind === 'demo' && householdId !== null && (
-        <section>
-          <div className="grouphead">
-            <h2>Data</h2>
-          </div>
-
-          <ResetDemoHousehold
-            householdId={householdId}
-            householdName={household.name}
-            isOwner={role === 'owner'}
-            onReset={() => {
-              setResets((n) => n + 1);
-              reload();
-            }}
-          />
-        </section>
+      {householdId !== null && (exportOffer(role).backup || household?.kind === 'demo') && (
+        <DataGroup
+          householdId={householdId}
+          canBackup={exportOffer(role).backup}
+          demoName={household?.kind === 'demo' ? household.name : null}
+          isOwner={role === 'owner'}
+          onReset={() => {
+            setResets((n) => n + 1);
+            reload();
+          }}
+        />
       )}
     </div>
+  );
+}
+
+/**
+ * Data: one panel of rows divided by hairlines, like every other group, and what a row opens below it.
+ *
+ * The complete backup (docs/design/export-redesign.md sections 1 and 4) is every record the person can read, in the technical shape a restore and an upload read. It
+ * is not the report. It is meant for a program and for the day something has to be put back, so its row says so in one line, and it asks for a fresh authenticator
+ * code first like the report does: it takes the whole record out of the app. The reset is a demo household's alone.
+ */
+function DataGroup({
+  householdId,
+  canBackup,
+  demoName,
+  isOwner,
+  onReset,
+}: {
+  householdId: string;
+  canBackup: boolean;
+  /** The demo household's name, or null when it is a real one. */
+  demoName: string | null;
+  isOwner: boolean;
+  onReset: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  const backupRow = canBackup ? (
+    <button
+      type="button"
+      className="setrow setrow-button"
+      aria-expanded={asking}
+      onClick={() => {
+        setAsking((was) => !was);
+        setSaved(null);
+      }}
+    >
+      <span className="setrow-text">
+        <span className="sk">Download a complete backup</span>
+        <span className="sd">Complete and technical. The file to keep for a restore; to read your figures, use a report.</span>
+      </span>
+      <Chevron />
+    </button>
+  ) : null;
+
+  const backupPanel = (
+    <>
+      {asking && (
+        <CodeForm
+          label="Confirm the backup"
+          submitLabel="Download a complete backup"
+          busyLabel="Making the backup…"
+          note="A backup takes the whole record out of the app, so it asks for a fresh code first."
+          run={(code) => runBackup(householdId, code)}
+          onDone={(made) => {
+            setSaved(made.filename);
+            setAsking(false);
+          }}
+          onCancel={() => {
+            setAsking(false);
+          }}
+        />
+      )}
+      {saved !== null && (
+        <p className="note mt-2" role="status" data-testid="backup-saved">
+          Saved <span className="tabular-nums">{saved}</span> to your downloads.
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <section>
+      <div className="grouphead">
+        <h2>Data</h2>
+      </div>
+      {demoName === null ? <div className="setgrp">{backupRow}</div> : null}
+      {demoName !== null && (
+        <ResetDemoHousehold householdId={householdId} householdName={demoName} isOwner={isOwner} onReset={onReset} before={backupRow} between={backupPanel} />
+      )}
+      {demoName === null && backupPanel}
+    </section>
   );
 }
 
@@ -251,11 +331,17 @@ function ResetDemoHousehold({
   householdName,
   isOwner,
   onReset,
+  before,
+  between,
 }: {
   householdId: string;
   householdName: string;
   isOwner: boolean;
   onReset: () => void;
+  /** Rows of the same panel that come first, so the group is one panel divided by hairlines. */
+  before?: React.ReactNode;
+  /** What those rows open, shown under the panel and before what the reset opens. */
+  between?: React.ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -265,6 +351,7 @@ function ResetDemoHousehold({
   return (
     <>
       <div className="setgrp">
+        {before}
         <button
           type="button"
           className="setrow setrow-button"
@@ -287,6 +374,7 @@ function ResetDemoHousehold({
           {isOwner && <Chevron />}
         </button>
       </div>
+      {between}
 
       {confirming && isOwner && (
         <div className="mt-3">

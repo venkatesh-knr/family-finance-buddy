@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { buildTemplate } from '../../domain/export/template.ts';
 import { formatIsoDate, istCalendarDate } from '../../lib/dates.ts';
-import { saveFile, writeWorkbookFile, XLSX_MIME } from '../../lib/workbookFile.ts';
 import { UploadError, listUploads, type UploadBatch } from '../../repo/upload.ts';
 import { Button, Field, Problem } from '../../ui/primitives.tsx';
 import { commitUpload, labelFor, previewUpload, reverseUpload, sheetName, type Preview } from './runUpload.ts';
@@ -60,16 +58,6 @@ export function UploadPanel({ householdId, privacy }: { householdId: string; pri
   useEffect(() => {
     void reloadUploads();
   }, [reloadUploads]);
-
-  const downloadTemplate = async () => {
-    setProblem(null);
-    try {
-      const bytes = await writeWorkbookFile(buildTemplate(new Date().toISOString()).sheets, { sample: false });
-      saveFile(bytes, 'family-finance-buddy-template.xlsx', XLSX_MIME);
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'Could not make the template.');
-    }
-  };
 
   const choose = async (file: File | undefined) => {
     setPreview(null);
@@ -167,22 +155,9 @@ export function UploadPanel({ householdId, privacy }: { householdId: string; pri
       <div className="label">Bring a workbook back</div>
       <h2 className="card-title mt-1.5">Upload what you edited</h2>
       <p className="note mt-1.5">
-        Choose the workbook you exported and changed. You see what it would do before anything is written, and it is all or none. Rows
+        Choose the template you filled in, or a complete backup you edited. You see what it would do before anything is written, and it is all or none. Rows
         you leave out are left alone: an upload never deletes.
       </p>
-
-      <div className="mt-3">
-        <Button
-          type="button"
-          variant="quiet"
-          onClick={() => {
-            void downloadTemplate();
-          }}
-        >
-          Download a blank template
-        </Button>
-        <p className="note mt-1.5">Headers, a dropdown on every column with fixed choices, and instructions. Nothing about your household is in it.</p>
-      </div>
 
       <div className="mt-3">
         <label className="label" htmlFor="upload-file">

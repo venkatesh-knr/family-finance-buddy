@@ -20,15 +20,18 @@ type Cell = string | number | boolean | Date | null;
 
 async function openReports(page: Page) {
   await page.goto('/#/reports');
-  await expect(page.getByRole('region', { name: 'Export everything' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('region', { name: 'Download a report' })).toBeVisible({ timeout: 20_000 });
 }
 
+/** The complete backup, from Settings under Data: the file an upload takes back, since a report is for reading. */
 async function exportWorkbook(page: Page, path: string) {
-  await page.getByRole('button', { name: 'Export everything · Excel' }).click();
-  const form = page.getByRole('form', { name: 'Confirm the export' });
+  await page.goto('/#/settings');
+  await page.getByRole('button', { name: /Download a complete backup/ }).click();
+  const form = page.getByRole('form', { name: 'Confirm the backup' });
   await form.getByLabel('Code from your authenticator app').fill(await freshCode());
-  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), form.getByRole('button', { name: 'Export everything · Excel' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), form.getByRole('button', { name: 'Download a complete backup' }).click()]);
   await download.saveAs(path);
+  await openReports(page);
 }
 
 /**

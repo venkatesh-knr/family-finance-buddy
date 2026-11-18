@@ -55,5 +55,6 @@ export async function runReport(householdId: string, code: string): Promise<{ re
   const bytes = await writeReportFile(report, { householdName: source.householdName });
   const filename = reportFilename(source.householdName, istCalendarDate(new Date(exportedAt)), source.isDemo);
   saveFile(bytes, filename, XLSX_MIME);
+  rememberExport(householdId, exportedAt);
   return { filename, exportedAt };
 }
