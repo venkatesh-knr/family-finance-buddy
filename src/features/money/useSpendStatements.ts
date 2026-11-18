@@ -18,6 +18,8 @@ export function useSpendStatements(
   householdId: string | null,
   months: readonly string[],
   asks: boolean,
+  /** Changes when something was written that the figures depend on: the statements are read again, without going back to *loading*. */
+  refreshKey?: unknown,
 ): { readonly read: SpendStatements; readonly reload: () => void } {
   const [state, setState] = useState<SpendStatements & { readonly key?: string }>({ status: 'idle' });
   const [bump, setBump] = useState(0);
@@ -37,7 +39,7 @@ export function useSpendStatements(
     return () => {
       live = false;
     };
-  }, [key, householdId, monthsKey]);
+  }, [key, householdId, monthsKey, refreshKey]);
 
   const reload = useCallback(() => {
     setBump((n) => n + 1);

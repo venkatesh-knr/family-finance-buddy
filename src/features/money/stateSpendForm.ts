@@ -52,8 +52,16 @@ export interface LinkedFields {
 }
 
 /** The two fields after one of them was typed in: the one typed keeps its text, and the other is filled when what was typed can be read. */
-export function linkedFields(input: { readonly edited: 'total' | 'rest'; readonly text: string; readonly itemised: bigint; readonly currency: string }): LinkedFields {
+export function linkedFields(input: {
+  readonly edited: 'total' | 'rest';
+  readonly text: string;
+  readonly itemised: bigint;
+  readonly currency: string;
+  /** Privacy mode: the amounts in the caption are masked, and the other field is not filled, because the rest or the total would give the itemised figure away. */
+  readonly privacy?: boolean;
+}): LinkedFields {
   const { edited, text, itemised, currency } = input;
+  const privacy = input.privacy === true;
   const reading = amountReading(text, currency);
   if (edited === 'total') {
     if (!reading.ok) return { total: text, rest: '', caption: null, belowItemised: false };
@@ -61,14 +69,14 @@ export function linkedFields(input: { readonly edited: 'total' | 'rest'; readonl
     if (rest === null) return { total: text, rest: '', caption: null, belowItemised: true };
     // Nothing itemised, or the total is exactly what is itemised: there is no rest to speak of.
     if (itemised === 0n || rest === 0n) return { total: text, rest: '', caption: null, belowItemised: false };
-    return { total: text, rest: plain(rest, currency), caption: captionOf(itemised, rest, currency), belowItemised: false };
+    return { total: text, rest: privacy ? '' : plain(rest, currency), caption: captionOf(itemised, rest, currency, privacy), belowItemised: false };
   }
   if (!reading.ok) return { total: '', rest: text, caption: null, belowItemised: false };
-  return { total: plain(restToTotal(itemised, reading.minor), currency), rest: text, caption: captionOf(itemised, reading.minor, currency), belowItemised: false };
+  return { total: privacy ? '' : plain(restToTotal(itemised, reading.minor), currency), rest: text, caption: captionOf(itemised, reading.minor, currency, privacy), belowItemised: false };
 }
 
-const captionOf = (itemised: bigint, rest: bigint, currency: string): string =>
-  `${formatMoney(money(itemised, currency))} itemised + ${formatMoney(money(rest, currency))} more`;
+const captionOf = (itemised: bigint, rest: bigint, currency: string, privacy: boolean): string =>
+  `${formatMoney(money(itemised, currency), { privacy })} itemised + ${formatMoney(money(rest, currency), { privacy })} more`;
 
 export type SpendFormReading =
   | { readonly ok: true; readonly amountMinor: bigint; readonly note: string | null }

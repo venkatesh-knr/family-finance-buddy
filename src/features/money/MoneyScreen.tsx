@@ -19,15 +19,17 @@ import { ExpectedPanel } from './ExpectedPanel.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
 import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
 import { MonthFooter } from './MonthFooter.tsx';
-import { monthFooterStatus } from './monthFooter.ts';
+import { monthFooterStatus, offersStatedClose } from './monthFooter.ts';
 import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
+import { CloseWithoutAccounts } from './CloseWithoutAccounts.tsx';
 import { accountSteps, closeFigures, monthToClose, offersClose } from './closeMonth.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
 import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
+import { useSpendStatements } from './useSpendStatements.ts';
 import { VoidMove } from './VoidMove.tsx';
 import type { LedgerLine } from './ledgerLines.ts';
 import { expectedRows, ruleHistory, ruleListRows, type RuleDraft } from './ruleForm.ts';
@@ -54,6 +56,8 @@ export function MoneyScreen({
   // A move being voided: its id and the line that names it.
   const [voidingMove, setVoidingMove] = useState<{ id: string; line: LedgerLine } | null>(null);
   const [closing, setClosing] = useState(false);
+  // A household with no account closes by saying what the month cost (spending-capture.md section 11.3).
+  const [closingStated, setClosingStated] = useState(false);
   const viewer = ledger.data?.viewer ?? null;
   const nudge = ledger.data === null ? null : accountsNudge({ accounts: ledger.data.accounts, canRecord: ledger.data.viewer.canRecord });
   const today = todayInIst();
@@ -65,6 +69,9 @@ export function MoneyScreen({
   // And the holdings' entries that named an account: money into a holding is not spent, and without them Last month would read low.
   const lastEntries = useHoldingMoves(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived), today);
   const lastLoans = useLoanPayments(ledger.data?.household.id ?? null, closeMonthKey, ledger.data !== null && ledger.data.accounts.some((a) => !a.isArchived));
+  // Whether a month nobody can close from balances was stated already: read only for an owner or a partner, who are the ones who state it.
+  const mayState = viewer?.role === 'owner' || viewer?.role === 'partner';
+  const lastStated = useSpendStatements(ledger.data?.household.id ?? null, [closeMonthKey], mayState && ledger.data !== null && !ledger.data.accounts.some((a) => !a.isArchived));
   const lastMonth: LastMonthView | null = (() => {
     if (ledger.data === null || !lastPrivate.asks) return null;
     const input = {
@@ -99,6 +106,17 @@ export function MoneyScreen({
       canRecord: ledger.data.viewer.canRecord,
       moneyReady: ledger.moneyStatus === 'ready',
     });
+  const closeStated =
+    ledger.data !== null &&
+    offersStatedClose({
+      lastMonth,
+      mayState: mayState && ledger.data.viewer.canRecord,
+      read: lastStated.read.status,
+      stated: lastStated.read.status === 'ready' ? lastStated.read.statements.map((statement) => statement.amount.currency) : [],
+    });
+  // A month of a household with no account that was closed by saying what it cost.
+  const closedStated =
+    ledger.data !== null && mayState && lastMonth !== null && lastMonth.kind === 'open' && lastMonth.noAccounts && lastStated.read.status === 'ready' && lastStated.read.statements.length > 0;
   // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
   const mayRule = viewer?.role === 'owner' || viewer?.role === 'partner';
   const expected =
@@ -166,6 +184,25 @@ export function MoneyScreen({
           }}
         />
       )}
+      {closingStated && ledger.data !== null && (
+        <CloseWithoutAccounts
+          householdId={ledger.data.household.id}
+          month={closeMonthKey}
+          members={ledger.data.members}
+          // Empty means the household's own currency.
+          currency={displayCurrency === '' ? (ledger.data.household.baseCurrency ?? 'INR') : displayCurrency}
+          privacy={privacy}
+          onDone={(message) => {
+            setClosingStated(false);
+            setSaid(message);
+            lastStated.reload();
+            void ledger.reloadMoney();
+          }}
+          onCancel={() => {
+            setClosingStated(false);
+          }}
+        />
+      )}
       {voidingMove !== null && (
         <VoidMove
           key={voidingMove.id}
@@ -208,10 +245,11 @@ export function MoneyScreen({
             <>
               <MonthFooter
                 closeMonthKey={closeMonthKey}
-                status={monthFooterStatus({ closeMonthKey, mayClose, lastMonth })}
+                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth })}
                 onClose={() => {
                   setSaid(null);
-                  setClosing(true);
+                  if (mayClose) setClosing(true);
+                  else setClosingStated(true);
                 }}
                 moneyIn={
                   <MoneyIn
