@@ -22,7 +22,7 @@ export interface LedgerMoney {
   readonly lastMonth?: LastMonthView | null;
   /** *+ Money in*, *Close October* and the way to Accounts, placed directly under the month surface (the owner, 15 November 2026). */
   readonly actions?: React.ReactNode;
-  /** The Expected panel: placed under the month surface, where the board draws it, or above the month card where there is no surface. */
+  /** The Expected panel: placed under the month surface, or under a contributor's month card, where the board draws it. */
   readonly expected?: React.ReactNode;
   /** Opens a credit to correct or void. Absent where credits are only read. */
   readonly onEditCredit?: (credit: Credit) => void;
