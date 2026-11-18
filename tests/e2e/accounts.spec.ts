@@ -95,7 +95,7 @@ test('Money leads to Accounts: a quiet line to manage them, or a card that asks 
   await addAccount(page, testName('nudge-acct'));
   await page.goto('/#/money');
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
-  const manage = page.getByRole('link', { name: /^Accounts · \d+ · Manage$/ });
+  const manage = page.getByRole('link', { name: /^Accounts \d+ accounts?$/ });
   await expect(manage).toBeVisible({ timeout: 20_000 });
   await manage.click();
   expect(new URL(page.url()).hash).toBe('#/accounts');
@@ -112,7 +112,7 @@ test('Money is quick add first, then the month card with + Money in, the close a
 
   // The three actions are inside the card, in a row: money in, then the way to Accounts (the close is offered between them while a month is due).
   const moneyIn = card.getByRole('button', { name: '+ Money in' });
-  const accounts = card.getByRole('link', { name: /^Accounts · \d+ · Manage$|^Add accounts$/ });
+  const accounts = card.getByRole('link', { name: /^Accounts \d+ accounts?$|^Add accounts$/ });
   await expect(moneyIn).toBeVisible({ timeout: 20_000 });
   await expect(accounts).toBeVisible();
   const first = await moneyIn.boundingBox();

@@ -7,7 +7,7 @@ import { gradientStops, ratio, resolve, ruleFor } from './contrastKit.ts';
  * ground a field can stand on, in both themes, by measuring the shipped tokens and the shipped rule.
  */
 
-/** The grounds a field stands on, outside the lifted surface, and the stops of the lifted surface, where the underline is --muted. */
+/** The grounds a field stands on, outside the lifted surface, and the stops of the lifted surface, where the underline is --lift-muted (--muted there). */
 const grounds = (theme: 'light' | 'dark'): string[] => [resolve(theme, '--bg'), resolve(theme, '--surface'), resolve(theme, '--surface-2')];
 const lifted = (theme: 'light' | 'dark'): string[] => gradientStops(theme, '--surface-lift');
 
@@ -18,21 +18,27 @@ describe.each(['light', 'dark'] as const)('SL-I4 — a field’s underline holds
     }
   });
 
-  it('holds the underline on the lifted surface, which is --muted there, at 3:1 against every stop of it', () => {
+  it('holds the underline on the lifted surface, which is --lift-muted there, at 3:1 against every stop of it', () => {
     for (const ground of lifted(theme)) {
-      expect(ratio(resolve(theme, '--muted'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
+      expect(ratio(resolve(theme, '--lift-muted'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
     }
   });
 
-  it('holds the focused underline (the accent) at 3:1 against the same grounds and the lifted surface', () => {
-    for (const ground of [...grounds(theme), ...lifted(theme)]) {
+  it('holds the focused underline (the accent: --brass on the page, --lift-accent on the lifted surface) at 3:1 against its grounds', () => {
+    for (const ground of grounds(theme)) {
       expect(ratio(resolve(theme, '--brass'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
+    }
+    for (const ground of lifted(theme)) {
+      expect(ratio(resolve(theme, '--lift-accent'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
     }
   });
 
-  it('holds the error underline (the attention amber, --brass) at 3:1 against the same grounds and the lifted surface', () => {
-    for (const ground of [...grounds(theme), ...lifted(theme)]) {
+  it('holds the error underline (the same accent) at 3:1 against the same grounds and the lifted surface', () => {
+    for (const ground of grounds(theme)) {
       expect(ratio(resolve(theme, '--brass'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
+    }
+    for (const ground of lifted(theme)) {
+      expect(ratio(resolve(theme, '--lift-accent'), ground), `against ${ground}`).toBeGreaterThanOrEqual(3);
     }
   });
 });

@@ -36,7 +36,7 @@ async function onLedger(page: Page) {
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
 }
 
-const prompt = (page: Page) => page.getByRole('button', { name: new RegExp(`^Close ${monthBefore()} · about 2 minutes$`) });
+const prompt = (page: Page) => page.getByRole('button', { name: new RegExp(`^Close ${monthBefore()}$`) });
 const form = (page: Page) => page.getByRole('form', { name: `Close ${monthBefore()}` });
 
 /** Open the close, or skip the test when the month has already been closed in this run. */

@@ -9,14 +9,16 @@ import { gradientStops, ratio, resolve, ruleFor, type Theme } from './contrastKi
  * side and then broken by the canvas it was meant to describe. A rule that is measured can be kept; the
  * values are read out of the stylesheet that ships, so a lighter stop or a dimmer ink moves the ratio and
  * fails the build. Every stop is measured and not only the brightest, because the worst stop depends on the
- * theme: it is the brightest in dark, where the figures are light, and the dimmest in light, where they are
- * dark.
+ * theme: in both, the figures are light and the lift is dark, so it is the lightest stop. (Under Mist, the light
+ * theme's lift was pale and its figures dark, and the worst stop was the dimmest.)
  *
  * axe cannot do this itself. It cannot resolve a gradient and reports the text as "incomplete" rather
  * than failing it (docs/tokens.md §2), which is why this is a test of its own.
  */
 
-const FIGURES = ['--ink', '--ink-2', '--muted'] as const;
+// What is drawn on the lift: inside it, --ink, --ink-2 and --muted are these (the card sets them), so these are what a figure is measured in.
+// In Linen the lift is dark and they are light; in dark they are the page's own inks.
+const FIGURES = ['--lift-ink', '--lift-ink-2', '--lift-muted'] as const;
 
 describe.each(['light', 'dark'] as const satisfies readonly Theme[])('the lifted surface in the %s theme', (theme) => {
   const stops = gradientStops(theme, '--surface-lift');

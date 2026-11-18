@@ -29,6 +29,20 @@ function apply(choice: ThemeChoice): void {
   } else {
     root.setAttribute('data-theme', choice);
   }
+  paintStatusBar(choice);
+}
+
+/**
+ * The phone's status bar matches the header (index.html holds a forest meta for light and the dark ground for dark, each by the system's preference).
+ * A theme chosen in Settings beats the system's, so it chooses which of the two applies; Auto leaves them as the page shipped them.
+ */
+function paintStatusBar(choice: ThemeChoice): void {
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    const scheme = /prefers-color-scheme:\s*(light|dark)/.exec(meta.dataset['scheme'] ?? meta.media)?.[1];
+    if (scheme === undefined) continue;
+    meta.dataset['scheme'] = `(prefers-color-scheme: ${scheme})`;
+    meta.media = choice === 'system' ? `(prefers-color-scheme: ${scheme})` : choice === scheme ? 'all' : 'not all';
+  }
 }
 
 export function useTheme(): { choice: ThemeChoice; setChoice: (next: ThemeChoice) => void } {

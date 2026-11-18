@@ -64,7 +64,7 @@ test('a purchase paid from an account is recorded, and the close reads it as int
   const name = testName('paid-close');
   await addAccount(page, name);
   await page.goto('/#/money');
-  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word} · about 2 minutes$`) });
+  const prompt = page.getByRole('button', { name: new RegExp(`^Close ${word}$`) });
   await expect(page.getByRole('button', { name: '+ Money in' })).toBeVisible({ timeout: 20_000 });
   test.skip((await prompt.count()) === 0, 'the month was closed earlier in this run');
 
