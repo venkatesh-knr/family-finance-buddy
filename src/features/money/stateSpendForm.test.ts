@@ -95,3 +95,17 @@ describe('the currencies offered', () => {
     expect(stateSpendChoices({ reading: 'INR', itemisedIn: [], statedIn: [] })).toEqual(['INR']);
   });
 });
+
+describe('privacy mode: the form says nothing that gives away what is itemised', () => {
+  it('masks the amounts in the caption, and fills nothing from what is itemised, since the rest would give it away', () => {
+    const typedTotal = linkedFields({ edited: 'total', text: '82,000', itemised: rupees(52_000), currency: 'INR', privacy: true });
+    expect(typedTotal.rest).toBe('');
+    expect(typedTotal.caption).toBe('₹••••• itemised + ₹••••• more');
+    const typedRest = linkedFields({ edited: 'rest', text: '30,000', itemised: rupees(52_000), currency: 'INR', privacy: true });
+    expect(typedRest.total).toBe('');
+  });
+
+  it('still says a total is below what is itemised, without saying by how much', () => {
+    expect(linkedFields({ edited: 'total', text: '50,000', itemised: rupees(55_000), currency: 'INR', privacy: true }).belowItemised).toBe(true);
+  });
+});

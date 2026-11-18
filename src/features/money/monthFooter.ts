@@ -19,6 +19,8 @@ export function monthFooterStatus(input: {
   readonly mayClose: boolean;
   /** A household with no accounts: the month can be closed by saying what it cost (`offersStatedClose`). */
   readonly closeStated?: boolean;
+  /** The month of a household with no account was closed by saying what it cost. */
+  readonly closedStated?: boolean;
   readonly lastMonth: LastMonthView | null;
 }): MonthFooterStatus {
   if (input.mayClose) {
@@ -26,6 +28,9 @@ export function monthFooterStatus(input: {
   }
   if (input.closeStated === true) {
     return { kind: 'ready', title: `${monthWord(input.closeMonthKey)} is ready to close`, sub: 'say what it cost · about a minute' };
+  }
+  if (input.closedStated === true) {
+    return { kind: 'closed', title: `${monthWord(input.closeMonthKey)} is closed`, sub: 'from what you stated' };
   }
   const last = input.lastMonth;
   if (last !== null && last.kind === 'closed') {

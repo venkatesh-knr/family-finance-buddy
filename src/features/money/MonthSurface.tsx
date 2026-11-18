@@ -71,7 +71,7 @@ export function MonthSurface({
   const span = showingLast ? { start: `${last.month}-01`, end: lastDayOf(last.month) } : bounds;
   const month = useMonthTotals(householdId, span.start, span.end, refreshKey);
   // A stated spend belongs to a month that has ended, which is Last month, and is read only where Last month is: by an owner or a partner (SC-I19).
-  const statements = useSpendStatements(householdId, showingLast ? [last.month] : [], showingLast);
+  const statements = useSpendStatements(householdId, showingLast ? [last.month] : [], showingLast, refreshKey);
 
   const closed = showingLast && last.kind === 'closed' ? last : null;
   const openLast = showingLast && last.kind === 'open' ? last : null;

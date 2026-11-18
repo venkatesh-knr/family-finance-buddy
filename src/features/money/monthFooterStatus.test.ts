@@ -76,3 +76,17 @@ describe('a household with no accounts closes by saying what the month cost (spe
     expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: true, closeStated: true, lastMonth: noAccountsLast })?.sub).toBe('from your balances · about 2 minutes');
   });
 });
+
+describe('a month of a household with no account that was closed by saying what it cost', () => {
+  it('says it is closed, and from what', () => {
+    expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: false, closeStated: false, closedStated: true, lastMonth: { kind: 'open', month: '2026-10', noAccounts: true } })).toEqual({
+      kind: 'closed',
+      title: 'October is closed',
+      sub: 'from what you stated',
+    });
+  });
+
+  it('leads with a close that is still to do', () => {
+    expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: false, closeStated: true, closedStated: true, lastMonth: null })?.kind).toBe('ready');
+  });
+});

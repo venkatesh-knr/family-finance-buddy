@@ -52,8 +52,10 @@ export function StateSpend({
 }) {
   const [currency, setCurrency] = useState(editing?.amount.currency ?? currencies[0] ?? 'INR');
   const itemisedHere = itemised.find((line) => line.currency === currency)?.minor ?? 0n;
-  const [total, setTotal] = useState(editing === null ? '' : plainText(editing.amount));
-  const [rest, setRest] = useState(() => (editing === null ? '' : linkedFields({ edited: 'total', text: plainText(editing.amount), itemised: itemisedHere, currency }).rest));
+  // Under privacy mode a stored figure is not put in a field, nor the rest worked out from what is itemised: the field would hold what the screen hides.
+  const prefill = editing === null || privacy ? null : plainText(editing.amount);
+  const [total, setTotal] = useState(prefill ?? '');
+  const [rest, setRest] = useState(() => (prefill === null ? '' : linkedFields({ edited: 'total', text: prefill, itemised: itemisedHere, currency }).rest));
   const [note, setNote] = useState(editing?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function StateSpend({
 
   const name = monthWord(month);
   const symbol = formatMoney(money(0n, currency)).replace(/[\d.,\s]/g, '');
-  const linked = linkedFields({ edited: 'total', text: total, itemised: itemisedHere, currency });
+  const linked = linkedFields({ edited: 'total', text: total, itemised: itemisedHere, currency, privacy });
   const totalReading = amountReading(total, currency);
   const restReading = rest.trim() === '' ? null : amountReading(rest, currency);
   // Said as soon as something is typed that is not an amount; a blank waits for the button, which stays off until there is an amount.
@@ -69,11 +71,11 @@ export function StateSpend({
 
   const typeTotal = (text: string) => {
     setTotal(text);
-    setRest(linkedFields({ edited: 'total', text, itemised: itemisedHere, currency }).rest);
+    setRest(linkedFields({ edited: 'total', text, itemised: itemisedHere, currency, privacy }).rest);
   };
   const typeRest = (text: string) => {
     setRest(text);
-    setTotal(linkedFields({ edited: 'rest', text, itemised: itemisedHere, currency }).total);
+    setTotal(linkedFields({ edited: 'rest', text, itemised: itemisedHere, currency, privacy }).total);
   };
   const changeCurrency = (next: string) => {
     setCurrency(next);
@@ -119,9 +121,9 @@ export function StateSpend({
             <>
               {variant === 'close' && (
                 <>
-                  <p className="font-semibold">
+                  <h3 className="card-title">
                     Close {name}: what did the month cost?
-                  </p>
+                  </h3>
                   <p className="note">No accounts are added, so a close cannot work from balances. Say what the month cost, or leave it itemised only.</p>
                 </>
               )}
@@ -145,7 +147,7 @@ export function StateSpend({
 
               {itemisedHere > 0n && (
                 <p className="note">
-                  You have itemised <strong className="tabular-nums">{formatMoney(money(itemisedHere, currency))}</strong> so far.
+                  You have itemised <strong className="tabular-nums">{formatMoney(money(itemisedHere, currency), { privacy })}</strong> so far.
                 </p>
               )}
 
@@ -184,12 +186,13 @@ export function StateSpend({
 
               {linked.belowItemised && (
                 <p className="note">
-                  You have itemised more than this ({formatMoney(money(itemisedHere, currency))}). Both figures will be shown.
+                  You have itemised more than this ({formatMoney(money(itemisedHere, currency), { privacy })}). Both figures will be shown.
                 </p>
               )}
 
               <p className="note">What you spent on living: not what you put into investments, not loan EMIs, not moves between your own accounts.</p>
 
+              {variant === 'state' && (
               <div className="flex flex-col gap-1.5">
                 <label className="label" htmlFor="state-spend-note">
                   Note
@@ -209,6 +212,7 @@ export function StateSpend({
                 />
                 <span className="field-help">Optional.</span>
               </div>
+              )}
             </>
           ),
         },

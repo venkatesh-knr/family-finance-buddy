@@ -65,6 +65,10 @@ for (const scheme of ['light', 'dark'] as const) {
 test('saying what the month cost closes it: Last month shows it as stated, and the footer stops offering the close', async ({ page }) => {
   test.setTimeout(180_000);
   test.skip(!(await offered(page)), 'the household has an account, or the month is stated or closed already');
+  // Last month is showing when the close is made, so the card has to change under it and not offer to state a month that is stated.
+  await page.getByRole('group', { name: 'Month' }).getByRole('button', { name: 'Last month' }).click();
+  const card = page.getByRole('region', { name: monthBefore() });
+  await expect(card.getByTestId('month-state-action')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: `Close ${monthBefore()}`, exact: true }).click();
   const form = page.getByRole('form', { name: `Close ${monthBefore()}` });
   await form.getByLabel('Spent in total').fill('9,00,00,000');
@@ -73,9 +77,11 @@ test('saying what the month cost closes it: Last month shows it as stated, and t
   await expect(page.getByRole('form', { name: `Close ${monthBefore()}` })).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByText(`${monthBefore()} closed. Spent`)).toBeVisible();
   await expect(page.getByText('say what it cost · about a minute')).toHaveCount(0);
+  await expect(page.getByText(`${monthBefore()} is closed`)).toBeVisible();
+  await expect(page.getByText('from what you stated')).toBeVisible();
 
-  await page.getByRole('group', { name: 'Month' }).getByRole('button', { name: 'Last month' }).click();
-  const card = page.getByRole('region', { name: monthBefore() });
-  await expect(card.getByTestId('month-spent')).toContainText('9,00,00,000');
+  await expect(card.getByTestId('month-spent')).toContainText('9,00,00,000', { timeout: 15_000 });
   await expect(card.getByText('stated', { exact: true })).toBeVisible();
+  // It is stated now, so the card offers to change it and not to state it again.
+  await expect(card.getByTestId('month-state-action').getByRole('button', { name: 'Change' })).toBeVisible();
 });

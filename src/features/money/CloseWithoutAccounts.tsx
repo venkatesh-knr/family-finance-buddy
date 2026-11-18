@@ -14,7 +14,8 @@ import { stateSpendChoices } from './stateSpendForm.ts';
 import { useLastMonthSpend } from './useLastMonthSpend.ts';
 import { useMonthTotals } from './useMonthTotals.ts';
 import type { Member } from '../../repo/types.ts';
-import { Button } from '../../ui/primitives.tsx';
+import { Stepper } from '../../ui/Stepper.tsx';
+import { monthWord } from './closeMonth.ts';
 
 export function CloseWithoutAccounts({
   householdId,
@@ -38,21 +39,38 @@ export function CloseWithoutAccounts({
   const spend = useLastMonthSpend(householdId, month, members);
   const totals = useMonthTotals(householdId, `${month}-01`, lastDayOf(month), month);
 
+  // Said in the form's own shell, on the screen the person is looking at, and never as a line at the top of the page they have scrolled away from.
   if (spend.status === 'failed' || totals.status === 'failed') {
     return (
-      <div className="mt-2.5" role="alert">
-        <p className="note">What was itemised in {month} could not be read just now, so the close is not offered. Reload to try again.</p>
-        <Button type="button" variant="quiet" onClick={onCancel}>
-          Close this
-        </Button>
-      </div>
+      <Stepper
+        title={`Close ${monthWord(month)}`}
+        finishLabel={`Close ${monthWord(month)}`}
+        problem={`What was itemised in ${monthWord(month)} could not be read just now, so the close is not offered and nothing was written. Go back and try again.`}
+        onFinish={onCancel}
+        onCancel={onCancel}
+        steps={[{ name: 'What the month cost', ready: false, content: null }]}
+      />
     );
   }
   if (spend.status !== 'ready' || totals.status !== 'ready') {
     return (
-      <p className="note mt-2.5" role="status">
-        Reading the month…
-      </p>
+      <Stepper
+        title={`Close ${monthWord(month)}`}
+        finishLabel={`Close ${monthWord(month)}`}
+        onFinish={onCancel}
+        onCancel={onCancel}
+        steps={[
+          {
+            name: 'What the month cost',
+            ready: false,
+            content: (
+              <p className="note" role="status">
+                Reading what was itemised in {monthWord(month)}…
+              </p>
+            ),
+          },
+        ]}
+      />
     );
   }
 

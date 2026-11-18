@@ -114,6 +114,9 @@ export function MoneyScreen({
       read: lastStated.read.status,
       stated: lastStated.read.status === 'ready' ? lastStated.read.statements.map((statement) => statement.amount.currency) : [],
     });
+  // A month of a household with no account that was closed by saying what it cost.
+  const closedStated =
+    ledger.data !== null && mayState && lastMonth !== null && lastMonth.kind === 'open' && lastMonth.noAccounts && lastStated.read.status === 'ready' && lastStated.read.statements.length > 0;
   // Only an owner or a partner makes or changes a rule, and so confirms or passes over what it expects: the policies refuse anyone else.
   const mayRule = viewer?.role === 'owner' || viewer?.role === 'partner';
   const expected =
@@ -242,7 +245,7 @@ export function MoneyScreen({
             <>
               <MonthFooter
                 closeMonthKey={closeMonthKey}
-                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, lastMonth })}
+                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth })}
                 onClose={() => {
                   setSaid(null);
                   if (mayClose) setClosing(true);

@@ -172,7 +172,7 @@ export function Stepper({
             {done ? 'Done' : last ? (busy ? busyLabel : finishLabel) : 'Next'}
           </Button>
           {secondary !== null && last && !done && (
-            <Button type="button" variant="quiet" className="mt-2" disabled={busy} onClick={secondary.onClick}>
+            <Button type="button" variant="quiet" className="btn btn-quiet mt-2" disabled={busy} onClick={secondary.onClick}>
               {secondary.label}
             </Button>
           )}
