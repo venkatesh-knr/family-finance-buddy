@@ -49,8 +49,8 @@ const entry = (over: Partial<ExistingEntry> = {}): ExistingEntry => ({
   witnessedBy: [],
   ...over,
 });
-const run = (statement: ParsedStatement, lines: HashedLine[], over: { existing?: ExistingEntry[]; known?: string[]; accounts?: KnownAccount[] } = {}) =>
-  matchStatement({ statement, lines, accounts: over.accounts ?? ACCOUNTS, existing: over.existing ?? [], knownLineHashes: new Set(over.known ?? []) });
+const run = (statement: ParsedStatement, lines: HashedLine[], over: { existing?: ExistingEntry[]; known?: string[]; accounts?: KnownAccount[]; ownNames?: string[] } = {}) =>
+  matchStatement({ statement, lines, accounts: over.accounts ?? ACCOUNTS, existing: over.existing ?? [], knownLineHashes: new Set(over.known ?? []), ownNames: over.ownNames ?? [] });
 
 describe('a line seen before', () => {
   it('is recognised by its hash, and does nothing, even when its reference would match an entry', () => {
@@ -217,5 +217,57 @@ describe('moves between the household’s own accounts, across the statements re
     const pairs = pairOwnTransfers([side('d1', 'hdfc', 'debit', '2026-10-08'), side('c1', 'icici', 'credit', '2026-10-09'), side('c2', 'icici', 'credit', '2026-10-08')]);
     expect(pairs.get('d1')).toBe('c2');
     expect(pairs.has('c1')).toBe(false);
+  });
+});
+
+describe('review: a move to one of the household’s own names is a guess that it is not spending', () => {
+  const own = (payee: string, ownNames: string[] = ['Venkatesh']) => run({ ...BANK }, [hashed(1, { payee, raw: `NEFT DR-ABCD0000001-${payee}-NETBANK-REF1`, upiReference: null })], { ownNames });
+
+  it('proposes skipping a debit to a payee that begins with a household member’s name, and carries the entry so a person can overrule it', () => {
+    expect(own('VENKATESH NARAYANASA').rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'own-transfer', sure: false, entry: { amountMinor: 22_400n } });
+    expect(own('Venkatesh Stores').rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'own-transfer', sure: false });
+  });
+
+  it('does not take a different name, a name that only contains theirs, or a short one for the household’s', () => {
+    expect(own('SAMPLE SHOP').rows[0]?.proposal.action).toBe('create');
+    expect(own('NEW VENKATESH TRADERS').rows[0]?.proposal.action).toBe('create');
+    expect(own('VENKATESH', ['Ven']).rows[0]?.proposal.action).toBe('create');
+  });
+});
+
+describe('review: what an entry is written with', () => {
+  it('takes the readable text of a line that names no payee as its payee, with any VPA taken out, and the statement’s hint as its note', () => {
+    const out = run(CARD, [hashed(1, { payee: null, raw: 'POS SAMPLE STORE CITY SHOP@OKBANK 1234', upiReference: null, hint: 'HOTELS' })]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'create', entry: { payee: 'POS SAMPLE STORE CITY 1234', note: 'HOTELS' } });
+    expect(JSON.stringify(out.rows[0]?.proposal, (_k, v: unknown) => (typeof v === 'bigint' ? String(v) : v))).not.toContain('@');
+  });
+
+  it('keeps the payee the statement gave', () => {
+    expect(run(BANK, [hashed(1, {})]).rows[0]?.proposal).toMatchObject({ entry: { payee: 'SAMPLE SHOP', note: null } });
+  });
+});
+
+describe('review: a UPI app’s readable name improves a name a bank cut short, and never a typed one', () => {
+  const gpayLine = (payee: string) => hashed(1, { payee, raw: `Paid to ${payee}`, fromLast4: '4321' }, REF_A);
+
+  it('replaces a payee that is the beginning of the readable name, saying which payee it replaces', () => {
+    const out = run(GPAY, [gpayLine('HOTEL ARIYAS VEG')], { existing: [entry({ upiRefHash: REF_A, payee: 'HOTEL ARIY' })] });
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'witness', fill: { payee: 'HOTEL ARIYAS VEG', payeeFrom: 'HOTEL ARIY' } });
+  });
+
+  it('leaves a payee that is a different name, one too short to be a cut-short name, and a bank statement’s own line', () => {
+    const different = run(GPAY, [gpayLine('HOTEL ARIYAS VEG')], { existing: [entry({ upiRefHash: REF_A, payee: 'Typed shop' })] });
+    expect(different.rows[0]?.proposal).toMatchObject({ action: 'witness', fill: {} });
+    const short = run(GPAY, [gpayLine('HOTEL ARIYAS VEG')], { existing: [entry({ upiRefHash: REF_A, payee: 'Hotel' })] });
+    expect(short.rows[0]?.proposal).toMatchObject({ action: 'witness', fill: {} });
+    const bank = run(BANK, [hashed(1, { payee: 'HOTEL ARIYAS VEG' }, REF_A)], { existing: [entry({ upiRefHash: REF_A, payee: 'HOTEL ARIY' })] });
+    expect(bank.rows[0]?.proposal).toMatchObject({ action: 'witness', fill: {} });
+  });
+});
+
+describe('review: only card repayments are taken for card repayments', () => {
+  it('does not take a UPI AutoPay mandate for one, and still takes a card’s autopay', () => {
+    expect(run(BANK, [hashed(1, { raw: 'UPI AUTOPAY MANDATE SAMPLE STREAMING', payee: null, upiReference: null })]).rows[0]?.proposal.action).toBe('create');
+    expect(run(BANK, [hashed(1, { raw: 'CARD AUTOPAY SAMPLE', payee: null, upiReference: null })]).rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'card-payment', sure: false });
   });
 });

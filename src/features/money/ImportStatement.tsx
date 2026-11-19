@@ -15,13 +15,14 @@ import { parsePdfStatement, parseTextStatement } from '../../domain/statement/de
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
 import { planImport, type Decision } from '../../domain/statement/plan.ts';
+import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
 import { formatShortDate } from '../../lib/dates.ts';
 import { PasswordNeeded } from '../../lib/ecas-pdf.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { hashStatement } from '../../lib/statementHash.ts';
 import { readStatementPages } from '../../lib/statement-pdf.ts';
 import { verifyTotpCode } from '../../repo/auth.ts';
-import { commitImport, periodOf, readMatchingContext, type MatchingContext } from '../../repo/statementImport.ts';
+import { commitImport, periodOf, readCategoryContext, readMatchingContext, type MatchingContext } from '../../repo/statementImport.ts';
 import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
@@ -40,6 +41,7 @@ const KIND_WORDS: Record<StatementKind, string> = {
 
 const GROUP_HEADINGS: Record<PreviewGroup, string> = {
   decide: 'Needs your answer',
+  guess: 'Left out as a guess: check these',
   add: 'To add as expenses',
   merge: 'Already entries: this statement is added to them',
   left: 'Left out',
@@ -49,7 +51,14 @@ interface Read {
   readonly statement: ParsedStatement;
   readonly matched: MatchResult;
   readonly context: MatchingContext;
+  /** The household's categories in use, for the choice on each new expense. */
+  readonly categories: readonly { readonly id: string; readonly name: string }[];
+  /** A suggested category for each row that could be an entry, from what the household has filed before; null where there is no basis. */
+  readonly suggestions: readonly (Suggestion | null)[];
 }
+
+/** How many problems a refused statement lists before saying how many more there are. */
+const PROBLEMS_SHOWN = 8;
 
 export function ImportStatement({ data, privacy, onDone, onCancel }: { data: AccountsData; privacy: boolean; onDone: (said: string) => void; onCancel: () => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -59,6 +68,8 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   const [problem, setProblem] = useState<string | null>(null);
   const [read, setRead] = useState<Read | null>(null);
   const [decisions, setDecisions] = useState<ReadonlyMap<number, Decision>>(new Map());
+  // The category a person chose for a row, where it differs from the suggestion; an empty string is no category.
+  const [chosen, setChosen] = useState<ReadonlyMap<number, string>>(new Map());
   const [label, setLabel] = useState('');
   const [memberId, setMemberId] = useState(data.viewer.memberId);
   const [visibility, setVisibility] = useState<'household' | 'personal'>('household');
@@ -73,6 +84,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     setProblem(null);
     setRead(null);
     setDecisions(new Map());
+    setChosen(new Map());
     try {
       const bytes = await chosen.arrayBuffer();
       const detected = /\.pdf$/i.test(chosen.name) ? parsePdfStatement(await readStatementPages(bytes, passwordGiven)) : parseTextStatement(new TextDecoder('utf-8').decode(bytes));
@@ -88,9 +100,28 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
       }
       const hashed = await hashStatement(statement);
       const period = periodOf(statement.lines.map((line) => line.date)) ?? { from: statement.periodStart ?? '', to: statement.periodEnd ?? '' };
-      const context = await readMatchingContext({ householdId: data.household.id, from: period.from, to: period.to, lineHashes: hashed.map((entry) => entry.lineHash) });
-      const matched = matchStatement({ statement, lines: hashed, accounts: context.accounts, existing: context.existing, knownLineHashes: context.knownLineHashes });
-      setRead({ statement, matched, context });
+      const [context, filed] = await Promise.all([
+        readMatchingContext({ householdId: data.household.id, from: period.from, to: period.to, lineHashes: hashed.map((entry) => entry.lineHash) }),
+        readCategoryContext(data.household.id),
+      ]);
+      const matched = matchStatement({
+        statement,
+        lines: hashed,
+        accounts: context.accounts,
+        existing: context.existing,
+        knownLineHashes: context.knownLineHashes,
+        ownNames: data.members.map((member) => member.displayName),
+      });
+      // A category is suggested only from what this household has filed under the payee before, and says so; a row that could not be an entry gets none.
+      const suggestions = suggestCategories({
+        lines: matched.rows.map((row) => {
+          const entry = 'entry' in row.proposal ? row.proposal.entry : undefined;
+          return { payee: entry?.payee ?? null, amountMinor: row.line.amountMinor };
+        }),
+        history: filed.history,
+        active: new Set(filed.categories.map((category) => category.id)),
+      });
+      setRead({ statement, matched, context, categories: filed.categories, suggestions });
     } catch (error) {
       if (error instanceof PasswordNeeded) {
         setNeedPassword(true);
@@ -103,7 +134,14 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     }
   };
 
-  const plan = read === null ? null : planImport(read.matched.rows, decisions);
+  // What each row will be filed under: what the person chose, or the suggestion, or nothing.
+  const categoryOf = (index: number): string | null => {
+    const picked = chosen.get(index);
+    if (picked !== undefined) return picked === '' ? null : picked;
+    return read?.suggestions[index]?.categoryId ?? null;
+  };
+  const categories = new Map(read === null ? [] : read.matched.rows.map((_row, index) => [index, categoryOf(index)] as const));
+  const plan = read === null ? null : planImport(read.matched.rows, decisions, categories);
   const rows = read === null ? [] : previewRows(read.matched.rows, decisions, read.context.existing);
   const blocked = read !== null && read.statement.problems.length > 0;
 
@@ -157,7 +195,9 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   const renderRow = (row: PreviewRow) => (
     <li key={row.index} className="statement-row" data-testid="statement-row">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="font-semibold">{row.title}</span>
+        <span className="font-semibold" id={`statement-row-${String(row.index)}`}>
+          {row.title}
+        </span>
         <span className="tabular-nums">
           {row.direction === 'credit' ? '+ ' : ''}
           {show(row.amountMinor)}
@@ -167,9 +207,15 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         {formatShortDate(row.date)} · {row.doing}
       </p>
       {row.options.length > 1 && (
+        <label className="label mt-1.5 block" htmlFor={`statement-do-${String(row.index)}`}>
+          What to do
+        </label>
+      )}
+      {row.options.length > 1 && (
         <select
-          className="field mt-1.5"
-          aria-label={`What to do with ${row.title}, ${formatShortDate(row.date)}`}
+          id={`statement-do-${String(row.index)}`}
+          className="field mt-1"
+          aria-describedby={`statement-row-${String(row.index)}`}
           value={row.decision ?? ''}
           onChange={(event) => {
             const next = event.target.value as Decision;
@@ -187,6 +233,40 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
             </option>
           ))}
         </select>
+      )}
+      {row.decision === 'create' && read !== null && (
+        <>
+          <label className="label mt-1.5 block" htmlFor={`statement-category-${String(row.index)}`}>
+            Category
+          </label>
+          <select
+            id={`statement-category-${String(row.index)}`}
+            className="field mt-1"
+            aria-describedby={`statement-row-${String(row.index)}`}
+            value={categoryOf(row.index) ?? ''}
+            onChange={(event) => {
+              const next = event.target.value;
+              setChosen((was) => new Map(was).set(row.index, next));
+            }}
+          >
+            <option value="">No category</option>
+            {read.categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          {(() => {
+            // It says it is a suggestion, and what it rests on, only while it is still the suggestion: a category the person chose is theirs.
+            const suggestion = read.suggestions[row.index] ?? null;
+            const named = suggestion === null ? undefined : read.categories.find((category) => category.id === suggestion.categoryId);
+            return suggestion !== null && named !== undefined && categoryOf(row.index) === suggestion.categoryId ? (
+              <p className="note mt-1" data-testid="statement-suggestion">
+                {suggestionWords(suggestion, named.name)}
+              </p>
+            ) : null;
+          })()}
+        </>
       )}
     </li>
   );
@@ -270,10 +350,13 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                 <div data-testid="statement-problems">
                   <Problem>This statement does not add up, so nothing can be imported from it. A line may have been misread, and a misread line is worse than a missing one.</Problem>
                   <ul className="note mt-1.5 list-disc pl-5">
-                    {read.statement.problems.slice(0, 8).map((line) => (
+                    {read.statement.problems.slice(0, PROBLEMS_SHOWN).map((line) => (
                       <li key={line}>{line}</li>
                     ))}
                   </ul>
+                  {read.statement.problems.length > PROBLEMS_SHOWN && (
+                    <p className="note mt-1">and {String(read.statement.problems.length - PROBLEMS_SHOWN)} more.</p>
+                  )}
                 </div>
               )}
 
@@ -360,7 +443,13 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   </div>
                 </div>
 
-                {(['decide', 'add', 'merge'] as const).map((group) =>
+                {plan.nothingToWrite && (
+                  <p className="note" role="status" data-testid="statement-nothing">
+                    Everything in this statement is already here or left out, so there is nothing to import.
+                  </p>
+                )}
+
+                {(['decide', 'guess', 'add', 'merge'] as const).map((group) =>
                   rowsIn(group).length === 0 ? null : (
                     <section key={group} aria-label={GROUP_HEADINGS[group]} data-testid={`statement-group-${group}`}>
                       <h3 className="label">

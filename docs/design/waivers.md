@@ -48,10 +48,7 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I2 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I3 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I4 — not built: needs the transfer rule and account from slice 6a (spending-capture.md §8, S3) — 2026-10-30
-- SC-I5 — not built: witnesses arrive with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
-- SC-I6 — not built: matching arrives with bank and UPI statement import (build-plan step 7; spending-capture.md §8, S4) — 2026-10-30
 - SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30
-- SC-I8 — not built: the UPI reference columns arrive with slice S2 or S4, whichever lands first (spending-capture.md §8) — 2026-10-30
 - SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
 
 ## gold.md

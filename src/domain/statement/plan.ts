@@ -40,7 +40,7 @@ export function allowedDecisions(proposal: Proposal): readonly Decision[] {
 }
 
 export type PlannedWrite =
-  | { readonly kind: 'create'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entry: NewEntry }
+  | { readonly kind: 'create'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entry: NewEntry; readonly categoryId: string | null }
   | { readonly kind: 'witness'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entryId: string; readonly fill: Fill };
 
 export interface ImportPlan {
@@ -50,9 +50,11 @@ export interface ImportPlan {
   readonly counts: { readonly create: number; readonly witness: number; readonly skip: number; readonly undecided: number };
   /** Something to write, and every suggestion answered. */
   readonly canCommit: boolean;
+  /** Every suggestion is answered and nothing would be written: a statement imported before, or one that is all left out. The screen says so rather than leaving a button off. */
+  readonly nothingToWrite: boolean;
 }
 
-export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>): ImportPlan {
+export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>, categories: ReadonlyMap<number, string | null> = new Map()): ImportPlan {
   const writes: PlannedWrite[] = [];
   const undecided: number[] = [];
   let skip = 0;
@@ -64,7 +66,7 @@ export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<n
     if (decision === null) {
       undecided.push(index);
     } else if (decision === 'create' && (proposal.action === 'create' || proposal.action === 'suggest' || proposal.action === 'skip') && 'entry' in proposal && proposal.entry !== undefined) {
-      writes.push({ kind: 'create', index, line: row.line, lineHash: row.lineHash, entry: proposal.entry });
+      writes.push({ kind: 'create', index, line: row.line, lineHash: row.lineHash, entry: proposal.entry, categoryId: categories.get(index) ?? null });
     } else if (decision === 'merge' && (proposal.action === 'witness' || proposal.action === 'suggest')) {
       writes.push({ kind: 'witness', index, line: row.line, lineHash: row.lineHash, entryId: proposal.entryId, fill: proposal.fill });
     } else {
@@ -78,6 +80,7 @@ export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<n
     undecided,
     counts: { create, witness: writes.length - create, skip, undecided: undecided.length },
     canCommit: undecided.length === 0 && writes.length > 0,
+    nothingToWrite: undecided.length === 0 && writes.length === 0,
   };
 }
 

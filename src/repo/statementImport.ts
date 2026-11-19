@@ -25,6 +25,8 @@ import { addDays, isIsoDate, type IsoDate } from '../lib/dates.ts';
 import { addAccount, listAccounts } from './accounts.ts';
 import { supabase } from './client.ts';
 import { toExistingEntry } from './statementImportMapping.ts';
+import type { HistoryEntry } from '../domain/statement/suggestCategory.ts';
+import { toBigIntExact } from '../lib/guards.ts';
 import type { Uuid } from './types.ts';
 
 /** How far either side of a statement's dates an existing entry may be and still be a near match (`NEAR_DAYS` in the matcher). */
@@ -120,6 +122,32 @@ export async function readMatchingContext(input: {
   };
 }
 
+/** The household's categories in use, and what it has filed under them: the history a category is suggested from (`suggestCategory.ts`). */
+export async function readCategoryContext(householdId: Uuid): Promise<{ readonly categories: readonly { readonly id: Uuid; readonly name: string }[]; readonly history: readonly HistoryEntry[] }> {
+  const client = supabase();
+  const [categories, filed] = await Promise.all([
+    client.from('expense_category').select('id, name').eq('household_id', householdId).eq('status', 'active').order('name', { ascending: true }),
+    client
+      .from('expense_txn')
+      .select('payee, category_id, txn_date, amount_minor::text')
+      .eq('household_id', householdId)
+      .is('voided_at', null)
+      .not('category_id', 'is', null)
+      .not('payee', 'is', null)
+      .order('txn_date', { ascending: false })
+      .limit(3000),
+  ]);
+  if (categories.error !== null) throw failure(categories.error);
+  if (filed.error !== null) throw failure(filed.error);
+  return {
+    categories: (categories.data ?? []).map((row) => ({ id: String((row as { id: string }).id), name: String((row as { name: string }).name) })),
+    history: (filed.data ?? []).map((row) => {
+      const r = row as { payee: string | null; category_id: string | null; txn_date: string; amount_minor: string };
+      return { payee: r.payee, categoryId: r.category_id, date: r.txn_date, amountMinor: toBigIntExact(r.amount_minor, 'expense_txn.amount_minor') };
+    }),
+  };
+}
+
 export interface ImportRequest {
   readonly householdId: Uuid;
   /** Who the entries are under, and who the accounts added are. */
@@ -157,10 +185,12 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   const client = supabase();
   const { householdId } = request;
 
-  // 1. The accounts the statement names that the household lacks.
+  // 1. The accounts the statement names that the household lacks. Read again here, so a retry after a failure part way does not add them a second time.
   const accountByLast4 = new Map<string, Uuid>();
   let accountsAdded = 0;
+  const already = new Set((await listAccounts(householdId, { includeArchived: true })).flatMap((account) => (account.last4 === null ? [] : [account.last4])));
   for (const account of request.accountsToAdd) {
+    if (already.has(account.last4)) continue;
     const made = await addAccount({
       householdId,
       memberId: request.memberId,
@@ -218,6 +248,8 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
           amount_minor: entry.amountMinor.toString(),
           currency: entry.currency,
           payee: clean(entry.payee),
+          category_id: write.categoryId,
+          note: clean(entry.note),
           method: entry.method,
           visibility: request.visibility,
           captured_via: 'import',
@@ -253,7 +285,10 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
       if (memberId === undefined) throw new Error('An entry this import was to add to could not be found.');
       // What the entry has empty, and only that: each update applies only where the field is still empty.
       if (write.fill.payee !== undefined) {
-        const { error } = await client.from('expense_txn').update({ payee: clean(write.fill.payee) }).eq('id', write.entryId).is('payee', null);
+        // A payee the entry lacks is filled; a readable name that replaces a cut-short one applies only while the entry still has that cut-short name, so a name a person has
+        // changed since is never overwritten.
+        const base = client.from('expense_txn').update({ payee: clean(write.fill.payee) }).eq('id', write.entryId);
+        const { error } = write.fill.payeeFrom === undefined ? await base.is('payee', null) : await base.eq('payee', write.fill.payeeFrom);
         if (error !== null) throw failure(error);
       }
       if (write.fill.accountId !== undefined) {

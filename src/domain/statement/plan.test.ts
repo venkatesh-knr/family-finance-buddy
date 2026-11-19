@@ -12,7 +12,7 @@ const LINE: StatementLine = {
   date: '2026-10-05', valueDate: null, direction: 'debit', amountMinor: 22_400n, raw: 'RAW', payee: 'SHOP', upiReference: null, reference: null, balanceMinor: null, hint: null,
 };
 const ENTRY: NewEntry = {
-  date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SHOP', accountId: 'acc', accountLast4: '4321', method: null, upiRefLast4: null, upiRefHash: null, sourceHash: 'h'.repeat(64), hint: null,
+  date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SHOP', accountId: 'acc', accountLast4: '4321', method: null, upiRefLast4: null, upiRefHash: null, sourceHash: 'h'.repeat(64), hint: null, note: null,
 };
 const row = (proposal: Proposal): MatchedRow => ({ line: LINE, lineHash: 'h'.repeat(64), proposal });
 
@@ -89,6 +89,27 @@ describe('the plan', () => {
   it('has nothing to commit when nothing would be written', () => {
     expect(planImport([row(SURE), row(SEEN)], new Map()).canCommit).toBe(false);
     expect(planImport([], new Map()).canCommit).toBe(false);
+  });
+});
+
+describe('the category of what is created', () => {
+  it('goes with a new entry, from what the person chose, and is nothing when none was', () => {
+    const plan = planImport([row(CREATE), row(CREATE)], new Map(), new Map([[1, 'groceries']]));
+    expect(plan.writes.map((write) => (write.kind === 'create' ? write.categoryId : 'x'))).toEqual([null, 'groceries']);
+  });
+
+  it('goes with an entry made from a suggestion or an overruled guess, and not with a merge', () => {
+    const plan = planImport([row(SUGGEST), row(GUESS), row(WITNESS)], new Map([[0, 'create' as const], [1, 'create' as const]]), new Map([[0, 'fuel'], [1, 'fuel'], [2, 'fuel']]));
+    expect(plan.writes.map((write) => (write.kind === 'create' ? write.categoryId : 'merge'))).toEqual(['fuel', 'fuel', 'merge']);
+  });
+});
+
+describe('when there is nothing to write', () => {
+  it('says so only when every suggestion is answered and nothing would be written, which is a re-imported statement or one that is all left out', () => {
+    expect(planImport([row(SURE), row(SEEN)], new Map()).nothingToWrite).toBe(true);
+    expect(planImport([], new Map()).nothingToWrite).toBe(true);
+    expect(planImport([row(CREATE)], new Map()).nothingToWrite).toBe(false);
+    expect(planImport([row(SUGGEST)], new Map()).nothingToWrite).toBe(false);
   });
 });
 
