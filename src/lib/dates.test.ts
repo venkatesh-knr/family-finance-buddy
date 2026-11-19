@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatIsoDate, isIsoDate, istCalendarDate } from './dates.ts';
+import { addDays, formatIsoDate, isIsoDate, istCalendarDate } from './dates.ts';
 
 /**
  * Period boundaries are IST whatever the device says. These fixtures are the
@@ -51,5 +51,14 @@ describe('formatIsoDate', () => {
     // The classic bug: parsing to a Date in a western timezone and losing a day.
     expect(formatIsoDate('2026-01-01')).toBe('1 Jan 2026');
     expect(formatIsoDate('2026-12-31')).toBe('31 Dec 2026');
+  });
+});
+
+describe('addDays', () => {
+  it('moves a calendar date by whole days, across month and year ends and a leap day, in either direction', () => {
+    expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDays('2026-10-05', 0)).toBe('2026-10-05');
   });
 });

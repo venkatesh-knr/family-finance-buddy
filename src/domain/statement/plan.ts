@@ -1,0 +1,102 @@
+/**
+ * What an import will write (docs/design/spending-capture.md section 4; docs/build-plan.md step 7): the matcher's proposal for each line, and what a person decided about it.
+ *
+ * Every row can be changed before anything is written. A suggestion (a near match) waits for a person, and the import cannot be committed until it has an answer. A skip that is a
+ * guess from the text can be overruled; a skip the statement is sure of cannot; and a line that merges by its UPI reference cannot be made a second entry, which the database would
+ * refuse in any case. Pure: proposals and decisions in, the writes out.
+ */
+
+import type { StatementLine } from './common.ts';
+import type { Fill, MatchedRow, NewEntry, Proposal, SkipReason } from './match.ts';
+
+export type Decision = 'create' | 'merge' | 'skip';
+
+/** What happens to a line if the person does nothing; null for a suggestion, which waits for them. */
+export function defaultDecision(proposal: Proposal): Decision | null {
+  switch (proposal.action) {
+    case 'create':
+      return 'create';
+    case 'witness':
+      return 'merge';
+    case 'suggest':
+      return null;
+    case 'skip':
+      return 'skip';
+  }
+}
+
+/** What a person may decide for a line, in the order a screen offers them. */
+export function allowedDecisions(proposal: Proposal): readonly Decision[] {
+  switch (proposal.action) {
+    case 'create':
+      return ['create', 'skip'];
+    case 'witness':
+      return ['merge', 'skip'];
+    case 'suggest':
+      return ['merge', 'create', 'skip'];
+    case 'skip':
+      return proposal.entry === undefined ? ['skip'] : ['skip', 'create'];
+  }
+}
+
+export type PlannedWrite =
+  | { readonly kind: 'create'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entry: NewEntry }
+  | { readonly kind: 'witness'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entryId: string; readonly fill: Fill };
+
+export interface ImportPlan {
+  readonly writes: readonly PlannedWrite[];
+  /** The rows whose suggestion has no answer yet. */
+  readonly undecided: readonly number[];
+  readonly counts: { readonly create: number; readonly witness: number; readonly skip: number; readonly undecided: number };
+  /** Something to write, and every suggestion answered. */
+  readonly canCommit: boolean;
+}
+
+export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>): ImportPlan {
+  const writes: PlannedWrite[] = [];
+  const undecided: number[] = [];
+  let skip = 0;
+
+  rows.forEach((row, index) => {
+    const asked = decisions.get(index);
+    const decision = asked !== undefined && allowedDecisions(row.proposal).includes(asked) ? asked : defaultDecision(row.proposal);
+    const { proposal } = row;
+    if (decision === null) {
+      undecided.push(index);
+    } else if (decision === 'create' && (proposal.action === 'create' || proposal.action === 'suggest' || proposal.action === 'skip') && 'entry' in proposal && proposal.entry !== undefined) {
+      writes.push({ kind: 'create', index, line: row.line, lineHash: row.lineHash, entry: proposal.entry });
+    } else if (decision === 'merge' && (proposal.action === 'witness' || proposal.action === 'suggest')) {
+      writes.push({ kind: 'witness', index, line: row.line, lineHash: row.lineHash, entryId: proposal.entryId, fill: proposal.fill });
+    } else {
+      skip += 1;
+    }
+  });
+
+  const create = writes.filter((write) => write.kind === 'create').length;
+  return {
+    writes,
+    undecided,
+    counts: { create, witness: writes.length - create, skip, undecided: undecided.length },
+    canCommit: undecided.length === 0 && writes.length > 0,
+  };
+}
+
+/** Why a line is not imported, in words a person can act on. A guess says so, and says what to do if it is wrong. */
+export function skipWords(reason: SkipReason, sure: boolean): string {
+  switch (reason) {
+    case 'already-imported':
+      return 'Already imported from this statement.';
+    case 'card-payment':
+      return sure ? 'A card repayment. What it paid for was recorded when it was bought.' : 'Looks like a card repayment, which is not an expense. Import it if it is not.';
+    case 'card-credit':
+      return 'A refund or cashback on the card. Refunds are added from the Money screen.';
+    case 'emi-principal':
+      return 'The price of a purchase the card turned into an EMI, which was recorded when it was bought. The interest and tax on it are imported.';
+    case 'money-in':
+      return 'Money in. Money in is added from the Money screen, not imported as spending.';
+    case 'investment':
+      return 'Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.';
+    case 'own-transfer':
+      return sure ? 'A move between your own accounts, which is not spending.' : 'Looks like a move between your own accounts, which is not spending. Import it if it is not.';
+  }
+}

@@ -138,7 +138,7 @@ describe('what is not an expense', () => {
   it('and a bank line that looks like paying a card is proposed as a skip, which is a guess a person can change', () => {
     for (const raw of ['CREDIT CARD PAYMENT SAMPLE', 'UPI-CRED-CRED@AXISB-AXIS0000001-300000000003-CARDBILL', 'AUTOPAY CARD BILL']) {
       const out = run(BANK, [hashed(1, { raw, payee: null, upiReference: null })]);
-      expect(out.rows[0]?.proposal, raw).toEqual({ action: 'skip', reason: 'card-payment', sure: false });
+      expect(out.rows[0]?.proposal, raw).toMatchObject({ action: 'skip', reason: 'card-payment', sure: false, entry: { amountMinor: 22_400n } });
     }
   });
 
@@ -164,7 +164,7 @@ describe('what is not an expense', () => {
   it('a debit to a broker or a fund house is a purchase to link, and is proposed as a skip, a guess', () => {
     for (const raw of ['UPI-SAMPLEMONEY-SAMPLEMONEY.PAYU@BANK-ABCD0000001-400000000004-UPIINTENT'.replace('SAMPLEMONEY', 'INDMONEY'), 'NEFT DR-ABCD0000001-ZERODHA BROKING-NETBANK-REF1', 'ACH D- GROWW MUTUAL FUND-REF2']) {
       const out = run(BANK, [hashed(1, { raw, payee: null, upiReference: null })]);
-      expect(out.rows[0]?.proposal, raw).toEqual({ action: 'skip', reason: 'investment', sure: false });
+      expect(out.rows[0]?.proposal, raw).toMatchObject({ action: 'skip', reason: 'investment', sure: false, entry: { amountMinor: 22_400n } });
     }
   });
 

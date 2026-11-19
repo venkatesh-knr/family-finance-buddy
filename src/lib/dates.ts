@@ -84,3 +84,9 @@ export function daysBetween(from: IsoDate, to: IsoDate): number {
   const b = Date.parse(`${to}T00:00:00Z`);
   return Math.round((b - a) / 86400000);
 }
+
+/** A calendar date moved by whole days, which may be negative. */
+export function addDays(date: IsoDate, days: number): IsoDate {
+  const moved = new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000);
+  return moved.toISOString().slice(0, 10);
+}

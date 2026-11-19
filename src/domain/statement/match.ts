@@ -78,7 +78,8 @@ export type Proposal =
   | { readonly action: 'witness'; readonly entryId: string; readonly fill: Fill }
   /** A near match: waits for a person, and is a new entry if they decline. */
   | { readonly action: 'suggest'; readonly entryId: string; readonly fill: Fill; readonly entry: NewEntry }
-  | { readonly action: 'skip'; readonly reason: SkipReason; readonly sure: boolean };
+  /** A skip that is a guess carries the entry it would be, so a person who disagrees can import the line after all. A sure skip is not an expense and carries none. */
+  | { readonly action: 'skip'; readonly reason: SkipReason; readonly sure: boolean; readonly entry?: NewEntry };
 
 export interface MatchedRow {
   readonly line: StatementLine;
@@ -165,7 +166,7 @@ export function matchStatement(input: {
 
     if (input.knownLineHashes.has(hashed.lineHash)) return done({ action: 'skip', reason: 'already-imported', sure: true });
     const skip = skipFor(statement, line);
-    if (skip !== null) return done(skip);
+    if (skip !== null && skip.action === 'skip' && skip.sure) return done(skip);
 
     const account = accountOf(line);
     const entry: NewEntry = {
@@ -181,6 +182,8 @@ export function matchStatement(input: {
       sourceHash: hashed.lineHash,
       hint: EMI_COST.test(line.raw) && statement.accountType === 'card' ? 'Interest and charges' : line.hint,
     };
+
+    if (skip !== null && skip.action === 'skip') return done({ ...skip, entry });
 
     // What the line can fill in an entry: only what the entry has empty.
     const fillFor = (existing: ExistingEntry): Fill => ({
