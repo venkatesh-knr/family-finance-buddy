@@ -160,6 +160,16 @@ export function upiNarration(narration: string): UpiNarration | null {
   return null;
 }
 
+/**
+ * What a line printed, readable: any word with a VPA in it taken out (a VPA is often a phone number and is never stored or shown), spaces collapsed, and the length kept to what an
+ * entry's payee may be. Null when nothing is left.
+ */
+export function readableText(raw: string): string | null {
+  const words = raw.split(/\s+/).filter((word) => word !== '' && !word.includes('@'));
+  const text = words.join(' ');
+  return text === '' ? null : text.slice(0, 120);
+}
+
 /** What a narration says about a line, for matching and for a suggestion: the payee's name, a UPI reference, and the note a person typed on a UPI payment. */
 export function describeNarration(narration: string): { readonly payee: string | null; readonly upiReference: string | null; readonly hint: string | null } {
   const upi = upiNarration(narration);

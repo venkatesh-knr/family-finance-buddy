@@ -11,7 +11,7 @@ const LINE: StatementLine = {
   date: '2026-10-05', valueDate: null, direction: 'debit', amountMinor: 22_400n, raw: 'UPI-SAMPLE SHOP-SHOP@OKBANK-ABCD0000001-200000000002-NOTE', payee: 'SAMPLE SHOP', upiReference: '200000000002',
   reference: null, balanceMinor: null, hint: null,
 };
-const ENTRY: NewEntry = { date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SAMPLE SHOP', accountId: null, accountLast4: null, method: 'upi', upiRefLast4: '0002', upiRefHash: 'a'.repeat(64), sourceHash: 'h'.repeat(64), hint: null };
+const ENTRY: NewEntry = { date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SAMPLE SHOP', accountId: null, accountLast4: null, method: 'upi', upiRefLast4: '0002', upiRefHash: 'a'.repeat(64), sourceHash: 'h'.repeat(64), hint: null, note: null };
 const row = (proposal: Proposal, line: Partial<StatementLine> = {}): MatchedRow => ({ line: { ...LINE, ...line }, lineHash: 'h'.repeat(64), proposal });
 const EXISTING: ExistingEntry[] = [{ id: 'e1', date: '2026-10-04', amountMinor: 22_400n, currency: 'INR', payee: 'Typed shop', accountId: null, upiRefHash: null, witnessedBy: [] }];
 
@@ -40,12 +40,12 @@ describe('the rows of the preview', () => {
     row({ action: 'skip', reason: 'already-imported', sure: true }),
   ];
 
-  it('puts what needs an answer first, then what will be added, what will be merged, and what is left out', () => {
+  it('puts what needs an answer first, then what was left out as a guess, what will be added, what will be merged, and what is left out for certain', () => {
     expect(previewRows(rows, new Map(), EXISTING).map((r) => [r.index, r.group])).toEqual([
       [2, 'decide'],
+      [3, 'guess'],
       [0, 'add'],
       [1, 'merge'],
-      [3, 'left'],
       [4, 'left'],
       [5, 'left'],
     ]);
@@ -72,6 +72,13 @@ describe('the rows of the preview', () => {
     expect(out.find((r) => r.index === 3)?.group).toBe('add');
     expect(out.find((r) => r.index === 0)?.decision).toBe('skip');
     expect(out.find((r) => r.index === 0)?.group).toBe('left');
+  });
+
+  it('keeps a skip that is only a guess apart from the sure ones, since it is the one that may be wrong', () => {
+    const out = previewRows(rows, new Map(), EXISTING);
+    expect(out.find((r) => r.index === 3)?.group).toBe('guess');
+    expect(out.find((r) => r.index === 4)?.group).toBe('left');
+    expect(out.find((r) => r.index === 5)?.group).toBe('left');
   });
 
   it('has a label for every decision', () => {

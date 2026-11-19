@@ -11,7 +11,8 @@ import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow } from '../../domain/statement/match.ts';
 import { allowedDecisions, defaultDecision, skipWords, type Decision } from '../../domain/statement/plan.ts';
 
-export type PreviewGroup = 'decide' | 'add' | 'merge' | 'left';
+/** `guess`: left out because it looks like something that is not spending, which is a guess and may be wrong, so it is shown apart from what is left out for certain. */
+export type PreviewGroup = 'decide' | 'guess' | 'add' | 'merge' | 'left';
 
 export interface PreviewRow {
   /** The row's place in the statement, which a decision is kept by. */
@@ -52,9 +53,10 @@ export function decisionLabel(decision: Decision, suggestion: boolean): string {
   }
 }
 
-const GROUP_ORDER: readonly PreviewGroup[] = ['decide', 'add', 'merge', 'left'];
+const GROUP_ORDER: readonly PreviewGroup[] = ['decide', 'guess', 'add', 'merge', 'left'];
 
-const groupOf = (decision: Decision | null): PreviewGroup => (decision === null ? 'decide' : decision === 'create' ? 'add' : decision === 'merge' ? 'merge' : 'left');
+const groupOf = (decision: Decision | null, guessedSkip: boolean): PreviewGroup =>
+  decision === null ? 'decide' : decision === 'create' ? 'add' : decision === 'merge' ? 'merge' : guessedSkip ? 'guess' : 'left';
 
 export function previewRows(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>, existing: readonly ExistingEntry[]): PreviewRow[] {
   const entryOf = (id: string): ExistingEntry | undefined => existing.find((entry) => entry.id === id);
@@ -84,7 +86,7 @@ export function previewRows(rows: readonly MatchedRow[], decisions: ReadonlyMap<
       doing,
       decision,
       options: allowed.map((value) => ({ value, label: decisionLabel(value, suggestion) })),
-      group: groupOf(decision),
+      group: groupOf(decision, proposal.action === 'skip' && !proposal.sure),
     };
   });
 

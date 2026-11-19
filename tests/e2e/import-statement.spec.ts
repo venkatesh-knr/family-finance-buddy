@@ -56,14 +56,22 @@ test('a statement is read, every line says what it will do and can be changed, a
   await expect(page.getByTestId('statement-read')).toContainText('Read 4 lines from an HDFC delimited file.');
   await next(page).click();
 
-  // Two payments to add; a debit to a fund house and money in are left out, each with its reason, and a guess can be overruled.
+  // Two payments to add. A debit to a fund house is left out as a guess, shown unfolded and apart from what is left out for certain, and can be overruled; money in is left out for certain.
   await expect(page.getByTestId('statement-summary')).toContainText('2 to add as expenses');
   await expect(page.getByTestId('statement-summary')).toContainText('2 left out');
+  const guess = page.getByTestId('statement-group-guess');
+  await expect(guess).toContainText('Looks like money put into an investment');
   const left = page.getByTestId('statement-group-left');
   await left.locator('summary').click();
-  await expect(left).toContainText('Looks like money put into an investment');
   await expect(left).toContainText('Money in. Money in is added from the Money screen');
-  await left.getByRole('combobox', { name: /INDMONEY MUTUAL FUND/ }).selectOption({ label: 'Add as an expense' });
+
+  // Each payment to add can be filed, and says so when a category is only a suggestion.
+  const add = page.getByTestId('statement-group-add');
+  await expect(add.getByLabel('Category').first()).toBeVisible();
+  expect(await add.getByLabel('Category').first().locator('option').count()).toBeGreaterThan(1);
+  await expect(add.getByLabel('Category').first().locator('option').first()).toHaveText('No category');
+
+  await guess.getByLabel('What to do').selectOption({ label: 'Add as an expense' });
   await expect(page.getByTestId('statement-summary')).toContainText('3 to add as expenses');
 
   await next(page).click();
@@ -78,6 +86,8 @@ test('a statement is read, every line says what it will do and can be changed, a
   await next(page).click();
   await expect(page.getByTestId('statement-summary')).toContainText('0 to add as expenses');
   await expect(page.getByTestId('statement-summary')).toContainText('4 left out');
+  // Nothing can be imported, and it says so in words and not only with a button that is off.
+  await expect(page.getByTestId('statement-nothing')).toContainText('there is nothing to import');
   await page.getByTestId('statement-group-left').locator('summary').click();
   // The three that were written are recognised by their hashes. Money in was never written, so it is still money in.
   await expect(page.getByText('Already imported from this statement.')).toHaveCount(3);

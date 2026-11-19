@@ -16,7 +16,8 @@
  */
 
 import type { IsoDate } from '../../lib/dates.ts';
-import type { ParsedStatement, StatementKind, StatementLine } from './common.ts';
+import { readableText, type ParsedStatement, type StatementKind, type StatementLine } from './common.ts';
+import { normalisePayee } from './suggestCategory.ts';
 
 /** A line with what is worked out from it on the device: the hash that recognises it, and its UPI reference as a hash and a last four (SC-I8). */
 export interface HashedLine {
@@ -63,11 +64,16 @@ export interface NewEntry {
   readonly sourceHash: string;
   /** What the statement says of the kind of spend: a merchant category, a UPI note, or *Interest and charges*. A hint for a suggestion and never a category. */
   readonly hint: string | null;
+  /** The note the entry is written with: the hint, a field the parser extracted and the capture rule says is written (detail-level.md section 4). */
+  readonly note: string | null;
 }
 
 /** What an entry has empty and the line can fill. Never a field that has a value. */
 export interface Fill {
+  /** A payee for an entry that has none, or, with `payeeFrom`, a readable name for one a bank cut short. */
   readonly payee?: string;
+  /** The payee this replaces: the update applies only while the entry still has it, so a name a person has changed since is never overwritten. */
+  readonly payeeFrom?: string;
   readonly accountId?: string;
   readonly upiRefLast4?: string;
   readonly upiRefHash?: string;
@@ -100,9 +106,12 @@ export interface MatchResult {
 
 /** How far apart, in days, a statement's date and an entry's may be for a near match. */
 const NEAR_DAYS = 2;
+/** The shortest a first name may be to be taken for a household member's, and the shortest a payee may be, once normalised, to be taken for a bank's cut-short form of a readable name. */
+const OWN_NAME_FROM = 4;
+const CUT_SHORT_FROM = 6;
 
 const CARD_PAYMENT_ON_CARD = /\b(payment\s+(received|recd|thank)|bbps\s+payment|auto\s*debit\s+payment|neft\s+payment|upi\s+payment\s+received)\b/i;
-const CARD_PAYMENT_ON_BANK = /(credit\s*card|\bcc\s*pay|card\s*bill|card\s*payment|autopay|\bCRED\b)/i;
+const CARD_PAYMENT_ON_BANK = /(credit\s*card|\bcc\s*pay|card\s*bill|card\s*payment|card\s*autopay|autopay\s*card|\bCRED\b)/i;
 const INVESTMENT = /(indmoney|zerodha|groww|kuvera|\bcoin\b|clearing\s*corp|\bnsdl\b|\bcdsl\b|mutual\s*fund|\bsip\b|\biccl\b|\bnps\b)/i;
 const EMI_PRINCIPAL = /principal\s+amount\s+amortization/i;
 const EMI_COST = /(interest\s+amount\s+amortization|\bigst\b|\bcgst\b|\bsgst\b|processing\s+fee|late\s+payment|finance\s+charge)/i;
@@ -119,7 +128,7 @@ const DAY = 86_400_000;
 const daysApart = (a: IsoDate, b: IsoDate): number => Math.abs(Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY));
 
 /** What to do with a line that is not a new expense, from what the statement says; null when it is one. */
-function skipFor(statement: ParsedStatement, line: StatementLine): Proposal | null {
+function skipFor(statement: ParsedStatement, line: StatementLine, ownFirstNames: ReadonlySet<string>): Proposal | null {
   const text = line.raw;
   if (statement.kind === 'gpay_pdf') {
     if (line.selfTransferToLast4 !== undefined) return { action: 'skip', reason: 'own-transfer', sure: true };
@@ -133,6 +142,9 @@ function skipFor(statement: ParsedStatement, line: StatementLine): Proposal | nu
   }
   if (line.direction === 'credit') return { action: 'skip', reason: 'money-in', sure: true };
   if (CARD_PAYMENT_ON_BANK.test(text)) return { action: 'skip', reason: 'card-payment', sure: false };
+  // A move to a payee whose first word is a household member's first name is a guess that it is to themselves: shown unfolded, and a person can overrule it.
+  const payeeFirst = line.payee === null ? '' : normalisePayee(line.payee.split(/\s+/)[0] ?? '');
+  if (payeeFirst.length >= OWN_NAME_FROM && ownFirstNames.has(payeeFirst)) return { action: 'skip', reason: 'own-transfer', sure: false };
   if (INVESTMENT.test(text)) return { action: 'skip', reason: 'investment', sure: false };
   return null;
 }
@@ -143,8 +155,11 @@ export function matchStatement(input: {
   readonly accounts: readonly KnownAccount[];
   readonly existing: readonly ExistingEntry[];
   readonly knownLineHashes: ReadonlySet<string>;
+  /** The household members' names, so a move to oneself can be guessed from a payee that begins with one. */
+  readonly ownNames?: readonly string[];
 }): MatchResult {
   const { statement, accounts } = input;
+  const ownFirstNames = new Set((input.ownNames ?? []).map((name) => normalisePayee(name.trim().split(/\s+/)[0] ?? '')).filter((first) => first.length >= OWN_NAME_FROM));
   const byLast4 = (last4: string | null | undefined): KnownAccount | undefined => (last4 === null || last4 === undefined ? undefined : accounts.find((account) => account.last4 === last4));
   const toAdd = new Map<string, AccountToAdd>();
   const claimed = new Set<string>();
@@ -165,7 +180,7 @@ export function matchStatement(input: {
     const done = (proposal: Proposal): MatchedRow => ({ line, lineHash: hashed.lineHash, proposal });
 
     if (input.knownLineHashes.has(hashed.lineHash)) return done({ action: 'skip', reason: 'already-imported', sure: true });
-    const skip = skipFor(statement, line);
+    const skip = skipFor(statement, line, ownFirstNames);
     if (skip !== null && skip.action === 'skip' && skip.sure) return done(skip);
 
     const account = accountOf(line);
@@ -173,7 +188,8 @@ export function matchStatement(input: {
       date: line.date,
       amountMinor: line.amountMinor,
       currency: 'INR',
-      payee: line.payee,
+      // The name the statement gives, or what it printed with any VPA taken out: the preview shows that name, so it is what is written.
+      payee: line.payee ?? readableText(line.raw),
       accountId: account.id,
       accountLast4: account.last4,
       method: line.upiReference !== null ? 'upi' : statement.accountType === 'card' ? 'card' : null,
@@ -181,13 +197,22 @@ export function matchStatement(input: {
       upiRefHash: hashed.refHash,
       sourceHash: hashed.lineHash,
       hint: EMI_COST.test(line.raw) && statement.accountType === 'card' ? 'Interest and charges' : line.hint,
+      note: line.hint,
     };
 
     if (skip !== null && skip.action === 'skip') return done({ ...skip, entry });
 
     // What the line can fill in an entry: only what the entry has empty.
+    // A UPI app's statement gives a readable name where a bank cut one short: an entry's payee that is the beginning of the readable name is replaced by it (spending-capture.md
+    // section 3), and a payee that is anything else is left.
+    const readable = (existing: ExistingEntry): Fill => {
+      if (statement.kind !== 'gpay_pdf' || existing.payee === null || line.payee === null) return {};
+      const had = normalisePayee(existing.payee);
+      const now = normalisePayee(line.payee);
+      return had.length >= CUT_SHORT_FROM && now.length > had.length && now.startsWith(had) ? { payee: line.payee, payeeFrom: existing.payee } : {};
+    };
     const fillFor = (existing: ExistingEntry): Fill => ({
-      ...(existing.payee === null && line.payee !== null ? { payee: line.payee } : {}),
+      ...(existing.payee === null && line.payee !== null ? { payee: line.payee } : readable(existing)),
       ...(existing.accountId === null && account.id !== null ? { accountId: account.id } : {}),
       ...(existing.upiRefHash === null && hashed.refHash !== null && hashed.refLast4 !== null ? { upiRefHash: hashed.refHash, upiRefLast4: hashed.refLast4 } : {}),
     });
