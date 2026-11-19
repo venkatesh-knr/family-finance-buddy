@@ -3896,6 +3896,17 @@
     width: 100%;
   }
 
+  /* One line of the statement import's preview: what it is and its amount, what will be done with it, and the choice. */
+  .statement-row {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.75rem;
+  }
+
+  .statement-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
   /* Two ways of entering one thing: a pair of text tabs under a small label (docs/design/simple-layout.md section 3). */
   .text-tabs {
     display: flex;

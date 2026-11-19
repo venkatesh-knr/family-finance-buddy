@@ -72,18 +72,26 @@ export async function readMatchingContext(input: {
   if (entries.error !== null) throw failure(entries.error);
   const rows = entries.data ?? [];
 
-  // The kinds of statement that have witnessed each of those entries.
-  const kindsOf = new Map<string, string[]>();
+  // The kinds of statement that have witnessed each of those entries. The batch is cited by a composite key, which cannot be embedded, so its kind is read apart.
+  const batchesOf = new Map<string, string[]>();
   const ids = rows.map((row) => String((row as { id: string }).id));
   for (let at = 0; at < ids.length; at += IN_BATCHES) {
-    const { data, error } = await client.from('expense_witness').select('expense_id, batch:batch_id (kind)').in('expense_id', ids.slice(at, at + IN_BATCHES));
+    const { data, error } = await client.from('expense_witness').select('expense_id, batch_id').in('expense_id', ids.slice(at, at + IN_BATCHES));
     if (error !== null) throw failure(error);
     for (const witness of data ?? []) {
-      const found = witness as unknown as { expense_id: string; batch: { kind: string } | { kind: string }[] | null };
-      const batch = Array.isArray(found.batch) ? found.batch[0] : found.batch;
-      if (batch !== null && batch !== undefined) kindsOf.set(found.expense_id, [...(kindsOf.get(found.expense_id) ?? []), batch.kind]);
+      const found = witness as { expense_id: string; batch_id: string };
+      batchesOf.set(found.expense_id, [...(batchesOf.get(found.expense_id) ?? []), found.batch_id]);
     }
   }
+  const kindOfBatch = new Map<string, string>();
+  const batchIds = [...new Set([...batchesOf.values()].flat())];
+  for (let at = 0; at < batchIds.length; at += IN_BATCHES) {
+    const { data, error } = await client.from('import_batch').select('id, kind').in('id', batchIds.slice(at, at + IN_BATCHES));
+    if (error !== null) throw failure(error);
+    for (const batch of data ?? []) kindOfBatch.set(String((batch as { id: string }).id), String((batch as { kind: string }).kind));
+  }
+  const kindsOf = new Map<string, string[]>();
+  for (const [expenseId, batches] of batchesOf) kindsOf.set(expenseId, batches.flatMap((id) => kindOfBatch.get(id) ?? []));
 
   const existing: ExistingEntry[] = [];
   const memberOf = new Map<string, Uuid>();

@@ -16,6 +16,7 @@ import { AddCredit } from './AddCredit.tsx';
 import { ConfirmAtAmount } from './ConfirmAtAmount.tsx';
 import { mayChangeCredit } from './creditForm.ts';
 import { ExpectedPanel } from './ExpectedPanel.tsx';
+import { ImportStatementAction } from './ImportStatementAction.tsx';
 import { MoneyIn } from './MoneyIn.tsx';
 import { AccountsAction, AccountsHint } from './AccountsNudge.tsx';
 import { MonthFooter } from './MonthFooter.tsx';
@@ -58,6 +59,8 @@ export function MoneyScreen({
   const [closing, setClosing] = useState(false);
   // A household with no account closes by saying what the month cost (spending-capture.md section 11.3).
   const [closingStated, setClosingStated] = useState(false);
+  // A statement was imported: the entries are read again, as they are when the recurring poster has added some.
+  const [imported, setImported] = useState(0);
   const viewer = ledger.data?.viewer ?? null;
   const nudge = ledger.data === null ? null : accountsNudge({ accounts: ledger.data.accounts, canRecord: ledger.data.viewer.canRecord });
   const today = todayInIst();
@@ -236,7 +239,7 @@ export function MoneyScreen({
       <ExpensesScreen
         privacy={privacy}
         householdId={householdId}
-        recurringMade={recurringMade}
+        recurringMade={recurringMade + imported}
         displayCurrency={displayCurrency}
         money={{
           // Quick add is first on the screen, then the month, and inside the month card three actions side by side: money in, the close, and the way
@@ -252,6 +255,7 @@ export function MoneyScreen({
                   else setClosingStated(true);
                 }}
                 moneyIn={
+                  <>
                   <MoneyIn
                     data={ledger.data}
                     privacy={privacy}
@@ -267,6 +271,16 @@ export function MoneyScreen({
                       setNewRule(draft);
                     }}
                   />
+                  <ImportStatementAction
+                    data={ledger.data}
+                    privacy={privacy}
+                    onSaid={setSaid}
+                    onImported={() => {
+                      setImported((n) => n + 1);
+                      void ledger.reload();
+                    }}
+                  />
+                  </>
                 }
                 accounts={<AccountsAction nudge={nudge} />}
               />
