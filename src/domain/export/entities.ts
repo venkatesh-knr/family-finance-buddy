@@ -103,8 +103,9 @@ export const ENTITIES: readonly Entity[] = [
     scope: 'household',
     upload: 'rows',
     rowKey: ['id'],
-    // How an entry arrived, and for one a recurring rule posted, which rule and which due date: set by the poster, never by a sheet.
-    leftOut: ['captured_via', 'recurring_rule_id', 'due_date'],
+    // How an entry arrived, and for one a recurring rule posted, which rule and which due date: set by the poster, never by a sheet. For one a statement made: the account it
+    // was paid from, the last four and the hash of its UPI reference, and which batch and which line made it, all set by the importer and by nothing a sheet could write.
+    leftOut: ['captured_via', 'recurring_rule_id', 'due_date', 'account_id', 'upi_ref_last4', 'upi_ref_hash', 'source_batch_id', 'source_hash'],
     columns: [
       id(),
       id('member_id', 'member'),
@@ -438,6 +439,8 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
     'Step 6a. The Tax screen’s typed gross figures, readable only by the member and whoever typed them (LI-I21). Its sheet is decided with the Tax screen’s change, since a file that held another member’s gross salary would break that rule.',
   loan_payment:
     'Step 6a, loan payments (docs/design/ledger-income.md section 4c). The household’s, whichever account it names (LI-I37), so its sheet is decided with the screen that records it, as the account’s own is.',
+  expense_witness:
+    'Step 7 (docs/design/spending-capture.md section 4). One statement line that made an entry or was merged into one: the entry, the batch and a hash of the line. Written by the importer and never typed, and a hash of a line is of no use in a file.',
   spend_statement:
     'Step 6e, a stated spend (docs/design/spending-capture.md section 11). A person’s stated total for an ended month, read by an owner or a partner only (SC-I19). Its sheet is decided with the screen that states it.',
 };
