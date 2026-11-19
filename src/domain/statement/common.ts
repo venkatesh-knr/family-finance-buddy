@@ -7,6 +7,7 @@
  */
 
 import type { IsoDate } from '../../lib/dates.ts';
+import { formatMoney, money } from '../../lib/money.ts';
 
 /** One line of a statement, as every parser returns it. Money is a positive figure and `direction` says which way it went. */
 export interface StatementLine {
@@ -27,9 +28,23 @@ export interface StatementLine {
   readonly balanceMinor: bigint | null;
   /** What the statement itself says about the kind of spend (a merchant category, or the note on a UPI payment), or null. It is a hint for a suggestion and never a category. */
   readonly hint: string | null;
+  /** A UPI app's statement says which account each payment came from, by its last four. A bank's statement is of one account and leaves this out. */
+  readonly fromLast4?: string | null;
+  /** A payment between the household's own accounts, which the statement says in so many words: the last four of the account it went to. It is not spending. */
+  readonly selfTransferToLast4?: string | null;
 }
 
 export type StatementKind = 'hdfc_delimited' | 'hdfc_text' | 'qif' | 'icici_savings_pdf' | 'icici_card_pdf' | 'axis_card_pdf' | 'gpay_pdf';
+
+/** What a card statement says of the card itself, beside its lines. A card's balance is what is due, so this is what the month close reads for it. */
+export interface CardFigures {
+  readonly statementDate: IsoDate | null;
+  readonly paymentDueDate: IsoDate | null;
+  /** What was owed at the start of the period; negative when the card was in credit. */
+  readonly previousBalanceMinor: bigint;
+  /** What the statement says is due now; negative when the card is in credit. */
+  readonly totalDueMinor: bigint;
+}
 
 export interface ParsedStatement {
   readonly kind: StatementKind;
@@ -39,6 +54,8 @@ export interface ParsedStatement {
   readonly last4: string | null;
   readonly periodStart: IsoDate | null;
   readonly periodEnd: IsoDate | null;
+  /** For a card statement, the card's own figures. */
+  readonly card?: CardFigures;
   readonly lines: readonly StatementLine[];
   /** What could not be read, by line, in words. A line that could not be read is never dropped silently. */
   readonly problems: readonly string[];
@@ -170,5 +187,22 @@ export function balanceChainProblems(lines: readonly StatementLine[]): readonly 
     }
     previous = line.balanceMinor;
   });
+  return problems;
+}
+
+/**
+ * Whether a card statement's lines add up to its own summary: the charges to purchases (and cash advances and other debits), and the credits to payments and credits. It is how a
+ * statement checks its own reading, as the running balance does for a bank's, and a line that was missed or read wrongly shows as a difference. Nothing is guessed: a difference is a
+ * problem for the person to look at.
+ */
+export function cardTotalsProblems(lines: readonly StatementLine[], expected: { readonly charges: bigint; readonly credits: bigint }): readonly string[] {
+  const sum = (direction: 'debit' | 'credit'): bigint => lines.filter((line) => line.direction === direction).reduce((total, line) => total + line.amountMinor, 0n);
+  const problems: string[] = [];
+  if (sum('debit') !== expected.charges) {
+    problems.push(`The lines add up to ${formatMoney(money(sum('debit'), 'INR'))} in purchases and charges, and the statement's summary says ${formatMoney(money(expected.charges, 'INR'))}.`);
+  }
+  if (sum('credit') !== expected.credits) {
+    problems.push(`The lines add up to ${formatMoney(money(sum('credit'), 'INR'))} in payments and credits, and the statement's summary says ${formatMoney(money(expected.credits, 'INR'))}.`);
+  }
   return problems;
 }
