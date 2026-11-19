@@ -675,7 +675,7 @@ step with a remembered profile per bank is the plan, not one parser. Order: the 
 (plain text, no new dependency), then the ICICI card PDF (the PDF reader is already in the app), then ICICI
 savings. **XLS needs a spreadsheet library, which is a new dependency: a decision for the maintainer.** Real
 sample statements are collected by the maintainer, redacted, **outside the repository** (it is public); the
-fixtures in the repo are synthetic ones with the same structure. Not started.
+fixtures in the repo are synthetic ones with the same structure. **In progress (19 November 2026):** `src/domain/statement/` holds the common line shape and the parsers that need no new dependency, tests first on synthetic fixtures: HDFC delimited (both its six and seven column layouts), HDFC's printed text and QIF, each checked against the maintainer's real samples outside the repository, with the running-balance chain as a check on a statement's own reading. Excel is skipped (decided 13 November 2026). **Next:** the PDFs (ICICI savings, the ICICI and Axis cards, then Google Pay for 7a), which need rows with their columns from the PDF reader; then the migration for the witness table, shown for review; then the matcher and the import on the Money screen.
 
 "Import beats typing" (blueprint §158), and the entry flow is the project's
 stated failure mode — a month of card spending typed by hand is where somebody
