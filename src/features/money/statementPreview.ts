@@ -10,6 +10,7 @@ import { formatShortDate, type IsoDate } from '../../lib/dates.ts';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow } from '../../domain/statement/match.ts';
 import type { MovePair } from '../../domain/statement/moves.ts';
+import type { CardNote } from '../../domain/statement/statedBalance.ts';
 import { resolveRows, skipWords, type Decision } from '../../domain/statement/plan.ts';
 
 /** `guess`: left out because it looks like something that is not spending, which is a guess and may be wrong, so it is shown apart from what is left out for certain. */
@@ -55,6 +56,20 @@ export function decisionLabel(decision: Decision, suggestion: boolean, moneyIn =
       return moneyIn && suggestion ? 'It is the same: leave it out' : 'Leave out';
     case 'move':
       return 'Add as a move between your accounts';
+  }
+}
+
+/** What the preview says of a card statement's figures (card-cycles.md 5), in words. The money, the day and the month are formatted by the caller, as the screen does everywhere. */
+export function cardNoteWords(note: CardNote, format: { readonly amount: (minor: bigint) => string; readonly date: (day: IsoDate) => string; readonly month: (day: IsoDate) => string }): string {
+  switch (note.kind) {
+    case 'closes':
+      return `Amount due ${format.amount(note.dueMinor)} on ${format.date(note.asAt)}. It closes ${format.month(note.asAt)} for this card.`;
+    case 'gives-nothing':
+      return `Amount due ${format.amount(note.dueMinor)}, dated ${format.date(note.asAt)}: not a month end, so it gives the close nothing. Does this card’s bill close mid-month?`;
+    case 'replaces-typed':
+      return `You typed ${format.amount(note.typedMinor)} due on ${format.date(note.typedAsAt)} for this card. This statement says ${format.amount(note.dueMinor)} on ${format.date(note.asAt)} and will be used in its place.${
+        note.differenceMinor > 0n ? ` They differ by ${format.amount(note.differenceMinor)}.` : ''
+      }`;
   }
 }
 

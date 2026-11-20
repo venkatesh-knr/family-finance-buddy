@@ -55,7 +55,14 @@ export function toAccount(raw: unknown): Account {
     openedOn: optionalIsoDate(row['opened_on'], 'account.opened_on'),
     isArchived: requireOneOf(row['status'], ['active', 'archived'] as const, 'account.status') === 'archived',
     archivedOn: archivedDay(row['archived_at']),
+    // At month end is the default and is not said: only a card on its statement date carries it (card-cycles.md).
+    ...(requireCycle(row['cycle_ends']) === 'statement' ? { cycleEnds: 'statement' as const } : {}),
   };
+}
+
+function requireCycle(value: unknown): 'month_end' | 'statement' {
+  if (value === undefined || value === null) return 'month_end';
+  return requireOneOf(value, ['month_end', 'statement'] as const, 'account.cycle_ends');
 }
 
 /** The day, in India, an account was archived; null for one in use. */
@@ -77,7 +84,17 @@ export function toAccountBalance(raw: unknown): AccountBalance {
     balance: money(toBigIntExact(row['balance_minor'], 'account_balance.balance_minor'), currency),
     source: requireOneOf(row['source'], BALANCE_SOURCES, 'account_balance.source'),
     note: optionalString(row['note'], 'account_balance.note'),
+    ...emiOf(row, 'emi_converted_minor', 'emiConvertedMinor'),
+    ...emiOf(row, 'emi_principal_minor', 'emiPrincipalMinor'),
   };
+}
+
+/** A card cycle's EMI figure, said only when there is one: an absent or zero figure is none (card-cycles.md 4a). */
+function emiOf<K extends 'emiConvertedMinor' | 'emiPrincipalMinor'>(row: Record<string, unknown>, column: string, key: K): { readonly [P in K]?: bigint } {
+  const raw = row[column];
+  if (raw === undefined || raw === null) return {};
+  const value = toBigIntExact(raw, `account_balance.${column}`);
+  return value === 0n ? {} : ({ [key]: value } as { readonly [P in K]?: bigint });
 }
 
 export function toCredit(raw: unknown): Credit {

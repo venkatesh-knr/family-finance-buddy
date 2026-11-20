@@ -15,8 +15,8 @@ import { parsePdfStatement, parseTextStatement } from '../../domain/statement/de
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
 import { findMoves } from '../../domain/statement/moves.ts';
-import { personalCredits, planImport, type Decision } from '../../domain/statement/plan.ts';
-import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
+import { personalCredits, planImport, resolveRows, type Decision } from '../../domain/statement/plan.ts';
+import { cardNotes, statedBalances, type CycleEnds } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
 import { CREDIT_CATEGORIES, CREDIT_LABEL, type CreditCategory } from '../../domain/credit.ts';
 import { formatShortDate, istCalendarDate } from '../../lib/dates.ts';
@@ -27,9 +27,10 @@ import { readStatementPages } from '../../lib/statement-pdf.ts';
 import { verifyTotpCode } from '../../repo/auth.ts';
 import { commitImport, commitMoves, periodOf, readCategoryContext, readMatchingContext, type MatchingContext } from '../../repo/statementImport.ts';
 import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.tsx';
+import { monthWord } from './closeMonth.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { previewRows, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
+import { cardNoteWords, previewRows, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 const KIND_WORDS: Record<StatementKind, string> = {
@@ -69,8 +70,6 @@ interface Read {
   readonly categories: readonly { readonly id: string; readonly name: string }[];
   /** A suggested category for each row that could be an entry, from what the household has filed before; null where there is no basis. */
   readonly suggestions: readonly (Suggestion | null)[];
-  /** What the statement states of the account's balance, which the month close reads. None for a statement that is not of one account. */
-  readonly balances: readonly StatedBalance[];
 }
 
 /** How many problems a refused statement lists before saying how many more there are. */
@@ -86,6 +85,9 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   const [reads, setReads] = useState<readonly Read[]>([]);
   // Decisions and categories are kept by a row's place among the rows of every statement read together.
   const [decisions, setDecisions] = useState<ReadonlyMap<number, Decision>>(new Map());
+  // The statements whose card the person said closes on its statement date, by their place in the list: it is set so when the import is written (card-cycles.md 5).
+  // It is the card's, so it is kept by the card's last four and applies to every statement of that card read together.
+  const [statementDateFor, setStatementDateFor] = useState<ReadonlySet<string>>(new Set());
   // The category a person chose for a row, where it differs from the suggestion; an empty string is no category.
   const [chosen, setChosen] = useState<ReadonlyMap<number, string>>(new Map());
   const [label, setLabel] = useState('');
@@ -129,7 +131,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
       history: filed.history,
       active: new Set(filed.categories.map((category) => category.id)),
     });
-    return { statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement, istCalendarDate(new Date())) };
+    return { statement, matched, context, categories: filed.categories, suggestions };
   };
 
   /** The files in order from one place: each is added to what has been read, and one that needs a password stops the reading until it is given. */
@@ -188,8 +190,52 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   const rows = reads.length === 0 ? [] : previewRows(rowsAll, decisions, existingAll, moves);
   const blocked = reads.some((read) => read.statement.problems.length > 0);
   const everyFileRead = files.length > 0 && reads.length === files.length;
-  const accountsToAdd = [...new Map(reads.flatMap((read) => read.matched.accountsToAdd).map((account) => [account.last4, account] as const)).values()];
+  const accountsFor = (read: Read) => read.matched.accountsToAdd.map((account) => (statementDateFor.has(account.last4) && account.type === 'card' ? { ...account, cycleEnds: 'statement' as const } : account));
+  const accountsToAdd = [...new Map(reads.flatMap((read) => accountsFor(read)).map((account) => [account.last4, account] as const)).values()];
   const many = reads.length > 1;
+
+  // What each statement states of its account's balance, which the close reads, and what the preview says of it. A card that closes on its statement date (already, or because the person
+  // said so here) states its due on its statement date and the one before its period; any other account only a balance on a month's last day.
+  const today = istCalendarDate(new Date());
+  const cardOf = (read: Read) => (read.statement.accountType === 'card' && read.statement.last4 !== null ? read.context.accounts.find((account) => account.type === 'card' && account.last4 === read.statement.last4) : undefined);
+  const switched = (read: Read): boolean => read.statement.last4 !== null && statementDateFor.has(read.statement.last4);
+  const cycleOf = (read: Read): CycleEnds => (read.statement.accountType === 'card' && (cardOf(read)?.cycleEnds === 'statement' || switched(read)) ? 'statement' : 'month_end');
+  const resolved = resolveRows(rowsAll, decisions, moves);
+  /** The day of the card's latest recorded due before this statement: where a statement that prints no period opens. */
+  const previousDueOf = (read: Read): string | undefined => {
+    const known = cardOf(read);
+    const stated = read.statement.card?.statementDate ?? read.statement.periodEnd;
+    if (known === undefined || stated === null) return undefined;
+    return read.context.cardDues
+      .filter((due) => due.accountId === known.id && due.asAt < stated)
+      .map((due) => due.asAt)
+      .sort()
+      .pop();
+  };
+  // A line the person added as something else (a conversion credit taken as a refund) is not also an EMI conversion.
+  const offsetOf = (at: number): number => reads.slice(0, at).reduce((total, read) => total + read.matched.rows.length, 0);
+  const balancesOf = (read: Read, at: number) =>
+    read.statement.kind === 'gpay_pdf' || read.statement.last4 === null
+      ? []
+      : statedBalances(read.statement, today, cycleOf(read), {
+          previousDue: previousDueOf(read),
+          countsAsEmi: (line) => {
+            const local = read.statement.lines.indexOf(line);
+            return local < 0 || resolved[offsetOf(at) + local]?.decision === 'skip';
+          },
+        });
+  const notesOf = (read: Read) => {
+    const known = cardOf(read);
+    return cardNotes(
+      read.statement,
+      cycleOf(read),
+      known === undefined ? [] : read.context.cardDues.filter((due) => due.accountId === known.id && due.source === 'typed'),
+      previousDueOf(read),
+    );
+  };
+  /** Whether this statement's card can be switched here: it is a card, it closes at month end now, and the statement is not dated on a month end (which closes that month already). */
+  const canSwitch = (read: Read): boolean =>
+    read.statement.accountType === 'card' && cardOf(read)?.cycleEnds !== 'statement' && (switched(read) || notesOf(read).some((note) => note.kind === 'gives-nothing'));
 
   const choose = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const picked = Array.from(event.target.files ?? []);
@@ -198,6 +244,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     setPassword('');
     setReads([]);
     setDecisions(new Map());
+    setStatementDateFor(new Set());
     setChosen(new Map());
     setProblem(null);
     if (picked.length > 0) void readFrom(picked, 0, '', []);
@@ -230,9 +277,10 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           label: label.trim() === '' ? null : label.trim(),
           period: periodOf(dates),
           statementLast4: read.statement.kind === 'gpay_pdf' ? null : read.statement.last4,
-          accountsToAdd: read.matched.accountsToAdd,
-          balances: read.balances,
+          accountsToAdd: accountsFor(read),
+          balances: balancesOf(read, at),
           statementAccountType: read.statement.accountType,
+          setCycleToStatement: read.statement.accountType === 'card' && read.statement.last4 !== null && statementDateFor.has(read.statement.last4),
           writes,
           memberOf: read.context.memberOf,
         });
@@ -519,23 +567,71 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   </div>
                 )}
 
-                {reads.map((read, at) =>
-                  read.balances.length === 0 ? null : (
+                {reads.map((read, at) => {
+                  const balances = balancesOf(read, at);
+                  const notes = notesOf(read);
+                  const onItsDate = cycleOf(read) === 'statement';
+                  if (balances.length === 0 && notes.length === 0) return null;
+                  const amount = (minor: bigint): string => (read.statement.accountType === 'card' && minor < 0n ? `${show(-minor)} in credit` : show(minor));
+                  return (
                     <div key={at} data-testid="statement-balances">
-                      <h3 className="label">
-                        {read.statement.accountType === 'card' ? 'What the statement says is due at a month end' : 'Balances the statement states at a month end'} for ••{read.statement.last4}
-                      </h3>
-                      <ul className="note mt-1 list-disc pl-5">
-                        {read.balances.map((stated) => (
-                          <li key={stated.asAt}>
-                            {formatShortDate(stated.asAt)}: {read.statement.accountType === 'card' && stated.balanceMinor < 0n ? `${show(-stated.balanceMinor)} in credit` : show(stated.balanceMinor)}
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="note mt-1">The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.</p>
+                      {balances.length > 0 && (
+                        <>
+                          <h3 className="label">
+                            {read.statement.accountType === 'card'
+                              ? onItsDate
+                                ? 'What the statement says is due, and what was due before its cycle'
+                                : 'What the statement says is due at a month end'
+                              : 'Balances the statement states at a month end'}{' '}
+                            for ••{read.statement.last4}
+                          </h3>
+                          <ul className="note mt-1 list-disc pl-5">
+                            {balances.map((stated) => (
+                              <li key={stated.asAt}>
+                                {formatShortDate(stated.asAt)}: {amount(stated.balanceMinor)}
+                                {stated.basis === 'opening' && onItsDate ? ' (due when its cycle began)' : ''}
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="note mt-1">
+                            {onItsDate
+                              ? 'A card that closes on its statement date is closed by its statement: the month its date falls in takes this cycle, and the close reads these two figures.'
+                              : 'The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.'}
+                          </p>
+                        </>
+                      )}
+                      {notes.map((note) => (
+                        <p key={note.kind + note.asAt} className="note mt-1" data-testid="statement-card-note">
+                          {cardNoteWords(note, { amount, date: formatShortDate, month: (day) => monthWord(day.slice(0, 7)) })}
+                        </p>
+                      ))}
+                      {canSwitch(read) && read.statement.last4 !== null && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-quiet mt-1.5 self-start"
+                            onClick={() => {
+                              const last4 = read.statement.last4 ?? '';
+                              setStatementDateFor((was) => {
+                                const next = new Set(was);
+                                if (next.has(last4)) next.delete(last4);
+                                else next.add(last4);
+                                return next;
+                              });
+                            }}
+                          >
+                            {switched(read) ? 'This card will close on its statement date. Undo' : 'Use the statement date for this card'}
+                          </button>
+                          {switched(read) && (
+                            <p className="note mt-1" data-testid="statement-cycle-set">
+                              When you import, this card is set to close on its statement date. It applies to every month.
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
-                  ),
-                )}
+                  );
+                })}
 
                 {data.viewer.canFileForOthers && members.length > 1 && (
                   <Select
@@ -625,6 +721,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                 {plan !== null && plan.counts.credit > 0 ? `, ${String(plan.counts.credit)} money in` : ''}
                 {plan !== null && plan.counts.move > 0 ? `, and ${String(plan.counts.move)} ${plan.counts.move === 1 ? 'move' : 'moves'} between your own accounts` : ''}
                 {plan !== null && plan.counts.witness > 0 ? ` and adds ${many ? 'these statements' : 'this statement'} to ${String(plan.counts.witness)} you already have` : ''}
+                {statementDateFor.size > 0 ? `, and sets ${[...statementDateFor].map((last4) => `••${last4}`).join(', ')} to close on its statement date, for every month` : ''}
                 {plan === null ? '' : `. Nothing is doubled if ${many ? 'the same statements are' : 'the same statement is'} imported again.`}
               </p>
               <Field

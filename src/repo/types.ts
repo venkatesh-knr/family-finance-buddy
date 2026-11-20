@@ -1123,6 +1123,8 @@ export interface NewAccount {
   readonly last4?: string | null;
   readonly isForeign?: boolean;
   readonly openedOn?: IsoDate | null;
+  /** When a card's month closes; absent is at month end (card-cycles.md). Only a card may close on its statement date. */
+  readonly cycleEnds?: 'month_end' | 'statement';
 }
 
 /** What may change on an account. It is archived and never deleted. */
@@ -1135,6 +1137,8 @@ export interface AccountPatch {
   readonly institution?: string | null;
   readonly last4?: string | null;
   readonly archived?: boolean;
+  /** A card's month closes at month end or on its statement date; applies to every month, either way (card-cycles.md 6). */
+  readonly cycleEnds?: 'month_end' | 'statement';
 }
 
 export type BalanceSource = 'typed' | 'statement';

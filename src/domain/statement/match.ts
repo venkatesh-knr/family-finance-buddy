@@ -81,9 +81,11 @@ export interface KnownAccount {
   readonly id: string;
   readonly last4: string | null;
   readonly type: 'savings' | 'current' | 'card';
+  /** A card that closes on its statement date says so; absent is at month end (card-cycles.md). */
+  readonly cycleEnds?: 'month_end' | 'statement';
 }
 
-export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money' | 'move-recorded';
+export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money' | 'move-recorded' | 'emi-conversion';
 
 export interface NewEntry {
   readonly date: IsoDate;
@@ -136,6 +138,8 @@ export interface AccountToAdd {
   readonly last4: string;
   readonly type: 'savings' | 'card';
   readonly institution: string | null;
+  /** A card the person said closes on its statement date, in the preview; it is added so (card-cycles.md 5). */
+  readonly cycleEnds?: 'statement';
 }
 
 export interface MatchResult {
@@ -160,7 +164,11 @@ const MONEY_BACK = /(matur|closure|premature|\bfd\b|\brd\b|\btd\b|redemption|red
 const LOAN_PAID_OUT = /(disburs|loan\s+credit)/i;
 const SELF_WORDS = /(\bself\b|own\s+account)/i;
 // A credit on a card that comes from turning a purchase into an EMI is not a refund: the purchase stays as it was recorded.
-const EMI_CONVERSION = /(\bemi\b|conversion)/i;
+const EMI_CONVERSION = /(\bemi\b|loan\s+on\s+card|conversion\s+(to|into)\s+emi)/i;
+/** A credit on a card that turns a purchase or part of a bill into an EMI plan (card-cycles.md 4a): the converted amount, which is counted as spent in the cycle and is not a refund. */
+export const isEmiConversionCredit = (text: string): boolean => EMI_CONVERSION.test(text) && !CARD_PAYMENT_ON_CARD.test(text);
+/** A debit that is the principal of an EMI instalment the card billed: paid to loans in the cycle, and not spent. Its interest and GST are spent. */
+export const isEmiPrincipalDebit = (text: string): boolean => EMI_PRINCIPAL.test(text);
 const EMI_COST = /(interest\s+amount\s+amortization|\bigst\b|\bcgst\b|\bsgst\b|processing\s+fee|late\s+payment|finance\s+charge)/i;
 
 const INSTITUTION: Partial<Record<StatementKind, string>> = {
@@ -201,7 +209,7 @@ function skipFor(statement: ParsedStatement, line: StatementLine, ownFirstNames:
   if (statement.accountType === 'card') {
     if (line.direction === 'credit') {
       if (CARD_PAYMENT_ON_CARD.test(text)) return { action: 'skip', reason: 'card-payment', sure: true };
-      return EMI_CONVERSION.test(text) ? { action: 'skip', reason: 'emi-principal', sure: false } : null;
+      return isEmiConversionCredit(text) ? { action: 'skip', reason: 'emi-conversion', sure: false } : null;
     }
     if (EMI_PRINCIPAL.test(text)) return { action: 'skip', reason: 'emi-principal', sure: true };
     return null;

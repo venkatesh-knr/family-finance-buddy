@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow, NewCredit, NewEntry, Proposal } from '../../domain/statement/match.ts';
 import { findMoves } from '../../domain/statement/moves.ts';
-import { decisionLabel, lineTitle, previewRows } from './statementPreview.ts';
+import { cardNoteWords, decisionLabel, lineTitle, previewRows } from './statementPreview.ts';
 
 /**
  * What the import's preview says of each line (docs/design/spending-capture.md section 4): what the statement printed in words a person can read, what the import will do, and what the
@@ -153,5 +153,27 @@ describe('a move between the household’s own accounts, across statements read 
     const [out] = previewRows([row({ action: 'skip', reason: 'move-recorded', sure: false, credit: CREDIT }, { direction: 'credit' })], new Map(), []);
     expect(out).toMatchObject({ group: 'guess', decision: 'skip', moneyIn: true });
     expect(out?.doing).toBe('Already recorded as a move between your own accounts. Add it as money in if it is not.');
+  });
+});
+
+describe('what the preview says of a card statement (card-cycles.md 5)', () => {
+  const say = (note: Parameters<typeof cardNoteWords>[0]) => cardNoteWords(note, { amount: (minor) => `₹${String(minor / 100n)}`, date: (day) => day, month: (day) => (day.slice(5, 7) === '10' ? 'October' : 'November') });
+
+  it('says a statement closes its month for the card', () => {
+    expect(say({ kind: 'closes', asAt: '2026-10-17', dueMinor: 2_864_000n })).toBe('Amount due ₹28640 on 2026-10-17. It closes October for this card.');
+  });
+
+  it('says a mid-month statement of a month-end card gives the close nothing, and asks whether the bill closes mid-month', () => {
+    expect(say({ kind: 'gives-nothing', asAt: '2026-10-17', dueMinor: 2_864_000n })).toBe('Amount due ₹28640, dated 2026-10-17: not a month end, so it gives the close nothing. Does this card’s bill close mid-month?');
+  });
+
+  it('CY-I13 — says a typed due is replaced by the statement, with both dates and both figures, and by how much they differ', () => {
+    expect(say({ kind: 'replaces-typed', typedAsAt: '2026-10-17', typedMinor: 2_900_000n, asAt: '2026-10-18', dueMinor: 2_864_000n, differenceMinor: 36_000n })).toBe(
+      'You typed ₹29000 due on 2026-10-17 for this card. This statement says ₹28640 on 2026-10-18 and will be used in its place. They differ by ₹360.',
+    );
+  });
+
+  it('does not say they differ when they do not', () => {
+    expect(say({ kind: 'replaces-typed', typedAsAt: '2026-10-17', typedMinor: 2_864_000n, asAt: '2026-10-17', dueMinor: 2_864_000n, differenceMinor: 0n })).not.toContain('differ');
   });
 });
