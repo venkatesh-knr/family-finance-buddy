@@ -134,3 +134,17 @@ describe('splitAccounts — in use, and archived and folded away', () => {
     expect(archived.map((x) => x.id)).toEqual(['c']);
   });
 });
+
+describe('a card that closes on its statement date (card-cycles.md 8.1)', () => {
+  const card = account({ type: 'card', name: 'HDFC Regalia', last4: '1188', cycleEnds: 'statement' });
+
+  it('says its bill closes on its statement date, and the day it lately has once a statement is in', () => {
+    expect(accountRow(card, { members, balance: null }).sub).toBe('Card · Venkat · bill closes on its statement date');
+    expect(accountRow(card, { members, balance: null, statementDay: 17 }).sub).toBe('Card · Venkat · bill closes on its statement date (17th lately)');
+  });
+
+  it('CY-I1 — says nothing of it for a card at month end, or for a bank account', () => {
+    expect(accountRow(account({ type: 'card', name: 'HDFC Regalia', last4: '1188' }), { members, balance: null, statementDay: 17 }).sub).not.toContain('statement date');
+    expect(accountRow(account({}), { members, balance: null }).sub).not.toContain('statement date');
+  });
+});

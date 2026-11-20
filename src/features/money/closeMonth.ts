@@ -75,6 +75,8 @@ export type CardCycle =
       readonly closing: Money;
       readonly emiConvertedMinor: bigint;
       readonly emiPrincipalMinor: bigint;
+      /** Where the two dues came from, so a typed figure is never said to be a statement's. */
+      readonly sources: { readonly opening: 'typed' | 'statement'; readonly closing: 'typed' | 'statement' };
     }
   /** The earliest statement in the app has no balance before it, so its cycle is left out: the card adds nothing that month. */
   | { readonly kind: 'first-left-out'; readonly accountId: string; readonly to: IsoDate; readonly closing: Money; readonly emiConvertedMinor: bigint; readonly emiPrincipalMinor: bigint }
@@ -175,6 +177,7 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
         closing: closingRow.balance,
         emiConvertedMinor,
         emiPrincipalMinor,
+        sources: { opening: openingRow.source, closing: closingRow.source },
       };
     });
 }

@@ -14,6 +14,23 @@ const figures = (currency: string, cameIn: number, spent: number, saved: number)
 
 const closed = { status: 'figures', currencies: [figures('INR', 143_250, 69_670, 73_580)] } as const;
 
+describe('a closed month with a card on its statement date (card-cycles.md 8.3)', () => {
+  const cycle = { kind: 'cycle', accountId: 'a', from: '2026-09-18', to: '2026-10-17', opening: money(2_020_000n, 'INR'), closing: money(2_864_000n, 'INR'), emiConvertedMinor: 0n, emiPrincipalMinor: 0n, sources: { opening: 'statement', closing: 'statement' } } as const;
+
+  it('says which cycle the card used, and what a payment after its statement date does', () => {
+    const view = lastMonthView({ month: '2026-10', close: { ...closed, cards: [cycle] }, readable: 3, cardNames: new Map([['a', 'HDFC Regalia']]) });
+    expect(view.kind === 'closed' && view.cardSummary).toEqual({
+      byCycle: '1 card by its cycle (18 Sept – 17 Oct)',
+      notes: ['A card payment made after a card’s statement date counts in this month, and comes off the next.'],
+    });
+  });
+
+  it('CY-I1 — says nothing of cards for a household with none on its statement date: the view is exactly as it was', () => {
+    const view = lastMonthView({ month: '2026-10', close: closed, readable: 3 });
+    expect(view.kind === 'closed' && 'cardSummary' in view).toBe(false);
+  });
+});
+
 describe('lastMonthView', () => {
   it('is the close\u2019s own came in, spent and saved when the month was closed, with how many accounts it covers', () => {
     const view = lastMonthView({ month: '2026-10', close: closed, readable: 3 });
