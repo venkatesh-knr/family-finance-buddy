@@ -19,6 +19,7 @@ import type { Account } from '../../repo/types.ts';
 import { Chevron, Disclosure } from '../../ui/primitives.tsx';
 import { AddAccount } from './AddAccount.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
+import { lateStatementDay } from './cardCycleView.ts';
 import { accountRow, latestBalances, splitAccounts } from './accountRows.ts';
 import { lastBalanceMonth, lastDayOf, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { useCashReserve } from './useCashReserve.ts';
@@ -92,7 +93,7 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
   };
 
   const row = (account: Account) => {
-    const parts = accountRow(account, { members: data.members, balance: latest.get(account.id) ?? null, privacy });
+    const parts = accountRow(account, { members: data.members, balance: latest.get(account.id) ?? null, privacy, statementDay: lateStatementDay(data.balances, account.id) });
     return (
       <li key={account.id}>
         <button

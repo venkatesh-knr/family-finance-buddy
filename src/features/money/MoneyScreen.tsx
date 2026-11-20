@@ -25,7 +25,8 @@ import { accountsNudge } from './accountsNudge.ts';
 import { SalaryRuleForm } from './SalaryRuleForm.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
 import { CloseWithoutAccounts } from './CloseWithoutAccounts.tsx';
-import { accountSteps, closeFigures, monthToClose, offersClose } from './closeMonth.ts';
+import { accountSteps, cardCycles, closeFigures, monthToClose, offersClose } from './closeMonth.ts';
+import { titleOf } from './accountRows.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
 import { useLoanPayments } from './useLoanPayments.ts';
@@ -96,6 +97,7 @@ export function MoneyScreen({
       close: closeFigures(input),
       readable: accountSteps(input).length,
       unnamedEntries: lastEntries.unnamed,
+      cardNames: new Map(ledger.data.accounts.map((account) => [account.id, titleOf(account)] as const)),
       ...(failed ? { reading: 'failed' as const } : waiting ? { reading: 'loading' as const } : {}),
     });
   })();
@@ -109,6 +111,16 @@ export function MoneyScreen({
       canRecord: ledger.data.viewer.canRecord,
       moneyReady: ledger.moneyStatus === 'ready',
     });
+  // The cards that close on their statement date whose statement dated in the month is not in: the month waits for them (card-cycles.md 2.4).
+  const waitingCards =
+    ledger.data === null
+      ? []
+      : cardCycles({ month: closeMonthKey, accounts: ledger.data.accounts, balances: ledger.data.balances })
+          .filter((cycle) => cycle.kind === 'waiting')
+          .map((cycle) => {
+            const account = ledger.data?.accounts.find((each) => each.id === cycle.accountId);
+            return account === undefined ? 'A card' : titleOf(account);
+          });
   const closeStated =
     ledger.data !== null &&
     offersStatedClose({
@@ -248,7 +260,7 @@ export function MoneyScreen({
             <>
               <MonthFooter
                 closeMonthKey={closeMonthKey}
-                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth })}
+                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth, waitingCards })}
                 onClose={() => {
                   setSaid(null);
                   if (mayClose) setClosing(true);

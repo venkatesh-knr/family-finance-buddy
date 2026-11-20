@@ -9,6 +9,7 @@
 import { formatShortDate } from '../../lib/dates.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import type { Account, AccountBalance, AccountType, Member } from '../../repo/types.ts';
+import { ordinal } from './cardCycleView.ts';
 
 export const TYPE_WORD: Readonly<Record<AccountType, string>> = {
   savings: 'Savings',
@@ -33,12 +34,16 @@ export function titleOf(account: Pick<Account, 'name' | 'last4'>): string {
 /** One row. `balance` is the account's newest, or null for an account that has none. */
 export function accountRow(
   account: Account,
-  context: { readonly members: readonly Member[]; readonly balance: AccountBalance | null; readonly privacy?: boolean },
+  context: { readonly members: readonly Member[]; readonly balance: AccountBalance | null; readonly privacy?: boolean; /** The day of the month of the card's latest statement, once one is in. */ readonly statementDay?: number | null },
 ): AccountRow {
   const owner = context.members.find((member) => member.id === account.memberId);
   const parts = [TYPE_WORD[account.type], owner?.displayName ?? 'a member'];
   if (account.last4 === null || account.last4 === '') parts.push('no last four');
   if (account.isForeign) parts.push('held outside India');
+  // A card whose bill closes on its statement date says so, and the day it lately closes on once a statement is in (card-cycles.md 8.1).
+  if (account.type === 'card' && account.cycleEnds === 'statement') {
+    parts.push(context.statementDay === undefined || context.statementDay === null ? 'bill closes on its statement date' : `bill closes on its statement date (${ordinal(context.statementDay)} lately)`);
+  }
 
   if (context.balance === null) {
     return { title: titleOf(account), sub: parts.join(' · '), value: 'no balance yet', note: 'not in a close yet', hasBalance: false };

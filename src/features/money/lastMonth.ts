@@ -9,6 +9,7 @@
 import type { Money } from '../../lib/money.ts';
 import { money } from '../../lib/money.ts';
 import type { CloseFigures } from './closeMonth.ts';
+import { cardSummary } from './cardCycleView.ts';
 
 export type LastMonthView =
   | {
@@ -22,6 +23,8 @@ export type LastMonthView =
       readonly total: number;
       /** Purchases, sales and PPF entries of the month that named no account: their money is still in spent. */
       readonly unnamedEntries: number;
+      /** What the cards on their statement date did in the month, in words; absent for a household with none (card-cycles.md 8.3). */
+      readonly cardSummary?: { readonly byCycle: string | null; readonly notes: readonly string[] };
     }
   /** `noAccounts`: the household has no account in use, so the month can never be closed from balances; it is on what was entered. */
   | { readonly kind: 'open'; readonly month: string; readonly noAccounts: boolean }
@@ -38,6 +41,8 @@ export function lastMonthView(input: {
   readonly reading?: 'loading' | 'failed';
   /** How many of the month's purchases, sales and PPF entries the caller reads named no account. */
   readonly unnamedEntries?: number;
+  /** The names of the accounts, for a card that is said by name. */
+  readonly cardNames?: ReadonlyMap<string, string>;
 }): LastMonthView {
   const { month, close } = input;
   if (input.reading === 'loading') return { kind: 'reading', month };
@@ -52,6 +57,7 @@ export function lastMonthView(input: {
     counted: input.readable,
     total: input.readable,
     unnamedEntries: input.unnamedEntries ?? 0,
+    ...(close.cards === undefined || close.cards.length === 0 ? {} : { cardSummary: cardSummary(close.cards, input.cardNames ?? new Map()) }),
   };
 }
 

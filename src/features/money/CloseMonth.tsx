@@ -24,7 +24,8 @@ import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { accountSteps, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, type TypedBalances } from './closeMonth.ts';
+import { accountSteps, cardCycles, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, type TypedBalances } from './closeMonth.ts';
+import { cardSummary, cycleRowWords, lateStatementDay, nextDueMonth } from './cardCycleView.ts';
 import { titleOf } from './accountRows.ts';
 import { amountText } from './creditForm.ts';
 import type { AccountsData } from './useAccounts.ts';
@@ -144,8 +145,12 @@ export function CloseMonth({
 
   const itemised = itemisedFigures(expenses ?? [], credits, month);
   const accountsInUse = steps.length;
-  const accountsTyped = parsed.filter((p) => p.closing.ok && p.closing.balance !== null).length;
+  // A card that closes on its statement date is closed by its statement, not by a balance typed here: its cycle is worked out from its statements (card-cycles.md 2).
+  const cycles = useMemo(() => cardCycles({ month, accounts: data.accounts, balances: data.balances }), [month, data.accounts, data.balances]);
+  const cycleOf = new Map(cycles.map((cycle) => [cycle.accountId, cycle] as const));
+  const accountsTyped = parsed.filter((p) => (p.closing.ok && p.closing.balance !== null) || (cycleOf.get(p.step.accountId) !== undefined && cycleOf.get(p.step.accountId)?.kind !== 'waiting')).length;
   const names = new Map(data.accounts.map((account) => [account.id, titleOf(account)]));
+  const cardLines = cardSummary(cycles, names);
   // An owner or a partner reads every account. A contributor reads their own only: say so wherever there is another member to have one.
   const privateNote = asks ? '' : data.members.length > 1 ? ' This close covers only the accounts you can read: your own.' : '';
 
@@ -201,7 +206,12 @@ export function CloseMonth({
                         <p className="figure" data-testid="close-spent">
                           {shown(money(figures.spent, figures.currency))}
                         </p>
-                        <p className="note">from balances</p>
+                        <p className="note">{cardLines.byCycle === null ? 'from balances' : `from balances · ${cardLines.byCycle}`}</p>
+                        {cardLines.notes.map((note) => (
+                          <p key={note} className="note" data-testid="close-card-note">
+                            {note}
+                          </p>
+                        ))}
                         {plan !== null && (() => {
                           const planned = monthlyPlanned(plan.budgets, plan.categories, figures.currency);
                           if (planned === null) return null;
@@ -229,7 +239,11 @@ export function CloseMonth({
                       : 'Reading what other members keep private, what went into holdings and what was paid to loans…'}
                   </p>
                 ) : live.status === 'missing' ? (
-                  <p className="note">Type each account’s balance below to see what was spent. It is not counted as nothing.</p>
+                  <p className="note">
+                    {cycles.some((cycle) => cycle.kind === 'waiting')
+                      ? 'Import the statement of each card that is waiting, and type each other account’s balance below, to see what was spent. It is not counted as nothing.'
+                      : 'Type each account’s balance below to see what was spent. It is not counted as nothing.'}
+                  </p>
                 ) : (
                   <p className="note">There is nothing to close from balances.</p>
                 )}
@@ -246,6 +260,12 @@ export function CloseMonth({
                 {privateNote}
               </p>
 
+              {cycles.length > 0 && (
+                <p className="note" data-testid="close-cycle-explained">
+                  Each card on its statement date uses the cycle that ended in {word}. Bank accounts and month-end cards use {formatShortDate(opensOn)} and {formatShortDate(closesOn)}.
+                  {cycles.some((cycle) => cycle.kind === 'waiting') ? ` ${String(cycles.filter((cycle) => cycle.kind === 'waiting').length)} waiting for a statement.` : ''}
+                </p>
+              )}
               <h2 className="label">Accounts</h2>
               {rows.map((row) => {
                 const text = texts[row.accountId] ?? { opening: '', closing: '' };
@@ -255,41 +275,54 @@ export function CloseMonth({
                 return (
                   <section key={row.accountId} aria-label={row.title} className="flex flex-col gap-1.5">
                     <h3 className="label">{row.title}</h3>
-                    {mask ? (
-                      <Field label={`Closing balance, ${formatShortDate(closesOn)}`} numeric readOnly value="••••••" hint="Hidden while amounts are hidden." onChange={() => undefined} />
+                    {cycleOf.get(row.accountId) !== undefined ? (
+                      <p className="note" data-testid="close-card-cycle">
+                        {cycleRowWords(cycleOf.get(row.accountId) as NonNullable<ReturnType<typeof cycleOf.get>>, {
+                          month,
+                          lateDay: lateStatementDay(data.balances, row.accountId),
+                          nextMonth: nextDueMonth(data.balances, row.accountId, month),
+                          shown: (value) => shown(value),
+                        })}
+                      </p>
                     ) : (
-                      <Field
-                        label={`Closing balance, ${formatShortDate(closesOn)}`}
-                        needed
-                        numeric
-                        inputMode="decimal"
-                        autoComplete="off"
-                        placeholder="0"
-                        value={text.closing}
-                        {...(row.type === 'card' ? { hint: 'What is due on the card at the end of the day.' } : {})}
-                        error={bad !== undefined && !bad.closing.ok ? bad.closing.problem : null}
-                        onChange={(event) => {
-                          setTexts((was) => ({ ...was, [row.accountId]: { opening: text.opening, closing: event.target.value } }));
-                        }}
-                      />
-                    )}
-                    {steps.find((s) => s.accountId === row.accountId)?.openingNeeded === true ? (
-                      <Field
-                        label={`Opening balance, ${formatShortDate(opensOn)}`}
-                        needed
-                        numeric
-                        inputMode="decimal"
-                        autoComplete="off"
-                        placeholder="0"
-                        value={text.opening}
-                        hint="The first close asks for it. After that it is last month’s closing."
-                        error={bad !== undefined && !bad.opening.ok ? bad.opening.problem : null}
-                        onChange={(event) => {
-                          setTexts((was) => ({ ...was, [row.accountId]: { opening: event.target.value, closing: text.closing } }));
-                        }}
-                      />
-                    ) : (
-                      row.opening !== null && <p className="note tabular-nums">opening {shown(row.opening)}</p>
+                      <>
+                        {mask ? (
+                          <Field label={`Closing balance, ${formatShortDate(closesOn)}`} numeric readOnly value="••••••" hint="Hidden while amounts are hidden." onChange={() => undefined} />
+                        ) : (
+                          <Field
+                            label={`Closing balance, ${formatShortDate(closesOn)}`}
+                            needed
+                            numeric
+                            inputMode="decimal"
+                            autoComplete="off"
+                            placeholder="0"
+                            value={text.closing}
+                            {...(row.type === 'card' ? { hint: 'What is due on the card at the end of the day.' } : {})}
+                            error={bad !== undefined && !bad.closing.ok ? bad.closing.problem : null}
+                            onChange={(event) => {
+                              setTexts((was) => ({ ...was, [row.accountId]: { opening: text.opening, closing: event.target.value } }));
+                            }}
+                          />
+                        )}
+                        {steps.find((s) => s.accountId === row.accountId)?.openingNeeded === true ? (
+                          <Field
+                            label={`Opening balance, ${formatShortDate(opensOn)}`}
+                            needed
+                            numeric
+                            inputMode="decimal"
+                            autoComplete="off"
+                            placeholder="0"
+                            value={text.opening}
+                            hint="The first close asks for it. After that it is last month’s closing."
+                            error={bad !== undefined && !bad.opening.ok ? bad.opening.problem : null}
+                            onChange={(event) => {
+                              setTexts((was) => ({ ...was, [row.accountId]: { opening: event.target.value, closing: text.closing } }));
+                            }}
+                          />
+                        ) : (
+                          row.opening !== null && <p className="note tabular-nums">opening {shown(row.opening)}</p>
+                        )}
+                      </>
                     )}
                     {row.moneyIn !== null && row.left !== null && (
                       <p className="note tabular-nums">

@@ -8,7 +8,12 @@
 import { monthWord } from './closeMonth.ts';
 import { modeLine, type LastMonthView } from './lastMonth.ts';
 
-export type MonthFooterStatus = { readonly kind: 'ready'; readonly title: string; readonly sub: string } | { readonly kind: 'closed'; readonly title: string; readonly sub: string } | null;
+export type MonthFooterStatus =
+  | { readonly kind: 'ready'; readonly title: string; readonly sub: string }
+  /** A card that closes on its statement date has no statement in the month yet: there is nothing to close until it is imported, so no *Close* is offered (card-cycles.md 2.4). */
+  | { readonly kind: 'waiting'; readonly title: string; readonly sub: string }
+  | { readonly kind: 'closed'; readonly title: string; readonly sub: string }
+  | null;
 
 /**
  * The status line. A month to close leads, because it is the one thing with a deadline on it: *October is ready to close*, *from your balances · about 2
@@ -22,7 +27,17 @@ export function monthFooterStatus(input: {
   /** The month of a household with no account was closed by saying what it cost. */
   readonly closedStated?: boolean;
   readonly lastMonth: LastMonthView | null;
+  /** The cards that close on their statement date whose statement dated in the month is not in: the month waits for them (card-cycles.md 2.4). */
+  readonly waitingCards?: readonly string[];
 }): MonthFooterStatus {
+  const waiting = input.waitingCards ?? [];
+  if (input.mayClose && waiting.length > 0) {
+    return {
+      kind: 'waiting',
+      title: `${monthWord(input.closeMonthKey)} is waiting for ${String(waiting.length)} card ${waiting.length === 1 ? 'statement' : 'statements'}`,
+      sub: `${waiting.join(', ')}, dated in ${monthWord(input.closeMonthKey)}`,
+    };
+  }
   if (input.mayClose) {
     return { kind: 'ready', title: `${monthWord(input.closeMonthKey)} is ready to close`, sub: 'from your balances · about 2 minutes' };
   }

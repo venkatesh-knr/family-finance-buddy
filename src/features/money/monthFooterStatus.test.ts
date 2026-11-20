@@ -90,3 +90,28 @@ describe('a month of a household with no account that was closed by saying what 
     expect(monthFooterStatus({ closeMonthKey: '2026-10', mayClose: false, closeStated: true, closedStated: true, lastMonth: null })?.kind).toBe('ready');
   });
 });
+
+describe('a month waiting for a card statement (card-cycles.md 8.3)', () => {
+  const base = { closeMonthKey: '2026-10', mayClose: true, lastMonth: null } as const;
+
+  it('says it is waiting for the statement, and names the card and the month it is dated in', () => {
+    expect(monthFooterStatus({ ...base, waitingCards: ['HDFC Regalia ••1188'] })).toEqual({
+      kind: 'waiting',
+      title: 'October is waiting for 1 card statement',
+      sub: 'HDFC Regalia ••1188, dated in October',
+    });
+  });
+
+  it('counts the cards, and names them all', () => {
+    expect(monthFooterStatus({ ...base, waitingCards: ['HDFC Regalia ••1188', 'Axis Magnus ••3344'] })).toEqual({
+      kind: 'waiting',
+      title: 'October is waiting for 2 card statements',
+      sub: 'HDFC Regalia ••1188, Axis Magnus ••3344, dated in October',
+    });
+  });
+
+  it('CY-I1 — is as it was with no card waiting', () => {
+    expect(monthFooterStatus({ ...base, waitingCards: [] })).toEqual({ kind: 'ready', title: 'October is ready to close', sub: 'from your balances · about 2 minutes' });
+    expect(monthFooterStatus(base)).toEqual({ kind: 'ready', title: 'October is ready to close', sub: 'from your balances · about 2 minutes' });
+  });
+});

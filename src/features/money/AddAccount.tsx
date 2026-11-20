@@ -62,6 +62,9 @@ export function AddAccount({
   const [currency, setCurrency] = useState(editing?.currency ?? 'INR');
   // Asked, never inferred (Schedule FA): for an account in another currency the person says whether it is held abroad.
   const [foreign, setForeign] = useState<boolean | null>(editing === null ? null : editing.isForeign);
+  // When a card's bill closes (card-cycles.md 8.1): at month end, as every card did, or on its statement date. Only a card has the choice.
+  const [cycleEnds, setCycleEnds] = useState<'month_end' | 'statement'>(editing?.cycleEnds ?? 'month_end');
+  const wasOnItsDate = editing?.cycleEnds === 'statement';
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
@@ -90,6 +93,7 @@ export function AddAccount({
           institution: institution.trim() === '' ? null : institution.trim(),
           last4: last4.trim() === '' ? null : last4.trim(),
           isForeign: other ? foreign === true : false,
+          ...(type === 'card' && cycleEnds === 'statement' ? { cycleEnds: 'statement' as const } : {}),
         });
         onSaved(made.id);
       } else {
@@ -99,6 +103,8 @@ export function AddAccount({
           last4: last4.trim() === '' ? null : last4.trim(),
           // Open only while the account has no history: the form disables them after, and does not send them.
           ...(locked ? {} : { type, currency, isForeign: other ? foreign === true : false }),
+          // It applies to every month, both ways; a card turned into anything else is back at month end, which is all a bank account may be.
+          ...(type === 'card' ? (cycleEnds !== (editing.cycleEnds ?? 'month_end') ? { cycleEnds } : {}) : wasOnItsDate ? { cycleEnds: 'month_end' as const } : {}),
         });
         onSaved(editing.id);
       }
@@ -195,6 +201,44 @@ export function AddAccount({
                   </option>
                 ))}
               </Select>
+
+              {type === 'card' && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="label" id="account-cycle-label">
+                    When does this card’s bill close?
+                  </span>
+                  <div className="qa-chips" role="group" aria-labelledby="account-cycle-label">
+                    <button
+                      type="button"
+                      className="qa-chip"
+                      aria-pressed={cycleEnds === 'month_end'}
+                      onClick={() => {
+                        setCycleEnds('month_end');
+                      }}
+                    >
+                      At month end
+                    </button>
+                    <button
+                      type="button"
+                      className="qa-chip"
+                      aria-pressed={cycleEnds === 'statement'}
+                      onClick={() => {
+                        setCycleEnds('statement');
+                      }}
+                    >
+                      On its statement date
+                    </button>
+                  </div>
+                  <span className="field-help">
+                    Most cards make their bill mid-month, on the same day each month. Choose “On its statement date” and each month closes with that statement, once you import it.
+                  </span>
+                  {isEdit && cycleEnds !== (editing.cycleEnds ?? 'month_end') && (
+                    <span className="field-help" data-testid="account-cycle-change">
+                      Every month will be worked out again with this card’s statements.
+                    </span>
+                  )}
+                </div>
+              )}
 
               <Field
                 label="Bank"

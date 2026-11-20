@@ -218,7 +218,7 @@ export function MonthSurface({
           </dd>
           {(closed !== null || (reading === null && figures !== null && !statedWaiting)) && (
             <dd className="note">
-              {closed !== null ? 'from balances' : lines === null ? (noAccounts ? 'from what you entered' : 'itemised so far') : sourceNoteParts(sourceNote(lines, noAccounts ? 'from what you entered' : 'itemised so far'))}
+              {closed !== null ? (closed.cardSummary?.byCycle == null ? 'from balances' : `from balances · ${closed.cardSummary.byCycle}`) : lines === null ? (noAccounts ? 'from what you entered' : 'itemised so far') : sourceNoteParts(sourceNote(lines, noAccounts ? 'from what you entered' : 'itemised so far'))}
             </dd>
           )}
         </div>
@@ -267,6 +267,15 @@ export function MonthSurface({
           )}
         </div>
       </dl>
+      {closed !== null && closed.cardSummary !== undefined && (
+        <div className="mt-2.5 flex flex-col gap-1" data-testid="month-card-cycles">
+          {closed.cardSummary.notes.map((note) => (
+            <p key={note} className="note">
+              {note}
+            </p>
+          ))}
+        </div>
+      )}
       <p className="note mt-2.5">
         Refunds take away from spent. Money moved between your own accounts, and into holdings, is in neither.
         {closed !== null && closed.saved.some((line) => line.minor < 0n) && ` More went out than came in${closed.saved.length > 1 ? ` in ${closed.saved.filter((line) => line.minor < 0n).map((line) => line.currency).join(' and ')}` : ', so nothing was saved'}.`}
