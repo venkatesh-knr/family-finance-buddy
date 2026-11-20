@@ -95,6 +95,51 @@ test('a statement is read, every line says what it will do and can be changed, a
   await expect(next(page)).toBeDisabled();
 });
 
+/** The printed HDFC statement of one account, with its number and period, so that the balances it states can be read. */
+function printedStatement(run: number): { readonly name: string; readonly mimeType: string; readonly buffer: Buffer } {
+  const widths = [8, 40, 16, 8, 18, 18, 18] as const;
+  const fixed = (cells: readonly string[]): string => cells.map((cell, i) => (i >= 4 ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0))).join('  ');
+  const ref = String(run * 10).padStart(12, '0').slice(-12);
+  const text = [
+    'HDFC BANK Ltd.                                     Page No .:   1                                        Statement of accounts',
+    '',
+    '                                                                         Account No     : 50100000007391   PB Customer',
+    'Statement From      : 01/08/2026  To: 31/08/2026                         RTGS/NEFT IFSC : HDFC0000001    MICR : 560000000',
+    '',
+    widths.map((w) => '-'.repeat(w)).join('  '),
+    'Date      Narration                                 Chq./Ref.No.      Value Dt  Withdrawal Amt.        Deposit Amt.     Closing Balance',
+    widths.map((w) => '-'.repeat(w)).join('  '),
+    '',
+    fixed(['05/08/26', `UPI-E2EPRINTED-E2EPRINT@OKBANK-ABCD0000001-${ref}-NOTE`.slice(0, 40), `0000${ref}`, '05/08/26', '123.45', '', '49,876.55']),
+    fixed(['', `UPI-E2EPRINTED-E2EPRINT@OKBANK-ABCD0000001-${ref}-NOTE`.slice(40, 80), '', '', '', '', '']),
+    fixed(['20/08/26', `SALARY CREDIT E2E ${String(run)}`.slice(0, 40), `SAL${String(run).slice(-6)}`, '20/08/26', '', '5,000.00', '54,876.55']),
+    '',
+    widths.map((w) => '*'.repeat(w)).join('  '),
+  ].join('\n');
+  return { name: 'printed.txt', mimeType: 'text/plain', buffer: Buffer.from(text, 'utf8') };
+}
+
+test('a statement that states its balances shows them, and records them for the month close', async ({ page }) => {
+  test.setTimeout(240_000);
+  const run = Date.now();
+  await openImport(page);
+  await page.setInputFiles('#statement-file', printedStatement(run));
+  await expect(page.getByTestId('statement-read')).toContainText('Read 2 lines');
+  await next(page).click();
+
+  // The balance on its last day, and on the day before it begins (worked back from its first line), are shown before anything is written.
+  const balances = page.getByTestId('statement-balances');
+  await expect(balances).toContainText('Balances the statement states');
+  await expect(balances).toContainText('54,876.55');
+  await expect(balances).toContainText('31 Jul: ₹50,000');
+  await expect(balances).toContainText('••7391');
+
+  await next(page).click();
+  await page.getByLabel('Code from your authenticator app').fill(await freshCode());
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByText(/Imported: 1 expense added.*2 balances recorded/)).toBeVisible({ timeout: 60_000 });
+});
+
 for (const scheme of ['light', 'dark'] as const) {
   test(`the import has no accessibility violations in the ${scheme} theme`, async ({ page }) => {
     test.setTimeout(180_000);

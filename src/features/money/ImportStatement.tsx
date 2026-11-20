@@ -15,8 +15,9 @@ import { parsePdfStatement, parseTextStatement } from '../../domain/statement/de
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
 import { planImport, type Decision } from '../../domain/statement/plan.ts';
+import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
-import { formatShortDate } from '../../lib/dates.ts';
+import { formatShortDate, istCalendarDate } from '../../lib/dates.ts';
 import { PasswordNeeded } from '../../lib/ecas-pdf.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { hashStatement } from '../../lib/statementHash.ts';
@@ -55,6 +56,8 @@ interface Read {
   readonly categories: readonly { readonly id: string; readonly name: string }[];
   /** A suggested category for each row that could be an entry, from what the household has filed before; null where there is no basis. */
   readonly suggestions: readonly (Suggestion | null)[];
+  /** What the statement states of the account's balance, which the month close reads. None for a statement that is not of one account. */
+  readonly balances: readonly StatedBalance[];
 }
 
 /** How many problems a refused statement lists before saying how many more there are. */
@@ -121,7 +124,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         history: filed.history,
         active: new Set(filed.categories.map((category) => category.id)),
       });
-      setRead({ statement, matched, context, categories: filed.categories, suggestions });
+      setRead({ statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement, istCalendarDate(new Date())) });
     } catch (error) {
       if (error instanceof PasswordNeeded) {
         setNeedPassword(true);
@@ -175,12 +178,15 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         period: periodOf(dates),
         statementLast4: read.statement.kind === 'gpay_pdf' ? null : read.statement.last4,
         accountsToAdd: read.matched.accountsToAdd,
+        balances: read.balances,
+        statementAccountType: read.statement.accountType,
         writes: plan.writes,
         memberOf: read.context.memberOf,
       });
       const parts = [`${String(outcome.entriesCreated)} ${outcome.entriesCreated === 1 ? 'expense' : 'expenses'} added`];
       if (outcome.witnessesAdded > 0) parts.push(`${String(outcome.witnessesAdded)} added to entries you already had`);
       if (outcome.accountsAdded > 0) parts.push(`${String(outcome.accountsAdded)} ${outcome.accountsAdded === 1 ? 'account' : 'accounts'} added`);
+      if (outcome.balancesRecorded > 0) parts.push(`${String(outcome.balancesRecorded)} ${outcome.balancesRecorded === 1 ? 'balance' : 'balances'} recorded`);
       if (outcome.alreadyThere > 0) parts.push(`${String(outcome.alreadyThere)} already there`);
       if (outcome.conflicts > 0) parts.push(`${String(outcome.conflicts)} left out: a payment with that reference is an entry you cannot see`);
       onDone(`Imported: ${parts.join(', ')}.`);
@@ -398,6 +404,22 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                         </li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {read.balances.length > 0 && (
+                  <div data-testid="statement-balances">
+                    <h3 className="label">
+                      {read.statement.accountType === 'card' ? 'What the statement says is due at a month end' : 'Balances the statement states at a month end'} for ••{read.statement.last4}
+                    </h3>
+                    <ul className="note mt-1 list-disc pl-5">
+                      {read.balances.map((stated) => (
+                        <li key={stated.asAt}>
+                          {formatShortDate(stated.asAt)}: {read.statement.accountType === 'card' && stated.balanceMinor < 0n ? `${show(-stated.balanceMinor)} in credit` : show(stated.balanceMinor)}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="note mt-1">The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.</p>
                   </div>
                 )}
 

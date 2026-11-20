@@ -20,6 +20,7 @@
 
 import type { AccountToAdd, ExistingEntry, KnownAccount, NewEntry } from '../domain/statement/match.ts';
 import type { PlannedWrite } from '../domain/statement/plan.ts';
+import type { StatedBalance } from '../domain/statement/statedBalance.ts';
 import type { StatementKind } from '../domain/statement/common.ts';
 import { addDays, isIsoDate, type IsoDate } from '../lib/dates.ts';
 import { addAccount, listAccounts } from './accounts.ts';
@@ -160,6 +161,10 @@ export interface ImportRequest {
   /** The account the statement is of, by its last four, when it is of one: the batch names it. */
   readonly statementLast4: string | null;
   readonly accountsToAdd: readonly AccountToAdd[];
+  /** What the statement states of the account's balance (`statedBalance.ts`), recorded against the account it is of. */
+  readonly balances: readonly StatedBalance[];
+  /** Whether the statement is of a card or of a bank account: its balances are written only to an account of the same kind, since a card's is what is owed. */
+  readonly statementAccountType: 'bank' | 'card';
   readonly writes: readonly PlannedWrite[];
   readonly memberOf: ReadonlyMap<string, Uuid>;
 }
@@ -167,6 +172,8 @@ export interface ImportRequest {
 export interface ImportOutcome {
   readonly batchId: Uuid;
   readonly accountsAdded: number;
+  /** Balances the statement stated, now recorded for the month close. */
+  readonly balancesRecorded: number;
   readonly entriesCreated: number;
   /** Lines merged into an entry the household already had. */
   readonly witnessesAdded: number;
@@ -204,6 +211,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
     accountsAdded += 1;
   }
   const known = (await listAccounts(householdId)).filter((account) => account.last4 !== null);
+  const accountOf = new Map(known.map((account) => [account.id, account] as const));
   for (const account of known) if (account.last4 !== null && !accountByLast4.has(account.last4)) accountByLast4.set(account.last4, account.id);
 
   // 2. The batch: its count goes in at insert, because a batch says what happened and is never revised.
@@ -308,7 +316,32 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
     }
   }
 
-  return { batchId, accountsAdded, entriesCreated, witnessesAdded, alreadyThere, conflicts };
+  // 4. What the statement states of the account's balance. One per account, day and source: a statement read again states the same figures and replaces them, and a figure a
+  // person typed for the same day is a separate row that the month close sets aside for this one.
+  let balancesRecorded = 0;
+  const statementAccount = request.statementLast4 === null ? null : (accountByLast4.get(request.statementLast4) ?? null);
+  const target = statementAccount === null ? undefined : accountOf.get(statementAccount);
+  // Only to an account of the kind the statement is of, and in rupees: a card's balance is what is owed, a bank account's what is held, and the two must not be mixed.
+  if (statementAccount !== null && target !== undefined && target.currency === 'INR' && (target.type === 'card') === (request.statementAccountType === 'card')) {
+    for (const stated of request.balances) {
+      const { error } = await client.from('account_balance').upsert(
+        {
+          household_id: householdId,
+          account_id: statementAccount,
+          as_at: stated.asAt,
+          balance_minor: stated.balanceMinor.toString(),
+          currency: target.currency,
+          source: 'statement',
+          source_batch_id: batchId,
+        },
+        { onConflict: 'account_id,as_at,source' },
+      );
+      if (error !== null) throw failure(error);
+      balancesRecorded += 1;
+    }
+  }
+
+  return { batchId, accountsAdded, balancesRecorded, entriesCreated, witnessesAdded, alreadyThere, conflicts };
 }
 
 /** The first and last dates of a set of lines, or null for none. */
