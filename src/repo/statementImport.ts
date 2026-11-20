@@ -18,8 +18,8 @@
  * only where the field is still empty.
  */
 
-import type { AccountToAdd, ExistingEntry, KnownAccount, NewEntry } from '../domain/statement/match.ts';
-import type { PlannedWrite } from '../domain/statement/plan.ts';
+import type { AccountToAdd, ExistingCredit, ExistingEntry, KnownAccount, NewEntry } from '../domain/statement/match.ts';
+import { creditVisibility, personalCredits, type PlannedWrite } from '../domain/statement/plan.ts';
 import type { StatedBalance } from '../domain/statement/statedBalance.ts';
 import type { StatementKind } from '../domain/statement/common.ts';
 import { addDays, isIsoDate, type IsoDate } from '../lib/dates.ts';
@@ -46,6 +46,8 @@ function failure(error: ProviderError): Error {
 
 export interface MatchingContext {
   readonly existing: readonly ExistingEntry[];
+  /** The credits the caller can read around the statement's dates: one they typed is not imported again without being asked. */
+  readonly existingCredits: readonly ExistingCredit[];
   /** The member each existing entry is under: a witness added to it carries the same. */
   readonly memberOf: ReadonlyMap<string, Uuid>;
   readonly accounts: readonly KnownAccount[];
@@ -62,7 +64,7 @@ export async function readMatchingContext(input: {
   const client = supabase();
   const { householdId } = input;
 
-  const [accounts, entries] = await Promise.all([
+  const [accounts, entries, credits] = await Promise.all([
     listAccounts(householdId),
     client
       .from('expense_txn')
@@ -71,8 +73,16 @@ export async function readMatchingContext(input: {
       .is('voided_at', null)
       .gte('txn_date', addDays(input.from, -WINDOW_DAYS))
       .lte('txn_date', addDays(input.to, WINDOW_DAYS)),
+    client
+      .from('credit_entry')
+      .select('id, credit_date, amount_minor::text, currency, account_id')
+      .eq('household_id', householdId)
+      .is('voided_at', null)
+      .gte('credit_date', addDays(input.from, -WINDOW_DAYS))
+      .lte('credit_date', addDays(input.to, WINDOW_DAYS)),
   ]);
   if (entries.error !== null) throw failure(entries.error);
+  if (credits.error !== null) throw failure(credits.error);
   const rows = entries.data ?? [];
 
   // The kinds of statement that have witnessed each of those entries. The batch is cited by a composite key, which cannot be embedded, so its kind is read apart.
@@ -113,10 +123,20 @@ export async function readMatchingContext(input: {
       .in('line_hash', input.lineHashes.slice(at, at + IN_BATCHES));
     if (error !== null) throw failure(error);
     for (const row of data ?? []) known.add(String((row as { line_hash: string }).line_hash));
+    // A line that made a credit is recognised by the hash the credit keeps, a voided one included, as an entry's is.
+    const made = await client.from('credit_entry').select('source_hash').eq('household_id', householdId).in('source_hash', input.lineHashes.slice(at, at + IN_BATCHES));
+    if (made.error !== null) throw failure(made.error);
+    for (const row of made.data ?? []) known.add(String((row as { source_hash: string }).source_hash));
   }
+
+  const existingCredits: ExistingCredit[] = (credits.data ?? []).map((row) => {
+    const r = row as { id: string; credit_date: string; amount_minor: string; currency: string; account_id: string | null };
+    return { id: r.id, date: r.credit_date, amountMinor: toBigIntExact(r.amount_minor, 'credit_entry.amount_minor'), currency: r.currency, accountId: r.account_id };
+  });
 
   return {
     existing,
+    existingCredits,
     memberOf,
     accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type })),
     knownLineHashes: known,
@@ -153,6 +173,8 @@ export interface ImportRequest {
   readonly householdId: Uuid;
   /** Who the entries are under, and who the accounts added are. */
   readonly memberId: Uuid;
+  /** Who is importing. Money in that would be private can be written only by the member it belongs to, so for anyone else it is refused before anything is written. */
+  readonly viewerMemberId: Uuid;
   readonly visibility: 'household' | 'personal';
   readonly kind: StatementKind;
   /** A name the person gives the import, and never the file's own. */
@@ -175,6 +197,8 @@ export interface ImportOutcome {
   /** Balances the statement stated, now recorded for the month close. */
   readonly balancesRecorded: number;
   readonly entriesCreated: number;
+  /** Credits (money in, and a card's refunds) made from lines. */
+  readonly creditsCreated: number;
   /** Lines merged into an entry the household already had. */
   readonly witnessesAdded: number;
   /** Lines the database recognised as already there, whatever the check before it said: nothing was doubled. */
@@ -191,6 +215,10 @@ const clean = (text: string | null): string | null => {
 export async function commitImport(request: ImportRequest): Promise<ImportOutcome> {
   const client = supabase();
   const { householdId } = request;
+
+  if (request.memberId !== request.viewerMemberId && personalCredits(request.writes, request.visibility) > 0) {
+    throw new Error('Money in is private to whoever it came to, so it can be added only under your own name. Nothing was written. Choose yourself under Whose they are, or leave the money in out.');
+  }
 
   // 1. The accounts the statement names that the household lacks. Read again here, so a retry after a failure part way does not add them a second time.
   const accountByLast4 = new Map<string, Uuid>();
@@ -232,6 +260,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   const batchId = String((batch.data as { id: string }).id);
 
   let entriesCreated = 0;
+  let creditsCreated = 0;
   let witnessesAdded = 0;
   let alreadyThere = 0;
   let conflicts = 0;
@@ -244,6 +273,30 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   };
 
   for (const write of request.writes) {
+    if (write.kind === 'credit') {
+      const credit = write.credit;
+      const accountId = credit.accountId ?? (credit.accountLast4 === null ? null : (accountByLast4.get(credit.accountLast4) ?? null));
+      const { error } = await client.from('credit_entry').insert({
+        household_id: householdId,
+        member_id: request.memberId,
+        account_id: accountId,
+        category: write.category,
+        amount_minor: credit.amountMinor.toString(),
+        currency: credit.currency,
+        credit_date: credit.date,
+        // Income is private to whoever it came to, and a refund is the household's, unless the person chose to keep this import private.
+        visibility: creditVisibility(write.category, request.visibility),
+        source: 'import',
+        source_batch_id: batchId,
+        source_hash: credit.sourceHash,
+        payer: clean(credit.payer),
+      });
+      if (error === null) creditsCreated += 1;
+      // The line made its credit on an earlier run, or a credit with its hash is one this person cannot see: nothing is doubled.
+      else if (error.code === '23505') alreadyThere += 1;
+      else throw failure(error);
+      continue;
+    }
     if (write.kind === 'create') {
       const entry: NewEntry = write.entry;
       const accountId = entry.accountId ?? (entry.accountLast4 === null ? null : (accountByLast4.get(entry.accountLast4) ?? null));
@@ -341,7 +394,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
     }
   }
 
-  return { batchId, accountsAdded, balancesRecorded, entriesCreated, witnessesAdded, alreadyThere, conflicts };
+  return { batchId, accountsAdded, balancesRecorded, entriesCreated, creditsCreated, witnessesAdded, alreadyThere, conflicts };
 }
 
 /** The first and last dates of a set of lines, or null for none. */

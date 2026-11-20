@@ -14,9 +14,10 @@ import { useState } from 'react';
 import { parsePdfStatement, parseTextStatement } from '../../domain/statement/detect.ts';
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
-import { planImport, type Decision } from '../../domain/statement/plan.ts';
+import { personalCredits, planImport, type Decision } from '../../domain/statement/plan.ts';
 import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
+import { CREDIT_CATEGORIES, CREDIT_LABEL, type CreditCategory } from '../../domain/credit.ts';
 import { formatShortDate, istCalendarDate } from '../../lib/dates.ts';
 import { PasswordNeeded } from '../../lib/ecas-pdf.ts';
 import { formatMoney, money } from '../../lib/money.ts';
@@ -112,6 +113,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         lines: hashed,
         accounts: context.accounts,
         existing: context.existing,
+        existingCredits: context.existingCredits,
         knownLineHashes: context.knownLineHashes,
         ownNames: data.members.map((member) => member.displayName),
       });
@@ -140,11 +142,18 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   // What each row will be filed under: what the person chose, or the suggestion, or nothing.
   const categoryOf = (index: number): string | null => {
     const picked = chosen.get(index);
+    // Money in is filed under a credit category, which the line's words suggested and a person can change.
+    const proposal = read?.matched.rows[index]?.proposal;
+    const credit = proposal === undefined ? undefined : proposal.action === 'credit' || proposal.action === 'skip' ? proposal.credit : undefined;
+    if (credit !== undefined) return picked !== undefined && picked !== '' ? picked : credit.category;
     if (picked !== undefined) return picked === '' ? null : picked;
     return read?.suggestions[index]?.categoryId ?? null;
   };
   const categories = new Map(read === null ? [] : read.matched.rows.map((_row, index) => [index, categoryOf(index)] as const));
   const plan = read === null ? null : planImport(read.matched.rows, decisions, categories);
+  // Money in that would be private can be written only under the member it belongs to: for someone else it is said here, and the import waits.
+  const blockedMoneyIn = plan === null || memberId === data.viewer.memberId ? 0 : personalCredits(plan.writes, visibility);
+  const canCommit = plan !== null && plan.canCommit && blockedMoneyIn === 0;
   const rows = read === null ? [] : previewRows(read.matched.rows, decisions, read.context.existing);
   const blocked = read !== null && read.statement.problems.length > 0;
 
@@ -159,7 +168,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   };
 
   const finish = async (): Promise<void> => {
-    if (read === null || plan === null || !plan.canCommit) return;
+    if (read === null || plan === null || !canCommit) return;
     if (!/^\d{6}$/.test(code.trim())) {
       setFinishProblem('Enter the six-digit code from your authenticator app.');
       return;
@@ -172,6 +181,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
       const outcome = await commitImport({
         householdId: data.household.id,
         memberId,
+        viewerMemberId: data.viewer.memberId,
         visibility,
         kind: read.statement.kind,
         label: label.trim() === '' ? null : label.trim(),
@@ -184,6 +194,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         memberOf: read.context.memberOf,
       });
       const parts = [`${String(outcome.entriesCreated)} ${outcome.entriesCreated === 1 ? 'expense' : 'expenses'} added`];
+      if (outcome.creditsCreated > 0) parts.push(`${String(outcome.creditsCreated)} money in added`);
       if (outcome.witnessesAdded > 0) parts.push(`${String(outcome.witnessesAdded)} added to entries you already had`);
       if (outcome.accountsAdded > 0) parts.push(`${String(outcome.accountsAdded)} ${outcome.accountsAdded === 1 ? 'account' : 'accounts'} added`);
       if (outcome.balancesRecorded > 0) parts.push(`${String(outcome.balancesRecorded)} ${outcome.balancesRecorded === 1 ? 'balance' : 'balances'} recorded`);
@@ -240,7 +251,31 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           ))}
         </select>
       )}
-      {row.decision === 'create' && read !== null && (
+      {row.decision === 'create' && row.moneyIn && read !== null && (
+        <>
+          <label className="label mt-1.5 block" htmlFor={`statement-category-${String(row.index)}`}>
+            Category
+          </label>
+          <select
+            id={`statement-category-${String(row.index)}`}
+            className="field mt-1"
+            aria-describedby={`statement-row-${String(row.index)}`}
+            value={categoryOf(row.index) ?? ''}
+            onChange={(event) => {
+              const next = event.target.value;
+              setChosen((was) => new Map(was).set(row.index, next));
+            }}
+          >
+            {CREDIT_CATEGORIES.map((category: CreditCategory) => (
+              <option key={category} value={category}>
+                {CREDIT_LABEL[category]}
+              </option>
+            ))}
+          </select>
+          <p className="note mt-1">Guessed from what the statement says. Money in is private to whoever it came to, and a refund is the household’s.</p>
+        </>
+      )}
+      {row.decision === 'create' && !row.moneyIn && read !== null && (
         <>
           <label className="label mt-1.5 block" htmlFor={`statement-category-${String(row.index)}`}>
             Category
@@ -382,17 +417,18 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         },
         {
           name: 'What it will do',
-          ready: plan !== null && plan.canCommit,
+          ready: canCommit,
           content:
             read === null || plan === null ? (
               <p className="note">Choose a statement first.</p>
             ) : (
               <>
                 <p className="note" data-testid="statement-summary">
-                  {String(plan.counts.create)} to add as expenses · {String(plan.counts.witness)} added to entries you already have · {String(plan.counts.skip)} left out
+                  {String(plan.counts.create)} to add as expenses
+                  {plan.counts.credit > 0 ? ` · ${String(plan.counts.credit)} to add as money in` : ''} · {String(plan.counts.witness)} added to entries you already have · {String(plan.counts.skip)} left out
                   {plan.counts.undecided > 0 ? ` · ${String(plan.counts.undecided)} need your answer` : ''}
                 </p>
-                <p className="note">Change anything here before it is written. A line that is not an expense, such as a card repayment, is left out and says why.</p>
+                <p className="note">Change anything here before it is written. Money in is added as money in, and a line that is not spending, such as a card repayment, is left out and says why.</p>
 
                 {read.matched.accountsToAdd.length > 0 && (
                   <div data-testid="statement-accounts">
@@ -443,6 +479,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   <span className="label" id="statement-visibility-label">
                     Who can see these
                   </span>
+                  <p className="note">This is for expenses and refunds. Other money in stays private to whoever it came to.</p>
                   <div className="segmented self-start" role="group" aria-labelledby="statement-visibility-label">
                     <button
                       type="button"
@@ -464,6 +501,12 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     </button>
                   </div>
                 </div>
+
+                {blockedMoneyIn > 0 && (
+                  <Problem>
+                    Money in is private to whoever it came to, so it can be added only under your own name. Choose yourself under Whose they are, or leave the money in out.
+                  </Problem>
+                )}
 
                 {plan.nothingToWrite && (
                   <p className="note" role="status" data-testid="statement-nothing">
@@ -494,7 +537,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         },
         {
           name: 'Confirm',
-          ready: /^\d{6}$/.test(code.trim()) && plan !== null && plan.canCommit,
+          ready: /^\d{6}$/.test(code.trim()) && canCommit,
           content: (
             <>
               <RequiredKey />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedStatement, StatementLine } from './common.ts';
-import { matchStatement, pairOwnTransfers, type ExistingEntry, type HashedLine, type KnownAccount } from './match.ts';
+import { creditCategoryOf, matchStatement, pairOwnTransfers, type ExistingCredit, type ExistingEntry, type HashedLine, type KnownAccount } from './match.ts';
 
 /**
  * What an imported line is (docs/design/spending-capture.md section 4; docs/build-plan.md step 7). One payment is one entry with up to three witnesses; a line is recognised by its
@@ -49,8 +49,20 @@ const entry = (over: Partial<ExistingEntry> = {}): ExistingEntry => ({
   witnessedBy: [],
   ...over,
 });
-const run = (statement: ParsedStatement, lines: HashedLine[], over: { existing?: ExistingEntry[]; known?: string[]; accounts?: KnownAccount[]; ownNames?: string[] } = {}) =>
-  matchStatement({ statement, lines, accounts: over.accounts ?? ACCOUNTS, existing: over.existing ?? [], knownLineHashes: new Set(over.known ?? []), ownNames: over.ownNames ?? [] });
+const run = (
+  statement: ParsedStatement,
+  lines: HashedLine[],
+  over: { existing?: ExistingEntry[]; existingCredits?: ExistingCredit[]; known?: string[]; accounts?: KnownAccount[]; ownNames?: string[] } = {},
+) =>
+  matchStatement({
+    statement,
+    lines,
+    accounts: over.accounts ?? ACCOUNTS,
+    existing: over.existing ?? [],
+    existingCredits: over.existingCredits ?? [],
+    knownLineHashes: new Set(over.known ?? []),
+    ownNames: over.ownNames ?? [],
+  });
 
 describe('a line seen before', () => {
   it('is recognised by its hash, and does nothing, even when its reference would match an entry', () => {
@@ -142,11 +154,6 @@ describe('what is not an expense', () => {
     }
   });
 
-  it('a credit on a card that is not a payment (a refund, a cashback) is not imported as an expense, and says why', () => {
-    const out = run(CARD, [hashed(1, { direction: 'credit', raw: 'FUEL CASHBACK REBATES', payee: null, upiReference: null })]);
-    expect(out.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'card-credit', sure: true });
-  });
-
   it('the principal an EMI re-bills is skipped, and its interest and GST are expenses', () => {
     const principal = run(CARD, [hashed(1, { raw: 'Principal Amount Amortization - <2/6>RAZ*SAMPLE', payee: null, upiReference: null })]);
     expect(principal.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'emi-principal', sure: true });
@@ -154,11 +161,6 @@ describe('what is not an expense', () => {
       const out = run(CARD, [hashed(1, { raw, payee: null, upiReference: null })]);
       expect(out.rows[0]?.proposal, raw).toMatchObject({ action: 'create', entry: { hint: 'Interest and charges' } });
     }
-  });
-
-  it('money in on a bank statement is not imported as spending, and says so', () => {
-    const out = run(BANK, [hashed(1, { direction: 'credit', raw: 'SALARY CREDIT SAMPLE EMPLOYER', payee: null, upiReference: null })]);
-    expect(out.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'money-in', sure: true });
   });
 
   it('a debit to a broker or a fund house is a purchase to link, and is proposed as a skip, a guess', () => {
@@ -173,6 +175,113 @@ describe('what is not an expense', () => {
     expect(own.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'own-transfer', sure: true });
     const received = run(GPAY, [hashed(1, { direction: 'credit', raw: 'Received from SAMPLE PERSON', fromLast4: '4321' })]);
     expect(received.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'money-in', sure: true });
+  });
+});
+
+describe('money in', () => {
+  const credit = (raw: string, over: Partial<StatementLine> = {}) => hashed(1, { direction: 'credit', raw, payee: null, upiReference: null, amountMinor: 4_500_000n, ...over });
+
+  it('a credit on a bank statement is proposed as money in, never as an expense, with a category guessed from its words', () => {
+    const out = run(BANK, [credit('SALARY CREDIT SAMPLE EMPLOYER')]);
+    expect(out.rows[0]?.proposal).toMatchObject({
+      action: 'credit',
+      credit: { date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', accountId: 'acc-bank', accountLast4: '4321', category: 'salary', sourceHash: '1'.repeat(64) },
+    });
+  });
+
+  it('a refund, a reversal or a cashback on a card is a refund or money back, and a card repayment is still not money in', () => {
+    const refund = run(CARD, [credit('FUEL CASHBACK REBATES')]);
+    expect(refund.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { category: 'refund', accountId: 'acc-card' } });
+    const payment = run(CARD, [credit('BBPS PAYMENT RECEIVED - REF0000000001')]);
+    expect(payment.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'card-payment', sure: true });
+  });
+
+  it('is named for who it came from: the name the statement gives, or what it printed with any VPA taken out', () => {
+    const named = run(BANK, [credit('UPI-SAMPLE PERSON-PERSON@OKBANK-ABCD0000001-600000000006-RENT', { payee: 'SAMPLE PERSON' })]);
+    expect(named.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { payer: 'SAMPLE PERSON' } });
+    const printed = run(BANK, [credit('NEFT CR-ABCD0000001-SAMPLE EMPLOYER PERSON@OKBANK')]);
+    expect(printed.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { payer: 'NEFT CR-ABCD0000001-SAMPLE EMPLOYER' } });
+  });
+
+  it('a credit that looks like money from one of the household’s own accounts or the proceeds of an investment is a guess a person can overrule', () => {
+    const own = run(BANK, [credit('UPI-ASHA SAMPLE-ASHA@OKBANK-ABCD0000001-600000000006-SELF', { payee: 'ASHA SAMPLE' })], { ownNames: ['Asha Sample'] });
+    expect(own.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'own-transfer', sure: false, credit: { category: 'other_income' } });
+    const redeemed = run(BANK, [credit('ACH C- INDMONEY MUTUAL FUND REDEMPTION')]);
+    expect(redeemed.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'investment', sure: false, credit: { amountMinor: 4_500_000n } });
+  });
+
+  it('a credit that is not income is a guess a person can overrule: a deposit or a fund coming back, a loan paid out, a move to oneself', () => {
+    const cases: readonly [string, string][] = [
+      ['FD CLOSURE PROCEEDS 123456 INCL INT', 'investment'],
+      ['TD MATURITY 0012345 PRINCIPAL', 'investment'],
+      ['RD MATURITY CREDIT', 'investment'],
+      ['ACH C- PPF WITHDRAWAL', 'investment'],
+      ['ACH C- SAMPLE FUND REDEMPTION PROCEEDS', 'investment'],
+      ['LOAN DISBURSEMENT HOME LOAN 991', 'loan-money'],
+      ['IMPS-123456789012-SELF TRANSFER-HDFC', 'own-transfer'],
+      ['NEFT CR-HDFC0000123-A PERSON-SELF', 'own-transfer'],
+    ];
+    for (const [raw, reason] of cases) {
+      const out = run(BANK, [credit(raw)]);
+      expect(out.rows[0]?.proposal, raw).toMatchObject({ action: 'skip', reason, sure: false, credit: { amountMinor: 4_500_000n } });
+    }
+    // Interest on a deposit is income, and a plain cash deposit is not taken for a maturing one.
+    expect(run(BANK, [credit('INT.PD:SB A/C 0001')]).rows[0]?.proposal.action).toBe('credit');
+    expect(run(BANK, [credit('CASH DEPOSIT BRANCH')]).rows[0]?.proposal.action).toBe('credit');
+  });
+
+  it('a credit on a card that comes from turning a purchase into an EMI is a guess, not a refund', () => {
+    const out = run(CARD, [credit('EMI CONVERSION CREDIT SAMPLE SHOP')]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'emi-principal', sure: false, credit: { category: 'refund' } });
+  });
+
+  it('keeps long reference numbers out of the name it is written under', () => {
+    const out = run(BANK, [credit('IMPS-123456789012-SAMPLE PERSON-50100000007391-RENT')]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { payer: 'IMPS--SAMPLE PERSON--RENT' } });
+  });
+
+  it('a credit the household already has is offered as a guess it is the same, which waits for a person', () => {
+    const typed: ExistingCredit = { id: 'c1', date: '2026-10-06', amountMinor: 4_500_000n, currency: 'INR', accountId: 'acc-bank' };
+    const out = run(BANK, [credit('SALARY CREDIT SAMPLE EMPLOYER')], { existingCredits: [typed] });
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'credit-typed', sure: false, credit: { category: 'salary' } });
+    // A different amount, another account, or a day too far away is not the same credit.
+    for (const other of [{ ...typed, amountMinor: 4_400_000n }, { ...typed, accountId: 'acc-card' }, { ...typed, date: '2026-10-09' }]) {
+      expect(run(BANK, [credit('SALARY CREDIT SAMPLE EMPLOYER')], { existingCredits: [other] }).rows[0]?.proposal.action).toBe('credit');
+    }
+  });
+
+  it('one typed credit is offered to one line only', () => {
+    const typed: ExistingCredit = { id: 'c1', date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', accountId: 'acc-bank' };
+    const out = run(BANK, [credit('SALARY CREDIT A'), hashed(2, { direction: 'credit', raw: 'SALARY CREDIT B', payee: null, upiReference: null, amountMinor: 4_500_000n })], { existingCredits: [typed] });
+    expect(out.rows.map((row) => row.proposal.action)).toEqual(['skip', 'credit']);
+  });
+
+  it('money received on Google Pay is still left out for certain: the bank statement has the credit', () => {
+    const received = run(GPAY, [hashed(1, { direction: 'credit', raw: 'Received from SAMPLE PERSON', fromLast4: '4321' })]);
+    expect(received.rows[0]?.proposal).toEqual({ action: 'skip', reason: 'money-in', sure: true });
+  });
+
+  it('asks for the account of a credit to be added when the household lacks it', () => {
+    expect(run(BANK, [credit('SALARY CREDIT')], { accounts: [] }).accountsToAdd).toEqual([{ last4: '4321', type: 'savings', institution: 'ICICI Bank' }]);
+  });
+});
+
+describe('the category of money in, from its words', () => {
+  it('reads salary, interest, dividend and rent, calls a refund a refund, and otherwise says other income', () => {
+    expect(creditCategoryOf('SALARY CREDIT SAMPLE EMPLOYER', false)).toBe('salary');
+    expect(creditCategoryOf('SAL CREDIT OCT', false)).toBe('salary');
+    expect(creditCategoryOf('INT.PD:SB A/C 0001', false)).toBe('interest');
+    expect(creditCategoryOf('CREDIT INTEREST CAPITALISED', false)).toBe('interest');
+    expect(creditCategoryOf('ACH C- SAMPLE LTD-DIVIDEND', false)).toBe('dividend');
+    expect(creditCategoryOf('UPI-TENANT-TENANT@OKBANK-ABCD0000001-600000000006-RENT OCT', false)).toBe('rent');
+    expect(creditCategoryOf('REFUND FROM SAMPLE SHOP', false)).toBe('refund');
+    expect(creditCategoryOf('REV-UPI-SAMPLE SHOP', false)).toBe('refund');
+    expect(creditCategoryOf('NEFT CR-ABCD0000001-A PERSON', false)).toBe('other_income');
+  });
+
+  it('calls everything on a card that is not a repayment a refund', () => {
+    expect(creditCategoryOf('FUEL CASHBACK REBATES', true)).toBe('refund');
+    expect(creditCategoryOf('SAMPLE SHOP', true)).toBe('refund');
   });
 });
 

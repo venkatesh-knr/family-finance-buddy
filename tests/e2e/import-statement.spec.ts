@@ -11,6 +11,12 @@ import { freshCode } from './totp.ts';
 
 test.use({ actionTimeout: 20_000 });
 
+/** Rupees as the statement prints them, from paise: 5,012.34 as 5012.34 and, with grouping, 54,876.55. */
+const plain = (minor: bigint): string => `${String(minor / 100n)}.${String(minor % 100n).padStart(2, '0')}`;
+const grouped = (minor: bigint): string => `${(minor / 100n).toLocaleString('en-US')}.${String(minor % 100n).padStart(2, '0')}`;
+/** A credit whose amount differs from one run to the next, so that a credit an earlier run left is not mistaken for this one's, which the import rightly offers as a guess. */
+const salaryOf = (run: number): bigint => 500_000n + BigInt(run % 9000);
+
 /** A statement of four lines: two UPI payments, a debit to a fund house (a guess that it is not an expense), and money in. */
 function statement(run: number): { readonly name: string; readonly mimeType: string; readonly buffer: Buffer } {
   const base = BigInt(run) * 10n;
@@ -24,7 +30,7 @@ function statement(run: number): { readonly name: string; readonly mimeType: str
     row('15/09/26', `UPI-E2ESHOPONE-E2ESHOP1@OKBANK-ABCD0000001-${ref(1n)}-NOTE`, '123.45', '0.00', `0000${ref(1n)}`, '100000.00'),
     row('16/09/26', `UPI-E2ESHOPTWO-E2ESHOP2@OKBANK-ABCD0000001-${ref(2n)}-NOTE`, '456.78', '0.00', `0000${ref(2n)}`, '99543.22'),
     row('17/09/26', `ACH D- INDMONEY MUTUAL FUND-${String(run)}`, '1000.00', '0.00', `ACH${String(run).slice(-6)}`, '98543.22'),
-    row('18/09/26', `SALARY CREDIT E2E ${String(run)}`, '0.00', '5000.00', `SAL${String(run).slice(-6)}`, '103543.22'),
+    row('18/09/26', `SALARY CREDIT E2E ${String(run)}`, '0.00', plain(salaryOf(run)), `SAL${String(run).slice(-6)}`, plain(9_854_322n + salaryOf(run))),
     '',
   ].join('\n');
   return { name: 'statement.txt', mimeType: 'text/plain', buffer: Buffer.from(text, 'utf8') };
@@ -56,14 +62,19 @@ test('a statement is read, every line says what it will do and can be changed, a
   await expect(page.getByTestId('statement-read')).toContainText('Read 4 lines from an HDFC delimited file.');
   await next(page).click();
 
-  // Two payments to add. A debit to a fund house is left out as a guess, shown unfolded and apart from what is left out for certain, and can be overruled; money in is left out for certain.
+  // Two payments to add, and the salary as money in. A debit to a fund house is left out as a guess, shown unfolded and apart from what is left out for certain, and can be overruled.
   await expect(page.getByTestId('statement-summary')).toContainText('2 to add as expenses');
-  await expect(page.getByTestId('statement-summary')).toContainText('2 left out');
+  await expect(page.getByTestId('statement-summary')).toContainText('1 to add as money in');
+  await expect(page.getByTestId('statement-summary')).toContainText('1 left out');
   const guess = page.getByTestId('statement-group-guess');
   await expect(guess).toContainText('Looks like money put into an investment');
-  const left = page.getByTestId('statement-group-left');
-  await left.locator('summary').click();
-  await expect(left).toContainText('Money in. Money in is added from the Money screen');
+
+  // Money in is filed under a credit category, guessed from its words, which can be changed.
+  const money = page.getByTestId('statement-group-add').getByRole('listitem').filter({ hasText: 'SALARY CREDIT' });
+  await expect(money).toContainText('Add as money in');
+  await expect(money.getByLabel('Category')).toHaveValue('salary');
+  await money.getByLabel('Category').selectOption({ label: 'Other income' });
+  await expect(money.getByLabel('Category')).toHaveValue('other_income');
 
   // Each payment to add can be filed, and says so when a category is only a suggestion.
   const add = page.getByTestId('statement-group-add');
@@ -77,7 +88,7 @@ test('a statement is read, every line says what it will do and can be changed, a
   await next(page).click();
   await page.getByLabel('Code from your authenticator app').fill(await freshCode());
   await page.getByRole('button', { name: 'Import', exact: true }).click();
-  await expect(page.getByText('Imported: 3 expenses added.')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText('Imported: 3 expenses added, 1 money in added.')).toBeVisible({ timeout: 60_000 });
 
   // The same file again: every line is recognised, nothing is offered, and nothing can be imported.
   await openImport(page);
@@ -89,9 +100,8 @@ test('a statement is read, every line says what it will do and can be changed, a
   // Nothing can be imported, and it says so in words and not only with a button that is off.
   await expect(page.getByTestId('statement-nothing')).toContainText('there is nothing to import');
   await page.getByTestId('statement-group-left').locator('summary').click();
-  // The three that were written are recognised by their hashes. Money in was never written, so it is still money in.
-  await expect(page.getByText('Already imported from this statement.')).toHaveCount(3);
-  await expect(page.getByTestId('statement-group-left')).toContainText('Money in. Money in is added from the Money screen');
+  // The four that were written, the money in among them, are recognised by their hashes.
+  await expect(page.getByText('Already imported from this statement.')).toHaveCount(4);
   await expect(next(page)).toBeDisabled();
 });
 
@@ -112,7 +122,7 @@ function printedStatement(run: number): { readonly name: string; readonly mimeTy
     '',
     fixed(['05/08/26', `UPI-E2EPRINTED-E2EPRINT@OKBANK-ABCD0000001-${ref}-NOTE`.slice(0, 40), `0000${ref}`, '05/08/26', '123.45', '', '49,876.55']),
     fixed(['', `UPI-E2EPRINTED-E2EPRINT@OKBANK-ABCD0000001-${ref}-NOTE`.slice(40, 80), '', '', '', '', '']),
-    fixed(['20/08/26', `SALARY CREDIT E2E ${String(run)}`.slice(0, 40), `SAL${String(run).slice(-6)}`, '20/08/26', '', '5,000.00', '54,876.55']),
+    fixed(['20/08/26', `SALARY CREDIT E2E ${String(run)}`.slice(0, 40), `SAL${String(run).slice(-6)}`, '20/08/26', '', grouped(salaryOf(run)), grouped(4_987_655n + salaryOf(run))]),
     '',
     widths.map((w) => '*'.repeat(w)).join('  '),
   ].join('\n');
@@ -130,14 +140,14 @@ test('a statement that states its balances shows them, and records them for the 
   // The balance on its last day, and on the day before it begins (worked back from its first line), are shown before anything is written.
   const balances = page.getByTestId('statement-balances');
   await expect(balances).toContainText('Balances the statement states');
-  await expect(balances).toContainText('54,876.55');
+  await expect(balances).toContainText(grouped(4_987_655n + salaryOf(run)).slice(0, -3));
   await expect(balances).toContainText('31 Jul: ₹50,000');
   await expect(balances).toContainText('••7391');
 
   await next(page).click();
   await page.getByLabel('Code from your authenticator app').fill(await freshCode());
   await page.getByRole('button', { name: 'Import', exact: true }).click();
-  await expect(page.getByText(/Imported: 1 expense added.*2 balances recorded/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Imported: 1 expense added, 1 money in added.*2 balances recorded/)).toBeVisible({ timeout: 60_000 });
 });
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -154,7 +164,6 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.setInputFiles('#statement-file', statement(Date.now() + (scheme === 'dark' ? 7 : 0)));
     await expect(page.getByTestId('statement-read')).toBeVisible();
     await next(page).click();
-    await page.getByTestId('statement-group-left').locator('summary').click();
     await scan('what it will do');
     expect(found, found.join('\n')).toEqual([]);
   });
