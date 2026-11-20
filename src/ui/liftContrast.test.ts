@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { gradientStops, ratio, resolve, ruleFor, type Theme } from './contrastKit.ts';
+import { readFileSync } from 'node:fs';
+import { base, gradientStops, ratio, resolve, ruleFor, type Theme } from './contrastKit.ts';
 
 /**
  * The lifted surface's glow may sit behind a figure, on one condition (docs/tokens.md §1, Depth): the
@@ -42,5 +43,82 @@ describe('the lifted surface as the stylesheet paints it', () => {
     // No band and no fade: the old rule painted the glow over the header alone and faded it out before a figure.
     expect(rule).not.toMatch(/--lift-band/);
     expect(rule).not.toMatch(/linear-gradient/);
+  });
+});
+
+/**
+ * Charts on the lifted surface: the mint tray (docs/tokens.md section 1, Depth; the owner, 20 November 2026). The class colours are tuned for a light panel and read 1.0 to 1.4:1 on
+ * the forest, so a strip and its legend sit on a tray where they are readable, and are never changed for the lift. Measured from the shipped values, in Linen: in dark the tray is transparent.
+ */
+describe('the mint tray on the lifted surface in Linen', () => {
+  const tray = resolve('light', '--lift-tray');
+  const CLASS_COLOURS = ['--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7', '--c8', '--c9'] as const;
+
+  it.each(CLASS_COLOURS)('holds %s at 3:1 on the tray, as a chart mark must', (token) => {
+    expect(ratio(resolve('light', token), tray)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('and not on the forest it replaces: every class colour is under 3:1 on the lift’s lightest stop', () => {
+    const lightest = gradientStops('light', '--surface-lift').at(-1) as string;
+    for (const token of CLASS_COLOURS) expect(ratio(resolve('light', token), lightest), token).toBeLessThan(3);
+  });
+
+  it.each(['--ink', '--ink-2', '--muted'] as const)('holds the page’s %s at 4.5:1 on the tray, which is what text inside it is drawn in', (token) => {
+    expect(ratio(resolve('light', token), tray)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('fades from the lift’s lightest stop to the tray, so there is no edge where one meets the other', () => {
+    const stops = gradientStops('light', '--lift-tray-fade');
+    expect(stops[0]).toBe(gradientStops('light', '--surface-lift').at(-1));
+    expect(stops.at(-1)).toBe(tray);
+  });
+
+  it('is transparent in dark, where no screen changes', () => {
+    const darkBlock = readFileSync('src/styles/tokens.css', 'utf8').slice(readFileSync('src/styles/tokens.css', 'utf8').indexOf('@media (prefers-color-scheme: dark)'));
+    expect(darkBlock.match(/--lift-tray:\s*transparent;/g)).toHaveLength(2);
+    expect(darkBlock.match(/--lift-tray-fade:\s*transparent;/g)).toHaveLength(2);
+  });
+});
+
+describe('the tray as the stylesheet paints it', () => {
+  const fade = ruleFor('.lift-tray-fade');
+  const tray = ruleFor('.lift-tray');
+
+  it('is a 32px fade, painted from the token, and the tray takes the card’s edges and gives its padding back inside', () => {
+    expect(fade).toMatch(/background:\s*var\(--lift-tray-fade\)/);
+    expect(fade).toMatch(/height:\s*32px/);
+    expect(tray).toMatch(/background:\s*var\(--lift-tray\)/);
+    expect(tray).toMatch(/margin:\s*0 -18px -18px/);
+    expect(tray).toMatch(/padding:[^;]*18px 18px/);
+  });
+
+  it('puts back the page’s inks that the lift remaps, all seven', () => {
+    for (const [own, page] of [
+      ['--ink', '--page-ink'],
+      ['--ink-2', '--page-ink-2'],
+      ['--muted', '--page-muted'],
+      ['--line', '--page-line'],
+      ['--line-strong', '--page-line-strong'],
+      ['--surface-2', '--page-surface-2'],
+      ['--surface-3', '--page-surface-3'],
+    ] as const) {
+      expect(tray, own).toContain(`${own}: var(${page});`);
+    }
+  });
+
+  it('holds no height on the tray, which carries text: only the fade, which carries none, has one', () => {
+    expect(tray).not.toMatch(/(^|\s)(height|min-height|max-height):/);
+  });
+
+  it('is flat under forced colours, where a gradient is not painted, and takes no room and no colour in dark', () => {
+    expect(base).toMatch(/@media \(forced-colors: active\) \{\s*\.lift-tray-fade,\s*\.lift-tray \{\s*background: var\(--lift-tray\);/);
+    expect(base).toMatch(/:root\[data-theme='dark'\] \.lift-tray-fade \{\s*display: none;/);
+    expect(base).toMatch(/:root:not\(\[data-theme='light'\]\) \.lift-tray-fade \{\s*display: none;/);
+  });
+
+  it('keeps forced-color-adjust: none to Linen: both dark rules for the tray put the system colours back', () => {
+    expect(base).toMatch(/:root:not\(\[data-theme='light'\]\) \.lift-tray \{[^}]*forced-color-adjust: auto;/);
+    expect(base).toMatch(/:root\[data-theme='dark'\] \.lift-tray \{[^}]*forced-color-adjust: auto;/);
+    expect(base.match(/forced-color-adjust: none;/g)).toHaveLength(1);
   });
 });
