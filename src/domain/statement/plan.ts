@@ -9,8 +9,9 @@
 import type { StatementLine } from './common.ts';
 import { CREDIT_CATEGORIES, defaultVisibility, type CreditCategory } from '../credit.ts';
 import type { Fill, MatchedRow, NewCredit, NewEntry, Proposal, SkipReason } from './match.ts';
+import type { MovePair, NewMove } from './moves.ts';
 
-export type Decision = 'create' | 'merge' | 'skip';
+export type Decision = 'create' | 'merge' | 'skip' | 'move';
 
 /** What happens to a line if the person does nothing; null for a suggestion, which waits for them. */
 export function defaultDecision(proposal: Proposal): Decision | null {
@@ -46,13 +47,15 @@ export function allowedDecisions(proposal: Proposal): readonly Decision[] {
 export type PlannedWrite =
   | { readonly kind: 'create'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entry: NewEntry; readonly categoryId: string | null }
   | { readonly kind: 'credit'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly credit: NewCredit; readonly category: CreditCategory }
-  | { readonly kind: 'witness'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entryId: string; readonly fill: Fill };
+  | { readonly kind: 'witness'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly entryId: string; readonly fill: Fill }
+  /** A move between two of the household's own accounts, made from the debit's line; the credit that is its other half writes nothing of its own. */
+  | { readonly kind: 'move'; readonly index: number; readonly line: StatementLine; readonly lineHash: string; readonly move: NewMove };
 
 export interface ImportPlan {
   readonly writes: readonly PlannedWrite[];
   /** The rows whose suggestion has no answer yet. */
   readonly undecided: readonly number[];
-  readonly counts: { readonly create: number; readonly credit: number; readonly witness: number; readonly skip: number; readonly undecided: number };
+  readonly counts: { readonly create: number; readonly credit: number; readonly move: number; readonly witness: number; readonly skip: number; readonly undecided: number };
   /** Something to write, and every suggestion answered. */
   readonly canCommit: boolean;
   /** Every suggestion is answered and nothing would be written: a statement imported before, or one that is all left out. The screen says so rather than leaving a button off. */
@@ -74,18 +77,66 @@ export function personalCredits(writes: readonly PlannedWrite[], importVisibilit
   return writes.filter((write) => write.kind === 'credit' && creditVisibility(write.category, importVisibility) === 'personal').length;
 }
 
+/** What is decided for one row of the rows read together, and what else it may be. */
+export interface ResolvedRow {
+  /** What will happen now: what the person chose, or the default; null for a suggestion nobody has answered. */
+  readonly decision: Decision | null;
+  readonly allowed: readonly Decision[];
+  /** For the debit of a move: the pair it is half of. */
+  readonly move?: MovePair;
+  /** For the credit that is the other half of a move that will be made: the pair. Such a line writes nothing of its own. */
+  readonly partOf?: MovePair;
+}
+
+/**
+ * What each row will do. A line in a move is offered the move, and takes it unless the person decides otherwise; the credit that is its other half goes with it, writing nothing of its
+ * own while the move stands, and goes back to what it was when the person decides the debit is something else.
+ */
+export function resolveRows(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>, moves: readonly MovePair[] = []): ResolvedRow[] {
+  const debits = new Map(moves.map((pair) => [pair.debit, pair] as const));
+  const credits = new Map(moves.map((pair) => [pair.credit, pair] as const));
+  const plain = (index: number, proposal: Proposal, extra: readonly Decision[] = []): { decision: Decision | null; allowed: readonly Decision[] } => {
+    const allowed = [...extra, ...allowedDecisions(proposal)];
+    const asked = decisions.get(index);
+    return { decision: asked !== undefined && allowed.includes(asked) ? asked : (extra[0] ?? defaultDecision(proposal)), allowed };
+  };
+
+  const out: ResolvedRow[] = rows.map((row, index) => {
+    const pair = debits.get(index);
+    return pair === undefined ? plain(index, row.proposal) : { ...plain(index, row.proposal, ['move']), move: pair };
+  });
+  rows.forEach((row, index) => {
+    const pair = credits.get(index);
+    if (pair === undefined) return;
+    out[index] = out[pair.debit]?.decision === 'move' ? { decision: 'skip', allowed: ['skip'], partOf: pair } : plain(index, row.proposal);
+  });
+  return out;
+}
+
 /** `categories` is what a person chose for a row: an expense category's id for an expense, a credit category for money in. */
-export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>, categories: ReadonlyMap<number, string | null> = new Map()): ImportPlan {
+export function planImport(
+  rows: readonly MatchedRow[],
+  decisions: ReadonlyMap<number, Decision>,
+  categories: ReadonlyMap<number, string | null> = new Map(),
+  moves: readonly MovePair[] = [],
+): ImportPlan {
   const writes: PlannedWrite[] = [];
   const undecided: number[] = [];
   let skip = 0;
+  const resolved = resolveRows(rows, decisions, moves);
 
   rows.forEach((row, index) => {
-    const asked = decisions.get(index);
-    const decision = asked !== undefined && allowedDecisions(row.proposal).includes(asked) ? asked : defaultDecision(row.proposal);
+    const here = resolved[index];
+    if (here === undefined) return;
+    const { decision } = here;
     const { proposal } = row;
-    if (decision === null) {
+    if (here.partOf !== undefined) {
+      // The other half of a move writes nothing of its own: it is left out, as the move already stands for it.
+      skip += 1;
+    } else if (decision === null) {
       undecided.push(index);
+    } else if (decision === 'move' && here.move !== undefined) {
+      writes.push({ kind: 'move', index, line: row.line, lineHash: row.lineHash, move: here.move.move });
     } else if (decision === 'create' && (proposal.action === 'credit' || (proposal.action === 'skip' && proposal.credit !== undefined))) {
       const credit = proposal.action === 'credit' ? proposal.credit : (proposal as { credit: NewCredit }).credit;
       const chosen = categories.get(index);
@@ -99,12 +150,11 @@ export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<n
     }
   });
 
-  const create = writes.filter((write) => write.kind === 'create').length;
-  const credit = writes.filter((write) => write.kind === 'credit').length;
+  const count = (kind: PlannedWrite['kind']): number => writes.filter((write) => write.kind === kind).length;
   return {
     writes,
     undecided,
-    counts: { create, credit, witness: writes.length - create - credit, skip, undecided: undecided.length },
+    counts: { create: count('create'), credit: count('credit'), move: count('move'), witness: count('witness'), skip, undecided: undecided.length },
     canCommit: undecided.length === 0 && writes.length > 0,
     nothingToWrite: undecided.length === 0 && writes.length === 0,
   };
@@ -132,6 +182,8 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
       return 'Looks like a loan paid out to you, which is not income. Add it if it is.';
     case 'investment':
       return 'Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.';
+    case 'move-recorded':
+      return moneyIn ? 'Already recorded as a move between your own accounts. Add it as money in if it is not.' : 'Already recorded as a move between your own accounts. Add it as an expense if it is not.';
     case 'own-transfer':
       return sure ? 'A move between your own accounts, which is not spending.' : 'Looks like a move between your own accounts, which is not spending. Import it if it is not.';
   }

@@ -18,7 +18,8 @@
  * only where the field is still empty.
  */
 
-import type { AccountToAdd, ExistingCredit, ExistingEntry, KnownAccount, NewEntry } from '../domain/statement/match.ts';
+import type { AccountToAdd, ExistingCredit, ExistingEntry, ExistingTransfer, KnownAccount, NewEntry } from '../domain/statement/match.ts';
+import type { NewMove } from '../domain/statement/moves.ts';
 import { creditVisibility, personalCredits, type PlannedWrite } from '../domain/statement/plan.ts';
 import type { StatedBalance } from '../domain/statement/statedBalance.ts';
 import type { StatementKind } from '../domain/statement/common.ts';
@@ -48,6 +49,8 @@ export interface MatchingContext {
   readonly existing: readonly ExistingEntry[];
   /** The credits the caller can read around the statement's dates: one they typed is not imported again without being asked. */
   readonly existingCredits: readonly ExistingCredit[];
+  /** The moves between the household's own accounts that the caller can read around the statement's dates: the credit that is the other half of one is not imported as money in. */
+  readonly existingTransfers: readonly ExistingTransfer[];
   /** The member each existing entry is under: a witness added to it carries the same. */
   readonly memberOf: ReadonlyMap<string, Uuid>;
   readonly accounts: readonly KnownAccount[];
@@ -64,7 +67,7 @@ export async function readMatchingContext(input: {
   const client = supabase();
   const { householdId } = input;
 
-  const [accounts, entries, credits] = await Promise.all([
+  const [accounts, entries, credits, transfers] = await Promise.all([
     listAccounts(householdId),
     client
       .from('expense_txn')
@@ -80,9 +83,17 @@ export async function readMatchingContext(input: {
       .is('voided_at', null)
       .gte('credit_date', addDays(input.from, -WINDOW_DAYS))
       .lte('credit_date', addDays(input.to, WINDOW_DAYS)),
+    client
+      .from('account_transfer')
+      .select('id, transfer_date, amount_minor::text, currency, from_account_id, to_account_id')
+      .eq('household_id', householdId)
+      .is('voided_at', null)
+      .gte('transfer_date', addDays(input.from, -WINDOW_DAYS))
+      .lte('transfer_date', addDays(input.to, WINDOW_DAYS)),
   ]);
   if (entries.error !== null) throw failure(entries.error);
   if (credits.error !== null) throw failure(credits.error);
+  if (transfers.error !== null) throw failure(transfers.error);
   const rows = entries.data ?? [];
 
   // The kinds of statement that have witnessed each of those entries. The batch is cited by a composite key, which cannot be embedded, so its kind is read apart.
@@ -127,6 +138,10 @@ export async function readMatchingContext(input: {
     const made = await client.from('credit_entry').select('source_hash').eq('household_id', householdId).in('source_hash', input.lineHashes.slice(at, at + IN_BATCHES));
     if (made.error !== null) throw failure(made.error);
     for (const row of made.data ?? []) known.add(String((row as { source_hash: string }).source_hash));
+    // A line that made a move (a debit on one of the household's accounts that was paid into another) is recognised by the hash the move keeps.
+    const moved = await client.from('account_transfer').select('source_hash').eq('household_id', householdId).in('source_hash', input.lineHashes.slice(at, at + IN_BATCHES));
+    if (moved.error !== null) throw failure(moved.error);
+    for (const row of moved.data ?? []) known.add(String((row as { source_hash: string }).source_hash));
   }
 
   const existingCredits: ExistingCredit[] = (credits.data ?? []).map((row) => {
@@ -134,9 +149,15 @@ export async function readMatchingContext(input: {
     return { id: r.id, date: r.credit_date, amountMinor: toBigIntExact(r.amount_minor, 'credit_entry.amount_minor'), currency: r.currency, accountId: r.account_id };
   });
 
+  const existingTransfers: ExistingTransfer[] = (transfers.data ?? []).map((row) => {
+    const r = row as { id: string; transfer_date: string; amount_minor: string; currency: string; from_account_id: string; to_account_id: string };
+    return { id: r.id, date: r.transfer_date, amountMinor: toBigIntExact(r.amount_minor, 'account_transfer.amount_minor'), currency: r.currency, fromAccountId: r.from_account_id, toAccountId: r.to_account_id };
+  });
+
   return {
     existing,
     existingCredits,
+    existingTransfers,
     memberOf,
     accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type })),
     knownLineHashes: known,
@@ -273,6 +294,8 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   };
 
   for (const write of request.writes) {
+    // A move is written once every statement read with this one has its accounts (`commitMoves`), and is counted here, in the batch of the statement its debit is on.
+    if (write.kind === 'move') continue;
     if (write.kind === 'credit') {
       const credit = write.credit;
       const accountId = credit.accountId ?? (credit.accountLast4 === null ? null : (accountByLast4.get(credit.accountLast4) ?? null));
@@ -403,4 +426,43 @@ export function periodOf(dates: readonly IsoDate[]): { readonly from: IsoDate; r
   const first = valid[0];
   const last = valid[valid.length - 1];
   return first === undefined || last === undefined ? null : { from: first, to: last };
+}
+
+/**
+ * Moves between the household's own accounts, made from the debit lines of statements read together (docs/design/ledger-income.md section 1). Written after every statement has been
+ * imported, so that the account a move goes to exists even when it was named by a statement later in the list; each is cited to the batch of the statement its debit is on. A move
+ * made on an earlier run is recognised by its line's hash, and nothing is doubled.
+ */
+export async function commitMoves(input: {
+  readonly householdId: Uuid;
+  readonly moves: readonly { readonly move: NewMove; readonly batchId: Uuid }[];
+}): Promise<{ readonly created: number; readonly alreadyThere: number }> {
+  if (input.moves.length === 0) return { created: 0, alreadyThere: 0 };
+  const client = supabase();
+  // Archived accounts too: an account the statement names that was archived is still the account, and the statements are written by now.
+  const accounts = await listAccounts(input.householdId, { includeArchived: true });
+  const byLast4 = new Map(accounts.flatMap((account) => (account.last4 === null ? [] : [[account.last4, account] as const])));
+  let created = 0;
+  let alreadyThere = 0;
+  for (const { move, batchId } of input.moves) {
+    const from = byLast4.get(move.fromLast4);
+    const to = byLast4.get(move.toLast4);
+    if (from === undefined || to === undefined) throw new Error(`The move from ••${move.fromLast4} to ••${move.toLast4} needs both accounts, and one of them is not here.`);
+    if (from.currency !== 'INR' || to.currency !== 'INR') throw new Error(`The move from ••${move.fromLast4} to ••${move.toLast4} is between accounts that are not both in rupees, which moves do not cover yet.`);
+    const { error } = await client.from('account_transfer').insert({
+      household_id: input.householdId,
+      from_account_id: from.id,
+      to_account_id: to.id,
+      transfer_date: move.date,
+      amount_minor: move.amountMinor.toString(),
+      currency: move.currency,
+      source: 'import',
+      source_batch_id: batchId,
+      source_hash: move.sourceHash,
+    });
+    if (error === null) created += 1;
+    else if (error.code === '23505') alreadyThere += 1;
+    else throw failure(error);
+  }
+  return { created, alreadyThere };
 }

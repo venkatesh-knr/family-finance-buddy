@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { parsePdfStatement, parseTextStatement } from '../../domain/statement/detect.ts';
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
+import { findMoves } from '../../domain/statement/moves.ts';
 import { personalCredits, planImport, type Decision } from '../../domain/statement/plan.ts';
 import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
@@ -24,7 +25,7 @@ import { formatMoney, money } from '../../lib/money.ts';
 import { hashStatement } from '../../lib/statementHash.ts';
 import { readStatementPages } from '../../lib/statement-pdf.ts';
 import { verifyTotpCode } from '../../repo/auth.ts';
-import { commitImport, periodOf, readCategoryContext, readMatchingContext, type MatchingContext } from '../../repo/statementImport.ts';
+import { commitImport, commitMoves, periodOf, readCategoryContext, readMatchingContext, type MatchingContext } from '../../repo/statementImport.ts';
 import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
@@ -41,10 +42,21 @@ const KIND_WORDS: Record<StatementKind, string> = {
   gpay_pdf: 'a Google Pay statement',
 };
 
+/** A statement by what it is, for a row that says which of several it is on. */
+const KIND_NAME: Record<StatementKind, string> = {
+  hdfc_delimited: 'HDFC file',
+  hdfc_text: 'HDFC statement',
+  qif: 'QIF file',
+  icici_savings_pdf: 'ICICI savings',
+  icici_card_pdf: 'ICICI card',
+  axis_card_pdf: 'Axis card',
+  gpay_pdf: 'Google Pay',
+};
+
 const GROUP_HEADINGS: Record<PreviewGroup, string> = {
   decide: 'Needs your answer',
   guess: 'Left out as a guess: check these',
-  add: 'To add as expenses',
+  add: 'To add',
   merge: 'Already entries: this statement is added to them',
   left: 'Left out',
 };
@@ -65,12 +77,14 @@ interface Read {
 const PROBLEMS_SHOWN = 8;
 
 export function ImportStatement({ data, privacy, onDone, onCancel }: { data: AccountsData; privacy: boolean; onDone: (said: string) => void; onCancel: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<readonly File[]>([]);
   const [password, setPassword] = useState('');
-  const [needPassword, setNeedPassword] = useState(false);
+  // The place in the chosen files of one that is protected and waits for its password.
+  const [waiting, setWaiting] = useState<number | null>(null);
   const [reading, setReading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [read, setRead] = useState<Read | null>(null);
+  const [reads, setReads] = useState<readonly Read[]>([]);
+  // Decisions and categories are kept by a row's place among the rows of every statement read together.
   const [decisions, setDecisions] = useState<ReadonlyMap<number, Decision>>(new Map());
   // The category a person chose for a row, where it differs from the suggestion; an empty string is no category.
   const [chosen, setChosen] = useState<ReadonlyMap<number, string>>(new Map());
@@ -83,92 +97,114 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
 
   const show = (minor: bigint): string => formatMoney(money(minor, 'INR'), { privacy });
 
-  const open = async (chosen: File, passwordGiven: string): Promise<void> => {
+  /** One file: read on this device, found to be a statement the app reads, its lines hashed and matched against what the household already has. */
+  const readOne = async (chosenFile: File, passwordGiven: string): Promise<Read> => {
+    const bytes = await chosenFile.arrayBuffer();
+    const detected = /\.pdf$/i.test(chosenFile.name) ? parsePdfStatement(await readStatementPages(bytes, passwordGiven)) : parseTextStatement(new TextDecoder('utf-8').decode(bytes));
+    if (detected.statement === null) throw new Error(detected.problem ?? 'That file could not be read.');
+    const statement = detected.statement;
+    if (statement.lines.length === 0 && statement.problems.length === 0) throw new Error('That statement has no transactions in it.');
+    const hashed = await hashStatement(statement);
+    const period = periodOf(statement.lines.map((line) => line.date)) ?? { from: statement.periodStart ?? '', to: statement.periodEnd ?? '' };
+    const [context, filed] = await Promise.all([
+      readMatchingContext({ householdId: data.household.id, from: period.from, to: period.to, lineHashes: hashed.map((entry) => entry.lineHash) }),
+      readCategoryContext(data.household.id),
+    ]);
+    const matched = matchStatement({
+      statement,
+      lines: hashed,
+      accounts: context.accounts,
+      existing: context.existing,
+      existingCredits: context.existingCredits,
+      existingTransfers: context.existingTransfers,
+      knownLineHashes: context.knownLineHashes,
+      ownNames: data.members.map((member) => member.displayName),
+    });
+    // A category is suggested only from what this household has filed under the payee before, and says so; a row that could not be an entry gets none.
+    const suggestions = suggestCategories({
+      lines: matched.rows.map((row) => {
+        const entry = 'entry' in row.proposal ? row.proposal.entry : undefined;
+        return { payee: entry?.payee ?? null, amountMinor: row.line.amountMinor };
+      }),
+      history: filed.history,
+      active: new Set(filed.categories.map((category) => category.id)),
+    });
+    return { statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement, istCalendarDate(new Date())) };
+  };
+
+  /** The files in order from one place: each is added to what has been read, and one that needs a password stops the reading until it is given. */
+  const readFrom = async (list: readonly File[], from: number, passwordGiven: string, already: readonly Read[]): Promise<void> => {
     setReading(true);
     setProblem(null);
-    setRead(null);
-    setDecisions(new Map());
-    setChosen(new Map());
+    let got = already;
     try {
-      const bytes = await chosen.arrayBuffer();
-      const detected = /\.pdf$/i.test(chosen.name) ? parsePdfStatement(await readStatementPages(bytes, passwordGiven)) : parseTextStatement(new TextDecoder('utf-8').decode(bytes));
-      if (detected.statement === null) {
-        setProblem(detected.problem ?? 'That file could not be read.');
-        return;
-      }
-      const statement = detected.statement;
-      setNeedPassword(false);
-      if (statement.lines.length === 0 && statement.problems.length === 0) {
-        setProblem('That statement has no transactions in it.');
-        return;
-      }
-      const hashed = await hashStatement(statement);
-      const period = periodOf(statement.lines.map((line) => line.date)) ?? { from: statement.periodStart ?? '', to: statement.periodEnd ?? '' };
-      const [context, filed] = await Promise.all([
-        readMatchingContext({ householdId: data.household.id, from: period.from, to: period.to, lineHashes: hashed.map((entry) => entry.lineHash) }),
-        readCategoryContext(data.household.id),
-      ]);
-      const matched = matchStatement({
-        statement,
-        lines: hashed,
-        accounts: context.accounts,
-        existing: context.existing,
-        existingCredits: context.existingCredits,
-        knownLineHashes: context.knownLineHashes,
-        ownNames: data.members.map((member) => member.displayName),
-      });
-      // A category is suggested only from what this household has filed under the payee before, and says so; a row that could not be an entry gets none.
-      const suggestions = suggestCategories({
-        lines: matched.rows.map((row) => {
-          const entry = 'entry' in row.proposal ? row.proposal.entry : undefined;
-          return { payee: entry?.payee ?? null, amountMinor: row.line.amountMinor };
-        }),
-        history: filed.history,
-        active: new Set(filed.categories.map((category) => category.id)),
-      });
-      setRead({ statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement, istCalendarDate(new Date())) });
-    } catch (error) {
-      if (error instanceof PasswordNeeded) {
-        setNeedPassword(true);
-        setProblem(error.message);
-      } else {
-        setProblem(error instanceof Error ? error.message : 'That file could not be read.');
+      for (let at = from; at < list.length; at += 1) {
+        const next = list[at];
+        if (next === undefined) continue;
+        try {
+          got = [...got, await readOne(next, at === from ? passwordGiven : '')];
+          setReads(got);
+          setWaiting(null);
+        } catch (error) {
+          if (error instanceof PasswordNeeded) {
+            setWaiting(at);
+            setProblem(list.length > 1 ? `${next.name}: ${error.message}` : error.message);
+          } else {
+            const said = error instanceof Error ? error.message : 'That file could not be read.';
+            setProblem(list.length > 1 ? `${next.name}: ${said}` : said);
+          }
+          return;
+        }
       }
     } finally {
       setReading(false);
     }
   };
 
+  // The rows of every statement read together, one after another, and which statement each is of.
+  const flat = reads.flatMap((read, statement) => read.matched.rows.map((row, local) => ({ row, statement, local })));
+  const rowsAll = flat.map((entry) => entry.row);
+  const gpayWithOthers = reads.length > 1 && reads.some((read) => read.statement.kind === 'gpay_pdf');
+  // A move is a debit on one bank account and a credit of the same amount on another: found across the statements read together, and offered, never taken for certain.
+  const moves = findMoves(flat.map((entry) => ({ row: entry.row, bank: reads[entry.statement]?.statement.accountType === 'bank' && reads[entry.statement]?.statement.kind !== 'gpay_pdf' })));
+
   // What each row will be filed under: what the person chose, or the suggestion, or nothing.
   const categoryOf = (index: number): string | null => {
     const picked = chosen.get(index);
     // Money in is filed under a credit category, which the line's words suggested and a person can change.
-    const proposal = read?.matched.rows[index]?.proposal;
+    const proposal = flat[index]?.row.proposal;
     const credit = proposal === undefined ? undefined : proposal.action === 'credit' || proposal.action === 'skip' ? proposal.credit : undefined;
     if (credit !== undefined) return picked !== undefined && picked !== '' ? picked : credit.category;
     if (picked !== undefined) return picked === '' ? null : picked;
-    return read?.suggestions[index]?.categoryId ?? null;
+    const at = flat[index];
+    return at === undefined ? null : (reads[at.statement]?.suggestions[at.local]?.categoryId ?? null);
   };
-  const categories = new Map(read === null ? [] : read.matched.rows.map((_row, index) => [index, categoryOf(index)] as const));
-  const plan = read === null ? null : planImport(read.matched.rows, decisions, categories);
+  const categories = new Map(flat.map((_entry, index) => [index, categoryOf(index)] as const));
+  const plan = reads.length === 0 ? null : planImport(rowsAll, decisions, categories, moves);
   // Money in that would be private can be written only under the member it belongs to: for someone else it is said here, and the import waits.
   const blockedMoneyIn = plan === null || memberId === data.viewer.memberId ? 0 : personalCredits(plan.writes, visibility);
-  const canCommit = plan !== null && plan.canCommit && blockedMoneyIn === 0;
-  const rows = read === null ? [] : previewRows(read.matched.rows, decisions, read.context.existing);
-  const blocked = read !== null && read.statement.problems.length > 0;
+  const canCommit = plan !== null && plan.canCommit && blockedMoneyIn === 0 && !gpayWithOthers;
+  const existingAll = reads.flatMap((read) => read.context.existing);
+  const rows = reads.length === 0 ? [] : previewRows(rowsAll, decisions, existingAll, moves);
+  const blocked = reads.some((read) => read.statement.problems.length > 0);
+  const everyFileRead = files.length > 0 && reads.length === files.length;
+  const accountsToAdd = [...new Map(reads.flatMap((read) => read.matched.accountsToAdd).map((account) => [account.last4, account] as const)).values()];
+  const many = reads.length > 1;
 
   const choose = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const chosen = event.target.files?.[0] ?? null;
-    setFile(chosen);
-    setNeedPassword(false);
+    const picked = Array.from(event.target.files ?? []);
+    setFiles(picked);
+    setWaiting(null);
     setPassword('');
-    setRead(null);
+    setReads([]);
+    setDecisions(new Map());
+    setChosen(new Map());
     setProblem(null);
-    if (chosen !== null) void open(chosen, '');
+    if (picked.length > 0) void readFrom(picked, 0, '', []);
   };
 
   const finish = async (): Promise<void> => {
-    if (read === null || plan === null || !canCommit) return;
+    if (reads.length === 0 || plan === null || !canCommit) return;
     if (!/^\d{6}$/.test(code.trim())) {
       setFinishProblem('Enter the six-digit code from your authenticator app.');
       return;
@@ -177,29 +213,54 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     setFinishProblem(null);
     try {
       await verifyTotpCode(code);
-      const dates = read.statement.lines.map((line) => line.date);
-      const outcome = await commitImport({
+      const total = { entries: 0, credits: 0, witnesses: 0, accounts: 0, balances: 0, there: 0, conflicts: 0 };
+      // The statements one after another, each with its own batch. A statement with nothing to write is left alone, unless a move needs the account it names.
+      const needed = new Set(plan.writes.flatMap((write) => (write.kind === 'move' ? [flat[moves.find((pair) => pair.debit === write.index)?.credit ?? -1]?.statement ?? -1] : [])));
+      const batches = new Map<number, string>();
+      for (const [at, read] of reads.entries()) {
+        const writes = plan.writes.filter((write) => flat[write.index]?.statement === at);
+        if (writes.length === 0 && !needed.has(at)) continue;
+        const dates = read.statement.lines.map((line) => line.date);
+        const outcome = await commitImport({
+          householdId: data.household.id,
+          memberId,
+          viewerMemberId: data.viewer.memberId,
+          visibility,
+          kind: read.statement.kind,
+          label: label.trim() === '' ? null : label.trim(),
+          period: periodOf(dates),
+          statementLast4: read.statement.kind === 'gpay_pdf' ? null : read.statement.last4,
+          accountsToAdd: read.matched.accountsToAdd,
+          balances: read.balances,
+          statementAccountType: read.statement.accountType,
+          writes,
+          memberOf: read.context.memberOf,
+        });
+        batches.set(at, outcome.batchId);
+        total.entries += outcome.entriesCreated;
+        total.credits += outcome.creditsCreated;
+        total.witnesses += outcome.witnessesAdded;
+        total.accounts += outcome.accountsAdded;
+        total.balances += outcome.balancesRecorded;
+        total.there += outcome.alreadyThere;
+        total.conflicts += outcome.conflicts;
+      }
+      // The moves, once every statement has its accounts: each is cited to the batch of the statement its debit is on.
+      const made = await commitMoves({
         householdId: data.household.id,
-        memberId,
-        viewerMemberId: data.viewer.memberId,
-        visibility,
-        kind: read.statement.kind,
-        label: label.trim() === '' ? null : label.trim(),
-        period: periodOf(dates),
-        statementLast4: read.statement.kind === 'gpay_pdf' ? null : read.statement.last4,
-        accountsToAdd: read.matched.accountsToAdd,
-        balances: read.balances,
-        statementAccountType: read.statement.accountType,
-        writes: plan.writes,
-        memberOf: read.context.memberOf,
+        moves: plan.writes.flatMap((write) => {
+          const batchId = batches.get(flat[write.index]?.statement ?? -1);
+          return write.kind === 'move' && batchId !== undefined ? [{ move: write.move, batchId }] : [];
+        }),
       });
-      const parts = [`${String(outcome.entriesCreated)} ${outcome.entriesCreated === 1 ? 'expense' : 'expenses'} added`];
-      if (outcome.creditsCreated > 0) parts.push(`${String(outcome.creditsCreated)} money in added`);
-      if (outcome.witnessesAdded > 0) parts.push(`${String(outcome.witnessesAdded)} added to entries you already had`);
-      if (outcome.accountsAdded > 0) parts.push(`${String(outcome.accountsAdded)} ${outcome.accountsAdded === 1 ? 'account' : 'accounts'} added`);
-      if (outcome.balancesRecorded > 0) parts.push(`${String(outcome.balancesRecorded)} ${outcome.balancesRecorded === 1 ? 'balance' : 'balances'} recorded`);
-      if (outcome.alreadyThere > 0) parts.push(`${String(outcome.alreadyThere)} already there`);
-      if (outcome.conflicts > 0) parts.push(`${String(outcome.conflicts)} left out: a payment with that reference is an entry you cannot see`);
+      const parts = [`${String(total.entries)} ${total.entries === 1 ? 'expense' : 'expenses'} added`];
+      if (total.credits > 0) parts.push(`${String(total.credits)} money in added`);
+      if (made.created > 0) parts.push(`${String(made.created)} ${made.created === 1 ? 'move' : 'moves'} between your accounts added`);
+      if (total.witnesses > 0) parts.push(`${String(total.witnesses)} added to entries you already had`);
+      if (total.accounts > 0) parts.push(`${String(total.accounts)} ${total.accounts === 1 ? 'account' : 'accounts'} added`);
+      if (total.balances > 0) parts.push(`${String(total.balances)} ${total.balances === 1 ? 'balance' : 'balances'} recorded`);
+      if (total.there + made.alreadyThere > 0) parts.push(`${String(total.there + made.alreadyThere)} already there`);
+      if (total.conflicts > 0) parts.push(`${String(total.conflicts)} left out: a payment with that reference is an entry you cannot see`);
       onDone(`Imported: ${parts.join(', ')}.`);
     } catch (error) {
       setFinishProblem(error instanceof Error ? error.message : 'The import could not be written. Nothing is doubled if you run it again.');
@@ -208,6 +269,10 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     }
   };
 
+  const statementName = (at: number): string => {
+    const read = reads[at];
+    return read === undefined ? '' : `${KIND_NAME[read.statement.kind]}${read.statement.last4 === null ? '' : ` ••${read.statement.last4}`}`;
+  };
   const rowsIn = (group: PreviewGroup): PreviewRow[] => rows.filter((row) => row.group === group);
   const renderRow = (row: PreviewRow) => (
     <li key={row.index} className="statement-row" data-testid="statement-row">
@@ -221,7 +286,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         </span>
       </div>
       <p className="note">
-        {formatShortDate(row.date)} · {row.doing}
+        {formatShortDate(row.date)} · {many ? `${statementName(flat[row.index]?.statement ?? 0)} · ` : ''}{row.doing}
       </p>
       {row.options.length > 1 && (
         <label className="label mt-1.5 block" htmlFor={`statement-do-${String(row.index)}`}>
@@ -251,7 +316,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           ))}
         </select>
       )}
-      {row.decision === 'create' && row.moneyIn && read !== null && (
+      {row.decision === 'create' && row.moneyIn && reads.length > 0 && (
         <>
           <label className="label mt-1.5 block" htmlFor={`statement-category-${String(row.index)}`}>
             Category
@@ -275,7 +340,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           <p className="note mt-1">Guessed from what the statement says. Money in is private to whoever it came to, and a refund is the household’s.</p>
         </>
       )}
-      {row.decision === 'create' && !row.moneyIn && read !== null && (
+      {row.decision === 'create' && !row.moneyIn && reads.length > 0 && (
         <>
           <label className="label mt-1.5 block" htmlFor={`statement-category-${String(row.index)}`}>
             Category
@@ -291,7 +356,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
             }}
           >
             <option value="">No category</option>
-            {read.categories.map((category) => (
+            {(reads[0]?.categories ?? []).map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
@@ -299,8 +364,9 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           </select>
           {(() => {
             // It says it is a suggestion, and what it rests on, only while it is still the suggestion: a category the person chose is theirs.
-            const suggestion = read.suggestions[row.index] ?? null;
-            const named = suggestion === null ? undefined : read.categories.find((category) => category.id === suggestion.categoryId);
+            const at = flat[row.index];
+            const suggestion = at === undefined ? null : (reads[at.statement]?.suggestions[at.local] ?? null);
+            const named = suggestion === null ? undefined : reads[0]?.categories.find((category) => category.id === suggestion.categoryId);
             return suggestion !== null && named !== undefined && categoryOf(row.index) === suggestion.categoryId ? (
               <p className="note mt-1" data-testid="statement-suggestion">
                 {suggestionWords(suggestion, named.name)}
@@ -326,30 +392,31 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
       steps={[
         {
           name: 'Choose the statement',
-          ready: read !== null && !blocked,
+          ready: everyFileRead && !blocked && !gpayWithOthers,
           content: (
             <>
               <p className="note">
-                Choose a bank, card or Google Pay statement. It is read on this device: nothing is uploaded, and the file, its name and its password are not kept.
+                Choose a bank, card or Google Pay statement, or several bank statements to read together, so that a move between your own accounts is not counted as spending and as income. They are read on this device: nothing is uploaded, and the files, their names and their passwords are not kept.
               </p>
               <div className="flex flex-col gap-1.5">
                 <label className="label" htmlFor="statement-file">
-                  Statement
+                  {files.length > 1 ? 'Statements' : 'Statement'}
                 </label>
                 <input
                   id="statement-file"
                   className="field"
                   type="file"
+                  multiple
                   accept=".pdf,.txt,.csv,.qif,application/pdf,text/plain"
                   disabled={reading || busy}
                   onChange={choose}
                 />
               </div>
 
-              {needPassword && file !== null && (
+              {waiting !== null && files[waiting] !== undefined && (
                 <div className="flex flex-col gap-2">
                   <PasswordField
-                    label="Password for this PDF"
+                    label={files.length > 1 ? `Password for ${files[waiting]?.name ?? 'this PDF'}` : 'Password for this PDF'}
                     value={password}
                     autoComplete="off"
                     onChange={(event) => {
@@ -358,7 +425,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();
-                        void open(file, password);
+                        void readFrom(files, waiting, password, reads);
                       }
                     }}
                   />
@@ -367,7 +434,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     className="btn btn-quiet self-start"
                     disabled={reading || password === ''}
                     onClick={() => {
-                      void open(file, password);
+                      void readFrom(files, waiting, password, reads);
                     }}
                   >
                     Open it
@@ -377,28 +444,36 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
 
               {reading && (
                 <p className="note" role="status">
-                  Reading the statement…
+                  {files.length > 1 ? 'Reading the statements…' : 'Reading the statement…'}
                 </p>
               )}
               {problem !== null && <Problem>{problem}</Problem>}
 
-              {read !== null && (
-                <p className="note" role="status" data-testid="statement-read">
-                  Read {String(read.statement.lines.length)} {read.statement.lines.length === 1 ? 'line' : 'lines'} from {KIND_WORDS[read.statement.kind]}.
+              {reads.map((read, at) => (
+                <p key={at} className="note" role="status" data-testid="statement-read">
+                  Read {String(read.statement.lines.length)} {read.statement.lines.length === 1 ? 'line' : 'lines'} from {KIND_WORDS[read.statement.kind]}
+                  {read.statement.last4 === null ? '' : ` of ••${read.statement.last4}`}.
                 </p>
+              ))}
+              {gpayWithOthers && (
+                <Problem>
+                  Read a Google Pay statement on its own, after the bank statements it adds to. It adds to payments that are already entries, and what is imported in this same go is not there yet.
+                </Problem>
               )}
-              {blocked && read !== null && (
-                <div data-testid="statement-problems">
-                  <Problem>This statement does not add up, so nothing can be imported from it. A line may have been misread, and a misread line is worse than a missing one.</Problem>
-                  <ul className="note mt-1.5 list-disc pl-5">
-                    {read.statement.problems.slice(0, PROBLEMS_SHOWN).map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                  {read.statement.problems.length > PROBLEMS_SHOWN && (
-                    <p className="note mt-1">and {String(read.statement.problems.length - PROBLEMS_SHOWN)} more.</p>
-                  )}
-                </div>
+              {reads.map((read, at) =>
+                read.statement.problems.length === 0 ? null : (
+                  <div key={at} data-testid="statement-problems">
+                    <Problem>
+                      {many ? `${statementName(at)} does not add up` : 'This statement does not add up'}, so nothing can be imported from it. A line may have been misread, and a misread line is worse than a missing one.
+                    </Problem>
+                    <ul className="note mt-1.5 list-disc pl-5">
+                      {read.statement.problems.slice(0, PROBLEMS_SHOWN).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                    {read.statement.problems.length > PROBLEMS_SHOWN && <p className="note mt-1">and {String(read.statement.problems.length - PROBLEMS_SHOWN)} more.</p>}
+                  </div>
+                ),
               )}
 
               <Field
@@ -419,22 +494,23 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           name: 'What it will do',
           ready: canCommit,
           content:
-            read === null || plan === null ? (
+            reads.length === 0 || plan === null ? (
               <p className="note">Choose a statement first.</p>
             ) : (
               <>
                 <p className="note" data-testid="statement-summary">
                   {String(plan.counts.create)} to add as expenses
-                  {plan.counts.credit > 0 ? ` · ${String(plan.counts.credit)} to add as money in` : ''} · {String(plan.counts.witness)} added to entries you already have · {String(plan.counts.skip)} left out
+                  {plan.counts.credit > 0 ? ` · ${String(plan.counts.credit)} to add as money in` : ''}
+                  {plan.counts.move > 0 ? ` · ${String(plan.counts.move)} to add as ${plan.counts.move === 1 ? 'a move' : 'moves'} between your accounts` : ''} · {String(plan.counts.witness)} added to entries you already have · {String(plan.counts.skip)} left out
                   {plan.counts.undecided > 0 ? ` · ${String(plan.counts.undecided)} need your answer` : ''}
                 </p>
-                <p className="note">Change anything here before it is written. Money in is added as money in, and a line that is not spending, such as a card repayment, is left out and says why.</p>
+                <p className="note">Change anything here before it is written. Money in is added as money in, a move between two of your own accounts is added as a move, and a line that is not spending, such as a card repayment, is left out and says why.</p>
 
-                {read.matched.accountsToAdd.length > 0 && (
+                {accountsToAdd.length > 0 && (
                   <div data-testid="statement-accounts">
                     <h3 className="label">Accounts that will be added</h3>
                     <ul className="note mt-1 list-disc pl-5">
-                      {read.matched.accountsToAdd.map((account) => (
+                      {accountsToAdd.map((account) => (
                         <li key={account.last4}>
                           {account.institution ?? 'Account'} ••{account.last4} ({account.type === 'card' ? 'a card' : 'a savings account'})
                         </li>
@@ -443,20 +519,22 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   </div>
                 )}
 
-                {read.balances.length > 0 && (
-                  <div data-testid="statement-balances">
-                    <h3 className="label">
-                      {read.statement.accountType === 'card' ? 'What the statement says is due at a month end' : 'Balances the statement states at a month end'} for ••{read.statement.last4}
-                    </h3>
-                    <ul className="note mt-1 list-disc pl-5">
-                      {read.balances.map((stated) => (
-                        <li key={stated.asAt}>
-                          {formatShortDate(stated.asAt)}: {read.statement.accountType === 'card' && stated.balanceMinor < 0n ? `${show(-stated.balanceMinor)} in credit` : show(stated.balanceMinor)}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="note mt-1">The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.</p>
-                  </div>
+                {reads.map((read, at) =>
+                  read.balances.length === 0 ? null : (
+                    <div key={at} data-testid="statement-balances">
+                      <h3 className="label">
+                        {read.statement.accountType === 'card' ? 'What the statement says is due at a month end' : 'Balances the statement states at a month end'} for ••{read.statement.last4}
+                      </h3>
+                      <ul className="note mt-1 list-disc pl-5">
+                        {read.balances.map((stated) => (
+                          <li key={stated.asAt}>
+                            {formatShortDate(stated.asAt)}: {read.statement.accountType === 'card' && stated.balanceMinor < 0n ? `${show(-stated.balanceMinor)} in credit` : show(stated.balanceMinor)}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="note mt-1">The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.</p>
+                    </div>
+                  ),
                 )}
 
                 {data.viewer.canFileForOthers && members.length > 1 && (
@@ -480,6 +558,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     Who can see these
                   </span>
                   <p className="note">This is for expenses and refunds. Other money in stays private to whoever it came to.</p>
+                  {plan.counts.move > 0 && <p className="note">A move between your accounts has no choice here: it is seen by everyone who can see both accounts.</p>}
                   <div className="segmented self-start" role="group" aria-labelledby="statement-visibility-label">
                     <button
                       type="button"
@@ -543,8 +622,10 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
               <RequiredKey />
               <p className="note">
                 {plan === null ? '' : `This writes ${String(plan.counts.create)} ${plan.counts.create === 1 ? 'expense' : 'expenses'}`}
-                {plan !== null && plan.counts.witness > 0 ? ` and adds this statement to ${String(plan.counts.witness)} you already have` : ''}
-                {plan === null ? '' : '. Nothing is doubled if the same statement is imported again.'}
+                {plan !== null && plan.counts.credit > 0 ? `, ${String(plan.counts.credit)} money in` : ''}
+                {plan !== null && plan.counts.move > 0 ? `, and ${String(plan.counts.move)} ${plan.counts.move === 1 ? 'move' : 'moves'} between your own accounts` : ''}
+                {plan !== null && plan.counts.witness > 0 ? ` and adds ${many ? 'these statements' : 'this statement'} to ${String(plan.counts.witness)} you already have` : ''}
+                {plan === null ? '' : `. Nothing is doubled if ${many ? 'the same statements are' : 'the same statement is'} imported again.`}
               </p>
               <Field
                 label="Code from your authenticator app"

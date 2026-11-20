@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow, NewCredit, NewEntry, Proposal } from '../../domain/statement/match.ts';
+import { findMoves } from '../../domain/statement/moves.ts';
 import { decisionLabel, lineTitle, previewRows } from './statementPreview.ts';
 
 /**
@@ -120,5 +121,37 @@ describe('the rows of the preview', () => {
     expect(decisionLabel('merge', true)).toBe('It is the same payment: add to that entry');
     expect(decisionLabel('merge', false)).toBe('Add to the entry it matches');
     expect(decisionLabel('skip', false)).toBe('Leave out');
+  });
+});
+
+describe('a move between the household’s own accounts, across statements read together', () => {
+  const debit = row({ action: 'create', entry: { ...ENTRY, accountLast4: '1111' } }, { upiReference: null, payee: null, raw: 'NEFT DR-ANOTHER BANK' });
+  const credit = row({ action: 'credit', credit: { ...CREDIT, category: 'other_income', accountLast4: '2222' } }, { direction: 'credit', amountMinor: 22_400n, payee: null, raw: 'NEFT CR-FROM BANK' });
+  const moves = findMoves([
+    { row: debit, bank: true },
+    { row: credit, bank: true },
+  ]);
+
+  it('is offered on the debit, which names both accounts, and the credit that is its other half is folded away, saying it is counted once', () => {
+    const out = previewRows([debit, credit], new Map(), [], moves);
+    const first = out.find((entry) => entry.index === 0);
+    const second = out.find((entry) => entry.index === 1);
+    expect(first).toMatchObject({ group: 'add', decision: 'move' });
+    expect(first?.doing).toContain('••1111 to ••2222');
+    expect(first?.options.map((option) => option.label)).toEqual(['Add as a move between your accounts', 'Add as an expense', 'Leave out']);
+    expect(second).toMatchObject({ group: 'left', decision: 'skip', options: [{ value: 'skip', label: 'Leave out' }] });
+    expect(second?.doing).toMatch(/counted once, as a move/);
+  });
+
+  it('puts both lines back to what they were when the person says the pair is not a move', () => {
+    const out = previewRows([debit, credit], new Map([[0, 'create' as const]]), [], moves);
+    expect(out.find((entry) => entry.index === 0)).toMatchObject({ group: 'add', decision: 'create' });
+    expect(out.find((entry) => entry.index === 1)).toMatchObject({ group: 'add', decision: 'create', moneyIn: true });
+  });
+
+  it('says in words that a credit already recorded as a move is not money in', () => {
+    const [out] = previewRows([row({ action: 'skip', reason: 'move-recorded', sure: false, credit: CREDIT }, { direction: 'credit' })], new Map(), []);
+    expect(out).toMatchObject({ group: 'guess', decision: 'skip', moneyIn: true });
+    expect(out?.doing).toBe('Already recorded as a move between your own accounts. Add it as money in if it is not.');
   });
 });

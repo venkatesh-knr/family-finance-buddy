@@ -150,6 +150,73 @@ test('a statement that states its balances shows them, and records them for the 
   await expect(page.getByText(/Imported: 1 expense added, 1 money in added.*2 balances recorded/)).toBeVisible({ timeout: 60_000 });
 });
 
+/** An amount that differs from one run to the next, so that a move an earlier run left is not mistaken for this one's. */
+const moveOf = (run: number): bigint => 700_000n + BigInt(run % 9000);
+
+/** The printed HDFC statement of an account with one line on it: a debit or a credit of the move, with a narration that says nothing of what it is. */
+function printedMove(run: number, account: string, direction: 'debit' | 'credit'): { readonly name: string; readonly mimeType: string; readonly buffer: Buffer } {
+  const widths = [8, 40, 16, 8, 18, 18, 18] as const;
+  const fixed = (cells: readonly string[]): string => cells.map((cell, i) => (i >= 4 ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0))).join('  ');
+  const amount = grouped(moveOf(run));
+  const text = [
+    'HDFC BANK Ltd.                                     Page No .:   1                                        Statement of accounts',
+    '',
+    `                                                                         Account No     : 501000000${account}   PB Customer`,
+    'Statement From      : 01/08/2026  To: 31/08/2026                         RTGS/NEFT IFSC : HDFC0000001    MICR : 560000000',
+    '',
+    widths.map((w) => '-'.repeat(w)).join('  '),
+    'Date      Narration                                 Chq./Ref.No.      Value Dt  Withdrawal Amt.        Deposit Amt.     Closing Balance',
+    widths.map((w) => '-'.repeat(w)).join('  '),
+    '',
+    fixed(['10/08/26', `NEFT ${direction === 'debit' ? 'DR' : 'CR'}-E2E MOVE ${String(run)}`.slice(0, 40), `MOV${String(run).slice(-6)}`, '10/08/26', direction === 'debit' ? amount : '', direction === 'credit' ? amount : '', '100,000.00']),
+    '',
+    widths.map((w) => '*'.repeat(w)).join('  '),
+  ].join('\n');
+  return { name: `move-${account}.txt`, mimeType: 'text/plain', buffer: Buffer.from(text, 'utf8') };
+}
+
+test('two statements read together offer a move between the household’s own accounts, written once and not again', async ({ page }) => {
+  test.setTimeout(300_000);
+  const run = Date.now();
+  await openImport(page);
+  await page.setInputFiles('#statement-file', [printedMove(run, '6101', 'debit'), printedMove(run, '6102', 'credit')]);
+  await expect(page.getByTestId('statement-read')).toHaveCount(2);
+  await expect(page.getByTestId('statement-read').first()).toContainText('••6101');
+  await next(page).click();
+
+  // The debit of one and the credit of the other are one move, not an expense and money in.
+  await expect(page.getByTestId('statement-summary')).toContainText('0 to add as expenses');
+  await expect(page.getByTestId('statement-summary')).toContainText('1 to add as a move between your accounts');
+  const add = page.getByTestId('statement-group-add').getByRole('listitem');
+  await expect(add).toHaveCount(1);
+  await expect(add).toContainText('A move from ••6101 to ••6102');
+  await expect(add).toContainText('HDFC statement ••6101');
+  // The other half is folded away, and says it is counted once.
+  await page.getByTestId('statement-group-left').locator('summary').click();
+  await expect(page.getByTestId('statement-group-left')).toContainText('counted once, as a move');
+
+  // Saying it is not a move puts the two lines back to what they looked like.
+  await add.getByLabel('What to do').selectOption({ label: 'Add as an expense' });
+  await expect(page.getByTestId('statement-summary')).toContainText('1 to add as expenses');
+  await expect(page.getByTestId('statement-summary')).toContainText('1 to add as money in');
+  await page.getByTestId('statement-group-add').getByRole('listitem').filter({ hasText: 'NEFT DR' }).getByLabel('What to do').selectOption({ label: 'Add as a move between your accounts' });
+  await expect(page.getByTestId('statement-summary')).toContainText('1 to add as a move between your accounts');
+
+  await next(page).click();
+  await page.getByLabel('Code from your authenticator app').fill(await freshCode());
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByText(/Imported: 0 expenses added, 1 move between your accounts added/)).toBeVisible({ timeout: 90_000 });
+
+  // The same two files again: the debit is recognised by its hash and the credit by the move into its account, so nothing is offered.
+  await openImport(page);
+  await page.setInputFiles('#statement-file', [printedMove(run, '6101', 'debit'), printedMove(run, '6102', 'credit')]);
+  await expect(page.getByTestId('statement-read')).toHaveCount(2);
+  await next(page).click();
+  await expect(page.getByTestId('statement-summary')).toContainText('0 to add as expenses');
+  await expect(page.getByTestId('statement-nothing')).toBeVisible();
+  await expect(page.getByTestId('statement-group-guess')).toContainText('Already recorded as a move between your own accounts');
+});
+
 for (const scheme of ['light', 'dark'] as const) {
   test(`the import has no accessibility violations in the ${scheme} theme`, async ({ page }) => {
     test.setTimeout(180_000);
