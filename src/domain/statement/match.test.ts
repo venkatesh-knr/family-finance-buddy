@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedStatement, StatementLine } from './common.ts';
-import { creditCategoryOf, matchStatement, pairOwnTransfers, type ExistingCredit, type ExistingEntry, type HashedLine, type KnownAccount } from './match.ts';
+import { creditCategoryOf, matchStatement, pairOwnTransfers, type ExistingCredit, type ExistingEntry, type ExistingTransfer, type HashedLine, type KnownAccount } from './match.ts';
 
 /**
  * What an imported line is (docs/design/spending-capture.md section 4; docs/build-plan.md step 7). One payment is one entry with up to three witnesses; a line is recognised by its
@@ -52,7 +52,7 @@ const entry = (over: Partial<ExistingEntry> = {}): ExistingEntry => ({
 const run = (
   statement: ParsedStatement,
   lines: HashedLine[],
-  over: { existing?: ExistingEntry[]; existingCredits?: ExistingCredit[]; known?: string[]; accounts?: KnownAccount[]; ownNames?: string[] } = {},
+  over: { existing?: ExistingEntry[]; existingCredits?: ExistingCredit[]; existingTransfers?: ExistingTransfer[]; known?: string[]; accounts?: KnownAccount[]; ownNames?: string[] } = {},
 ) =>
   matchStatement({
     statement,
@@ -60,6 +60,7 @@ const run = (
     accounts: over.accounts ?? ACCOUNTS,
     existing: over.existing ?? [],
     existingCredits: over.existingCredits ?? [],
+    existingTransfers: over.existingTransfers ?? [],
     knownLineHashes: new Set(over.known ?? []),
     ownNames: over.ownNames ?? [],
   });
@@ -378,5 +379,28 @@ describe('review: only card repayments are taken for card repayments', () => {
   it('does not take a UPI AutoPay mandate for one, and still takes a card’s autopay', () => {
     expect(run(BANK, [hashed(1, { raw: 'UPI AUTOPAY MANDATE SAMPLE STREAMING', payee: null, upiReference: null })]).rows[0]?.proposal.action).toBe('create');
     expect(run(BANK, [hashed(1, { raw: 'CARD AUTOPAY SAMPLE', payee: null, upiReference: null })]).rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'card-payment', sure: false });
+  });
+});
+
+describe('the other half of a move that is already recorded', () => {
+  const move = (over: Partial<ExistingTransfer> = {}): ExistingTransfer => ({ id: 't1', date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', toAccountId: 'acc-bank', ...over });
+  const credit = (n = 1, over: Partial<StatementLine> = {}) => hashed(n, { direction: 'credit', amountMinor: 4_500_000n, payee: null, upiReference: null, raw: `NEFT CR-ABCD0000001-SOMEONE${String(n)}`, ...over });
+
+  it('is not added as money in without asking: a move is written from its debit alone, so its credit is recognised by the move into that account, as a guess', () => {
+    const out = run(BANK, [credit()], { existingTransfers: [move()] });
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'move-recorded', sure: false, credit: { amountMinor: 4_500_000n } });
+  });
+
+  it('allows the day a transfer takes to arrive, and no more', () => {
+    expect(run(BANK, [credit(1, { date: '2026-10-06' })], { existingTransfers: [move()] }).rows[0]?.proposal).toMatchObject({ reason: 'move-recorded' });
+    expect(run(BANK, [credit(1, { date: '2026-10-08' })], { existingTransfers: [move()] }).rows[0]?.proposal.action).toBe('credit');
+  });
+
+  it('is not taken for money into another account, another amount, or a card’s refund, and is used for one credit only', () => {
+    expect(run(BANK, [credit()], { existingTransfers: [move({ toAccountId: 'other' })] }).rows[0]?.proposal.action).toBe('credit');
+    expect(run(BANK, [credit(1, { amountMinor: 4_400_000n })], { existingTransfers: [move()] }).rows[0]?.proposal.action).toBe('credit');
+    expect(run(CARD, [credit()], { existingTransfers: [move({ toAccountId: 'acc-card' })] }).rows[0]?.proposal.action).toBe('credit');
+    const two = run(BANK, [credit(1), credit(2)], { existingTransfers: [move()] });
+    expect(two.rows.map((row) => (row.proposal.action === 'skip' ? row.proposal.reason : row.proposal.action))).toEqual(['move-recorded', 'credit']);
   });
 });

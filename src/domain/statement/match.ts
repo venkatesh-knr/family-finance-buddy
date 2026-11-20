@@ -67,13 +67,22 @@ export interface NewCredit {
   readonly sourceHash: string;
 }
 
+/** A move between two of the household's own accounts that it has recorded, as far as matching needs it: so the credit that is its other half is not imported as money in. */
+export interface ExistingTransfer {
+  readonly id: string;
+  readonly date: IsoDate;
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly toAccountId: string;
+}
+
 export interface KnownAccount {
   readonly id: string;
   readonly last4: string | null;
   readonly type: 'savings' | 'current' | 'card';
 }
 
-export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money';
+export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money' | 'move-recorded';
 
 export interface NewEntry {
   readonly date: IsoDate;
@@ -135,6 +144,8 @@ export interface MatchResult {
 
 /** How far apart, in days, a statement's date and an entry's may be for a near match. */
 const NEAR_DAYS = 2;
+/** How far apart the two halves of a move may be: a transfer sent late in the evening arrives the next day. */
+const MOVE_DAYS = 1;
 /** The shortest a first name may be to be taken for a household member's, and the shortest a payee may be, once normalised, to be taken for a bank's cut-short form of a readable name. */
 const OWN_NAME_FROM = 4;
 const CUT_SHORT_FROM = 6;
@@ -221,6 +232,8 @@ export function matchStatement(input: {
   readonly existing: readonly ExistingEntry[];
   /** The credits the household has around the statement's dates, so one it typed is not imported again without being asked. */
   readonly existingCredits?: readonly ExistingCredit[];
+  /** The moves the household has recorded around the statement's dates: a credit that is the other half of one is recognised, as the debit is by its hash. */
+  readonly existingTransfers?: readonly ExistingTransfer[];
   readonly knownLineHashes: ReadonlySet<string>;
   /** The household members' names, so a move to oneself can be guessed from a payee that begins with one. */
   readonly ownNames?: readonly string[];
@@ -231,6 +244,7 @@ export function matchStatement(input: {
   const toAdd = new Map<string, AccountToAdd>();
   const claimed = new Set<string>();
   const claimedCredits = new Set<string>();
+  const claimedTransfers = new Set<string>();
 
   /** The account a line was paid from: the statement's, or for a UPI app's statement the line's own. */
   const accountOf = (line: StatementLine): { readonly id: string | null; readonly last4: string | null } => {
@@ -266,6 +280,24 @@ export function matchStatement(input: {
         category: creditCategoryOf(line.raw, statement.accountType === 'card'),
         sourceHash: hashed.lineHash,
       };
+      // The other half of a move that is already recorded (its debit was imported, and a move is written from the debit's line alone) is a guess, so it can still be added.
+      const recorded =
+        statement.accountType === 'bank' && account.id !== null
+          ? (input.existingTransfers ?? [])
+              .filter(
+                (transfer) =>
+                  !claimedTransfers.has(transfer.id) &&
+                  transfer.toAccountId === account.id &&
+                  transfer.amountMinor === line.amountMinor &&
+                  transfer.currency === 'INR' &&
+                  daysApart(transfer.date, line.date) <= MOVE_DAYS,
+              )
+              .sort((a, b) => daysApart(a.date, line.date) - daysApart(b.date, line.date))[0]
+          : undefined;
+      if (recorded !== undefined) {
+        claimedTransfers.add(recorded.id);
+        return done({ action: 'skip', reason: 'move-recorded', sure: false, credit });
+      }
       if (skip !== null && skip.action === 'skip') return done({ ...skip, credit });
       const typed = (input.existingCredits ?? [])
         .filter(
@@ -366,7 +398,7 @@ export function pairOwnTransfers(sides: readonly { readonly id: string; readonly
           !pairs.has(side.id) &&
           side.account !== debit.account &&
           side.line.amountMinor === debit.line.amountMinor &&
-          daysApart(side.line.date, debit.line.date) <= 1,
+          daysApart(side.line.date, debit.line.date) <= MOVE_DAYS,
       )
       .sort((a, b) => daysApart(a.line.date, debit.line.date) - daysApart(b.line.date, debit.line.date))[0];
     if (credit !== undefined) {

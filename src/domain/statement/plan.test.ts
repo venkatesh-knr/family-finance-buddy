@@ -57,7 +57,7 @@ describe('the plan', () => {
   it('writes the entries to create and the witnesses to add, and counts what it leaves', () => {
     const plan = planImport([row(CREATE), row(WITNESS), row(SURE), row(SEEN), row(GUESS)], new Map());
     expect(plan.writes.map((write) => [write.kind, write.index])).toEqual([['create', 0], ['witness', 1]]);
-    expect(plan.counts).toEqual({ create: 1, credit: 0, witness: 1, skip: 3, undecided: 0 });
+    expect(plan.counts).toEqual({ create: 1, credit: 0, move: 0, witness: 1, skip: 3, undecided: 0 });
     expect(plan.canCommit).toBe(true);
   });
 
