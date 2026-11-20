@@ -72,3 +72,20 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 - LI-I15 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
 - LI-I17 — not built: proposed, step 6a; awaiting the owner's answers in ledger-income.md §10 — 2026-11-13
+
+## card-cycles.md
+
+- CY-I1 — not built: the domain of slice 2 (card-cycles.md §10); every existing month-close test must pass unchanged — 2026-11-20
+- CY-I2 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I3 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I4 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I5 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I6 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I9 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+- CY-I10 — not built: the import of slice 4 (card-cycles.md §10) — 2026-11-20
+- CY-I11 — not built: the screens of slice 5 (card-cycles.md §10) — 2026-11-20
+- CY-I12 — not built: household_private_close by window, slice 3 (card-cycles.md §10) — 2026-11-20
+- CY-I13 — not built: the import and its duplicate check, slices 4 and 6 (card-cycles.md §10) — 2026-11-20
+- CY-I14 — not built: the table and who may write it are in the migration of slice 1 and its pgTAP file; the close without a card is slice 6 (card-cycles.md §10) — 2026-11-20
+- CY-I15 — not built: EMI conversions, slice 7 (card-cycles.md §10) — 2026-11-20
+- CY-I17 — not built: the debit link and the loan-payment guard are in the migration of slice 1 and its pgTAP file; the debt and its outstanding are slice 7 (card-cycles.md §10) — 2026-11-20

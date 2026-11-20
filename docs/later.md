@@ -81,3 +81,7 @@ screen, and **never recommends**. Concretely:
 
 A natural home is a **What if** area under Goals, one screen per simulator, each opening
 with its assumptions above its answer.
+
+## Protecting closed months when a card's cycle is switched
+
+Deferred by the owner on 20 November 2026: only demo data exists, so a switch between *at month end* and *on its statement date* applies to every month, either way (`docs/design/card-cycles.md` §6). Before real households use the app, a switch should leave months already closed as they were: a `cycle_from` month, a trigger refusing a start before the last month-end close, switching back only until a statement under the rule is in use, and the first window opening from the later of its previous-balance date and the last month-end due. The design and a worked example are in `card-cycles.md` §6.1.

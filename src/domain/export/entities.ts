@@ -321,6 +321,8 @@ export const ENTITIES: readonly Entity[] = [
       ts('closed_at'),
       text('note'),
     ],
+    // The card whose EMI plans the debt is (card-cycles.md 4a): set by the import from the card's statements, and the account is in no sheet yet.
+    leftOut: ['card_account_id'],
   },
   {
     key: 'insurance_policy',
@@ -443,6 +445,8 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = {
     'Step 7 (docs/design/spending-capture.md section 4). One statement line that made an entry or was merged into one: the entry, the batch and a hash of the line. Written by the importer and never typed, and a hash of a line is of no use in a file.',
   spend_statement:
     'Step 6e, a stated spend (docs/design/spending-capture.md section 11). A person’s stated total for an ended month, read by an owner or a partner only (SC-I19). Its sheet is decided with the screen that states it.',
+  close_without_card:
+    'A month an owner or a partner closed without a statement-date card’s statement (docs/design/card-cycles.md section 2.4, CY-I14). A choice about the close, voided when the statement arrives, and no record of a person’s own: the month card says it in words. Read by an owner and a partner only.',
 };
 
 /**
