@@ -24,7 +24,9 @@
 --   4. close_without_card's card-and-month check runs on insert only. A void is an update, and must still be possible after the card has been switched back to month end.
 --   5. emi_* are not checked against the account's type: a check cannot read another table, and a bank account's row carries 0 because nothing writes otherwise. The domain
 --      reads them for a card only.
---   6. The export: account and account_balance are in NOT_EXPORTED with their reasons, so the two new columns reach no sheet today. close_without_card is added to
+--   6. close_without_card_check is security definer, so that it reads the card whoever is writing: a viewer or another household's owner is then refused by the policy
+--      (who may), and not by a message about a card they cannot read (what may be). It reads one account's type and cycle and returns nothing to the caller.
+--   7. The export: account and account_balance are in NOT_EXPORTED with their reasons, so the two new columns reach no sheet today. close_without_card is added to
 --      NOT_EXPORTED in the same change (src/domain/export/entities.ts), since a test holds the tables to that list.
 
 -- ═══════════════════════════════════════════════ 1. account: when a card's month closes
@@ -127,6 +129,7 @@ create trigger close_without_card_audit
 create or replace function app.close_without_card_check()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $fn$
 begin
