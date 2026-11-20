@@ -37,6 +37,13 @@ describe('money in', () => {
     expect(out?.options.map((option) => option.label)).toEqual(['Leave out', 'Add as money in']);
   });
 
+  it('that may be one the household already has waits for an answer, in the decide group, and says which answer is which', () => {
+    const [out] = previewRows([credit({ action: 'skip', reason: 'credit-typed', sure: false, credit: CREDIT })], new Map(), []);
+    expect(out).toMatchObject({ group: 'decide', decision: null, moneyIn: true });
+    expect(out?.doing).toBe('Looks like money in you already have. Is it the same?');
+    expect(out?.options.map((option) => option.label)).toEqual(['It is the same: leave it out', 'It is different: add as money in']);
+  });
+
   it('an expense is not money in', () => {
     expect(previewRows([row({ action: 'create', entry: ENTRY })], new Map(), [])[0]?.moneyIn).toBe(false);
   });

@@ -18,9 +18,8 @@
  * only where the field is still empty.
  */
 
-import { defaultVisibility } from '../domain/credit.ts';
 import type { AccountToAdd, ExistingCredit, ExistingEntry, KnownAccount, NewEntry } from '../domain/statement/match.ts';
-import type { PlannedWrite } from '../domain/statement/plan.ts';
+import { creditVisibility, personalCredits, type PlannedWrite } from '../domain/statement/plan.ts';
 import type { StatedBalance } from '../domain/statement/statedBalance.ts';
 import type { StatementKind } from '../domain/statement/common.ts';
 import { addDays, isIsoDate, type IsoDate } from '../lib/dates.ts';
@@ -174,6 +173,8 @@ export interface ImportRequest {
   readonly householdId: Uuid;
   /** Who the entries are under, and who the accounts added are. */
   readonly memberId: Uuid;
+  /** Who is importing. Money in that would be private can be written only by the member it belongs to, so for anyone else it is refused before anything is written. */
+  readonly viewerMemberId: Uuid;
   readonly visibility: 'household' | 'personal';
   readonly kind: StatementKind;
   /** A name the person gives the import, and never the file's own. */
@@ -214,6 +215,10 @@ const clean = (text: string | null): string | null => {
 export async function commitImport(request: ImportRequest): Promise<ImportOutcome> {
   const client = supabase();
   const { householdId } = request;
+
+  if (request.memberId !== request.viewerMemberId && personalCredits(request.writes, request.visibility) > 0) {
+    throw new Error('Money in is private to whoever it came to, so it can be added only under your own name. Nothing was written. Choose yourself under Whose they are, or leave the money in out.');
+  }
 
   // 1. The accounts the statement names that the household lacks. Read again here, so a retry after a failure part way does not add them a second time.
   const accountByLast4 = new Map<string, Uuid>();
@@ -280,7 +285,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
         currency: credit.currency,
         credit_date: credit.date,
         // Income is private to whoever it came to, and a refund is the household's, unless the person chose to keep this import private.
-        visibility: request.visibility === 'personal' ? 'personal' : defaultVisibility(write.category),
+        visibility: creditVisibility(write.category, request.visibility),
         source: 'import',
         source_batch_id: batchId,
         source_hash: credit.sourceHash,

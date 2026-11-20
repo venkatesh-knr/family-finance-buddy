@@ -73,7 +73,7 @@ export interface KnownAccount {
   readonly type: 'savings' | 'current' | 'card';
 }
 
-export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed';
+export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money';
 
 export interface NewEntry {
   readonly date: IsoDate;
@@ -143,6 +143,12 @@ const CARD_PAYMENT_ON_CARD = /\b(payment\s+(received|recd|thank)|bbps\s+payment|
 const CARD_PAYMENT_ON_BANK = /(credit\s*card|\bcc\s*pay|card\s*bill|card\s*payment|card\s*autopay|autopay\s*card|\bCRED\b)/i;
 const INVESTMENT = /(indmoney|zerodha|groww|kuvera|\bcoin\b|clearing\s*corp|\bnsdl\b|\bcdsl\b|mutual\s*fund|\bsip\b|\biccl\b|\bnps\b)/i;
 const EMI_PRINCIPAL = /principal\s+amount\s+amortization/i;
+// What comes into a bank account and is not income (protection-and-flow.md section 4: an FD maturing is not income): a deposit or a fund coming back, a loan paid out, a move to oneself.
+const MONEY_BACK = /(matur|closure|premature|\bfd\b|\brd\b|\btd\b|redemption|redeem|\bppf\b|\bssy\b|\bnsc\b|\bkvp\b)/i;
+const LOAN_PAID_OUT = /(disburs|loan\s+credit)/i;
+const SELF_WORDS = /(\bself\b|own\s+account)/i;
+// A credit on a card that comes from turning a purchase into an EMI is not a refund: the purchase stays as it was recorded.
+const EMI_CONVERSION = /(\bemi\b|conversion)/i;
 const EMI_COST = /(interest\s+amount\s+amortization|\bigst\b|\bcgst\b|\bsgst\b|processing\s+fee|late\s+payment|finance\s+charge)/i;
 
 const INSTITUTION: Partial<Record<StatementKind, string>> = {
@@ -181,7 +187,10 @@ function skipFor(statement: ParsedStatement, line: StatementLine, ownFirstNames:
     return null;
   }
   if (statement.accountType === 'card') {
-    if (line.direction === 'credit') return CARD_PAYMENT_ON_CARD.test(text) ? { action: 'skip', reason: 'card-payment', sure: true } : null;
+    if (line.direction === 'credit') {
+      if (CARD_PAYMENT_ON_CARD.test(text)) return { action: 'skip', reason: 'card-payment', sure: true };
+      return EMI_CONVERSION.test(text) ? { action: 'skip', reason: 'emi-principal', sure: false } : null;
+    }
     if (EMI_PRINCIPAL.test(text)) return { action: 'skip', reason: 'emi-principal', sure: true };
     return null;
   }
@@ -190,8 +199,20 @@ function skipFor(statement: ParsedStatement, line: StatementLine, ownFirstNames:
   const payeeFirst = line.payee === null ? '' : normalisePayee(line.payee.split(/\s+/)[0] ?? '');
   if (payeeFirst.length >= OWN_NAME_FROM && ownFirstNames.has(payeeFirst)) return { action: 'skip', reason: 'own-transfer', sure: false };
   if (INVESTMENT.test(text)) return { action: 'skip', reason: 'investment', sure: false };
+  if (line.direction === 'credit') {
+    if (SELF_WORDS.test(text)) return { action: 'skip', reason: 'own-transfer', sure: false };
+    if (MONEY_BACK.test(text)) return { action: 'skip', reason: 'investment', sure: false };
+    if (LOAN_PAID_OUT.test(text)) return { action: 'skip', reason: 'loan-money', sure: false };
+  }
   return null;
 }
+
+/** Who a credit came from, as the statement prints it with any VPA taken out and any long number (a reference or an account number) dropped: only a reference's last four is kept anywhere. */
+const payerOf = (line: StatementLine): string | null => {
+  if (line.payee !== null) return line.payee;
+  const printed = readableText(line.raw);
+  return printed === null ? null : printed.replace(/\d{9,}/g, '').replace(/\s+/g, ' ').trim() || null;
+};
 
 export function matchStatement(input: {
   readonly statement: ParsedStatement;
@@ -239,7 +260,7 @@ export function matchStatement(input: {
         date: line.date,
         amountMinor: line.amountMinor,
         currency: 'INR',
-        payer: line.payee ?? readableText(line.raw),
+        payer: payerOf(line),
         accountId: account.id,
         accountLast4: account.last4,
         category: creditCategoryOf(line.raw, statement.accountType === 'card'),

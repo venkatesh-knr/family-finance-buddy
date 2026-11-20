@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StatementLine } from './common.ts';
 import type { MatchedRow, NewCredit, NewEntry, Proposal } from './match.ts';
-import { allowedDecisions, defaultDecision, planImport, skipWords } from './plan.ts';
+import { allowedDecisions, creditVisibility, defaultDecision, personalCredits, planImport, skipWords } from './plan.ts';
 
 /**
  * What an import will write, from what the matcher proposed and what a person decided (docs/design/spending-capture.md section 4; docs/build-plan.md step 7). Every row can be
@@ -101,8 +101,12 @@ describe('money in', () => {
   it('is added by default, can be left out, and a guess that it is not money in can be overruled', () => {
     expect(defaultDecision(MONEY_IN)).toBe('create');
     expect(allowedDecisions(MONEY_IN)).toEqual(['create', 'skip']);
-    expect(defaultDecision(TYPED)).toBe('skip');
+    // Money in that may be one the household already has waits for a person, as a near match does: a credit wrongly left out reads as spending low.
+    expect(defaultDecision(TYPED)).toBeNull();
     expect(allowedDecisions(TYPED)).toEqual(['skip', 'create']);
+    expect(planImport([row(TYPED)], new Map()).canCommit).toBe(false);
+    expect(planImport([row(TYPED)], new Map()).undecided).toEqual([0]);
+    expect(planImport([row(TYPED)], new Map([[0, 'skip' as const]])).nothingToWrite).toBe(true);
   });
 
   it('is written as a credit with the category the line suggested, or the one a person chose, and counted apart from expenses', () => {
@@ -119,7 +123,22 @@ describe('money in', () => {
   it('is written when a person says a guessed skip was money in after all, and not otherwise', () => {
     expect(planImport([row(TYPED)], new Map([[0, 'create' as const]])).writes).toHaveLength(1);
     expect(planImport([row(TYPED)], new Map()).writes).toHaveLength(0);
-    expect(planImport([row(TYPED)], new Map()).nothingToWrite).toBe(true);
+  });
+});
+
+describe('who can see money in', () => {
+  it('is private to whoever it came to, except a refund, which is the household\'s, unless the whole import is kept private', () => {
+    expect(creditVisibility('salary', 'household')).toBe('personal');
+    expect(creditVisibility('refund', 'household')).toBe('household');
+    expect(creditVisibility('refund', 'personal')).toBe('personal');
+    expect(creditVisibility('interest', 'personal')).toBe('personal');
+  });
+
+  it('counts the credits that only the person they are under can write, so an import for someone else can say so before anything is written', () => {
+    const plan = planImport([row(MONEY_IN), row(MONEY_IN), row(CREATE)], new Map([]), new Map([[1, 'refund']]));
+    expect(personalCredits(plan.writes, 'household')).toBe(1);
+    expect(personalCredits(plan.writes, 'personal')).toBe(2);
+    expect(personalCredits(planImport([row(CREATE)], new Map()).writes, 'personal')).toBe(0);
   });
 });
 
@@ -153,7 +172,8 @@ describe('saying why a line is skipped', () => {
     expect(skipWords('money-in', true)).toBe('Money received on a UPI app. It is imported from the bank statement it arrives on.');
     expect(skipWords('own-transfer', true)).toBe('A move between your own accounts, which is not spending.');
     expect(skipWords('investment', false)).toBe('Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.');
-    expect(skipWords('credit-typed', false)).toBe('Looks like money in you have already typed. Add it if it is not the same.');
+    expect(skipWords('credit-typed', false)).toBe('Looks like money in you already have. Is it the same?');
+    expect(skipWords('loan-money', false, true)).toBe('Looks like a loan paid out to you, which is not income. Add it if it is.');
     expect(skipWords('investment', false, true)).toBe('Looks like money back from an investment, which is not income. Add it if it is.');
     expect(skipWords('own-transfer', false, true)).toBe('Looks like money from your own account, which is not income. Add it if it is.');
   });

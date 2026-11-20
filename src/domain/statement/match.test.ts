@@ -210,7 +210,37 @@ describe('money in', () => {
     expect(redeemed.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'investment', sure: false, credit: { amountMinor: 4_500_000n } });
   });
 
-  it('a credit the household has already typed is offered as a guess it is the same, and not added a second time without being asked', () => {
+  it('a credit that is not income is a guess a person can overrule: a deposit or a fund coming back, a loan paid out, a move to oneself', () => {
+    const cases: readonly [string, string][] = [
+      ['FD CLOSURE PROCEEDS 123456 INCL INT', 'investment'],
+      ['TD MATURITY 0012345 PRINCIPAL', 'investment'],
+      ['RD MATURITY CREDIT', 'investment'],
+      ['ACH C- PPF WITHDRAWAL', 'investment'],
+      ['ACH C- SAMPLE FUND REDEMPTION PROCEEDS', 'investment'],
+      ['LOAN DISBURSEMENT HOME LOAN 991', 'loan-money'],
+      ['IMPS-123456789012-SELF TRANSFER-HDFC', 'own-transfer'],
+      ['NEFT CR-HDFC0000123-A PERSON-SELF', 'own-transfer'],
+    ];
+    for (const [raw, reason] of cases) {
+      const out = run(BANK, [credit(raw)]);
+      expect(out.rows[0]?.proposal, raw).toMatchObject({ action: 'skip', reason, sure: false, credit: { amountMinor: 4_500_000n } });
+    }
+    // Interest on a deposit is income, and a plain cash deposit is not taken for a maturing one.
+    expect(run(BANK, [credit('INT.PD:SB A/C 0001')]).rows[0]?.proposal.action).toBe('credit');
+    expect(run(BANK, [credit('CASH DEPOSIT BRANCH')]).rows[0]?.proposal.action).toBe('credit');
+  });
+
+  it('a credit on a card that comes from turning a purchase into an EMI is a guess, not a refund', () => {
+    const out = run(CARD, [credit('EMI CONVERSION CREDIT SAMPLE SHOP')]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'emi-principal', sure: false, credit: { category: 'refund' } });
+  });
+
+  it('keeps long reference numbers out of the name it is written under', () => {
+    const out = run(BANK, [credit('IMPS-123456789012-SAMPLE PERSON-50100000007391-RENT')]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { payer: 'IMPS--SAMPLE PERSON--RENT' } });
+  });
+
+  it('a credit the household already has is offered as a guess it is the same, which waits for a person', () => {
     const typed: ExistingCredit = { id: 'c1', date: '2026-10-06', amountMinor: 4_500_000n, currency: 'INR', accountId: 'acc-bank' };
     const out = run(BANK, [credit('SALARY CREDIT SAMPLE EMPLOYER')], { existingCredits: [typed] });
     expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'credit-typed', sure: false, credit: { category: 'salary' } });

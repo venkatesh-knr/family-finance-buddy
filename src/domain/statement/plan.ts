@@ -7,7 +7,7 @@
  */
 
 import type { StatementLine } from './common.ts';
-import { CREDIT_CATEGORIES, type CreditCategory } from '../credit.ts';
+import { CREDIT_CATEGORIES, defaultVisibility, type CreditCategory } from '../credit.ts';
 import type { Fill, MatchedRow, NewCredit, NewEntry, Proposal, SkipReason } from './match.ts';
 
 export type Decision = 'create' | 'merge' | 'skip';
@@ -23,7 +23,8 @@ export function defaultDecision(proposal: Proposal): Decision | null {
     case 'suggest':
       return null;
     case 'skip':
-      return 'skip';
+      // Money in that may be one the household already has waits for a person, as a near match does.
+      return proposal.reason === 'credit-typed' ? null : 'skip';
   }
 }
 
@@ -59,6 +60,19 @@ export interface ImportPlan {
 }
 
 const isCreditCategory = (value: string | null | undefined): value is CreditCategory => value !== null && value !== undefined && (CREDIT_CATEGORIES as readonly string[]).includes(value);
+
+/** Who can see a credit an import writes: private to whoever it came to, a refund the household's, and everything private when the person keeps the whole import private. */
+export function creditVisibility(category: CreditCategory, importVisibility: 'household' | 'personal'): 'household' | 'personal' {
+  return importVisibility === 'personal' ? 'personal' : defaultVisibility(category);
+}
+
+/**
+ * How many of the credits to be written would be private. Only the member a credit belongs to can write one that is private (the table's policy), so an import for someone else cannot
+ * write these: the screen says so and the repository refuses before anything is written, rather than failing part way.
+ */
+export function personalCredits(writes: readonly PlannedWrite[], importVisibility: 'household' | 'personal'): number {
+  return writes.filter((write) => write.kind === 'credit' && creditVisibility(write.category, importVisibility) === 'personal').length;
+}
 
 /** `categories` is what a person chose for a row: an expense category's id for an expense, a credit category for money in. */
 export function planImport(rows: readonly MatchedRow[], decisions: ReadonlyMap<number, Decision>, categories: ReadonlyMap<number, string | null> = new Map()): ImportPlan {
@@ -101,6 +115,7 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
   if (moneyIn && !sure) {
     if (reason === 'investment') return 'Looks like money back from an investment, which is not income. Add it if it is.';
     if (reason === 'own-transfer') return 'Looks like money from your own account, which is not income. Add it if it is.';
+    if (reason === 'emi-principal') return 'Looks like a purchase turned into an EMI, not a refund. Add it if it is.';
   }
   switch (reason) {
     case 'already-imported':
@@ -112,7 +127,9 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
     case 'money-in':
       return 'Money received on a UPI app. It is imported from the bank statement it arrives on.';
     case 'credit-typed':
-      return 'Looks like money in you have already typed. Add it if it is not the same.';
+      return 'Looks like money in you already have. Is it the same?';
+    case 'loan-money':
+      return 'Looks like a loan paid out to you, which is not income. Add it if it is.';
     case 'investment':
       return 'Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.';
     case 'own-transfer':

@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { parsePdfStatement, parseTextStatement } from '../../domain/statement/detect.ts';
 import type { ParsedStatement, StatementKind } from '../../domain/statement/common.ts';
 import { matchStatement, type MatchResult } from '../../domain/statement/match.ts';
-import { planImport, type Decision } from '../../domain/statement/plan.ts';
+import { personalCredits, planImport, type Decision } from '../../domain/statement/plan.ts';
 import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
 import { CREDIT_CATEGORIES, CREDIT_LABEL, type CreditCategory } from '../../domain/credit.ts';
@@ -151,6 +151,9 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   };
   const categories = new Map(read === null ? [] : read.matched.rows.map((_row, index) => [index, categoryOf(index)] as const));
   const plan = read === null ? null : planImport(read.matched.rows, decisions, categories);
+  // Money in that would be private can be written only under the member it belongs to: for someone else it is said here, and the import waits.
+  const blockedMoneyIn = plan === null || memberId === data.viewer.memberId ? 0 : personalCredits(plan.writes, visibility);
+  const canCommit = plan !== null && plan.canCommit && blockedMoneyIn === 0;
   const rows = read === null ? [] : previewRows(read.matched.rows, decisions, read.context.existing);
   const blocked = read !== null && read.statement.problems.length > 0;
 
@@ -165,7 +168,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   };
 
   const finish = async (): Promise<void> => {
-    if (read === null || plan === null || !plan.canCommit) return;
+    if (read === null || plan === null || !canCommit) return;
     if (!/^\d{6}$/.test(code.trim())) {
       setFinishProblem('Enter the six-digit code from your authenticator app.');
       return;
@@ -178,6 +181,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
       const outcome = await commitImport({
         householdId: data.household.id,
         memberId,
+        viewerMemberId: data.viewer.memberId,
         visibility,
         kind: read.statement.kind,
         label: label.trim() === '' ? null : label.trim(),
@@ -413,7 +417,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         },
         {
           name: 'What it will do',
-          ready: plan !== null && plan.canCommit,
+          ready: canCommit,
           content:
             read === null || plan === null ? (
               <p className="note">Choose a statement first.</p>
@@ -475,6 +479,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   <span className="label" id="statement-visibility-label">
                     Who can see these
                   </span>
+                  <p className="note">This is for expenses and refunds. Other money in stays private to whoever it came to.</p>
                   <div className="segmented self-start" role="group" aria-labelledby="statement-visibility-label">
                     <button
                       type="button"
@@ -496,6 +501,12 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     </button>
                   </div>
                 </div>
+
+                {blockedMoneyIn > 0 && (
+                  <Problem>
+                    Money in is private to whoever it came to, so it can be added only under your own name. Choose yourself under Whose they are, or leave the money in out.
+                  </Problem>
+                )}
 
                 {plan.nothingToWrite && (
                   <p className="note" role="status" data-testid="statement-nothing">
@@ -526,7 +537,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         },
         {
           name: 'Confirm',
-          ready: /^\d{6}$/.test(code.trim()) && plan !== null && plan.canCommit,
+          ready: /^\d{6}$/.test(code.trim()) && canCommit,
           content: (
             <>
               <RequiredKey />
