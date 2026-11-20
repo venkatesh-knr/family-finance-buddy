@@ -90,6 +90,8 @@ export function findMoves(rows: readonly FlatRow[]): MovePair[] {
         : sides.find((candidate) => candidate.id === other);
     const debitRow = rows[Number(side.id)];
     if (credit === undefined || debitRow === undefined) continue;
+    // A move has one date, and the month's close counts it in that month alone: two halves in different months are left as the lines they were.
+    if (side.line.date.slice(0, 7) !== credit.line.date.slice(0, 7)) continue;
     moves.push({
       debit: Number(side.id),
       credit: Number(credit.id),

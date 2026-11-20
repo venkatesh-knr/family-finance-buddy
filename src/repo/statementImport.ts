@@ -85,7 +85,7 @@ export async function readMatchingContext(input: {
       .lte('credit_date', addDays(input.to, WINDOW_DAYS)),
     client
       .from('account_transfer')
-      .select('id, transfer_date, amount_minor::text, currency, to_account_id')
+      .select('id, transfer_date, amount_minor::text, currency, from_account_id, to_account_id')
       .eq('household_id', householdId)
       .is('voided_at', null)
       .gte('transfer_date', addDays(input.from, -WINDOW_DAYS))
@@ -150,8 +150,8 @@ export async function readMatchingContext(input: {
   });
 
   const existingTransfers: ExistingTransfer[] = (transfers.data ?? []).map((row) => {
-    const r = row as { id: string; transfer_date: string; amount_minor: string; currency: string; to_account_id: string };
-    return { id: r.id, date: r.transfer_date, amountMinor: toBigIntExact(r.amount_minor, 'account_transfer.amount_minor'), currency: r.currency, toAccountId: r.to_account_id };
+    const r = row as { id: string; transfer_date: string; amount_minor: string; currency: string; from_account_id: string; to_account_id: string };
+    return { id: r.id, date: r.transfer_date, amountMinor: toBigIntExact(r.amount_minor, 'account_transfer.amount_minor'), currency: r.currency, fromAccountId: r.from_account_id, toAccountId: r.to_account_id };
   });
 
   return {
@@ -439,7 +439,8 @@ export async function commitMoves(input: {
 }): Promise<{ readonly created: number; readonly alreadyThere: number }> {
   if (input.moves.length === 0) return { created: 0, alreadyThere: 0 };
   const client = supabase();
-  const accounts = await listAccounts(input.householdId);
+  // Archived accounts too: an account the statement names that was archived is still the account, and the statements are written by now.
+  const accounts = await listAccounts(input.householdId, { includeArchived: true });
   const byLast4 = new Map(accounts.flatMap((account) => (account.last4 === null ? [] : [[account.last4, account] as const])));
   let created = 0;
   let alreadyThere = 0;

@@ -558,6 +558,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                     Who can see these
                   </span>
                   <p className="note">This is for expenses and refunds. Other money in stays private to whoever it came to.</p>
+                  {plan.counts.move > 0 && <p className="note">A move between your accounts has no choice here: it is seen by everyone who can see both accounts.</p>}
                   <div className="segmented self-start" role="group" aria-labelledby="statement-visibility-label">
                     <button
                       type="button"
@@ -621,6 +622,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
               <RequiredKey />
               <p className="note">
                 {plan === null ? '' : `This writes ${String(plan.counts.create)} ${plan.counts.create === 1 ? 'expense' : 'expenses'}`}
+                {plan !== null && plan.counts.credit > 0 ? `, ${String(plan.counts.credit)} money in` : ''}
                 {plan !== null && plan.counts.move > 0 ? `, and ${String(plan.counts.move)} ${plan.counts.move === 1 ? 'move' : 'moves'} between your own accounts` : ''}
                 {plan !== null && plan.counts.witness > 0 ? ` and adds ${many ? 'these statements' : 'this statement'} to ${String(plan.counts.witness)} you already have` : ''}
                 {plan === null ? '' : `. Nothing is doubled if ${many ? 'the same statements are' : 'the same statement is'} imported again.`}

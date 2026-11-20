@@ -383,7 +383,7 @@ describe('review: only card repayments are taken for card repayments', () => {
 });
 
 describe('the other half of a move that is already recorded', () => {
-  const move = (over: Partial<ExistingTransfer> = {}): ExistingTransfer => ({ id: 't1', date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', toAccountId: 'acc-bank', ...over });
+  const move = (over: Partial<ExistingTransfer> = {}): ExistingTransfer => ({ id: 't1', date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', fromAccountId: 'acc-other', toAccountId: 'acc-bank', ...over });
   const credit = (n = 1, over: Partial<StatementLine> = {}) => hashed(n, { direction: 'credit', amountMinor: 4_500_000n, payee: null, upiReference: null, raw: `NEFT CR-ABCD0000001-SOMEONE${String(n)}`, ...over });
 
   it('is not added as money in without asking: a move is written from its debit alone, so its credit is recognised by the move into that account, as a guess', () => {
@@ -402,5 +402,24 @@ describe('the other half of a move that is already recorded', () => {
     expect(run(CARD, [credit()], { existingTransfers: [move({ toAccountId: 'acc-card' })] }).rows[0]?.proposal.action).toBe('credit');
     const two = run(BANK, [credit(1), credit(2)], { existingTransfers: [move()] });
     expect(two.rows.map((row) => (row.proposal.action === 'skip' ? row.proposal.reason : row.proposal.action))).toEqual(['move-recorded', 'credit']);
+  });
+});
+
+describe('the debit of a move that is already recorded', () => {
+  const typed: ExistingTransfer = { id: 't1', date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', fromAccountId: 'acc-bank', toAccountId: 'acc-other' };
+  const debit = (n = 1, over: Partial<StatementLine> = {}) => hashed(n, { direction: 'debit', amountMinor: 4_500_000n, payee: null, upiReference: null, raw: `NEFT DR-ABCD0000001-SOMEONE${String(n)}`, ...over });
+
+  it('is not added as an expense without asking, whether the move was typed or made from another format of the statement: it is a guess that carries the entry', () => {
+    const out = run(BANK, [debit()], { existingTransfers: [typed] });
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'move-recorded', sure: false, entry: { amountMinor: 4_500_000n } });
+  });
+
+  it('is not taken for a move out of another account, another amount, a day too far, or a card, and is used for one debit only', () => {
+    expect(run(BANK, [debit()], { existingTransfers: [{ ...typed, fromAccountId: 'other' }] }).rows[0]?.proposal.action).toBe('create');
+    expect(run(BANK, [debit(1, { amountMinor: 4_400_000n })], { existingTransfers: [typed] }).rows[0]?.proposal.action).toBe('create');
+    expect(run(BANK, [debit(1, { date: '2026-10-08' })], { existingTransfers: [typed] }).rows[0]?.proposal.action).toBe('create');
+    expect(run(CARD, [debit()], { existingTransfers: [{ ...typed, fromAccountId: 'acc-card' }] }).rows[0]?.proposal.action).toBe('create');
+    const two = run(BANK, [debit(1), debit(2)], { existingTransfers: [typed] });
+    expect(two.rows.map((row) => (row.proposal.action === 'skip' ? row.proposal.reason : row.proposal.action))).toEqual(['move-recorded', 'create']);
   });
 });

@@ -131,7 +131,8 @@ export function planImport(
     const { decision } = here;
     const { proposal } = row;
     if (here.partOf !== undefined) {
-      // The other half of a move is counted in the move, and not as a line left out.
+      // The other half of a move writes nothing of its own: it is left out, as the move already stands for it.
+      skip += 1;
     } else if (decision === null) {
       undecided.push(index);
     } else if (decision === 'move' && here.move !== undefined) {
@@ -182,7 +183,7 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
     case 'investment':
       return 'Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.';
     case 'move-recorded':
-      return 'Already recorded as a move between your own accounts. Add it as money in if it is not.';
+      return moneyIn ? 'Already recorded as a move between your own accounts. Add it as money in if it is not.' : 'Already recorded as a move between your own accounts. Add it as an expense if it is not.';
     case 'own-transfer':
       return sure ? 'A move between your own accounts, which is not spending.' : 'Looks like a move between your own accounts, which is not spending. Import it if it is not.';
   }

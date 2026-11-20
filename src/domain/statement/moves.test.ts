@@ -189,6 +189,21 @@ describe("which lines are one move", () => {
     expect(findMoves([seen, credit("2222")])).toEqual([]);
   });
 
+  it("does not offer a pair whose two halves fall in different months, since a move has one date and the close counts it in that month alone", () => {
+    expect(
+      findMoves([
+        debit("1111", { date: "2026-10-31" }),
+        credit("2222", { date: "2026-11-01" }),
+      ]),
+    ).toEqual([]);
+    expect(
+      findMoves([
+        debit("1111", { date: "2026-10-30" }),
+        credit("2222", { date: "2026-10-31" }),
+      ]),
+    ).toHaveLength(1);
+  });
+
   it("uses each line once, nearest in date first", () => {
     const moves = findMoves([
       debit("1111"),
@@ -216,7 +231,7 @@ describe("a move in the plan", () => {
       create: 0,
       credit: 0,
       move: 1,
-      skip: 0,
+      skip: 1,
     });
     expect(plan.canCommit).toBe(true);
   });
@@ -265,7 +280,10 @@ describe("a move in the plan", () => {
 });
 
 describe("saying what a move is", () => {
-  it("says a credit that is a move recorded already is not money in", () => {
+  it("says a line that is a move recorded already is not an expense, or not money in", () => {
+    expect(skipWords("move-recorded", false)).toBe(
+      "Already recorded as a move between your own accounts. Add it as an expense if it is not.",
+    );
     expect(skipWords("move-recorded", false, true)).toBe(
       "Already recorded as a move between your own accounts. Add it as money in if it is not.",
     );

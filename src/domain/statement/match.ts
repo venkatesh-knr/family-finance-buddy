@@ -73,6 +73,7 @@ export interface ExistingTransfer {
   readonly date: IsoDate;
   readonly amountMinor: bigint;
   readonly currency: string;
+  readonly fromAccountId: string;
   readonly toAccountId: string;
 }
 
@@ -245,6 +246,7 @@ export function matchStatement(input: {
   const claimed = new Set<string>();
   const claimedCredits = new Set<string>();
   const claimedTransfers = new Set<string>();
+  const claimedMovesOut = new Set<string>();
 
   /** The account a line was paid from: the statement's, or for a UPI app's statement the line's own. */
   const accountOf = (line: StatementLine): { readonly id: string | null; readonly last4: string | null } => {
@@ -331,6 +333,24 @@ export function matchStatement(input: {
       hint: EMI_COST.test(line.raw) && statement.accountType === 'card' ? 'Interest and charges' : line.hint,
       note: line.hint,
     };
+
+    // The debit of a move that is already recorded (typed, or made from another format of this statement, whose line hash differs) is a guess, so it can still be added.
+    if (statement.accountType === 'bank' && statement.kind !== 'gpay_pdf' && account.id !== null) {
+      const recorded = (input.existingTransfers ?? [])
+        .filter(
+          (transfer) =>
+            !claimedMovesOut.has(transfer.id) &&
+            transfer.fromAccountId === account.id &&
+            transfer.amountMinor === line.amountMinor &&
+            transfer.currency === 'INR' &&
+            daysApart(transfer.date, line.date) <= MOVE_DAYS,
+        )
+        .sort((a, b) => daysApart(a.date, line.date) - daysApart(b.date, line.date))[0];
+      if (recorded !== undefined) {
+        claimedMovesOut.add(recorded.id);
+        return done({ action: 'skip', reason: 'move-recorded', sure: false, entry });
+      }
+    }
 
     if (skip !== null && skip.action === 'skip') return done({ ...skip, entry });
 
