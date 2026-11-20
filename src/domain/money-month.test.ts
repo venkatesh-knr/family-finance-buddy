@@ -339,3 +339,220 @@ describe('openMonthFigures', () => {
     ]);
   });
 });
+
+/**
+ * A card that closes on its statement date (docs/design/card-cycles.md; CY-I2, CY-I5, CY-I6, CY-I15). Its money in, transfers in and refunds are counted in the window of its statement,
+ * and every other account over the calendar month. The worked example is `card-cycles.md` section 9: the card is billed on the 17th, with its statement of 17 September at ₹20,200 and of
+ * 17 October at ₹28,640, and in the window 18 September to 17 October it bought ₹21,739, received a ₹12,000 payment on 5 October and a ₹1,299 refund on 10 October.
+ */
+describe('a card that closes on its statement date', () => {
+  const cycleCard = (over: Partial<MonthAccount> = {}): MonthAccount => ({
+    id: 'card',
+    type: 'card',
+    currency: 'INR',
+    opening: r(20_200),
+    closing: r(28_640),
+    window: { from: '2026-09-18', to: '2026-10-17' },
+    ...over,
+  });
+  const banks = (): MonthAccount[] => [
+    { id: 'hdfc', type: 'savings', currency: 'INR', opening: r(200_000), closing: r(220_380) },
+    { id: 'sbi', type: 'savings', currency: 'INR', opening: r(50_000), closing: r(50_400) },
+  ];
+  const october = (over: Partial<MonthInput> = {}): MonthInput => ({
+    month: '2026-10',
+    today: '2026-11-13',
+    accounts: [...banks(), cycleCard()],
+    credits: [
+      { accountId: 'hdfc', category: 'salary', amount: r(142_000), date: '2026-10-01' },
+      { accountId: 'sbi', category: 'interest', amount: r(1_250), date: '2026-10-05' },
+      { accountId: 'card', category: 'refund', amount: r(1_299), date: '2026-10-10' },
+    ],
+    transfers: [
+      { fromId: 'hdfc', toId: 'card', amount: r(12_000), date: '2026-10-05' },
+      { fromId: 'hdfc', toId: 'card', amount: r(6_240), date: '2026-10-25' },
+    ],
+    holdingMoves: [{ accountId: 'hdfc', direction: 'into', amount: r(55_000), date: '2026-10-12' }],
+    loanPayments: [],
+    ...over,
+  });
+
+  it('CY-I5 — with the payments typed as moves (§9 a), spent is ₹69,670 as in the calendar example, and ₹6,240 is in transit', () => {
+    const month = closed(october());
+    expect(month.left.map((l) => [l.accountId, l.leftMinor])).toEqual([
+      ['hdfc', paise(121_620)],
+      ['sbi', paise(850)],
+      ['card', paise(21_739)],
+    ]);
+    expect(month.leftTotal).toBe(paise(144_209));
+    expect(month.ownTransfers).toBe(paise(18_240));
+    expect(month.spent).toBe(6_967_000n);
+    expect(month.cameIn).toBe(paise(143_250));
+    expect(month.saved).toBe(7_358_000n);
+    expect(month.cashReserveChange).toBe(paise(12_340));
+    expect(month.paymentsInTransit).toBe(paise(6_240));
+    expect(month.split).toEqual({ spent: paise(69_670), invested: paise(55_000), paidToLoans: 0n, toCashReserve: paise(12_340), paymentsInTransit: paise(6_240) });
+    expect(month.gapMinor).toBe(0n);
+  });
+
+  it('CY-I5 — with the payments skipped (§9 b), spent is ₹75,910: the 25 October payment, made after the statement date, reads as spent this month', () => {
+    const month = closed(october({ transfers: [] }));
+    expect(month.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(paise(9_739));
+    expect(month.spent).toBe(7_591_000n);
+    expect(month.saved).toBe(paise(67_340));
+    expect(month.paymentsInTransit).toBe(0n);
+    expect(month.split).toEqual({ spent: paise(75_910), invested: paise(55_000), paidToLoans: 0n, toCashReserve: paise(12_340) });
+    expect(month.gapMinor).toBe(0n);
+  });
+
+  it('CY-I2 — a refund dated 10 October is in October’s window and one dated 20 October is in the next: the card’s own window, not the calendar month, counts it', () => {
+    const late = closed(
+      october({
+        credits: [
+          { accountId: 'hdfc', category: 'salary', amount: r(142_000), date: '2026-10-01' },
+          { accountId: 'sbi', category: 'interest', amount: r(1_250), date: '2026-10-05' },
+          { accountId: 'card', category: 'refund', amount: r(1_299), date: '2026-10-20' },
+        ],
+        transfers: [],
+      }),
+    );
+    expect(late.refunds).toBe(0n);
+    expect(late.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(paise(8_440));
+    expect(late.gapMinor).toBe(0n);
+  });
+
+  it('CY-I2 — a transfer’s two legs fall in the window of their own account: the 25 October out-leg in October, the in-leg in the card’s next window', () => {
+    const november = closed({
+      month: '2026-11',
+      today: '2026-12-05',
+      accounts: [
+        { id: 'hdfc', type: 'savings', currency: 'INR', opening: r(220_380), closing: r(220_380) },
+        { id: 'sbi', type: 'savings', currency: 'INR', opening: r(50_400), closing: r(50_400) },
+        cycleCard({ opening: r(28_640), closing: r(22_400), window: { from: '2026-10-18', to: '2026-11-17' } }),
+      ],
+      credits: [],
+      transfers: october().transfers,
+      holdingMoves: [],
+      loanPayments: [],
+    });
+    expect(november.ownTransfers).toBe(0n);
+    expect(november.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(0n);
+    expect(november.paymentsInTransit).toBe(-paise(6_240));
+    expect(november.spent).toBe(0n);
+    expect(november.gapMinor).toBe(0n);
+  });
+
+  it('CY-I6 — the line telescopes: October’s ₹6,240 in transit and November’s −₹6,240 add up to nothing still in transit', () => {
+    expect(closed(october()).paymentsInTransit + -paise(6_240)).toBe(0n);
+  });
+
+  it('CY-I1 — a month-end card in the same household is counted over the calendar month exactly as before, whatever another card does', () => {
+    const both = closed(
+      october({
+        accounts: [...banks(), cycleCard(), { id: 'axis', type: 'card', currency: 'INR', opening: r(1_000), closing: r(3_000) }],
+        credits: [],
+        transfers: [],
+        holdingMoves: [],
+      }),
+    );
+    expect(both.left.find((l) => l.accountId === 'axis')?.leftMinor).toBe(paise(2_000));
+    expect(both.gapMinor).toBe(0n);
+  });
+
+  describe('a bill converted to EMIs (CY-I15)', () => {
+    const plain = (card: Partial<MonthAccount>, month: string, window: { from: string; to: string }): MonthInput => ({
+      month,
+      today: '2026-12-31',
+      accounts: [
+        { id: 'hdfc', type: 'savings', currency: 'INR', opening: r(100_000), closing: r(100_000) },
+        { id: 'card', type: 'card', currency: 'INR', opening: r(0), closing: r(0), window, ...card },
+      ],
+      credits: [],
+      transfers: [],
+      holdingMoves: [],
+      loanPayments: [],
+    });
+
+    it('counts the converted ₹60,000 as spent in the cycle it was converted, and −₹60,000 as paid to loans, with a gap of nothing', () => {
+      const month = closed(plain({ opening: r(0), closing: r(0), emiConvertedMinor: 6_000_000n }, '2026-10', { from: '2026-09-18', to: '2026-10-17' }));
+      expect(month.spent).toBe(6_000_000n);
+      expect(month.paidToLoans).toBe(-6_000_000n);
+      expect(month.split.paidToLoans).toBe(-6_000_000n);
+      expect(month.gapMinor).toBe(0n);
+    });
+
+    it('counts the next cycle’s instalment as ₹660 spent (its interest and GST) and ₹5,000 paid to loans (its principal), with a gap of nothing', () => {
+      const month = closed(plain({ opening: r(0), closing: r(5_660), emiPrincipalMinor: 500_000n }, '2026-11', { from: '2026-10-18', to: '2026-11-17' }));
+      expect(month.spent).toBe(66_000n);
+      expect(month.paidToLoans).toBe(500_000n);
+      expect(month.cashReserveChange).toBe(-566_000n);
+      expect(month.gapMinor).toBe(0n);
+    });
+  });
+});
+
+/**
+ * CY-I1 as a property (card-cycles.md tests): for random households of bank accounts and month-end cards, a month's figures are the same with no window given and with the calendar month
+ * given as every account's window, the gap is nothing, and no card payment is in transit. The window is what a statement-date card adds; without one every figure is today's.
+ */
+describe('CY-I1 — a household with no card on its statement date has its figures exactly as before', () => {
+  // A small deterministic generator, so a failure can be reproduced from its seed.
+  const generator = (seed: number) => {
+    let state = seed;
+    const next = (): number => {
+      state = (state * 1_664_525 + 1_013_904_223) % 4_294_967_296;
+      return state / 4_294_967_296;
+    };
+    return { int: (below: number): number => Math.floor(next() * below), pick: <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)] as T };
+  };
+  const day = (n: number): string => `2026-10-${String(n).padStart(2, '0')}`;
+
+  const household = (seed: number): MonthInput => {
+    const g = generator(seed);
+    const count = 2 + g.int(4);
+    const accounts: MonthAccount[] = Array.from({ length: count }, (_unused, at) => {
+      const card = at > 0 && g.int(3) === 0;
+      return { id: `a${String(at)}`, type: card ? 'card' : 'savings', currency: 'INR', opening: r(g.int(300_000)), closing: r(g.int(300_000)) } as const;
+    });
+    const ids = accounts.map((a) => a.id);
+    const money_ = (): ReturnType<typeof r> => r(1 + g.int(80_000));
+    return {
+      month: '2026-10',
+      today: '2026-11-20',
+      accounts,
+      credits: Array.from({ length: g.int(6) }, () => ({
+        accountId: g.int(5) === 0 ? null : g.pick(ids),
+        category: g.pick(['salary', 'interest', 'refund', 'other_income'] as const),
+        amount: money_(),
+        date: day(1 + g.int(31)),
+      })),
+      transfers: Array.from({ length: g.int(4) }, () => {
+        const from = g.pick(ids);
+        const to = g.pick(ids.filter((id) => id !== from));
+        return { fromId: from, toId: to, amount: money_(), date: day(1 + g.int(31)) };
+      }),
+      holdingMoves: Array.from({ length: g.int(3) }, () => ({ accountId: g.pick(ids), direction: g.pick(['into', 'out'] as const), amount: money_(), date: day(1 + g.int(31)) })),
+      loanPayments: Array.from({ length: g.int(3) }, () => ({ accountId: g.pick(ids), amount: money_(), date: day(1 + g.int(31)) })),
+    };
+  };
+  const calendar = (input: MonthInput): MonthInput => ({ ...input, accounts: input.accounts.map((a) => ({ ...a, window: { from: '2026-10-01', to: '2026-10-31' } })) });
+
+  it('gives the same figures with no window as with the calendar month as every window, to the paisa, over two hundred households', () => {
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const plain = household(seed);
+      expect(closedMonthFigures(calendar(plain)), `seed ${String(seed)}`).toEqual(closedMonthFigures(plain));
+    }
+  });
+
+  it('leaves the gap at nothing and nothing in transit, in every one of them', () => {
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const out = closedMonthFigures(household(seed));
+      if (!out.ok) throw new Error(`seed ${String(seed)} did not close`);
+      for (const currency of out.currencies) {
+        expect(currency.gapMinor, `seed ${String(seed)}`).toBe(0n);
+        expect(currency.paymentsInTransit, `seed ${String(seed)}`).toBe(0n);
+        expect(currency.split.paymentsInTransit, `seed ${String(seed)}`).toBeUndefined();
+      }
+    }
+  });
+});

@@ -3,6 +3,7 @@ import { money } from '../../lib/money.ts';
 import type { Account, AccountBalance, Credit, Transfer } from '../../repo/types.ts';
 import {
   accountSteps,
+  cardCycles,
   closeFigures,
   isClosed,
   itemisedFigures,
@@ -409,5 +410,171 @@ describe('isClosed — a month is closed when every account in use has a closing
   it('leaves an archived account out of it', () => {
     const archived = accounts.map((a) => (a.id === 'card' ? { ...a, isArchived: true } : a));
     expect(isClosed({ month: '2026-10', accounts: archived, balances: balances.filter((b) => b.accountId !== 'card') })).toBe(true);
+  });
+});
+
+/**
+ * A card that closes on its statement date (docs/design/card-cycles.md sections 2 and 3; CY-I1 to CY-I5, CY-I13, CY-I14). Its window for a month runs from the day after the balance before the
+ * statement to the statement dated in the month, and the month waits for that statement. The figures are the design's own worked example (section 9): the card is billed on the 17th, its
+ * statements are ₹20,200 on 17 September and ₹28,640 on 17 October, and October is ₹69,670 spent with the payments typed as moves and ₹75,910 without.
+ */
+describe('a card that closes on its statement date', () => {
+  const cycleCard: Account = { ...account('card', 'card', 'HDFC Regalia'), cycleEnds: 'statement' };
+  const bankBalances = [
+    balance('hdfc', '2026-09-30', 200_000),
+    balance('sbi', '2026-09-30', 50_000),
+    balance('hdfc', '2026-10-31', 220_380),
+    balance('sbi', '2026-10-31', 50_400),
+  ];
+  const statements = [balance('card', '2026-09-17', 20_200, 'statement'), balance('card', '2026-10-17', 28_640, 'statement')];
+  const moveOf = (from: string, to: string, rupees: number, date: string): Transfer => ({ ...transfer, id: `t-${date}`, fromAccountId: from, toAccountId: to, amount: r(rupees), date });
+  const ledger = {
+    credits: [credit('hdfc', 'salary', 142_000, '2026-10-01'), credit('sbi', 'interest', 1_250, '2026-10-05'), credit('card', 'refund', 1_299, '2026-10-10')],
+    holdingMoves: [{ accountId: 'hdfc', direction: 'into' as const, amount: r(55_000), date: '2026-10-12' }],
+  };
+  const october = (over: Partial<Parameters<typeof closeFigures>[0]> = {}): Parameters<typeof closeFigures>[0] => ({
+    month: '2026-10',
+    today: '2026-11-13',
+    accounts: [account('hdfc', 'savings', 'HDFC'), account('sbi', 'savings', 'SBI'), cycleCard],
+    balances: [...bankBalances, ...statements],
+    credits: ledger.credits,
+    transfers: [],
+    holdingMoves: ledger.holdingMoves,
+    typed: {},
+    ...over,
+  });
+
+  it('CY-I2 — takes the cycle from its statements: 18 September to 17 October, due ₹20,200 to ₹28,640', () => {
+    const cycles = cardCycles(october());
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0]).toMatchObject({ kind: 'cycle', accountId: 'card', from: '2026-09-18', to: '2026-10-17' });
+    expect(cycles[0]?.kind === 'cycle' && cycles[0].opening.minor).toBe(2_020_000n);
+    expect(cycles[0]?.kind === 'cycle' && cycles[0].closing.minor).toBe(2_864_000n);
+  });
+
+  it('CY-I5 — closes October at ₹75,910 spent with its payments skipped (§9 b), counting the card over its cycle and the banks over the month', () => {
+    const out = closeFigures(october());
+    expect(out.status).toBe('figures');
+    const inr = out.status === 'figures' ? out.currencies[0] : undefined;
+    expect(inr?.spent).toBe(7_591_000n);
+    expect(inr?.saved).toBe(6_734_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('CY-I5 — and at ₹69,670 with the payments typed as moves (§9 a), with ₹6,240 in transit', () => {
+    const out = closeFigures(
+      october({
+        transfers: [moveOf('hdfc', 'card', 12_000, '2026-10-05'), moveOf('hdfc', 'card', 6_240, '2026-10-25')],
+      }),
+    );
+    const inr = out.status === 'figures' ? out.currencies[0] : undefined;
+    expect(inr?.spent).toBe(6_967_000n);
+    expect(inr?.paymentsInTransit).toBe(624_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('CY-I3 — waits for the statement dated in the month, and names the card', () => {
+    const out = closeFigures(october({ balances: bankBalances }));
+    expect(out).toMatchObject({ status: 'missing', missing: ['card'] });
+    expect(cardCycles(october({ balances: bankBalances }))[0]).toMatchObject({ kind: 'waiting', accountId: 'card' });
+  });
+
+  it('CY-I3 — a statement dated in the month is the one the month takes, and the latest of two is the cycle’s end', () => {
+    const cycles = cardCycles(october({ balances: [...bankBalances, ...statements, balance('card', '2026-10-25', 30_000, 'statement')] }));
+    expect(cycles[0]).toMatchObject({ kind: 'cycle', from: '2026-10-18', to: '2026-10-25' });
+  });
+
+  it('CY-I3 — with no statement dated in February and one on 1 March whose balance before it is 31 January, February closes with the card adding nothing and March covers the whole of it', () => {
+    const jan = balance('card', '2026-01-31', 10_000, 'statement');
+    const mar = balance('card', '2026-03-01', 16_000, 'statement');
+    const feb = cardCycles({ ...october({ month: '2026-02', today: '2026-03-10' }), balances: [jan, mar] });
+    expect(feb[0]).toMatchObject({ kind: 'none-this-month', accountId: 'card' });
+    const march = cardCycles({ ...october({ month: '2026-03', today: '2026-04-10' }), balances: [jan, mar] });
+    expect(march[0]).toMatchObject({ kind: 'cycle', from: '2026-02-01', to: '2026-03-01' });
+
+    const closedFeb = closeFigures({
+      ...october({ month: '2026-02', today: '2026-03-10' }),
+      balances: [balance('hdfc', '2026-01-31', 100_000), balance('sbi', '2026-01-31', 20_000), balance('hdfc', '2026-02-28', 90_000), balance('sbi', '2026-02-28', 20_000), jan, mar],
+      credits: [],
+      holdingMoves: [],
+    });
+    expect(closedFeb.status).toBe('figures');
+    const inr = closedFeb.status === 'figures' ? closedFeb.currencies[0] : undefined;
+    expect(inr?.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(0n);
+    expect(inr?.spent).toBe(1_000_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('CY-I4 — a first statement whose printed previous balance is there gives its cycle in full: October starts from the 17 September balance, and September is the one left out', () => {
+    expect(cardCycles(october())[0]).toMatchObject({ kind: 'cycle', from: '2026-09-18', to: '2026-10-17' });
+    const sep = cardCycles({ ...october({ month: '2026-09', today: '2026-10-05' }) });
+    expect(sep[0]).toMatchObject({ kind: 'first-left-out', accountId: 'card', to: '2026-09-17' });
+  });
+
+  it('CY-I4 — a first statement with none printed has its first cycle left out: the card adds nothing that month, and the arithmetic still balances', () => {
+    const only = [balance('card', '2026-10-17', 28_640, 'statement')];
+    expect(cardCycles(october({ balances: [...bankBalances, ...only] }))[0]).toMatchObject({ kind: 'first-left-out', to: '2026-10-17' });
+    const out = closeFigures(october({ balances: [...bankBalances, ...only], credits: ledger.credits.filter((c) => c.accountId !== 'card') }));
+    const inr = out.status === 'figures' ? out.currencies[0] : undefined;
+    expect(inr?.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(0n);
+    // The banks' spending less the ₹55,000 into holdings, and the card adds nothing: no refund is credited to it here.
+    expect(inr?.spent).toBe(6_747_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('CY-I13 — a typed due and a statement for the same cycle are one figure: the statement’s, whatever day each is dated, and the typed one is not read for the next month', () => {
+    const typed = balance('card', '2026-10-17', 29_000, 'typed');
+    const stated = balance('card', '2026-10-18', 28_640, 'statement');
+    const cycles = cardCycles(october({ balances: [...bankBalances, balance('card', '2026-09-17', 20_200, 'statement'), typed, stated] }));
+    expect(cycles[0]).toMatchObject({ kind: 'cycle', from: '2026-09-18', to: '2026-10-18' });
+    expect(cycles[0]?.kind === 'cycle' && cycles[0].closing.minor).toBe(2_864_000n);
+    // November opens from the statement, not from the typed figure.
+    const november = cardCycles(october({ month: '2026-11', today: '2026-12-05', balances: [balance('card', '2026-10-18', 28_640, 'statement'), typed, balance('card', '2026-11-17', 22_400, 'statement')] }));
+    expect(november[0]?.kind === 'cycle' && november[0].opening.minor).toBe(2_864_000n);
+  });
+
+  it('CY-I13 — a typed due is the cycle’s figure when no statement is dated in the month', () => {
+    const cycles = cardCycles(october({ balances: [...bankBalances, balance('card', '2026-09-17', 20_200, 'statement'), balance('card', '2026-10-17', 28_640, 'typed')] }));
+    expect(cycles[0]).toMatchObject({ kind: 'cycle', to: '2026-10-17' });
+  });
+
+  it('CY-I14 — closed without the card, the card adds nothing and its payments count as spent instead; the statement arriving later corrects the month with nothing reopened', () => {
+    const payments = [moveOf('hdfc', 'card', 12_000, '2026-10-05'), moveOf('hdfc', 'card', 6_240, '2026-10-25')];
+    const without = october({ balances: bankBalances, transfers: payments, credits: ledger.credits.filter((c) => c.accountId !== 'card'), closedWithout: [{ accountId: 'card', month: '2026-10' }] });
+    expect(cardCycles(without)[0]).toMatchObject({ kind: 'closed-without', accountId: 'card' });
+    const out = closeFigures(without);
+    const inr = out.status === 'figures' ? out.currencies[0] : undefined;
+    expect(inr?.left.map((l) => l.accountId)).toEqual(['hdfc', 'sbi']);
+    // The banks' spending, the ₹18,240 paid to the card among it, less the ₹55,000 into holdings.
+    expect(inr?.spent).toBe(6_747_000n);
+    expect(inr?.gapMinor).toBe(0n);
+
+    const later = closeFigures({ ...without, balances: [...bankBalances, ...statements], credits: ledger.credits });
+    const corrected = later.status === 'figures' ? later.currencies[0] : undefined;
+    expect(cardCycles({ ...without, balances: [...bankBalances, ...statements] })[0]?.kind).toBe('cycle');
+    expect(corrected?.spent).toBe(6_967_000n);
+  });
+
+  it('CY-I1 — a household with no statement-date card has no cycles and every figure as before', () => {
+    const plain = { ...october(), accounts: accounts, balances, credits: [], holdingMoves: [] };
+    expect(cardCycles(plain)).toEqual([]);
+    const out = closeFigures(plain);
+    expect(out.status).toBe('figures');
+  });
+
+  it('CY-I15 — takes a cycle’s EMI figures from its statement: converted ₹60,000 is spent in the cycle and −₹60,000 paid to loans', () => {
+    const emi: AccountBalance = { ...balance('card', '2026-10-17', 20_200, 'statement'), emiConvertedMinor: 6_000_000n };
+    const out = closeFigures(october({ balances: [...bankBalances, balance('card', '2026-09-17', 20_200, 'statement'), emi], credits: [], holdingMoves: [] }));
+    const inr = out.status === 'figures' ? out.currencies[0] : undefined;
+    expect(inr?.paidToLoans).toBe(-6_000_000n);
+    expect(inr?.left.find((l) => l.accountId === 'card')?.leftMinor).toBe(6_000_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('CY-I3 — a month with a waiting card is not closed, and one with its statement is; typing is not how a statement-date card is closed', () => {
+    const input = { month: '2026-10', accounts: [account('hdfc', 'savings', 'HDFC'), cycleCard] };
+    expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1)] })).toBe(false);
+    expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1), balance('card', '2026-10-17', 1, 'statement')] })).toBe(true);
+    expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1)], closedWithout: [{ accountId: 'card', month: '2026-10' }] })).toBe(true);
   });
 });

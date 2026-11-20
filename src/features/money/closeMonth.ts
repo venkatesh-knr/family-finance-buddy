@@ -6,11 +6,15 @@
  * account's opening is its balance on the last day of the month before and its closing its balance on the last day of the month, a statement
  * beating a typed figure for the same day. Spent is derived and never stored (SC-I1); the close stores balances. Money in is the ledger's:
  * credits and the transfers in, never typed beside the balances. An archived account is not in a close.
+ *
+ * A card that closes on its statement date is the exception to "the last day of the month" (docs/design/card-cycles.md): its month is the cycle of its statement dated in the month,
+ * worked out here from its balances (`cardCycles`). Every other account is as above, and a household with no such card has no cycle anywhere (CY-I1).
  */
 
 import { addMonths } from '../../domain/accrual.ts';
 import { isIncome } from '../../domain/credit.ts';
 import { closedMonthFigures, type MonthFigures, type MonthHoldingMove, type MonthUnreadable } from '../../domain/money-month.ts';
+import { addDays, type IsoDate } from '../../lib/dates.ts';
 import { money, parseAmountToMinor, type Money } from '../../lib/money.ts';
 import type { Account, AccountBalance, Budget, Credit, Transfer } from '../../repo/types.ts';
 import { titleOf } from './accountRows.ts';
@@ -59,6 +63,31 @@ export function monthlyPlanned(
   return [...firstOfEach.values()].reduce((total, budget) => total + budget.planned.minor, 0n);
 }
 
+/** A card's cycle for a month (card-cycles.md 2 and 3), worked out from its recorded dues, each of which is a statement's or a typed one. */
+export type CardCycle =
+  /** The statement dated in the month, and the balance before it: the window runs from the day after that balance to the statement. */
+  | {
+      readonly kind: 'cycle';
+      readonly accountId: string;
+      readonly from: IsoDate;
+      readonly to: IsoDate;
+      readonly opening: Money;
+      readonly closing: Money;
+      readonly emiConvertedMinor: bigint;
+      readonly emiPrincipalMinor: bigint;
+    }
+  /** The earliest statement in the app has no balance before it, so its cycle is left out: the card adds nothing that month. */
+  | { readonly kind: 'first-left-out'; readonly accountId: string; readonly to: IsoDate; readonly closing: Money; readonly emiConvertedMinor: bigint; readonly emiPrincipalMinor: bigint }
+  /** No statement is dated in the month and a later one shows that none was: its spending is in the later close, and the card adds nothing now. */
+  | { readonly kind: 'none-this-month'; readonly accountId: string }
+  /** The month waits for the statement dated in it. */
+  | { readonly kind: 'waiting'; readonly accountId: string }
+  /** An owner or a partner closed the month without the card, and the statement is still not in: the card adds nothing, and its payments count as spent. */
+  | { readonly kind: 'closed-without'; readonly accountId: string };
+
+/** The months an owner or a partner closed without a card (`close_without_card`), as the close reads them. A voided one is not passed. */
+export type ClosedWithout = readonly { readonly accountId: string; readonly month: string }[];
+
 /** What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. */
 export type TypedBalances = Readonly<Record<string, { readonly opening?: Money; readonly closing?: Money }>>;
 
@@ -86,12 +115,68 @@ export interface CloseInput {
   /** What the database adds of the money the caller cannot read, for an owner or a partner. None for anyone else. */
   readonly unreadable?: readonly MonthUnreadable[];
   readonly typed: TypedBalances;
+  /** The months closed without a statement-date card, which that card's statement, when it arrives, supersedes (card-cycles.md 2.4). */
+  readonly closedWithout?: ClosedWithout;
 }
 
 /** An account's balance on a day: a statement's beats a typed one. Null when none was recorded for that day. */
 function balanceOn(balances: readonly AccountBalance[], accountId: string, day: string): Money | null {
   const here = balances.filter((b) => b.accountId === accountId && b.asAt === day);
   return (here.find((b) => b.source === 'statement') ?? here[0])?.balance ?? null;
+}
+
+const isStatementCard = (account: Account): boolean => account.type === 'card' && account.cycleEnds === 'statement';
+
+/**
+ * The dues of a statement-date card that the close reads: every statement's, and a typed one only in a month that has no statement's. One cycle, one figure (CY-I13): a typed 17 October and
+ * a statement of 18 October are the same cycle, and the statement is used; the typed row is kept in the database and not read. One per day, a statement's beating a typed one.
+ */
+function cycleDues(balances: readonly AccountBalance[], accountId: string): AccountBalance[] {
+  const own = balances.filter((b) => b.accountId === accountId);
+  const statedMonths = new Set(own.filter((b) => b.source === 'statement').map((b) => b.asAt.slice(0, 7)));
+  const read = own.filter((b) => b.source === 'statement' || !statedMonths.has(b.asAt.slice(0, 7)));
+  const byDay = new Map<string, AccountBalance>();
+  for (const b of read) {
+    const held = byDay.get(b.asAt);
+    if (held === undefined || (b.source === 'statement' && held.source !== 'statement')) byDay.set(b.asAt, b);
+  }
+  return [...byDay.values()].sort((a, b) => (a.asAt < b.asAt ? -1 : a.asAt > b.asAt ? 1 : 0));
+}
+
+/**
+ * The cycle of each statement-date card for a month (card-cycles.md 2.2 to 2.4, 3): the statement dated in the month closes it, the balance before that opens it, and the window is the days
+ * between. Pure; nothing is stored per window, so statements imported out of order are worked out the same.
+ */
+export function cardCycles(input: { readonly month: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[]; readonly closedWithout?: ClosedWithout }): CardCycle[] {
+  const lastDay = lastDayOf(input.month);
+  return inUse(input.accounts, input.month)
+    .filter(isStatementCard)
+    .map((account): CardCycle => {
+      const dues = cycleDues(input.balances, account.id);
+      const inMonth = dues.filter((due) => due.asAt.slice(0, 7) === input.month);
+      const closingRow = inMonth[inMonth.length - 1];
+      if (closingRow === undefined) {
+        if (dues.some((due) => due.asAt > lastDay)) return { kind: 'none-this-month', accountId: account.id };
+        const without = (input.closedWithout ?? []).some((choice) => choice.accountId === account.id && choice.month === input.month);
+        return without ? { kind: 'closed-without', accountId: account.id } : { kind: 'waiting', accountId: account.id };
+      }
+      const emiConvertedMinor = closingRow.emiConvertedMinor ?? 0n;
+      const emiPrincipalMinor = closingRow.emiPrincipalMinor ?? 0n;
+      const openingRow = dues.filter((due) => due.asAt < closingRow.asAt).pop();
+      if (openingRow === undefined) {
+        return { kind: 'first-left-out', accountId: account.id, to: closingRow.asAt, closing: closingRow.balance, emiConvertedMinor, emiPrincipalMinor };
+      }
+      return {
+        kind: 'cycle',
+        accountId: account.id,
+        from: addDays(openingRow.asAt, 1),
+        to: closingRow.asAt,
+        opening: openingRow.balance,
+        closing: closingRow.balance,
+        emiConvertedMinor,
+        emiPrincipalMinor,
+      };
+    });
 }
 
 /** The accounts in a month's close: those in use, and those archived in that month or after it (ledger-income.md section 1a). */
@@ -119,11 +204,15 @@ export function itemisedFigures(
 }
 
 export type CloseFigures =
-  | { readonly status: 'figures'; readonly currencies: readonly MonthFigures[] }
+  /** `cards` is each statement-date card's cycle for the month, and is absent for a household with none. */
+  | { readonly status: 'figures'; readonly currencies: readonly MonthFigures[]; readonly cards?: readonly CardCycle[] }
   | { readonly status: 'not-ended' }
-  /** The accounts with an opening or a closing balance still to be typed, in the order given. */
-  | { readonly status: 'missing'; readonly missing: readonly string[] }
+  /** The accounts with an opening or a closing balance still to be typed, in the order given; a statement-date card waits for its statement and is named here. */
+  | { readonly status: 'missing'; readonly missing: readonly string[]; readonly cards?: readonly CardCycle[] }
   | { readonly status: 'no-accounts' };
+
+/** An empty window: a card with nothing of this month counts none of its credits, legs or moves in it. */
+const NO_DAYS = { from: '9999-12-31', to: '0000-01-01' } as const;
 
 /** What the month came to, from the balances at its two ends and what the ledger knows; or what is still to be typed. */
 export function closeFigures(input: CloseInput): CloseFigures {
@@ -135,29 +224,62 @@ export function closeFigures(input: CloseInput): CloseFigures {
   const readIn = new Set(accounts.map((account) => account.currency));
   const unreadable = (input.unreadable ?? []).filter((line) => readIn.has(line.currency) || line.outside !== 0n);
 
+  const cards = cardCycles({ month: input.month, accounts, balances: input.balances, ...(input.closedWithout === undefined ? {} : { closedWithout: input.closedWithout }) });
+  const cycleOf = new Map(cards.map((cycle) => [cycle.accountId, cycle] as const));
+  // A card left out of the close takes nothing with it that is counted twice: what touches it is not read, so a payment to it is simply what the bank spent.
+  const omitted = new Set(cards.filter((cycle) => cycle.kind === 'closed-without').map((cycle) => cycle.accountId));
+  const inClose = accounts.filter((account) => !omitted.has(account.id));
+
   const result = closedMonthFigures({
     month: input.month,
     today: input.today,
-    accounts: accounts.map((account) => ({
-      id: account.id,
-      type: account.type,
-      currency: account.currency,
-      opening: input.typed[account.id]?.opening ?? balanceOn(input.balances, account.id, opensOn),
-      closing: input.typed[account.id]?.closing ?? balanceOn(input.balances, account.id, closesOn),
-    })),
+    accounts: inClose.map((account) => {
+      const cycle = cycleOf.get(account.id);
+      if (cycle === undefined) {
+        return {
+          id: account.id,
+          type: account.type,
+          currency: account.currency,
+          opening: input.typed[account.id]?.opening ?? balanceOn(input.balances, account.id, opensOn),
+          closing: input.typed[account.id]?.closing ?? balanceOn(input.balances, account.id, closesOn),
+        };
+      }
+      const base = { id: account.id, type: account.type, currency: account.currency };
+      switch (cycle.kind) {
+        case 'cycle':
+          return { ...base, opening: cycle.opening, closing: cycle.closing, window: { from: cycle.from, to: cycle.to }, emiConvertedMinor: cycle.emiConvertedMinor, emiPrincipalMinor: cycle.emiPrincipalMinor };
+        case 'first-left-out':
+          // Opens from its own closing, so it adds nothing; its window is the month it ends in, which is as much as is known of it.
+          return {
+            ...base,
+            opening: cycle.closing,
+            closing: cycle.closing,
+            window: { from: `${cycle.to.slice(0, 7)}-01`, to: cycle.to },
+            emiConvertedMinor: cycle.emiConvertedMinor,
+            emiPrincipalMinor: cycle.emiPrincipalMinor,
+          };
+        case 'none-this-month':
+          return { ...base, opening: money(0n, account.currency), closing: money(0n, account.currency), window: NO_DAYS };
+        default:
+          return { ...base, opening: null, closing: null };
+      }
+    }),
     credits: input.credits
-      .filter((credit) => !credit.isVoided)
+      .filter((credit) => !credit.isVoided && (credit.accountId === null || !omitted.has(credit.accountId)))
       .map((credit) => ({ accountId: credit.accountId, category: credit.category, amount: credit.amount, date: credit.date })),
-    transfers: input.transfers.filter((t) => !t.isVoided).map((t) => ({ fromId: t.fromAccountId, toId: t.toAccountId, amount: t.amount, date: t.date })),
-    holdingMoves: input.holdingMoves ?? [],
+    transfers: input.transfers
+      .filter((t) => !t.isVoided && !omitted.has(t.fromAccountId) && !omitted.has(t.toAccountId))
+      .map((t) => ({ fromId: t.fromAccountId, toId: t.toAccountId, amount: t.amount, date: t.date })),
+    holdingMoves: (input.holdingMoves ?? []).filter((move) => !omitted.has(move.accountId)),
     loanPayments: (input.loanPayments ?? []).flatMap((payment) =>
-      payment.isVoided === true || payment.accountId === null ? [] : [{ accountId: payment.accountId, amount: payment.amount, date: payment.date }],
+      payment.isVoided === true || payment.accountId === null || omitted.has(payment.accountId) ? [] : [{ accountId: payment.accountId, amount: payment.amount, date: payment.date }],
     ),
     ...(unreadable.length === 0 ? {} : { unreadable }),
   });
-  if (result.ok) return { status: 'figures', currencies: result.currencies };
+  const cardsField = cards.length === 0 ? {} : { cards };
+  if (result.ok) return { status: 'figures', currencies: result.currencies, ...cardsField };
   if (result.reason === 'not-ended') return { status: 'not-ended' };
-  return { status: 'missing', missing: result.missing };
+  return { status: 'missing', missing: result.missing, ...cardsField };
 }
 
 export interface AccountStep {
@@ -182,10 +304,31 @@ export function accountSteps(input: CloseInput): AccountStep[] {
   const lines = figures.status === 'figures' ? figures.currencies.flatMap((currency) => currency.left) : [];
   const opensOn = lastDayOf(addMonths(`${input.month}-01`, -1).slice(0, 7));
   const closesOn = lastDayOf(input.month);
+  const cycleOf = new Map(
+    cardCycles({ month: input.month, accounts: input.accounts, balances: input.balances, ...(input.closedWithout === undefined ? {} : { closedWithout: input.closedWithout }) }).map((cycle) => [cycle.accountId, cycle] as const),
+  );
 
   return inUse(input.accounts, input.month).map((account) => {
-    const opening = input.typed[account.id]?.opening ?? balanceOn(input.balances, account.id, opensOn);
-    const closing = input.typed[account.id]?.closing ?? balanceOn(input.balances, account.id, closesOn);
+    // A statement-date card's figures are its statements', never typed here (card-cycles.md 8.2).
+    const cycle = cycleOf.get(account.id);
+    const opening: Money | null =
+      cycle === undefined
+        ? (input.typed[account.id]?.opening ?? balanceOn(input.balances, account.id, opensOn))
+        : cycle.kind === 'cycle'
+          ? cycle.opening
+          : cycle.kind === 'first-left-out'
+            ? cycle.closing
+            : cycle.kind === 'none-this-month'
+              ? money(0n, account.currency)
+              : null;
+    const closing: Money | null =
+      cycle === undefined
+        ? (input.typed[account.id]?.closing ?? balanceOn(input.balances, account.id, closesOn))
+        : cycle.kind === 'cycle' || cycle.kind === 'first-left-out'
+          ? cycle.closing
+          : cycle.kind === 'none-this-month'
+            ? money(0n, account.currency)
+            : null;
     const line = lines.find((each) => each.accountId === account.id);
     return {
       accountId: account.id,
@@ -222,7 +365,10 @@ export function lastBalanceMonth(input: { readonly today: string; readonly accou
   let month = monthToClose(input.today);
   for (let back = 0; back < 12; back += 1) {
     const closesOn = lastDayOf(month);
-    if (inUse(input.accounts, month).some((account) => balanceOn(input.balances, account.id, closesOn) !== null)) return month;
+    // A statement-date card has a balance in a month when one is dated anywhere in it: its statement's.
+    const has = (account: Account): boolean =>
+      isStatementCard(account) ? input.balances.some((b) => b.accountId === account.id && b.asAt.slice(0, 7) === month) : balanceOn(input.balances, account.id, closesOn) !== null;
+    if (inUse(input.accounts, month).some(has)) return month;
     month = addMonths(`${month}-01`, -1).slice(0, 7);
   }
   return null;
@@ -236,19 +382,26 @@ export function offersClose(input: {
   readonly canRecord: boolean;
   /** The credits and moves have been read: money in read as nothing would make spent read low. */
   readonly moneyReady: boolean;
+  readonly closedWithout?: ClosedWithout;
 }): boolean {
   return (
     input.moneyReady &&
     input.canRecord &&
     input.accounts.some((account) => !account.isArchived) &&
-    !isClosed({ month: input.month, accounts: input.accounts, balances: input.balances })
+    !isClosed({ month: input.month, accounts: input.accounts, balances: input.balances, ...(input.closedWithout === undefined ? {} : { closedWithout: input.closedWithout }) })
   );
 }
 
 /** Whether a month has been closed: every account in use has a closing balance on its last day. Nothing in use is nothing closed from balances. */
-export function isClosed(input: { readonly month: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[] }): boolean {
+export function isClosed(input: { readonly month: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[]; readonly closedWithout?: ClosedWithout }): boolean {
   const used = inUse(input.accounts, input.month);
   if (used.length === 0) return false;
   const closesOn = lastDayOf(input.month);
-  return used.every((account) => balanceOn(input.balances, account.id, closesOn) !== null);
+  // A statement-date card closes with its statement dated in the month (or has none to wait for, or was left out by an owner or a partner), never with a balance typed for the last day.
+  const waiting = new Set(
+    cardCycles({ month: input.month, accounts: used, balances: input.balances, ...(input.closedWithout === undefined ? {} : { closedWithout: input.closedWithout }) })
+      .filter((cycle) => cycle.kind === 'waiting')
+      .map((cycle) => cycle.accountId),
+  );
+  return used.every((account) => (isStatementCard(account) ? !waiting.has(account.id) : balanceOn(input.balances, account.id, closesOn) !== null));
 }

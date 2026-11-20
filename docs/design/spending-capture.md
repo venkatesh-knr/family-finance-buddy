@@ -50,6 +50,7 @@ build-plan step 6a):
 ```
 bank account   left = opening balance + money in − closing balance
 card           left = amount due at end − amount due at start + payments made to it
+               (a card that closes on its statement date uses its statements: card-cycles.md §2)
 ```
 
 ```
@@ -59,6 +60,7 @@ spent = Σ left
 ```
 
 - **Opening is last month's closing.** The first close asks for both.
+- **A card can close on its statement date.** Its cycle ending in the month stands in for the calendar month, and the month waits for that statement (`card-cycles.md`).
 - **Money in is the ledger's** (`ledger-income.md` §4): an account's credits, the
   transfers into it and holding take-outs paid into it. Nothing is typed beside
   them at the close; a missing credit is added with *+ Money in*. A refund or money
@@ -237,6 +239,7 @@ saved this month   = came in − spent                                 (PF §4)
 
 net invested       = put into holdings − taken out of holdings
 cash reserve       = savings and current account balances − card dues
+                     (each card's latest due on or before the day: its month-end due, or its last statement's)
 ```
 
 **Put into holdings** comes from the holdings' own entries, by date, per class: a
@@ -383,7 +386,7 @@ balances, and it does not make a month closeable: a close still needs balances.
 
 **SC-I11 — Invested is derived from the holdings' own entries by date,** never from balances and never including market movement. (§10)
 
-**SC-I12 — For a closed month, came in minus spent equals net invested plus paid to loans plus the change in cash reserve, to the paisa.** (§10)
+**SC-I12 — For a closed month, came in minus spent equals net invested plus paid to loans plus the change in cash reserve, plus card payments in transit where a card closes on its statement date, to the paisa.** (§10)
 
 **SC-I13 — Invested by class adds up to invested,** and its classes are the classes Holdings groups by (HD-I2). (§10)
 
