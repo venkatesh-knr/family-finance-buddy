@@ -26,7 +26,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 ## protection-and-flow.md
 
-- PF-C10 — not built: the transfer rule and the account it moves money between arrive with slice 6a (build-plan step 6a) — 2026-10-10
 - PF-C11 — not built: the step-at-credit rule for PPF, SSY, NSC and KVP belongs to the balance sheet (build-plan step 6) — 2026-10-10
 - PF-C15 — half built: the cover half is asserted in tests/e2e/insurance.spec.ts, which does not carry the ID because the rule also names income, and the income ledger arrives with slice 6a (build-plan step 6a) — 2026-10-11
 - PF-C16 — not built: the Overview's stock and flow regions arrive with slice 6a — 2026-10-10
@@ -47,7 +46,6 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 - SC-I1 — not built: the month close needs the account registry and income ledger from slice 6a (spending-capture.md §8, S3) — 2026-10-30
 - SC-I2 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
 - SC-I3 — not built: the closed-month view arrives with the month close (spending-capture.md §8, S3) — 2026-10-30
-- SC-I4 — not built: needs the transfer rule and account from slice 6a (spending-capture.md §8, S3) — 2026-10-30
 - SC-I7 — not built: the share target and Paste are slice S2 (spending-capture.md §8) — 2026-10-30
 - SC-I12 — not built: needs the month close's balances (spending-capture.md §8, S3 and S5) — 2026-10-30
 

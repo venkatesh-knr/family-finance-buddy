@@ -109,6 +109,56 @@ describe('closedMonthFigures', () => {
     expect(without.spent).toBe(base.spent);
   });
 
+  it('PF-C10 — a transfer between the household’s own accounts is in neither came in nor spent: the same month without it, its two accounts each ₹18,240 apart, has the same totals', () => {
+    const base = closed(example());
+    const without = closed(
+      example({
+        accounts: [
+          { id: 'hdfc', type: 'savings', currency: 'INR', opening: r(200_000), closing: r(220_380 + 18_240) },
+          { id: 'sbi', type: 'savings', currency: 'INR', opening: r(50_000), closing: r(50_400) },
+          { id: 'card', type: 'card', currency: 'INR', opening: r(10_000), closing: r(12_200 + 18_240) },
+        ],
+        transfers: [],
+      }),
+    );
+    expect(without.cameIn).toBe(base.cameIn);
+    expect(without.spent).toBe(base.spent);
+  });
+
+  it('SC-I4 — a move from one savings account to another, a card payment and money into a holding each leave spent where it was', () => {
+    const base = closed(example());
+    // ₹5,000 moved from HDFC to SBI: HDFC ends ₹5,000 lower and SBI ₹5,000 higher.
+    const moved = closed(
+      example({
+        accounts: [
+          { id: 'hdfc', type: 'savings', currency: 'INR', opening: r(200_000), closing: r(220_380 - 5_000) },
+          { id: 'sbi', type: 'savings', currency: 'INR', opening: r(50_000), closing: r(50_400 + 5_000) },
+          { id: 'card', type: 'card', currency: 'INR', opening: r(10_000), closing: r(12_200) },
+        ],
+        transfers: [
+          { fromId: 'hdfc', toId: 'card', amount: r(18_240), date: '2026-10-10' },
+          { fromId: 'hdfc', toId: 'sbi', amount: r(5_000), date: '2026-10-11' },
+        ],
+      }),
+    );
+    expect(moved.spent).toBe(base.spent);
+    expect(moved.cameIn).toBe(base.cameIn);
+    // A further ₹10,000 into a holding from HDFC: HDFC ends ₹10,000 lower.
+    const invested = closed(
+      example({
+        accounts: accounts(220_380 - 10_000),
+        holdingMoves: [
+          { accountId: 'hdfc', direction: 'into', amount: r(55_000), date: '2026-10-12' },
+          { accountId: 'hdfc', direction: 'into', amount: r(10_000), date: '2026-10-20' },
+        ],
+      }),
+    );
+    expect(invested.spent).toBe(base.spent);
+    expect(invested.putIntoHoldings).toBe(paise(65_000));
+    // The card payment is the ₹18,240 transfer to the card in the base month, which the PF-C10 test removes with no change to spent.
+    expect(base.spent).toBe(paise(69_670));
+  });
+
   it('LI-I3 — a refund takes ₹1,299 off spent in its month and is not in came in, and in the next month it changes the next month alone', () => {
     const withRefund = closed(example());
     const noRefund = closed(
