@@ -76,7 +76,5 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 ## card-cycles.md
 
 - CY-I9 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
-- CY-I10 — not built: the import of slice 4 (card-cycles.md §10) — 2026-11-20
 - CY-I11 — not built: the screens of slice 5 (card-cycles.md §10) — 2026-11-20
-- CY-I13 — not built: the domain half is tested (the statement beats a typed due); the import preview saying so is slice 4 (card-cycles.md §10) — 2026-11-20
 - CY-I17 — not built: the debit link and the loan-payment guard are in the migration of slice 1 and its pgTAP file; the debt and its outstanding are slice 7 (card-cycles.md §10) — 2026-11-20

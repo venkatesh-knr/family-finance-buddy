@@ -21,7 +21,7 @@
 import type { AccountToAdd, ExistingCredit, ExistingEntry, ExistingTransfer, KnownAccount, NewEntry } from '../domain/statement/match.ts';
 import type { NewMove } from '../domain/statement/moves.ts';
 import { creditVisibility, personalCredits, type PlannedWrite } from '../domain/statement/plan.ts';
-import type { StatedBalance } from '../domain/statement/statedBalance.ts';
+import { balanceWrites, type StatedBalance } from '../domain/statement/statedBalance.ts';
 import type { StatementKind } from '../domain/statement/common.ts';
 import { addDays, isIsoDate, type IsoDate } from '../lib/dates.ts';
 import { addAccount, listAccounts } from './accounts.ts';
@@ -34,6 +34,8 @@ import type { Uuid } from './types.ts';
 /** How far either side of a statement's dates an existing entry may be and still be a near match (`NEAR_DAYS` in the matcher). */
 const WINDOW_DAYS = 2;
 const IN_BATCHES = 100;
+/** How far either side of a card statement's dates a recorded due is looked for: a month and a little, since a typed due is the same cycle as a statement dated in its month, and the card's earlier statement is about a month before. */
+const CYCLE_WINDOW_DAYS = 40;
 
 interface ProviderError {
   readonly message: string;
@@ -51,6 +53,8 @@ export interface MatchingContext {
   readonly existingCredits: readonly ExistingCredit[];
   /** The moves between the household's own accounts that the caller can read around the statement's dates: the credit that is the other half of one is not imported as money in. */
   readonly existingTransfers: readonly ExistingTransfer[];
+  /** The dues recorded for the household's cards around the statement's dates, typed and stated: a statement for the same cycle replaces a typed one, and the preview says so (card-cycles.md 5, CY-I13); the latest before a statement is where one that prints no period opens. */
+  readonly cardDues: readonly { readonly accountId: string; readonly asAt: IsoDate; readonly balanceMinor: bigint; readonly source: 'typed' | 'statement' }[];
   /** The member each existing entry is under: a witness added to it carries the same. */
   readonly memberOf: ReadonlyMap<string, Uuid>;
   readonly accounts: readonly KnownAccount[];
@@ -67,7 +71,7 @@ export async function readMatchingContext(input: {
   const client = supabase();
   const { householdId } = input;
 
-  const [accounts, entries, credits, transfers] = await Promise.all([
+  const [accounts, entries, credits, transfers, typed] = await Promise.all([
     listAccounts(householdId),
     client
       .from('expense_txn')
@@ -90,10 +94,18 @@ export async function readMatchingContext(input: {
       .is('voided_at', null)
       .gte('transfer_date', addDays(input.from, -WINDOW_DAYS))
       .lte('transfer_date', addDays(input.to, WINDOW_DAYS)),
+    // The dues recorded around the statement, typed or stated: a statement dated mid-month is the same cycle as a due typed on any day of that month, and the earlier statement's day opens a cycle.
+    client
+      .from('account_balance')
+      .select('account_id, as_at, balance_minor::text, source')
+      .eq('household_id', householdId)
+      .gte('as_at', addDays(input.from, -CYCLE_WINDOW_DAYS))
+      .lte('as_at', addDays(input.to, CYCLE_WINDOW_DAYS)),
   ]);
   if (entries.error !== null) throw failure(entries.error);
   if (credits.error !== null) throw failure(credits.error);
   if (transfers.error !== null) throw failure(transfers.error);
+  if (typed.error !== null) throw failure(typed.error);
   const rows = entries.data ?? [];
 
   // The kinds of statement that have witnessed each of those entries. The batch is cited by a composite key, which cannot be embedded, so its kind is read apart.
@@ -154,12 +166,18 @@ export async function readMatchingContext(input: {
     return { id: r.id, date: r.transfer_date, amountMinor: toBigIntExact(r.amount_minor, 'account_transfer.amount_minor'), currency: r.currency, fromAccountId: r.from_account_id, toAccountId: r.to_account_id };
   });
 
+  const cardDues = (typed.data ?? []).map((row) => {
+    const r = row as { account_id: string; as_at: string; balance_minor: string; source: string };
+    return { accountId: r.account_id, asAt: r.as_at, balanceMinor: toBigIntExact(r.balance_minor, 'account_balance.balance_minor'), source: r.source === 'statement' ? ('statement' as const) : ('typed' as const) };
+  });
+
   return {
     existing,
     existingCredits,
     existingTransfers,
+    cardDues,
     memberOf,
-    accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type })),
+    accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type, ...(account.cycleEnds === undefined ? {} : { cycleEnds: account.cycleEnds }) })),
     knownLineHashes: known,
   };
 }
@@ -208,6 +226,8 @@ export interface ImportRequest {
   readonly balances: readonly StatedBalance[];
   /** Whether the statement is of a card or of a bank account: its balances are written only to an account of the same kind, since a card's is what is owed. */
   readonly statementAccountType: 'bank' | 'card';
+  /** The person said, in the preview, that the card this statement is of closes on its statement date: it is set so before its balances are recorded (card-cycles.md 5). */
+  readonly setCycleToStatement?: boolean;
   readonly writes: readonly PlannedWrite[];
   readonly memberOf: ReadonlyMap<string, Uuid>;
 }
@@ -255,6 +275,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
       type: account.type,
       currency: 'INR',
       last4: account.last4,
+      ...(account.cycleEnds === 'statement' ? { cycleEnds: 'statement' as const } : {}),
     });
     accountByLast4.set(account.last4, made.id);
     accountsAdded += 1;
@@ -399,7 +420,23 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   const target = statementAccount === null ? undefined : accountOf.get(statementAccount);
   // Only to an account of the kind the statement is of, and in rupees: a card's balance is what is owed, a bank account's what is held, and the two must not be mixed.
   if (statementAccount !== null && target !== undefined && target.currency === 'INR' && (target.type === 'card') === (request.statementAccountType === 'card')) {
-    for (const stated of request.balances) {
+    // A card the person said closes on its statement date is set so first, so that what is recorded is read the way it will be (it applies to every month, either way).
+    if (request.setCycleToStatement === true && target.type === 'card' && target.cycleEnds !== 'statement') {
+      const { error } = await client.from('account').update({ cycle_ends: 'statement' }).eq('id', statementAccount);
+      if (error !== null) throw failure(error);
+    }
+    // A card's previous balance is the previous statement's due, which that statement may have stated for that day with its EMI figures: it never replaces a statement's row already there, so the
+    // order statements are imported in changes nothing (card-cycles.md 2.1). A due, and any other account's balance, replaces as before.
+    let writes = request.balances;
+    if (target.type === 'card') {
+      const days = request.balances.filter((stated) => stated.basis === 'opening').map((stated) => stated.asAt);
+      if (days.length > 0) {
+        const held = await client.from('account_balance').select('as_at').eq('account_id', statementAccount).eq('source', 'statement').in('as_at', days);
+        if (held.error !== null) throw failure(held.error);
+        writes = balanceWrites(request.balances, new Set((held.data ?? []).map((row) => String((row as { as_at: string }).as_at))));
+      }
+    }
+    for (const stated of writes) {
       const { error } = await client.from('account_balance').upsert(
         {
           household_id: householdId,
@@ -409,6 +446,8 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
           currency: target.currency,
           source: 'statement',
           source_batch_id: batchId,
+          emi_converted_minor: (stated.emiConvertedMinor ?? 0n).toString(),
+          emi_principal_minor: (stated.emiPrincipalMinor ?? 0n).toString(),
         },
         { onConflict: 'account_id,as_at,source' },
       );

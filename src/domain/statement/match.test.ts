@@ -231,9 +231,14 @@ describe('money in', () => {
     expect(run(BANK, [credit('CASH DEPOSIT BRANCH')]).rows[0]?.proposal.action).toBe('credit');
   });
 
+  it('a card credit that only mentions a conversion of something else, such as a foreign currency one, is not taken for an EMI conversion', () => {
+    const out = run(CARD, [credit('FOREX CONVERSION REVERSAL SAMPLE SHOP')]);
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'credit', credit: { category: 'refund' } });
+  });
+
   it('a credit on a card that comes from turning a purchase into an EMI is a guess, not a refund', () => {
     const out = run(CARD, [credit('EMI CONVERSION CREDIT SAMPLE SHOP')]);
-    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'emi-principal', sure: false, credit: { category: 'refund' } });
+    expect(out.rows[0]?.proposal).toMatchObject({ action: 'skip', reason: 'emi-conversion', sure: false, credit: { category: 'refund' } });
   });
 
   it('keeps long reference numbers out of the name it is written under', () => {

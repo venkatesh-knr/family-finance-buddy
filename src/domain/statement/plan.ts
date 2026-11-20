@@ -166,6 +166,7 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
     if (reason === 'investment') return 'Looks like money back from an investment, which is not income. Add it if it is.';
     if (reason === 'own-transfer') return 'Looks like money from your own account, which is not income. Add it if it is.';
     if (reason === 'emi-principal') return 'Looks like a purchase turned into an EMI, not a refund. Add it if it is.';
+    if (reason === 'emi-conversion') return 'Looks like a bill or a purchase the card turned into EMIs, which is not a refund. Add it if it is.';
   }
   switch (reason) {
     case 'already-imported':
@@ -182,6 +183,8 @@ export function skipWords(reason: SkipReason, sure: boolean, moneyIn = false): s
       return 'Looks like a loan paid out to you, which is not income. Add it if it is.';
     case 'investment':
       return 'Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.';
+    case 'emi-conversion':
+      return 'A bill or a purchase the card turned into EMIs, which is not a refund.';
     case 'move-recorded':
       return moneyIn ? 'Already recorded as a move between your own accounts. Add it as money in if it is not.' : 'Already recorded as a move between your own accounts. Add it as an expense if it is not.';
     case 'own-transfer':

@@ -74,6 +74,25 @@ describe('toAccount', () => {
   });
 });
 
+describe('a card that closes on its statement date (card-cycles.md)', () => {
+  it('reads the cycle of an account, and an account at month end, or one the database sends no cycle for, has none to say', () => {
+    expect(toAccount({ ...account, type: 'card', cycle_ends: 'statement' })).toMatchObject({ type: 'card', cycleEnds: 'statement' });
+    expect(toAccount({ ...account, cycle_ends: 'month_end' })).not.toHaveProperty('cycleEnds');
+    expect(toAccount(account)).not.toHaveProperty('cycleEnds');
+  });
+
+  it('refuses a cycle that is neither', () => {
+    expect(() => toAccount({ ...account, cycle_ends: 'weekly' })).toThrow(MalformedRowError);
+  });
+
+  it('reads the EMI figures of a card’s due, exactly, and none for a balance that has none', () => {
+    const row = { id: 'b-1', household_id: 'h-1', account_id: 'a-1', as_at: '2026-10-17', balance_minor: '2864000', currency: 'INR', source: 'statement', note: null };
+    expect(toAccountBalance({ ...row, emi_converted_minor: '6000000', emi_principal_minor: '500000' })).toMatchObject({ emiConvertedMinor: 6_000_000n, emiPrincipalMinor: 500_000n });
+    expect(toAccountBalance({ ...row, emi_converted_minor: '0', emi_principal_minor: '0' })).not.toHaveProperty('emiConvertedMinor');
+    expect(toAccountBalance(row)).not.toHaveProperty('emiPrincipalMinor');
+  });
+});
+
 describe('toAccountBalance', () => {
   const row = { id: 'b-1', household_id: 'h-1', account_id: 'a-1', as_at: '2026-10-31', balance_minor: '22038000', currency: 'INR', source: 'typed', note: null };
 

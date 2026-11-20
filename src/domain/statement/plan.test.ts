@@ -176,5 +176,6 @@ describe('saying why a line is skipped', () => {
     expect(skipWords('loan-money', false, true)).toBe('Looks like a loan paid out to you, which is not income. Add it if it is.');
     expect(skipWords('investment', false, true)).toBe('Looks like money back from an investment, which is not income. Add it if it is.');
     expect(skipWords('own-transfer', false, true)).toBe('Looks like money from your own account, which is not income. Add it if it is.');
+    expect(skipWords('emi-conversion', false, true)).toBe('Looks like a bill or a purchase the card turned into EMIs, which is not a refund. Add it if it is.');
   });
 });
