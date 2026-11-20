@@ -26,6 +26,8 @@ export interface PreviewRow {
   readonly decision: Decision | null;
   readonly options: readonly { readonly value: Decision; readonly label: string }[];
   readonly group: PreviewGroup;
+  /** Money in, to be added as a credit, and not an expense: what the row's category choice offers, and what its words say. */
+  readonly moneyIn: boolean;
 }
 
 const TITLE_LENGTH = 60;
@@ -42,10 +44,10 @@ export function lineTitle(line: StatementLine): string {
 }
 
 /** A decision in words. A suggestion asks whether it is the same payment, so its two answers say so. */
-export function decisionLabel(decision: Decision, suggestion: boolean): string {
+export function decisionLabel(decision: Decision, suggestion: boolean, moneyIn = false): string {
   switch (decision) {
     case 'create':
-      return suggestion ? 'It is a different payment: add as an expense' : 'Add as an expense';
+      return moneyIn ? 'Add as money in' : suggestion ? 'It is a different payment: add as an expense' : 'Add as an expense';
     case 'merge':
       return suggestion ? 'It is the same payment: add to that entry' : 'Add to the entry it matches';
     case 'skip':
@@ -69,14 +71,17 @@ export function previewRows(rows: readonly MatchedRow[], decisions: ReadonlyMap<
     const asked = decisions.get(index);
     const decision = asked !== undefined && allowed.includes(asked) ? asked : defaultDecision(proposal);
     const suggestion = proposal.action === 'suggest';
+    const moneyIn = proposal.action === 'credit' || (proposal.action === 'skip' && proposal.credit !== undefined);
     const doing =
       proposal.action === 'create'
         ? 'A new expense.'
-        : proposal.action === 'witness'
+        : proposal.action === 'credit'
+          ? 'Money in. It is added to the Money screen as money in, not as spending.'
+          : proposal.action === 'witness'
           ? `This payment is already an entry (${named(entryOf(proposal.entryId))}). This statement is added to it, and nothing is doubled.`
           : proposal.action === 'suggest'
             ? `Looks like ${named(entryOf(proposal.entryId))}, which you already have. Is it the same payment?`
-            : skipWords(proposal.reason, proposal.sure);
+            : skipWords(proposal.reason, proposal.sure, moneyIn);
     return {
       index,
       date: row.line.date,
@@ -85,8 +90,9 @@ export function previewRows(rows: readonly MatchedRow[], decisions: ReadonlyMap<
       direction: row.line.direction,
       doing,
       decision,
-      options: allowed.map((value) => ({ value, label: decisionLabel(value, suggestion) })),
+      options: allowed.map((value) => ({ value, label: decisionLabel(value, suggestion, moneyIn) })),
       group: groupOf(decision, proposal.action === 'skip' && !proposal.sure),
+      moneyIn,
     };
   });
 

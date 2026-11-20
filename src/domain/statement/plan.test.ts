@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StatementLine } from './common.ts';
-import type { MatchedRow, NewEntry, Proposal } from './match.ts';
+import type { MatchedRow, NewCredit, NewEntry, Proposal } from './match.ts';
 import { allowedDecisions, defaultDecision, planImport, skipWords } from './plan.ts';
 
 /**
@@ -14,6 +14,11 @@ const LINE: StatementLine = {
 const ENTRY: NewEntry = {
   date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SHOP', accountId: 'acc', accountLast4: '4321', method: null, upiRefLast4: null, upiRefHash: null, sourceHash: 'h'.repeat(64), hint: null, note: null,
 };
+const CREDIT_LINE: NewCredit = {
+  date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', payer: 'EMPLOYER', accountId: 'acc', accountLast4: '4321', category: 'salary', sourceHash: 'c'.repeat(64),
+};
+const MONEY_IN: Proposal = { action: 'credit', credit: CREDIT_LINE };
+const TYPED: Proposal = { action: 'skip', reason: 'credit-typed', sure: false, credit: CREDIT_LINE };
 const row = (proposal: Proposal): MatchedRow => ({ line: LINE, lineHash: 'h'.repeat(64), proposal });
 
 const CREATE: Proposal = { action: 'create', entry: ENTRY };
@@ -52,7 +57,7 @@ describe('the plan', () => {
   it('writes the entries to create and the witnesses to add, and counts what it leaves', () => {
     const plan = planImport([row(CREATE), row(WITNESS), row(SURE), row(SEEN), row(GUESS)], new Map());
     expect(plan.writes.map((write) => [write.kind, write.index])).toEqual([['create', 0], ['witness', 1]]);
-    expect(plan.counts).toEqual({ create: 1, witness: 1, skip: 3, undecided: 0 });
+    expect(plan.counts).toEqual({ create: 1, credit: 0, witness: 1, skip: 3, undecided: 0 });
     expect(plan.canCommit).toBe(true);
   });
 
@@ -92,6 +97,32 @@ describe('the plan', () => {
   });
 });
 
+describe('money in', () => {
+  it('is added by default, can be left out, and a guess that it is not money in can be overruled', () => {
+    expect(defaultDecision(MONEY_IN)).toBe('create');
+    expect(allowedDecisions(MONEY_IN)).toEqual(['create', 'skip']);
+    expect(defaultDecision(TYPED)).toBe('skip');
+    expect(allowedDecisions(TYPED)).toEqual(['skip', 'create']);
+  });
+
+  it('is written as a credit with the category the line suggested, or the one a person chose, and counted apart from expenses', () => {
+    const plan = planImport([row(MONEY_IN), row(MONEY_IN), row(CREATE)], new Map(), new Map([[1, 'interest'], [2, 'groceries']]));
+    expect(plan.writes.map((write) => (write.kind === 'credit' ? write.category : write.kind))).toEqual(['salary', 'interest', 'create']);
+    expect(plan.counts).toMatchObject({ create: 1, credit: 2, witness: 0 });
+  });
+
+  it('ignores a category that is not one of the ledger’s, rather than writing it', () => {
+    const plan = planImport([row(MONEY_IN)], new Map(), new Map([[0, 'not-a-category']]));
+    expect(plan.writes[0]).toMatchObject({ kind: 'credit', category: 'salary' });
+  });
+
+  it('is written when a person says a guessed skip was money in after all, and not otherwise', () => {
+    expect(planImport([row(TYPED)], new Map([[0, 'create' as const]])).writes).toHaveLength(1);
+    expect(planImport([row(TYPED)], new Map()).writes).toHaveLength(0);
+    expect(planImport([row(TYPED)], new Map()).nothingToWrite).toBe(true);
+  });
+});
+
 describe('the category of what is created', () => {
   it('goes with a new entry, from what the person chose, and is nothing when none was', () => {
     const plan = planImport([row(CREATE), row(CREATE)], new Map(), new Map([[1, 'groceries']]));
@@ -119,9 +150,11 @@ describe('saying why a line is skipped', () => {
     expect(skipWords('card-payment', false)).toBe('Looks like a card repayment, which is not an expense. Import it if it is not.');
     expect(skipWords('emi-principal', true)).toBe('The price of a purchase the card turned into an EMI, which was recorded when it was bought. The interest and tax on it are imported.');
     expect(skipWords('already-imported', true)).toBe('Already imported from this statement.');
-    expect(skipWords('money-in', true)).toBe('Money in. Money in is added from the Money screen, not imported as spending.');
+    expect(skipWords('money-in', true)).toBe('Money received on a UPI app. It is imported from the bank statement it arrives on.');
     expect(skipWords('own-transfer', true)).toBe('A move between your own accounts, which is not spending.');
     expect(skipWords('investment', false)).toBe('Looks like money put into an investment, which is a purchase to link in Holdings and not an expense. Import it if it is not.');
-    expect(skipWords('card-credit', true)).toBe('A refund or cashback on the card. Refunds are added from the Money screen.');
+    expect(skipWords('credit-typed', false)).toBe('Looks like money in you have already typed. Add it if it is not the same.');
+    expect(skipWords('investment', false, true)).toBe('Looks like money back from an investment, which is not income. Add it if it is.');
+    expect(skipWords('own-transfer', false, true)).toBe('Looks like money from your own account, which is not income. Add it if it is.');
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StatementLine } from '../../domain/statement/common.ts';
-import type { ExistingEntry, MatchedRow, NewEntry, Proposal } from '../../domain/statement/match.ts';
+import type { ExistingEntry, MatchedRow, NewCredit, NewEntry, Proposal } from '../../domain/statement/match.ts';
 import { decisionLabel, lineTitle, previewRows } from './statementPreview.ts';
 
 /**
@@ -14,6 +14,33 @@ const LINE: StatementLine = {
 const ENTRY: NewEntry = { date: '2026-10-05', amountMinor: 22_400n, currency: 'INR', payee: 'SAMPLE SHOP', accountId: null, accountLast4: null, method: 'upi', upiRefLast4: '0002', upiRefHash: 'a'.repeat(64), sourceHash: 'h'.repeat(64), hint: null, note: null };
 const row = (proposal: Proposal, line: Partial<StatementLine> = {}): MatchedRow => ({ line: { ...LINE, ...line }, lineHash: 'h'.repeat(64), proposal });
 const EXISTING: ExistingEntry[] = [{ id: 'e1', date: '2026-10-04', amountMinor: 22_400n, currency: 'INR', payee: 'Typed shop', accountId: null, upiRefHash: null, witnessedBy: [] }];
+
+const CREDIT: NewCredit = { date: '2026-10-05', amountMinor: 4_500_000n, currency: 'INR', payer: 'EMPLOYER', accountId: null, accountLast4: null, category: 'salary', sourceHash: 'c'.repeat(64) };
+
+describe('money in', () => {
+  const credit = (proposal: Proposal) => row(proposal, { direction: 'credit', amountMinor: 4_500_000n, payee: 'EMPLOYER', raw: 'SALARY CREDIT' });
+
+  it('is a row to add, said as money in, and can be left out', () => {
+    const [out] = previewRows([credit({ action: 'credit', credit: CREDIT })], new Map(), []);
+    expect(out).toMatchObject({ group: 'add', decision: 'create', moneyIn: true });
+    expect(out?.doing).toMatch(/money in/i);
+    expect(out?.options).toEqual([
+      { value: 'create', label: 'Add as money in' },
+      { value: 'skip', label: 'Leave out' },
+    ]);
+  });
+
+  it('that is a guess it is not money in is left out apart from the sure ones, in words about money in, and can be added after all', () => {
+    const [out] = previewRows([credit({ action: 'skip', reason: 'investment', sure: false, credit: CREDIT })], new Map(), []);
+    expect(out).toMatchObject({ group: 'guess', decision: 'skip', moneyIn: true });
+    expect(out?.doing).toBe('Looks like money back from an investment, which is not income. Add it if it is.');
+    expect(out?.options.map((option) => option.label)).toEqual(['Leave out', 'Add as money in']);
+  });
+
+  it('an expense is not money in', () => {
+    expect(previewRows([row({ action: 'create', entry: ENTRY })], new Map(), [])[0]?.moneyIn).toBe(false);
+  });
+});
 
 describe('what a line is called', () => {
   it('is its payee when the statement gives one', () => {

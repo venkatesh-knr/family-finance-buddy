@@ -9,13 +9,17 @@
  *   3. a **near match**, the same amount and account within two days, not yet seen by this kind of statement: a *suggestion* that waits for a person (two Rs 500 payments on
  *      consecutive days are common), and an entry is offered to one line only;
  *   4. otherwise a new entry.
- * And some lines are not expenses at all, and are skipped with the reason said: a card repayment (the purchases were recorded when they happened), the principal an EMI re-bills
- * (the purchase was), money in, a debit to a broker or a fund house (a purchase to link, not spending), and a move between the household's own accounts. A skip says whether it is
+ * A credit is **money in**, not an expense: on a bank statement it is proposed as a credit with a category guessed from its words (salary, interest, dividend, rent, a refund, or other
+ * income), and on a card anything that is not a repayment is a refund or cashback. It is offered as a guess, not added unasked, when it looks like a credit the household has already
+ * typed, like money from one of its own accounts, or like the proceeds of an investment.
+ * And some lines are not entries at all, and are skipped with the reason said: a card repayment (the purchases were recorded when they happened), the principal an EMI re-bills
+ * (the purchase was), money received on a UPI app (the bank statement has it), a debit to a broker or a fund house (a purchase to link, not spending), and a move between the household's own accounts. A skip says whether it is
  * *sure*, from the statement's own words, or a guess from the text, which a person can change in the preview. An EMI's interest and GST are expenses. The accounts a statement uses that
  * the household does not have are named, to be added. Pure: nothing is read or written here.
  */
 
 import type { IsoDate } from '../../lib/dates.ts';
+import type { CreditCategory } from '../credit.ts';
 import { readableText, type ParsedStatement, type StatementKind, type StatementLine } from './common.ts';
 import { normalisePayee } from './suggestCategory.ts';
 
@@ -40,13 +44,36 @@ export interface ExistingEntry {
   readonly witnessedBy: readonly StatementKind[];
 }
 
+/** A credit the household has, as far as matching needs it: so a credit it typed is not imported a second time without being asked. */
+export interface ExistingCredit {
+  readonly id: string;
+  readonly date: IsoDate;
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly accountId: string | null;
+}
+
+/** Money in, as a line makes it: a credit of the ledger (`credit_entry`), with the category the words suggest and a person can change. */
+export interface NewCredit {
+  readonly date: IsoDate;
+  readonly amountMinor: bigint;
+  readonly currency: 'INR';
+  /** Who it came from, as the statement gives it or printed with any VPA taken out; null where it says nothing. */
+  readonly payer: string | null;
+  readonly accountId: string | null;
+  readonly accountLast4: string | null;
+  readonly category: CreditCategory;
+  /** The hash of the line that makes it, which recognises the line when its statement is imported again. */
+  readonly sourceHash: string;
+}
+
 export interface KnownAccount {
   readonly id: string;
   readonly last4: string | null;
   readonly type: 'savings' | 'current' | 'card';
 }
 
-export type SkipReason = 'already-imported' | 'card-payment' | 'card-credit' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer';
+export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed';
 
 export interface NewEntry {
   readonly date: IsoDate;
@@ -84,8 +111,10 @@ export type Proposal =
   | { readonly action: 'witness'; readonly entryId: string; readonly fill: Fill }
   /** A near match: waits for a person, and is a new entry if they decline. */
   | { readonly action: 'suggest'; readonly entryId: string; readonly fill: Fill; readonly entry: NewEntry }
-  /** A skip that is a guess carries the entry it would be, so a person who disagrees can import the line after all. A sure skip is not an expense and carries none. */
-  | { readonly action: 'skip'; readonly reason: SkipReason; readonly sure: boolean; readonly entry?: NewEntry };
+  /** Money in: a new credit, which is never merged into an entry. */
+  | { readonly action: 'credit'; readonly credit: NewCredit }
+  /** A skip that is a guess carries the entry (or, for money in, the credit) it would be, so a person who disagrees can import the line after all. A sure skip carries none. */
+  | { readonly action: 'skip'; readonly reason: SkipReason; readonly sure: boolean; readonly entry?: NewEntry; readonly credit?: NewCredit };
 
 export interface MatchedRow {
   readonly line: StatementLine;
@@ -124,6 +153,22 @@ const INSTITUTION: Partial<Record<StatementKind, string>> = {
   axis_card_pdf: 'Axis Bank',
 };
 
+const REFUND_WORDS = /(refund|revers|\brev\b|cashback|chargeback)/i;
+const SALARY_WORDS = /(salary|\bsal\b)/i;
+const INTEREST_WORDS = /(interest|\bint\.?\s?pd\b|\bint\b)/i;
+const DIVIDEND_WORDS = /(dividend|\bdiv\b)/i;
+const RENT_WORDS = /\brent\b/i;
+
+/** The category of a credit, guessed from what the statement printed. On a card everything that is not a repayment is a refund or cashback. A person can change it before it is written. */
+export function creditCategoryOf(raw: string, onCard: boolean): CreditCategory {
+  if (onCard || REFUND_WORDS.test(raw)) return 'refund';
+  if (SALARY_WORDS.test(raw)) return 'salary';
+  if (INTEREST_WORDS.test(raw)) return 'interest';
+  if (DIVIDEND_WORDS.test(raw)) return 'dividend';
+  if (RENT_WORDS.test(raw)) return 'rent';
+  return 'other_income';
+}
+
 const DAY = 86_400_000;
 const daysApart = (a: IsoDate, b: IsoDate): number => Math.abs(Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY));
 
@@ -136,12 +181,11 @@ function skipFor(statement: ParsedStatement, line: StatementLine, ownFirstNames:
     return null;
   }
   if (statement.accountType === 'card') {
-    if (line.direction === 'credit') return CARD_PAYMENT_ON_CARD.test(text) ? { action: 'skip', reason: 'card-payment', sure: true } : { action: 'skip', reason: 'card-credit', sure: true };
+    if (line.direction === 'credit') return CARD_PAYMENT_ON_CARD.test(text) ? { action: 'skip', reason: 'card-payment', sure: true } : null;
     if (EMI_PRINCIPAL.test(text)) return { action: 'skip', reason: 'emi-principal', sure: true };
     return null;
   }
-  if (line.direction === 'credit') return { action: 'skip', reason: 'money-in', sure: true };
-  if (CARD_PAYMENT_ON_BANK.test(text)) return { action: 'skip', reason: 'card-payment', sure: false };
+  if (line.direction === 'debit' && CARD_PAYMENT_ON_BANK.test(text)) return { action: 'skip', reason: 'card-payment', sure: false };
   // A move to a payee whose first word is a household member's first name is a guess that it is to themselves: shown unfolded, and a person can overrule it.
   const payeeFirst = line.payee === null ? '' : normalisePayee(line.payee.split(/\s+/)[0] ?? '');
   if (payeeFirst.length >= OWN_NAME_FROM && ownFirstNames.has(payeeFirst)) return { action: 'skip', reason: 'own-transfer', sure: false };
@@ -154,6 +198,8 @@ export function matchStatement(input: {
   readonly lines: readonly HashedLine[];
   readonly accounts: readonly KnownAccount[];
   readonly existing: readonly ExistingEntry[];
+  /** The credits the household has around the statement's dates, so one it typed is not imported again without being asked. */
+  readonly existingCredits?: readonly ExistingCredit[];
   readonly knownLineHashes: ReadonlySet<string>;
   /** The household members' names, so a move to oneself can be guessed from a payee that begins with one. */
   readonly ownNames?: readonly string[];
@@ -163,6 +209,7 @@ export function matchStatement(input: {
   const byLast4 = (last4: string | null | undefined): KnownAccount | undefined => (last4 === null || last4 === undefined ? undefined : accounts.find((account) => account.last4 === last4));
   const toAdd = new Map<string, AccountToAdd>();
   const claimed = new Set<string>();
+  const claimedCredits = new Set<string>();
 
   /** The account a line was paid from: the statement's, or for a UPI app's statement the line's own. */
   const accountOf = (line: StatementLine): { readonly id: string | null; readonly last4: string | null } => {
@@ -184,6 +231,38 @@ export function matchStatement(input: {
     if (skip !== null && skip.action === 'skip' && skip.sure) return done(skip);
 
     const account = accountOf(line);
+
+    // Money in is a credit and not an expense. A guess that it is not (money from one's own account, the proceeds of an investment) or that it is already typed carries the credit,
+    // so a person who disagrees can add it after all.
+    if (line.direction === 'credit') {
+      const credit: NewCredit = {
+        date: line.date,
+        amountMinor: line.amountMinor,
+        currency: 'INR',
+        payer: line.payee ?? readableText(line.raw),
+        accountId: account.id,
+        accountLast4: account.last4,
+        category: creditCategoryOf(line.raw, statement.accountType === 'card'),
+        sourceHash: hashed.lineHash,
+      };
+      if (skip !== null && skip.action === 'skip') return done({ ...skip, credit });
+      const typed = (input.existingCredits ?? [])
+        .filter(
+          (existing) =>
+            !claimedCredits.has(existing.id) &&
+            existing.amountMinor === line.amountMinor &&
+            existing.currency === 'INR' &&
+            daysApart(existing.date, line.date) <= NEAR_DAYS &&
+            (existing.accountId === null || account.id === null || existing.accountId === account.id),
+        )
+        .sort((a, b) => daysApart(a.date, line.date) - daysApart(b.date, line.date))[0];
+      if (typed !== undefined) {
+        claimedCredits.add(typed.id);
+        return done({ action: 'skip', reason: 'credit-typed', sure: false, credit });
+      }
+      return done({ action: 'credit', credit });
+    }
+
     const entry: NewEntry = {
       date: line.date,
       amountMinor: line.amountMinor,
