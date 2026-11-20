@@ -85,6 +85,8 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
   --lift-hair:rgba(246,242,228,.22);  /* on the lift: a hairline between its figures and its footer */
   --lift-btn:#C9E35A;  /* on the lift: a button */
   --lift-btn-ink:#023F33;  /* on the lift: text on a button */
+  --lift-tray:#E4F1E8;  /* on the lift: the mint tray a chart and its legend sit on */
+  --lift-tray-fade:linear-gradient(180deg,#0B6F58 0%,#4E9682 35%,#A9D0BE 70%,#E4F1E8 100%);  /* the lift's forest fading into the tray: nothing is drawn in it */
   --btn:#025F4C;  /* the primary button */
   --btn-ink:#FFFDF8;  /* text on the primary button */
   --bar:#025F4C;  /* the app header, the desktop top strip and the bottom menu: the flat value, for forced colours */
@@ -156,6 +158,8 @@ while its colour is not. Only genuinely new ideas get new names, and there are s
     --lift-hair:#222C41;
     --lift-btn:#F0B429;
     --lift-btn-ink:#121825;
+    --lift-tray:transparent;
+    --lift-tray-fade:transparent;
     --btn:#F0B429;
     --btn-ink:#121825;
     --bar:#121825;
@@ -259,6 +263,13 @@ section said the gradient "never crosses a figure"; the canvas it described did,
 was the part that was wrong. One lifted surface per screen — a second one is two things
 claiming to be the most important, which is §4's "not everything is a card" in another
 form.
+
+**Charts on the lift: a mint tray** (the owner, 20 November 2026). `--c1` to `--c9` are tuned for a light panel and measure 1.0 to 1.4:1 on the forest lift, so a chart or a legend in class
+colours does not sit on it directly, and a class never changes colour for the lift. It sits on a **tray**: a band across the foot of the card, edge to edge, of `--lift-tray`
+(`#E4F1E8`), which the forest fades into by `--lift-tray-fade` over 32px, with no hairline. **Nothing is drawn in the fade**, whose middle is a mid-green where neither
+cream nor dark ink reaches 4.5:1; the text above it stays on forest, and the chart and its legend start below it on full mint. Inside the tray the page's inks return
+(`--ink`, `--ink-2`, `--muted`, `--line`, `--line-strong`, `--surface-2`, `--surface-3`). Each of `--c1` to `--c9` is at least 3:1 on the tray (4.7 to 6.1), ink is 13.1:1 and muted 5.2:1
+(`src/ui/liftContrast.test.ts`). In dark both tokens are transparent, so no dark screen changes; under forced colours the fade is not painted and the tray is the flat `--lift-tray`.
 
 ---
 

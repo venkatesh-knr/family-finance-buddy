@@ -87,6 +87,8 @@
   --lift-hair: rgba(246,242,228,.22);   /* on the lift: a hairline between its figures and its footer */
   --lift-btn: #C9E35A;   /* on the lift: a button */
   --lift-btn-ink: #023F33;   /* on the lift: text on a button */
+  --lift-tray: #E4F1E8;   /* on the lift: the mint tray a chart and its legend sit on, so the class colours keep their one value (tokens.md, Depth) */
+  --lift-tray-fade: linear-gradient(180deg, #0B6F58 0%, #4E9682 35%, #A9D0BE 70%, #E4F1E8 100%);   /* the lift's forest fading into the tray: nothing is drawn in it */
   --btn: #025F4C;   /* the primary button */
   --btn-ink: #FFFDF8;   /* text on the primary button */
   --bar: #025F4C;   /* the app header, the desktop top strip and the bottom menu: the flat value, for forced colours */
@@ -192,6 +194,8 @@
     --lift-hair: #222C41;
     --lift-btn: #F0B429;
     --lift-btn-ink: #121825;
+    --lift-tray: transparent;
+    --lift-tray-fade: transparent;
     --btn: #F0B429;
     --btn-ink: #121825;
     --bar: #121825;
@@ -281,6 +285,8 @@
   --lift-hair: #222C41;
   --lift-btn: #F0B429;
   --lift-btn-ink: #121825;
+  --lift-tray: transparent;
+  --lift-tray-fade: transparent;
   --btn: #F0B429;
   --btn-ink: #121825;
   --bar: #121825;

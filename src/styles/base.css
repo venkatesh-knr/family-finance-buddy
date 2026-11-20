@@ -28,6 +28,20 @@
     text-wrap: balance;
   }
 
+  /*
+   * The page's own inks, kept where a lifted card cannot remap them: .card-lift redefines --ink and the rest for what is drawn on the forest, and a custom property declared here
+   * on :root is worked out here, so what a descendant inherits is the page's value whatever the card says. The lift's tray (below) takes them back.
+   */
+  :root {
+    --page-ink: var(--ink);
+    --page-ink-2: var(--ink-2);
+    --page-muted: var(--muted);
+    --page-line: var(--line);
+    --page-line-strong: var(--line-strong);
+    --page-surface-2: var(--surface-2);
+    --page-surface-3: var(--surface-3);
+  }
+
   /* Visible on every interactive element, in both themes. */
   :focus-visible {
     outline: 2px solid var(--brass);
@@ -115,6 +129,82 @@
     inset: 0 0 auto 0;
     pointer-events: none;
     position: absolute;
+  }
+
+  /*
+   * The mint tray at the foot of a lifted card (docs/tokens.md section 1, Depth; src/ui/LiftTray.tsx): a chart or a legend in the class colours sits on it, because those colours
+   * read 1.0 to 1.4:1 on the forest and are never changed for the lift. The forest fades into the mint over 32px with no hairline, and nothing is drawn in the fade. The tray spans the
+   * card edge to edge (the card's 18px padding is taken back by the margins and given again inside), and the page's inks return inside it.
+   */
+  .lift-tray-fade {
+    background: var(--lift-tray-fade);
+    height: 32px;
+    margin: 1rem -18px 0;
+  }
+
+  .lift-tray {
+    --ink: var(--page-ink);
+    --ink-2: var(--page-ink-2);
+    --muted: var(--page-muted);
+    --line: var(--page-line);
+    --line-strong: var(--page-line-strong);
+    --surface-2: var(--page-surface-2);
+    --surface-3: var(--page-surface-3);
+    background: var(--lift-tray);
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+    color: var(--ink-2);
+    margin: 0 -18px -18px;
+    padding: 0.25rem 18px 18px;
+  }
+
+  /* In dark both tokens are transparent and the tray takes no room: the lift is as it was, and the inks are the lift's. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .lift-tray-fade {
+      display: none;
+    }
+
+    :root:not([data-theme='light']) .lift-tray {
+      --ink: var(--lift-ink);
+      --ink-2: var(--lift-ink-2);
+      --muted: var(--lift-muted);
+      --line: var(--lift-hair);
+      --line-strong: var(--lift-line);
+      --surface-2: var(--lift-chip);
+      --surface-3: var(--lift-track);
+      margin: 0;
+      padding: 0;
+      forced-color-adjust: auto;
+    }
+  }
+
+  :root[data-theme='dark'] .lift-tray-fade {
+    display: none;
+  }
+
+  :root[data-theme='dark'] .lift-tray {
+    --ink: var(--lift-ink);
+    --ink-2: var(--lift-ink-2);
+    --muted: var(--lift-muted);
+    --line: var(--lift-hair);
+    --line-strong: var(--lift-line);
+    --surface-2: var(--lift-chip);
+    --surface-3: var(--lift-track);
+    margin: 0;
+    padding: 0;
+    forced-color-adjust: auto;
+  }
+
+  /*
+   * Forced colours do not paint a gradient: the fade is the flat tray, and the edge reads as the change of tone. Only where the tray is mint: dark's tray is transparent and keeps the
+   * system colours it always had, which the two dark rules above put back (forced-color-adjust is inherited, so it must not reach what is inside a transparent tray).
+   */
+  @media (forced-colors: active) {
+    .lift-tray-fade,
+    .lift-tray {
+      background: var(--lift-tray);
+      forced-color-adjust: none;
+    }
   }
 
   /*

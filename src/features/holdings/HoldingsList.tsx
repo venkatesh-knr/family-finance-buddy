@@ -5,6 +5,7 @@ import { formatIsoDate } from '../../lib/dates.ts';
 import { formatMoney, money, percentOfCost, type Money } from '../../lib/money.ts';
 import { AssetTile } from '../../ui/AssetTile.tsx';
 import { kindColour, kindLabel } from '../../ui/labels.ts';
+import { LiftTray } from '../../ui/LiftTray.tsx';
 import { Amount, Caveat, Delta, Pill, Stat, Unit } from '../../ui/primitives.tsx';
 import type { FixedIncomeView } from '../../domain/fixed-income.ts';
 import { type Filter, type GroupedHoldings } from './holdingGroups.ts';
@@ -213,7 +214,8 @@ export function Summary({
 
 /**
  * The classes as one bar and a legend, each with its share of the rupee portfolio. The bar is the shares and the legend
- * says them in words, so it is told apart by the word and the figure and not by its colour.
+ * says them in words, so it is told apart by the word and the figure and not by its colour. It sits on the lift's mint tray, because the
+ * class colours cannot be read on the forest (docs/tokens.md section 1, Depth).
  */
 function ClassBar({ grouped, base }: { grouped: GroupedHoldings; base: string }) {
   const parts = grouped.groups
@@ -222,21 +224,23 @@ function ClassBar({ grouped, base }: { grouped: GroupedHoldings; base: string })
   if (parts.length === 0) return null;
   const words = parts.map((p) => `${kindLabel(p.kind)} ${(p.share * 100).toFixed(1)} percent`).join(', ');
   return (
-    <div data-testid="class-shares">
-      <div className="class-bar" role="img" aria-label={`${words} of the ${base} portfolio`}>
-        {parts.map((p) => (
-          <span key={p.kind} style={{ background: kindColour(p.kind), flexGrow: p.share }} />
-        ))}
+    <LiftTray>
+      <div data-testid="class-shares">
+        <div className="class-bar" role="img" aria-label={`${words} of the ${base} portfolio`}>
+          {parts.map((p) => (
+            <span key={p.kind} style={{ background: kindColour(p.kind), flexGrow: p.share }} />
+          ))}
+        </div>
+        <ul className="class-legend">
+          {parts.map((p) => (
+            <li key={p.kind}>
+              <span className="class-swatch" style={{ background: kindColour(p.kind) }} aria-hidden="true" />
+              {kindLabel(p.kind)} <span className="tabular-nums">{(p.share * 100).toFixed(1)}%</span>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="class-legend">
-        {parts.map((p) => (
-          <li key={p.kind}>
-            <span className="class-swatch" style={{ background: kindColour(p.kind) }} aria-hidden="true" />
-            {kindLabel(p.kind)} <span className="tabular-nums">{(p.share * 100).toFixed(1)}%</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </LiftTray>
   );
 }
 

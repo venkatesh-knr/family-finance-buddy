@@ -137,3 +137,40 @@ The dark theme gains the same new tokens with the values it already draws
 - `check-design-tokens` learns the new tokens.
 - Every light-theme screenshot test is re-baselined in the same change.
 - The light `theme-color` meta tag becomes `#025F4C`.
+
+## Charts on the lifted surface: a mint tray
+
+**Decided by the owner, 20 November 2026** (option A of the HoldingsStripLinen board).
+
+The class colours `--c1` to `--c9` are tuned for a light panel. On the forest lift they
+measure 1.0 to 1.4:1, under the 3:1 a chart mark needs, so the Holdings strip and its
+legend could not be read. Dark's brighter values do not fix it: indigo, plum, coral and
+others stay under 3:1 on the forest.
+
+**The fix.** A chart or legend drawn in class colours on the lifted surface sits on a
+tray: a band across the foot of the card, edge to edge, with no hairline above it: the forest fades into it (below).
+
+- In Linen the tray is pale mint, `--lift-tray:#E4F1E8`. Inside it, the inks return to
+  the page's (`--ink`, `--ink-2`, `--muted`, `--line`), and the class colours are
+  unchanged.
+- **The forest fades into the mint; there is no hard edge or hairline** (the owner,
+  20 November 2026; the HoldingsStripFade board). The fade is
+  `--lift-tray-fade:linear-gradient(180deg, #0B6F58 0%, #4E9682 35%, #A9D0BE 70%, #E4F1E8 100%)`
+  over 32px (A1; A2 is the same over 64px). **Nothing is drawn inside the fade**: its
+  middle is a mid-green where neither cream nor dark ink reaches 4.5:1. The text above
+  stays on forest, and the strip and legend start below the fade, on full mint.
+- In dark the tray and the fade are transparent, so no dark screen changes.
+- Under forced colours the gradient is not painted; the tray falls back to the flat
+  `--lift-tray`, and the edge reads as the change of tone.
+- The class colours are never changed for the lift, so a class keeps one colour
+  everywhere (`tokens.md`, the class colours rule).
+
+| Pair | Ratio | Rule |
+|---|---|---|
+| each of `--c1` to `--c9` on the tray | 4.7 to 6.1 | shape, 3 |
+| ink on the tray | 13.1 | text, 4.5 |
+| muted on the tray | 5.2 | text, 4.5 |
+| the tray on the lift's lightest stop | 5.3 | a band, told by tone |
+
+Options B (a cream tray, `#F6F2E4`) and C (the strip moved out of the card) were drawn
+and not chosen.

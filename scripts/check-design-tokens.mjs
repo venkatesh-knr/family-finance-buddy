@@ -148,6 +148,19 @@ for (const source of read) {
     process.exit(1);
   }
 }
+
+/**
+ * "Absent is not wrong" below is for a canvas that has no need of a token. The stylesheet is the one file that must have every token the authority names for the lift's
+ * tray (the owner, 20 November 2026): a chart on the lift sits on it, and a stylesheet without it would draw class colours straight on the forest.
+ */
+const TRAY = ['--lift-tray', '--lift-tray-fade'];
+const sheet = read.find((source) => source.path === 'src/styles/tokens.css');
+const missingTray = TRAY.filter((key) => !authority.tokens.has(key) || !sheet.tokens.has(key));
+if (missingTray.length > 0) {
+  console.log(`  ✗ The lift's tray tokens must be in both docs/tokens.md and the stylesheet: missing ${missingTray.join(', ')}.`);
+  process.exit(1);
+}
+
 const disagreements = [];
 
 for (const key of [...authority.tokens.keys()].sort()) {
