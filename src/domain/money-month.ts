@@ -33,6 +33,15 @@ export interface MonthAccount {
   /** The balance at the start of the month: last month's closing. Null where it has not been entered. */
   readonly opening: Money | null;
   readonly closing: Money | null;
+  /**
+   * The days this account's month runs over, first and last inclusive, where it is not the calendar month: a card that closes on its statement date is counted over the cycle
+   * of its statement ending in the month (docs/design/card-cycles.md 2.2). Its credits, the transfer legs that reach or leave it, its holding moves and its loan payments are counted
+   * in it. Absent, the account is counted over the calendar month, which is every account of a household with no such card (CY-I1).
+   */
+  readonly window?: { readonly from: IsoDate; readonly to: IsoDate };
+  /** A card's cycle: what was converted to EMI plans in it, and the principal of the instalments billed in it (card-cycles.md 4a). Absent is none. */
+  readonly emiConvertedMinor?: bigint;
+  readonly emiPrincipalMinor?: bigint;
 }
 
 export interface MonthCredit {
@@ -125,8 +134,15 @@ export interface MonthFigures {
     readonly invested: bigint;
     readonly paidToLoans: bigint;
     readonly toCashReserve: bigint;
+    /** Present only when it is not zero. */
+    readonly paymentsInTransit?: bigint;
   };
-  /** Saved less (invested + paid to loans + cash reserve change). Nothing but zero is right. */
+  /**
+   * Card payments in transit (card-cycles.md 7): what left a bank account in this month's window and reached a statement-date card in its next window, less what reached one in this
+   * month's window and left in the month before. Zero for a household with no statement-date card, and with card payments skipped. Over consecutive months it telescopes.
+   */
+  readonly paymentsInTransit: bigint;
+  /** Saved less (invested + paid to loans + cash reserve change + card payments in transit). Nothing but zero is right. */
   readonly gapMinor: bigint;
 }
 
@@ -155,36 +171,51 @@ export function closedMonthFigures(input: MonthInput): ClosedMonth {
 function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const accounts = input.accounts.filter((a) => a.currency === currency);
   const mine = new Set(accounts.map((a) => a.id));
+  const byId = new Map(accounts.map((a) => [a.id, a] as const));
+  // A date is in an account's month when it is in its window, or in the calendar month where it has none.
+  const within = (accountId: string, date: IsoDate): boolean => {
+    const window = byId.get(accountId)?.window;
+    return window === undefined ? inMonth(input.month, date) : date >= window.from && date <= window.to;
+  };
   const credits = input.credits.filter(
-    (c) => (c.accountId === null || mine.has(c.accountId)) && c.amount.currency === currency && inMonth(input.month, c.date),
+    (c) => c.amount.currency === currency && (c.accountId === null ? inMonth(input.month, c.date) : mine.has(c.accountId) && within(c.accountId, c.date)),
   );
-  const transfers = input.transfers.filter((t) => t.amount.currency === currency && inMonth(input.month, t.date) && (mine.has(t.fromId) || mine.has(t.toId)));
-  const moves = input.holdingMoves.filter((m) => mine.has(m.accountId) && m.amount.currency === currency && inMonth(input.month, m.date));
-  const loans = input.loanPayments.filter((p) => mine.has(p.accountId) && p.amount.currency === currency && inMonth(input.month, p.date));
+  // A transfer has two legs, each counted in the window of its own account (CY-I2).
+  const outLegs = input.transfers.filter((t) => t.amount.currency === currency && mine.has(t.fromId) && within(t.fromId, t.date));
+  const inLegs = input.transfers.filter((t) => t.amount.currency === currency && mine.has(t.toId) && within(t.toId, t.date));
+  const moves = input.holdingMoves.filter((m) => mine.has(m.accountId) && m.amount.currency === currency && within(m.accountId, m.date));
+  const loans = input.loanPayments.filter((p) => mine.has(p.accountId) && p.amount.currency === currency && within(p.accountId, p.date));
 
   const left: AccountLeft[] = accounts.map((account) => {
     const moneyIn = sum([
       ...credits.filter((c) => c.accountId === account.id).map((c) => c.amount.minor),
-      ...transfers.filter((t) => t.toId === account.id).map((t) => t.amount.minor),
+      ...inLegs.filter((t) => t.toId === account.id).map((t) => t.amount.minor),
       ...moves.filter((m) => m.accountId === account.id && m.direction === 'out').map((m) => m.amount.minor),
     ]);
     const opening = account.opening?.minor ?? 0n;
     const closing = account.closing?.minor ?? 0n;
-    const leftMinor = account.type === 'card' ? closing - opening + moneyIn : opening + moneyIn - closing;
+    // A card's cycle is what the card did: its purchases, charges, interest and fees, plus what was converted to EMI plans (counted as spent in the cycle it was converted) less the
+    // principal of instalments billed (a purchase counted when it was converted, repaid now), card-cycles.md 4a.
+    const emi = (account.emiConvertedMinor ?? 0n) - (account.emiPrincipalMinor ?? 0n);
+    const leftMinor = account.type === 'card' ? closing - opening + moneyIn + emi : opening + moneyIn - closing;
     return { accountId: account.id, moneyInMinor: moneyIn, leftMinor };
   });
 
   const hidden = (input.unreadable ?? []).filter((u) => u.currency === currency);
   const cameIn = sum(credits.filter((c) => isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.cameIn));
   const refunds = sum(credits.filter((c) => !isIncome(c.category)).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.refunds));
-  const ownTransfers = sum(transfers.filter((t) => mine.has(t.fromId)).map((t) => t.amount.minor));
+  const ownTransfers = sum(outLegs.map((t) => t.amount.minor));
   const putIntoHoldings = sum(moves.filter((m) => m.direction === 'into').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.intoHoldings ?? 0n));
   const takenOutOfHoldings = sum(moves.filter((m) => m.direction === 'out').map((m) => m.amount.minor)) + sum(hidden.map((u) => u.outOfHoldings ?? 0n));
-  const paidToLoans = sum(loans.map((p) => p.amount.minor));
+  // What was paid on loans from an account, which is not spent; and, for a card, its EMI plans: the principal billed less what was converted. The first is taken off spent. The second is
+  // already in the card's left, so it is not: it is only the split's paid to loans (a conversion is borrowing, shown as a minus).
+  const loanPayments = sum(loans.map((p) => p.amount.minor));
+  const cardEmi = sum(accounts.map((a) => (a.emiPrincipalMinor ?? 0n) - (a.emiConvertedMinor ?? 0n)));
+  const paidToLoans = loanPayments + cardEmi;
   const leftTotal = sum(left.map((l) => l.leftMinor)) + sum(hidden.map((u) => u.left));
   const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.outside));
 
-  const spent = leftTotal + outside - ownTransfers - putIntoHoldings - refunds - paidToLoans;
+  const spent = leftTotal + outside - ownTransfers - putIntoHoldings - refunds - loanPayments;
   const saved = cameIn - spent;
   const invested = putIntoHoldings - takenOutOfHoldings;
   const cashReserveChange = sum(
@@ -192,6 +223,14 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
       const change = (a.closing?.minor ?? 0n) - (a.opening?.minor ?? 0n);
       return a.type === 'card' ? -change : change;
     }),
+  );
+  // A move between two of the household's accounts is counted once as out of one and once as into the other. Where the two legs fall in different windows (a payment made after a card's
+  // statement date), one is counted in this month and the other in the next, and the difference is what is in transit between them. Only a move with both accounts read is considered, so
+  // a leg that is simply missing still shows as a gap.
+  const paymentsInTransit = sum(
+    input.transfers
+      .filter((t) => t.amount.currency === currency && mine.has(t.fromId) && mine.has(t.toId))
+      .map((t) => (within(t.fromId, t.date) ? t.amount.minor : 0n) - (within(t.toId, t.date) ? t.amount.minor : 0n)),
   );
 
   return {
@@ -209,8 +248,9 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
     saved,
     invested,
     cashReserveChange,
-    split: { spent, invested, paidToLoans, toCashReserve: cashReserveChange },
-    gapMinor: saved - (invested + paidToLoans + cashReserveChange),
+    split: { spent, invested, paidToLoans, toCashReserve: cashReserveChange, ...(paymentsInTransit === 0n ? {} : { paymentsInTransit }) },
+    paymentsInTransit,
+    gapMinor: saved - (invested + paidToLoans + cashReserveChange + paymentsInTransit),
   };
 }
 

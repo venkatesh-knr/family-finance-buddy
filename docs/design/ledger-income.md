@@ -265,13 +265,17 @@ closed month (spending-capture §2, money in made exact):
                    you added": treated as spent outside them, as cash is when withdrawn)
   left           = opening + money in − closing        (bank)
                  = due at end − due at start + money in (card: payments and refunds)
+                   (for a card that closes on its statement date, "start" and "end" are its
+                   statements, and its money in is that cycle's: card-cycles.md)
   spent          = Σ left + outside − own transfers out − money into holdings − refunds
                    − paid to loans
   saved          = came in − spent
                  = net invested + paid to loans + change in cash reserve   (SC-I12)
 
 paid to loans    = the month's loan EMI debits, on their own line (spending-capture,
-                   decided 13 November), all of each EMI: principal and interest
+                   decided 13 November), all of each EMI: principal and interest, plus a
+                   card's EMI principal billed less what it converted to EMIs in its cycle
+                   (card-cycles.md §4a)
 ```
 
 **Why saved splits exactly.** Write every account's change as its credits minus its
@@ -731,7 +735,7 @@ functions, which read the totals.
 
 **LI-I5 — Amounts are integer minor units with a currency, dates are IST calendar dates, and totals are per currency, never converted into one another.** (§1, §4)
 
-**LI-I6 — A closed month's money in, for each account, is the sum of its credits, transfers in and holding take-outs;** a credit with no account is counted in spent as money outside the accounts added; nothing is typed beside them at the close, and spent is still derived, never stored. (§4)
+**LI-I6 — A closed month's money in, for each account, is the sum of its credits, transfers in and holding take-outs, counted in the account's own window: the calendar month, or, for a card that closes on its statement date, its cycle ending in the month (`card-cycles.md` §2.2);** a credit with no account is counted in spent as money outside the accounts added; nothing is typed beside them at the close, and spent is still derived, never stored. (§4)
 
 **LI-I7 — Saved equals came in minus spent, and is shown for a closed month, labelled from balances, or, in a household with no accounts, for a month that has ended, labelled from what was entered;** an open month never shows it. (§4)
 
@@ -795,7 +799,7 @@ functions, which read the totals.
 
 **LI-I22 — An audit row for a credit or a tax input is readable only by whoever can read the row it records.** (§12)
 
-**LI-I23 — For a closed month, the split is spent, invested, paid to loans and to cash reserve, and the last three add up to saved to the paisa.** (§4)
+**LI-I23 — For a closed month, the split is spent, invested, paid to loans, to cash reserve and, where a card closes on its statement date, card payments in transit, and the last four add up to saved to the paisa.** (§4)
 
 **LI-I19 — Tax's business income is a typed net profit per member and tax year, taxed at slab rates without the standard deduction,** never derived from the Business income credits; a loss is refused by name. (§8)
 

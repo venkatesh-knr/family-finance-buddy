@@ -1109,6 +1109,8 @@ export interface Account {
   readonly isArchived: boolean;
   /** The day it was archived, in India: an account is in the closes of the months up to and including it. */
   readonly archivedOn?: IsoDate | null;
+  /** When a card's month closes: at month end (the default, and absent) or on its statement date (docs/design/card-cycles.md). Always month end for a bank account. */
+  readonly cycleEnds?: 'month_end' | 'statement';
 }
 
 export interface NewAccount {
@@ -1147,6 +1149,9 @@ export interface AccountBalance {
   readonly balance: Money;
   readonly source: BalanceSource;
   readonly note: string | null;
+  /** For a card's due: what was converted to EMI plans in the cycle, and the principal of the instalments billed in it (card-cycles.md 4a). Absent is none. */
+  readonly emiConvertedMinor?: bigint;
+  readonly emiPrincipalMinor?: bigint;
 }
 
 export interface NewBalance {
