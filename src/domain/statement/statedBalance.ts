@@ -9,6 +9,10 @@ import type { ParsedStatement, StatementLine } from './common.ts';
  *   its own last day (`closing`), at each month end it crosses (`month-end`), and on the day before it begins (`opening`, worked back from its first line).
  * - A **card** statement states what is due on its statement date (`due`), which is the card's balance: positive owed, negative in credit.
  *
+ * Only a balance dated on the **last day of a month that has ended** is stated. That is the only day the month close reads, and the cash reserve takes an account's latest balance on or
+ * before a month end, so a balance dated mid-month would be read as the month end's and skew it (a card's due on its statement date, for one). A card whose statement is not dated on a
+ * month end therefore states nothing; how a statement cycle maps to a month is for the owner (spending-capture.md section 2 says nothing of it).
+ *
  * A statement with a problem, with a line that has no balance, or whose lines are not in date order states nothing, because its running figure is then not the statement's own.
  */
 export interface StatedBalance {
@@ -37,7 +41,11 @@ function monthEnds(from: IsoDate, to: IsoDate): IsoDate[] {
 
 const sign = (line: StatementLine): bigint => (line.direction === 'credit' ? line.amountMinor : -line.amountMinor);
 
-export function statedBalances(statement: ParsedStatement): readonly StatedBalance[] {
+export function statedBalances(statement: ParsedStatement, today: IsoDate): readonly StatedBalance[] {
+  return statedOnAnyDay(statement).filter((stated) => stated.asAt === lastDayOfMonth(stated.asAt) && stated.asAt < today);
+}
+
+function statedOnAnyDay(statement: ParsedStatement): readonly StatedBalance[] {
   if (statement.problems.length > 0) return [];
 
   if (statement.accountType === 'card') {

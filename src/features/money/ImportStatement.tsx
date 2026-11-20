@@ -17,7 +17,7 @@ import { matchStatement, type MatchResult } from '../../domain/statement/match.t
 import { planImport, type Decision } from '../../domain/statement/plan.ts';
 import { statedBalances, type StatedBalance } from '../../domain/statement/statedBalance.ts';
 import { suggestCategories, suggestionWords, type Suggestion } from '../../domain/statement/suggestCategory.ts';
-import { formatShortDate } from '../../lib/dates.ts';
+import { formatShortDate, istCalendarDate } from '../../lib/dates.ts';
 import { PasswordNeeded } from '../../lib/ecas-pdf.ts';
 import { formatMoney, money } from '../../lib/money.ts';
 import { hashStatement } from '../../lib/statementHash.ts';
@@ -124,7 +124,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         history: filed.history,
         active: new Set(filed.categories.map((category) => category.id)),
       });
-      setRead({ statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement) });
+      setRead({ statement, matched, context, categories: filed.categories, suggestions, balances: statement.kind === 'gpay_pdf' || statement.last4 === null ? [] : statedBalances(statement, istCalendarDate(new Date())) });
     } catch (error) {
       if (error instanceof PasswordNeeded) {
         setNeedPassword(true);
@@ -179,6 +179,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
         statementLast4: read.statement.kind === 'gpay_pdf' ? null : read.statement.last4,
         accountsToAdd: read.matched.accountsToAdd,
         balances: read.balances,
+        statementAccountType: read.statement.accountType,
         writes: plan.writes,
         memberOf: read.context.memberOf,
       });
@@ -408,15 +409,17 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
 
                 {read.balances.length > 0 && (
                   <div data-testid="statement-balances">
-                    <h3 className="label">{read.statement.accountType === 'card' ? 'What the statement says is due' : 'Balances the statement states'}</h3>
+                    <h3 className="label">
+                      {read.statement.accountType === 'card' ? 'What the statement says is due at a month end' : 'Balances the statement states at a month end'} for ••{read.statement.last4}
+                    </h3>
                     <ul className="note mt-1 list-disc pl-5">
                       {read.balances.map((stated) => (
                         <li key={stated.asAt}>
-                          {formatShortDate(stated.asAt)}: {show(stated.balanceMinor)}
+                          {formatShortDate(stated.asAt)}: {read.statement.accountType === 'card' && stated.balanceMinor < 0n ? `${show(-stated.balanceMinor)} in credit` : show(stated.balanceMinor)}
                         </li>
                       ))}
                     </ul>
-                    <p className="note mt-1">The month close reads these for ••{read.statement.last4}, and prefers them to a balance typed for the same day.</p>
+                    <p className="note mt-1">The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.</p>
                   </div>
                 )}
 

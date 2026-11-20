@@ -163,6 +163,8 @@ export interface ImportRequest {
   readonly accountsToAdd: readonly AccountToAdd[];
   /** What the statement states of the account's balance (`statedBalance.ts`), recorded against the account it is of. */
   readonly balances: readonly StatedBalance[];
+  /** Whether the statement is of a card or of a bank account: its balances are written only to an account of the same kind, since a card's is what is owed. */
+  readonly statementAccountType: 'bank' | 'card';
   readonly writes: readonly PlannedWrite[];
   readonly memberOf: ReadonlyMap<string, Uuid>;
 }
@@ -209,7 +211,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
     accountsAdded += 1;
   }
   const known = (await listAccounts(householdId)).filter((account) => account.last4 !== null);
-  const currencyOf = new Map(known.map((account) => [account.id, account.currency] as const));
+  const accountOf = new Map(known.map((account) => [account.id, account] as const));
   for (const account of known) if (account.last4 !== null && !accountByLast4.has(account.last4)) accountByLast4.set(account.last4, account.id);
 
   // 2. The batch: its count goes in at insert, because a batch says what happened and is never revised.
@@ -318,8 +320,9 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
   // person typed for the same day is a separate row that the month close sets aside for this one.
   let balancesRecorded = 0;
   const statementAccount = request.statementLast4 === null ? null : (accountByLast4.get(request.statementLast4) ?? null);
-  const currency = statementAccount === null ? undefined : currencyOf.get(statementAccount);
-  if (statementAccount !== null && currency === 'INR') {
+  const target = statementAccount === null ? undefined : accountOf.get(statementAccount);
+  // Only to an account of the kind the statement is of, and in rupees: a card's balance is what is owed, a bank account's what is held, and the two must not be mixed.
+  if (statementAccount !== null && target !== undefined && target.currency === 'INR' && (target.type === 'card') === (request.statementAccountType === 'card')) {
     for (const stated of request.balances) {
       const { error } = await client.from('account_balance').upsert(
         {
@@ -327,7 +330,7 @@ export async function commitImport(request: ImportRequest): Promise<ImportOutcom
           account_id: statementAccount,
           as_at: stated.asAt,
           balance_minor: stated.balanceMinor.toString(),
-          currency,
+          currency: target.currency,
           source: 'statement',
           source_batch_id: batchId,
         },

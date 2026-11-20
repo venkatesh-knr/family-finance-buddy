@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedStatement, StatementLine } from './common.ts';
-import { statedBalances } from './statedBalance.ts';
+import { statedBalances as stated } from './statedBalance.ts';
+
+const TODAY = '2026-12-15';
+const statedBalances = (statement: ParsedStatement, today: string = TODAY) => stated(statement, today);
 
 /**
  * The balances a statement states, which the month close reads for an account on the last day of a month (docs/design/spending-capture.md section 2; ledger-income.md
@@ -28,10 +31,13 @@ describe('a bank statement', () => {
     expect(out).toContainEqual({ asAt: '2026-09-30', balanceMinor: 100_000n, basis: 'opening' });
   });
 
-  it('states nothing for a month end it does not cover', () => {
-    const out = statedBalances(bank({ lines, periodStart: '2026-10-05', periodEnd: '2026-10-20' }));
-    expect(out.map((entry) => entry.asAt)).toEqual(['2026-10-20']);
-    expect(out[0]?.balanceMinor).toBe(95_000n);
+  it('states nothing for a month end it does not cover, and nothing for a day that is not a month end, which the close and the cash reserve would mistake for one', () => {
+    expect(statedBalances(bank({ lines, periodStart: '2026-10-05', periodEnd: '2026-10-20' }))).toEqual([]);
+  });
+
+  it('states nothing for a month that has not ended', () => {
+    expect(statedBalances(bank({ lines }), '2026-10-31').map((entry) => entry.asAt)).toEqual(['2026-09-30']);
+    expect(statedBalances(bank({ lines }), '2026-11-01').map((entry) => entry.asAt)).toEqual(['2026-09-30', '2026-10-31']);
   });
 
   it('states the balance at a month end in the middle of a statement that crosses it', () => {
@@ -40,13 +46,13 @@ describe('a bank statement', () => {
       line('2026-11-02', 'debit', 4_000n, 45_000n),
     ];
     const out = statedBalances(bank({ lines: crossing, periodStart: '2026-10-15', periodEnd: '2026-11-10' }));
-    expect(out).toContainEqual({ asAt: '2026-10-31', balanceMinor: 49_000n, basis: 'month-end' });
-    expect(out).toContainEqual({ asAt: '2026-11-10', balanceMinor: 45_000n, basis: 'closing' });
+    expect(out).toEqual([{ asAt: '2026-10-31', balanceMinor: 49_000n, basis: 'month-end' }]);
   });
 
   it('works from the last line when the statement does not say its period', () => {
-    const out = statedBalances(bank({ lines, periodStart: null, periodEnd: null }));
-    expect(out).toEqual([{ asAt: '2026-10-30', balanceMinor: 75_000n, basis: 'closing' }]);
+    expect(statedBalances(bank({ lines, periodStart: null, periodEnd: null }))).toEqual([]);
+    const toTheEnd = [line('2026-10-30', 'debit', 20_000n, 75_000n), line('2026-10-31', 'credit', 1_000n, 76_000n)];
+    expect(statedBalances(bank({ lines: toTheEnd, periodStart: null, periodEnd: null }))).toEqual([{ asAt: '2026-10-31', balanceMinor: 76_000n, basis: 'closing' }]);
   });
 
   it('states nothing when a line has no balance, since the running figure is then not the statement\'s own', () => {
@@ -65,8 +71,7 @@ describe('a bank statement', () => {
   it('reads the balance after the last of several lines on a day', () => {
     const same = [line('2026-10-31', 'debit', 1_000n, 9_000n), line('2026-10-31', 'debit', 2_000n, 7_000n)];
     const out = statedBalances(bank({ lines: same, periodStart: '2026-10-31', periodEnd: '2026-10-31' }));
-    expect(out).toContainEqual({ asAt: '2026-10-31', balanceMinor: 7_000n, basis: 'closing' });
-    expect(out).toContainEqual({ asAt: '2026-10-30', balanceMinor: 10_000n, basis: 'opening' });
+    expect(out).toEqual([{ asAt: '2026-10-31', balanceMinor: 7_000n, basis: 'closing' }]);
   });
 });
 
@@ -76,17 +81,24 @@ describe('a card statement', () => {
     card: { statementDate: '2026-10-14', paymentDueDate: '2026-11-01', previousBalanceMinor: 1_000n, totalDueMinor: due }, ...over,
   });
 
-  it('states what is due on its statement date', () => {
-    expect(statedBalances(card(35_050n))).toEqual([{ asAt: '2026-10-14', balanceMinor: 35_050n, basis: 'due' }]);
+  const onMonthEnd = (due: bigint, over: Partial<ParsedStatement> = {}): ParsedStatement =>
+    card(due, { periodStart: '2026-10-01', periodEnd: '2026-10-31', card: { statementDate: '2026-10-31', paymentDueDate: '2026-11-18', previousBalanceMinor: 1_000n, totalDueMinor: due }, ...over });
+
+  it('states what is due when its statement is dated the last day of a month', () => {
+    expect(statedBalances(onMonthEnd(35_050n))).toEqual([{ asAt: '2026-10-31', balanceMinor: 35_050n, basis: 'due' }]);
+  });
+
+  it('states nothing when its statement is dated mid-month, which is not a balance at a month end', () => {
+    expect(statedBalances(card(35_050n))).toEqual([]);
   });
 
   it('keeps a card that is in credit as a negative figure', () => {
-    expect(statedBalances(card(-2_500n))[0]?.balanceMinor).toBe(-2_500n);
+    expect(statedBalances(onMonthEnd(-2_500n))[0]?.balanceMinor).toBe(-2_500n);
   });
 
   it('falls back to the end of the period when the statement does not give its date', () => {
-    const out = statedBalances(card(100n, { card: { statementDate: null, paymentDueDate: null, previousBalanceMinor: 0n, totalDueMinor: 100n } }));
-    expect(out).toEqual([{ asAt: '2026-10-14', balanceMinor: 100n, basis: 'due' }]);
+    const out = statedBalances(onMonthEnd(100n, { card: { statementDate: null, paymentDueDate: null, previousBalanceMinor: 0n, totalDueMinor: 100n } }));
+    expect(out).toEqual([{ asAt: '2026-10-31', balanceMinor: 100n, basis: 'due' }]);
   });
 
   it('states nothing without the card\'s figures, or with problems', () => {
