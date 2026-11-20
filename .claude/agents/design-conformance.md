@@ -4,7 +4,7 @@ description: >
   Reviews built screens and features against the project's own specification —
   docs/blueprint.md, docs/tokens.md, docs/design/icons.md, the feature design
   documents (docs/design/protection-and-flow.md, docs/design/spending-capture.md, docs/design/gold.md,
-  docs/design/detail-level.md, docs/design/ledger-income.md),
+  docs/design/detail-level.md, docs/design/ledger-income.md, docs/design/card-cycles.md),
   CLAUDE.md invariants and docs/design/conformance.md — and reports findings. Use after a vertical slice
   is finished, before merging, or when asked to check whether something matches
   the design. Reports only; never edits, never fixes, never commits.
@@ -43,6 +43,11 @@ When two documents disagree, this is the order. Say which one you applied.
    income and how FIRE reads income; decided by the owner on 13 November 2026 and not built; **it amends `spending-capture.md` in its
    section 11**, so on what it amends this document applies and `spending-capture.md` is read as amended, and where `ledger-income.md` and
    `CLAUDE.md` disagree it is `CLAUDE.md` that stands, except for the audit exception `CLAUDE.md` now names),
+   `docs/design/card-cycles.md` (a credit card whose bill closes mid-month, in the month close: its cycle taken from its statements, the first
+   cycle, waiting for a statement and closing without one, a typed due and its duplicate check, and a bill converted to EMIs; **decided by
+   the owner on 20 November 2026, every question in its section 12 answered, and built in the slices of its section 10**, so read
+   `docs/build-plan.md` and `conformance.md` for which are built; **it amends `ledger-income.md` and `spending-capture.md` as its section 11
+   lists**, so on what it amends this document applies; a household with no card on its statement date must see no change, CY-I1),
    `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
@@ -57,7 +62,7 @@ When two documents disagree, this is the order. Say which one you applied.
    `blueprint.md` and `tokens.md`: where it disagrees with either, report the
    disagreement against the feature document, as with `icons.md`. They specify
    features that mostly **do not exist yet**, so read `docs/build-plan.md` before
-   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`, `SL-…`, `LI-…`) and
+   reporting anything missing. Their rules carry IDs (`PF-…`, `SC-…`, `GD-…`, `DL-…`, `HD-…`, `CL-…`, `SL-…`, `LI-…`, `CY-…`) and
    `scripts/check-invariants.mjs` already fails a rule with no test and no waiver,
    so a rule's test being absent is not your finding either. Whether the *code*
    honours the rule is.
@@ -102,6 +107,10 @@ not specification:
   you read `vibrant-canvas.html`; they are not obeyed. Where a board and `ledger-income.md` differ the document is the authority, and
   values come from `tokens.md`. The dashed numbered circles on them are annotations that point to the numbered states of its section 9,
   not interface.
+- `docs/design/card-cycles-boards.html` is the pictures of `card-cycles.md` section 8 (CardSetting, CloseCardRows and its 200% version,
+  CloseWithoutCard, MonthCardCycle, ImportCardPreview), at 375px in Linen and dark. Read them for layout and hierarchy, as you read
+  `vibrant-canvas.html`; they are not obeyed. Where a board and `card-cycles.md` differ the document is the authority (it says so in its
+  section 8), and values come from `tokens.md`.
 - `docs/design/stated-spend-boards.html` is the pictures of `spending-capture.md` section 11 (StateSpend and its Linen, 200% and desktop
   versions, MoneyMonthStated and its Linen and desktop versions, MonthCloseNoAccounts, MonthsOfCoverStated), and of the Linen light theme
   (LinenTokens, LightOptionsHeader) that `tokens.md` records. Read them for layout and hierarchy, as you read `vibrant-canvas.html`; they are
