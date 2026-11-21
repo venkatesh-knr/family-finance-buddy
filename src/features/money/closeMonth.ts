@@ -182,6 +182,58 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
     });
 }
 
+/** A due typed at the close for a statement-date card: an amount, and the date on the statement (card-cycles.md 8.2). */
+export interface TypedDue {
+  readonly amount: string;
+  readonly date: string;
+}
+
+/**
+ * The balances that a due typed at the close makes: for each statement-date card with an amount and a date typed, a typed balance on the statement's date, which must fall in the month. It
+ * is read as the card's cycle like any due, and a statement for the same cycle replaces it (CY-I13). What is wrong is said in words, by card; nothing typed makes nothing.
+ */
+export function typedDueBalances(input: { readonly month: string; readonly accounts: readonly Account[]; readonly typed: Readonly<Record<string, TypedDue>> }): {
+  readonly balances: AccountBalance[];
+  readonly problems: Record<string, string>;
+  /** Which field each problem is about, so it is said under that one. */
+  readonly fields: Record<string, 'amount' | 'date'>;
+} {
+  const balances: AccountBalance[] = [];
+  const problems: Record<string, string> = {};
+  const fields: Record<string, 'amount' | 'date'> = {};
+  const used = inUse(input.accounts, input.month);
+  for (const [accountId, due] of Object.entries(input.typed)) {
+    const account = used.find((each) => each.id === accountId);
+    if (account === undefined || !isStatementCard(account)) continue;
+    if (due.amount.trim() === '' && due.date.trim() === '') continue;
+    if (due.amount.trim() === '') {
+      problems[accountId] = 'Type the amount due.';
+      fields[accountId] = 'amount';
+      continue;
+    }
+    const amount = parseBalance(due.amount, account.currency);
+    if (!amount.ok) {
+      problems[accountId] = amount.problem;
+      fields[accountId] = 'amount';
+      continue;
+    }
+    if (due.date.trim() === '') {
+      problems[accountId] = 'Say the date on the statement.';
+      fields[accountId] = 'date';
+      continue;
+    }
+    const valid = /^\d{4}-\d{2}-\d{2}$/.test(due.date) && !Number.isNaN(Date.parse(`${due.date}T00:00:00Z`)) && due.date.slice(0, 7) === input.month;
+    if (!valid) {
+      problems[accountId] = `The statement date must fall in ${monthWord(input.month)}.`;
+      fields[accountId] = 'date';
+      continue;
+    }
+    if (amount.balance === null) continue;
+    balances.push({ id: `typed-due-${accountId}`, householdId: account.householdId, accountId, asAt: due.date, balance: amount.balance, source: 'typed', note: null });
+  }
+  return { balances, problems, fields };
+}
+
 /** The accounts in a month's close: those in use, and those archived in that month or after it (ledger-income.md section 1a). */
 const inUse = (accounts: readonly Account[], month: string): Account[] =>
   accounts.filter((account) => !account.isArchived || (account.archivedOn !== undefined && account.archivedOn !== null && account.archivedOn.slice(0, 7) >= month));

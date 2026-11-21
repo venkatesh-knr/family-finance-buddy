@@ -41,6 +41,7 @@ export function MonthSurface({
   last,
   members = [],
   actions,
+  onPutBack,
 }: {
   /** The month's first and last day. */
   bounds: { readonly start: string; readonly end: string };
@@ -63,6 +64,8 @@ export function MonthSurface({
   members?: readonly Member[];
   /** The actions inside the card, under the figures: money in, the close, the way to Accounts. */
   actions?: React.ReactNode;
+  /** An owner or a partner may put a card back that a closed month left out (card-cycles.md 8.2); the month then waits for its statement again. */
+  onPutBack?: (accountId: string) => void;
 }) {
   const [period, setPeriod] = useState<'this' | 'last'>('this');
   // The form that states, or changes, a month's spend, and what was done: said where the person is looking.
@@ -274,6 +277,20 @@ export function MonthSurface({
               {note}
             </p>
           ))}
+          {onPutBack !== undefined &&
+            closed.cardSummary.leftOut.map((card) => (
+              <button
+                key={card.accountId}
+                type="button"
+                className="btn btn-quiet self-start"
+                aria-label={`Undo: close ${monthWord(closed.month)} with ${card.name}’s statement`}
+                onClick={() => {
+                  onPutBack(card.accountId);
+                }}
+              >
+                Undo
+              </button>
+            ))}
         </div>
       )}
       <p className="note mt-2.5">

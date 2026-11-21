@@ -118,7 +118,13 @@ describe('the closed month card (card-cycles.md 8.3)', () => {
     expect(out.notes).toContain('Axis Magnus’s first cycle is left out: there is no earlier statement to start from.');
   });
 
+  it('names the cards left out of the close, so an owner or a partner can put one back', () => {
+    const out = cardSummary([{ kind: 'closed-without', accountId: 'a' }, cycle('2026-10-03', '2026-09-04')], names);
+    expect(out.leftOut).toEqual([{ accountId: 'a', name: 'HDFC Regalia' }]);
+    expect(cardSummary([cycle('2026-10-17', '2026-09-18')], names).leftOut).toEqual([]);
+  });
+
   it('says nothing for a household with no statement-date card, which is every household before the setting is used (CY-I1)', () => {
-    expect(cardSummary([], names)).toEqual({ byCycle: null, notes: [] });
+    expect(cardSummary([], names)).toEqual({ byCycle: null, notes: [], leftOut: [] });
   });
 });

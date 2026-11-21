@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { listClosesWithoutCard, type CloseWithoutCard } from '../../repo/closeWithoutCard.ts';
 import { listCredits } from '../../repo/credits.ts';
 import { listIncomeRules } from '../../repo/incomeRules.ts';
 import { listTransfers } from '../../repo/transfers.ts';
@@ -21,6 +22,8 @@ export function useMoneyLedger(householdId: string | null) {
   const [credits, setCredits] = useState<readonly Credit[]>([]);
   const [transfers, setTransfers] = useState<readonly Transfer[]>([]);
   const [rules, setRules] = useState<readonly IncomeRule[]>([]);
+  // The months an owner or a partner closed without a statement-date card; none for anybody else (card-cycles.md 2.4).
+  const [closesWithout, setClosesWithout] = useState<readonly CloseWithoutCard[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   // A read that answers after a newer one was asked for is not shown: the household may have changed in between.
@@ -30,11 +33,18 @@ export function useMoneyLedger(householdId: string | null) {
     if (resolvedId === null) return;
     const turn = ++asked.current;
     try {
-      const [nextCredits, nextTransfers, nextRules] = await Promise.all([listCredits(resolvedId), listTransfers(resolvedId), listIncomeRules(resolvedId)]);
+      // A choice that cannot be read is a failed read like the others, and not none: reading it as none would show a month closed without a card as waiting.
+      const [nextCredits, nextTransfers, nextRules, nextCloses] = await Promise.all([
+        listCredits(resolvedId),
+        listTransfers(resolvedId),
+        listIncomeRules(resolvedId),
+        listClosesWithoutCard(resolvedId),
+      ]);
       if (turn !== asked.current) return;
       setCredits(nextCredits);
       setTransfers(nextTransfers);
       setRules(nextRules);
+      setClosesWithout(nextCloses);
       setProblem(null);
       setStatus('ready');
     } catch (error) {
@@ -48,9 +58,10 @@ export function useMoneyLedger(householdId: string | null) {
     setCredits([]);
     setTransfers([]);
     setRules([]);
+    setClosesWithout([]);
     setStatus('loading');
     void loadMoney();
   }, [loadMoney]);
 
-  return { ...accounts, credits, transfers, rules, moneyStatus: status, moneyProblem: problem, reloadMoney: loadMoney };
+  return { ...accounts, credits, transfers, rules, closesWithout, moneyStatus: status, moneyProblem: problem, reloadMoney: loadMoney };
 }

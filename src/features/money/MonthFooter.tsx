@@ -35,7 +35,7 @@ export function MonthFooter({
             <span className="font-semibold">{status.title}</span>
             <span className="note">{status.sub}</span>
           </div>
-          {status.kind === 'ready' && (
+          {(status.kind === 'ready' || (status.kind === 'waiting' && status.canClose)) && (
             <button type="button" className="btn month-close" onClick={onClose}>
               Close {monthWord(closeMonthKey)}
             </button>

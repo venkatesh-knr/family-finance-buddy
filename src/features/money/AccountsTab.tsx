@@ -21,7 +21,7 @@ import { AddAccount } from './AddAccount.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
 import { lateStatementDay } from './cardCycleView.ts';
 import { accountRow, latestBalances, splitAccounts } from './accountRows.ts';
-import { lastBalanceMonth, lastDayOf, monthToClose, monthWord, offersClose } from './closeMonth.ts';
+import { cardCycles, lastBalanceMonth, lastDayOf, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { useCashReserve } from './useCashReserve.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
 
@@ -72,12 +72,16 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
   const mayAdd = data.viewer.canRecord;
   const none = split.active.length === 0 && split.archived.length === 0;
   const readsHousehold = data.viewer.role === 'owner' || data.viewer.role === 'partner';
-  const offer = offersClose({
+  // A month waiting for a card statement is closed only by someone who may close it without the card (card-cycles.md 2.4): anyone else is offered nothing.
+  const mayCloseWithout = data !== null && (data.viewer.role === 'owner' || data.viewer.role === 'partner');
+  const waitingForCard = data !== null && cardCycles({ month: closeMonthKey, accounts: data.accounts, balances: data.balances, closedWithout: ledger.closesWithout }).some((cycle) => cycle.kind === 'waiting');
+  const offer = (waitingForCard ? mayCloseWithout : true) && offersClose({
     month: closeMonthKey,
     accounts: data.accounts,
     balances: data.balances,
     canRecord: data.viewer.canRecord,
     moneyReady: ledger.moneyStatus === 'ready',
+    closedWithout: ledger.closesWithout,
   });
 
   const open = async (account: Account): Promise<void> => {
@@ -258,6 +262,11 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
           today={today}
           credits={ledger.credits}
           transfers={ledger.transfers}
+          closedWithout={ledger.closesWithout}
+          canCloseWithout={data.viewer.role === 'owner' || data.viewer.role === 'partner'}
+          onClosedWithoutChanged={() => {
+            void ledger.reloadMoney();
+          }}
           privacy={privacy}
           onDone={(message) => {
             setClosing(false);

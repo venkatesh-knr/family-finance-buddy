@@ -11,7 +11,7 @@ import { modeLine, type LastMonthView } from './lastMonth.ts';
 export type MonthFooterStatus =
   | { readonly kind: 'ready'; readonly title: string; readonly sub: string }
   /** A card that closes on its statement date has no statement in the month yet: there is nothing to close until it is imported, so no *Close* is offered (card-cycles.md 2.4). */
-  | { readonly kind: 'waiting'; readonly title: string; readonly sub: string }
+  | { readonly kind: 'waiting'; readonly title: string; readonly sub: string; readonly canClose: boolean }
   | { readonly kind: 'closed'; readonly title: string; readonly sub: string }
   | null;
 
@@ -29,6 +29,8 @@ export function monthFooterStatus(input: {
   readonly lastMonth: LastMonthView | null;
   /** The cards that close on their statement date whose statement dated in the month is not in: the month waits for them (card-cycles.md 2.4). */
   readonly waitingCards?: readonly string[];
+  /** An owner or a partner may close the month without a waiting card, so the close is offered them; anybody else is offered no Close (card-cycles.md 2.4). */
+  readonly mayCloseWithout?: boolean;
 }): MonthFooterStatus {
   const waiting = input.waitingCards ?? [];
   if (input.mayClose && waiting.length > 0) {
@@ -36,6 +38,7 @@ export function monthFooterStatus(input: {
       kind: 'waiting',
       title: `${monthWord(input.closeMonthKey)} is waiting for ${String(waiting.length)} card ${waiting.length === 1 ? 'statement' : 'statements'}`,
       sub: `${waiting.join(', ')}, dated in ${monthWord(input.closeMonthKey)}`,
+      canClose: input.mayCloseWithout === true,
     };
   }
   if (input.mayClose) {

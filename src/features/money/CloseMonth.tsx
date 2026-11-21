@@ -18,13 +18,14 @@ import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
+import { closeWithoutCard, voidCloseWithoutCard, type CloseWithoutCard } from '../../repo/closeWithoutCard.ts';
 import type { Credit, Expense, PlanListing, Transfer } from '../../repo/types.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
 import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { accountSteps, cardCycles, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, type TypedBalances } from './closeMonth.ts';
+import { accountSteps, cardCycles, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, typedDueBalances, type TypedBalances, type TypedDue } from './closeMonth.ts';
 import { cardSummary, cycleRowWords, lateStatementDay, nextDueMonth } from './cardCycleView.ts';
 import { titleOf } from './accountRows.ts';
 import { amountText } from './creditForm.ts';
@@ -37,6 +38,9 @@ export function CloseMonth({
   today,
   credits,
   transfers,
+  closedWithout,
+  canCloseWithout,
+  onClosedWithoutChanged,
   privacy,
   onDone,
   onCancel,
@@ -47,6 +51,11 @@ export function CloseMonth({
   today: string;
   credits: readonly Credit[];
   transfers: readonly Transfer[];
+  /** The months an owner or a partner closed without a statement-date card; a statement for that cycle, when it arrives, supersedes the choice (card-cycles.md 2.4). */
+  closedWithout: readonly CloseWithoutCard[];
+  /** An owner or a partner may close the month without a card that is still waiting, and undo it. */
+  canCloseWithout: boolean;
+  onClosedWithoutChanged: () => void;
   privacy: boolean;
   onDone: (said: string) => void;
   onCancel: () => void;
@@ -99,12 +108,22 @@ export function CloseMonth({
   const loans = useLoanPayments(data.household.id, month, data.accounts.some((account) => !account.isArchived));
   const blocked = privateBlocked || entries.blocked || loans.blocked;
 
+  // A due typed for a statement-date card that is still waiting (card-cycles.md 8.2): an amount and the date on the statement. It is read as the card's cycle until a statement for the
+  // same cycle replaces it, and is saved with the close, as a typed balance.
+  const [dueTexts, setDueTexts] = useState<Record<string, TypedDue>>({});
+  const [typingDue, setTypingDue] = useState<ReadonlySet<string>>(new Set());
+  // A missing date is said once its field has been left, and not while the amount is still being typed.
+  const [dateLeft, setDateLeft] = useState<ReadonlySet<string>>(new Set());
+  const typedDues = useMemo(() => typedDueBalances({ month, accounts: data.accounts, typed: dueTexts }), [month, data.accounts, dueTexts]);
+  const balancesAll = useMemo(() => [...data.balances, ...typedDues.balances], [data.balances, typedDues.balances]);
+
   const base = useMemo(
     () => ({
       month,
       today,
       accounts: data.accounts,
-      balances: data.balances,
+      balances: balancesAll,
+      closedWithout,
       credits,
       transfers,
       typed: {} as TypedBalances,
@@ -112,7 +131,7 @@ export function CloseMonth({
       loanPayments: loans.payments,
       ...(unread === null || unread.length === 0 ? {} : { unreadable: unread }),
     }),
-    [month, today, data.accounts, data.balances, credits, transfers, unread, entries.moves, loans.payments],
+    [month, today, data.accounts, balancesAll, closedWithout, credits, transfers, unread, entries.moves, loans.payments],
   );
   const steps = useMemo(() => accountSteps(base), [base]);
 
@@ -128,7 +147,7 @@ export function CloseMonth({
     opening: parseBalance(texts[step.accountId]?.opening ?? '', step.currency),
     closing: parseBalance(texts[step.accountId]?.closing ?? '', step.currency),
   }));
-  const anyBad = parsed.some((p) => !p.opening.ok || !p.closing.ok);
+  const anyBad = parsed.some((p) => !p.opening.ok || !p.closing.ok) || Object.keys(typedDues.problems).length > 0;
 
   const typed: TypedBalances = Object.fromEntries(
     parsed.map(({ step, opening, closing }) => [
@@ -146,7 +165,7 @@ export function CloseMonth({
   const itemised = itemisedFigures(expenses ?? [], credits, month);
   const accountsInUse = steps.length;
   // A card that closes on its statement date is closed by its statement, not by a balance typed here: its cycle is worked out from its statements (card-cycles.md 2).
-  const cycles = useMemo(() => cardCycles({ month, accounts: data.accounts, balances: data.balances }), [month, data.accounts, data.balances]);
+  const cycles = useMemo(() => cardCycles({ month, accounts: data.accounts, balances: balancesAll, closedWithout }), [month, data.accounts, balancesAll, closedWithout]);
   const cycleOf = new Map(cycles.map((cycle) => [cycle.accountId, cycle] as const));
   const accountsTyped = parsed.filter((p) => (p.closing.ok && p.closing.balance !== null) || (cycleOf.get(p.step.accountId) !== undefined && cycleOf.get(p.step.accountId)?.kind !== 'waiting')).length;
   const names = new Map(data.accounts.map((account) => [account.id, titleOf(account)]));
@@ -154,11 +173,44 @@ export function CloseMonth({
   // An owner or a partner reads every account. A contributor reads their own only: say so wherever there is another member to have one.
   const privateNote = asks ? '' : data.members.length > 1 ? ' This close covers only the accounts you can read: your own.' : '';
 
+  // Closing a month without a card: asked once, written at once (it is a choice about the month and not a figure), and undone by voiding.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const leaveOut = async (accountId: string): Promise<void> => {
+    setChoosing(true);
+    setProblem(null);
+    try {
+      await closeWithoutCard({ householdId: data.household.id, accountId, month });
+      setConfirming(null);
+      onClosedWithoutChanged();
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'That could not be saved.');
+    } finally {
+      setChoosing(false);
+    }
+  };
+  const putBack = async (accountId: string): Promise<void> => {
+    const choice = closedWithout.find((each) => each.accountId === accountId && each.month === month);
+    if (choice === undefined) return;
+    setChoosing(true);
+    setProblem(null);
+    try {
+      await voidCloseWithoutCard(choice.id);
+      onClosedWithoutChanged();
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'That could not be undone.');
+    } finally {
+      setChoosing(false);
+    }
+  };
+
   const finish = async (): Promise<void> => {
     if (live.status !== 'figures' || anyBad) return;
     setBusy(true);
     setProblem(null);
     try {
+      // A due typed for a card that was waiting is saved on the statement's date, as a typed balance: a statement for the same cycle replaces it when it is imported.
+      for (const due of typedDues.balances) await saveBalance({ householdId: data.household.id, accountId: due.accountId, asAt: due.asAt, balance: due.balance });
       for (const { step, opening, closing } of parsed) {
         if (opening.ok && opening.balance !== null) {
           await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: opensOn, balance: opening.balance });
@@ -241,7 +293,7 @@ export function CloseMonth({
                 ) : live.status === 'missing' ? (
                   <p className="note">
                     {cycles.some((cycle) => cycle.kind === 'waiting')
-                      ? 'Import the statement of each card that is waiting, and type each other account’s balance below, to see what was spent. It is not counted as nothing.'
+                      ? 'Import the statement of each card that is waiting, or type its amount due below, and type each other account’s balance, to see what was spent. It is not counted as nothing.'
                       : 'Type each account’s balance below to see what was spent. It is not counted as nothing.'}
                   </p>
                 ) : (
@@ -276,14 +328,119 @@ export function CloseMonth({
                   <section key={row.accountId} aria-label={row.title} className="flex flex-col gap-1.5">
                     <h3 className="label">{row.title}</h3>
                     {cycleOf.get(row.accountId) !== undefined ? (
-                      <p className="note" data-testid="close-card-cycle">
-                        {cycleRowWords(cycleOf.get(row.accountId) as NonNullable<ReturnType<typeof cycleOf.get>>, {
-                          month,
-                          lateDay: lateStatementDay(data.balances, row.accountId),
-                          nextMonth: nextDueMonth(data.balances, row.accountId, month),
-                          shown: (value) => shown(value),
-                        })}
-                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        <p className="note" data-testid="close-card-cycle">
+                          {cycleRowWords(cycleOf.get(row.accountId) as NonNullable<ReturnType<typeof cycleOf.get>>, {
+                            month,
+                            lateDay: lateStatementDay(data.balances, row.accountId),
+                            nextMonth: nextDueMonth(data.balances, row.accountId, month),
+                            shown: (value) => shown(value),
+                          })}
+                        </p>
+                        {cycleOf.get(row.accountId)?.kind === 'closed-without' && canCloseWithout && (
+                          <button
+                            type="button"
+                            className="btn btn-quiet self-start"
+                            disabled={choosing}
+                            aria-label={`Undo: close ${word} with ${row.title}’s statement`}
+                            onClick={() => {
+                              void putBack(row.accountId);
+                            }}
+                          >
+                            Undo
+                          </button>
+                        )}
+                        {(cycleOf.get(row.accountId)?.kind === 'waiting' || (typingDue.has(row.accountId) && cycleOf.get(row.accountId)?.kind !== 'closed-without')) && (
+                          <>
+                            {!typingDue.has(row.accountId) ? (
+                              <button
+                                type="button"
+                                className="btn btn-quiet self-start"
+                                onClick={() => {
+                                  setTypingDue((was) => new Set(was).add(row.accountId));
+                                }}
+                              >
+                                Type the amount due instead
+                              </button>
+                            ) : (
+                              <>
+                                <Field
+                                  label="Amount due"
+                                  numeric
+                                  inputMode="decimal"
+                                  autoComplete="off"
+                                  placeholder="0"
+                                  hint="What the statement says is due, at its date."
+                                  value={dueTexts[row.accountId]?.amount ?? ''}
+                                  error={typedDues.fields[row.accountId] === 'amount' ? (typedDues.problems[row.accountId] ?? null) : null}
+                                  onChange={(event) => {
+                                    setDueTexts((was) => ({ ...was, [row.accountId]: { amount: event.target.value, date: was[row.accountId]?.date ?? '' } }));
+                                  }}
+                                />
+                                <Field
+                                  label="Statement date"
+                                  type="date"
+                                  min={`${month}-01`}
+                                  max={closesOn}
+                                  hint={`It must fall in ${word}. A statement imported later for the same cycle replaces this.`}
+                                  value={dueTexts[row.accountId]?.date ?? ''}
+                                  error={typedDues.fields[row.accountId] === 'date' && ((dueTexts[row.accountId]?.date ?? '').trim() !== '' || dateLeft.has(row.accountId)) ? (typedDues.problems[row.accountId] ?? null) : null}
+                                  onBlur={() => {
+                                    setDateLeft((was) => new Set(was).add(row.accountId));
+                                  }}
+                                  onChange={(event) => {
+                                    setDueTexts((was) => ({ ...was, [row.accountId]: { amount: was[row.accountId]?.amount ?? '', date: event.target.value } }));
+                                  }}
+                                />
+                              </>
+                            )}
+                          </>
+                        )}
+                        {cycleOf.get(row.accountId)?.kind === 'waiting' && canCloseWithout && (
+                          <>
+                            {confirming !== row.accountId ? (
+                              <button
+                                type="button"
+                                className="btn btn-quiet self-start"
+                                onClick={() => {
+                                  setConfirming(row.accountId);
+                                }}
+                              >
+                                Close without {row.title}
+                              </button>
+                            ) : (
+                              <div role="group" aria-label={`Close ${word} without ${row.title}`} className="flex flex-col gap-1.5" data-testid="close-without-confirm">
+                                <h4 className="label">Close {word} without {row.title}?</h4>
+                                <p className="note">
+                                  {row.title}’s {word} cycle will be left out until its statement is imported. Payments to it this month count as spent instead.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    className="btn"
+                                    disabled={choosing}
+                                    onClick={() => {
+                                      void leaveOut(row.accountId);
+                                    }}
+                                  >
+                                    Close without it
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-quiet"
+                                    disabled={choosing}
+                                    onClick={() => {
+                                      setConfirming(null);
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     ) : (
                       <>
                         {mask ? (

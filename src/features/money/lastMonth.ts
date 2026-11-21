@@ -24,7 +24,7 @@ export type LastMonthView =
       /** Purchases, sales and PPF entries of the month that named no account: their money is still in spent. */
       readonly unnamedEntries: number;
       /** What the cards on their statement date did in the month, in words; absent for a household with none (card-cycles.md 8.3). */
-      readonly cardSummary?: { readonly byCycle: string | null; readonly notes: readonly string[] };
+      readonly cardSummary?: ReturnType<typeof cardSummary>;
     }
   /** `noAccounts`: the household has no account in use, so the month can never be closed from balances; it is on what was entered. */
   | { readonly kind: 'open'; readonly month: string; readonly noAccounts: boolean }
