@@ -6,6 +6,7 @@ import {
   cardCycles,
   closeFigures,
   isClosed,
+  typedDueBalances,
   itemisedFigures,
   lastBalanceMonth,
   lastDayOf,
@@ -576,5 +577,59 @@ describe('a card that closes on its statement date', () => {
     expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1)] })).toBe(false);
     expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1), balance('card', '2026-10-17', 1, 'statement')] })).toBe(true);
     expect(isClosed({ ...input, balances: [balance('hdfc', '2026-10-31', 1)], closedWithout: [{ accountId: 'card', month: '2026-10' }] })).toBe(true);
+  });
+});
+
+/**
+ * A due typed for a statement-date card at the close (card-cycles.md 8.2; CY-I13): an amount and the statement's date, which must fall in the month. It is a typed balance on that day, read
+ * as the card's cycle until a statement for the same cycle replaces it.
+ */
+describe('typedDueBalances', () => {
+  const card: Account = { ...account('card', 'card', 'HDFC Regalia'), cycleEnds: 'statement' };
+  const input = (typed: Record<string, { amount: string; date: string }>) => ({ month: '2026-10', accounts: [card, account('hdfc', 'savings', 'HDFC')], typed });
+
+  it('makes a typed balance on the statement date from an amount and a date in the month', () => {
+    const out = typedDueBalances(input({ card: { amount: '28,640', date: '2026-10-17' } }));
+    expect(out.problems).toEqual({});
+    expect(out.balances).toHaveLength(1);
+    expect(out.balances[0]).toMatchObject({ accountId: 'card', asAt: '2026-10-17', source: 'typed' });
+    expect(out.balances[0]?.balance.minor).toBe(2_864_000n);
+  });
+
+  it('says nothing for a card with nothing typed, and makes nothing for it', () => {
+    expect(typedDueBalances(input({ card: { amount: '', date: '' } }))).toEqual({ balances: [], problems: {}, fields: {} });
+    expect(typedDueBalances(input({}))).toEqual({ balances: [], problems: {}, fields: {} });
+  });
+
+  it('refuses a date outside the month, a date with no amount and an amount with no date, in words', () => {
+    expect(typedDueBalances(input({ card: { amount: '28640', date: '2026-11-02' } })).problems['card']).toBe('The statement date must fall in October.');
+    // And says which field it is about, so it is shown under that one.
+    expect(typedDueBalances(input({ card: { amount: '28640', date: '2026-11-02' } })).fields['card']).toBe('date');
+    expect(typedDueBalances(input({ card: { amount: '', date: '2026-10-17' } })).fields['card']).toBe('amount');
+    expect(typedDueBalances(input({ card: { amount: 'lots', date: '2026-10-17' } })).fields['card']).toBe('amount');
+    expect(typedDueBalances(input({ card: { amount: '28640', date: '' } })).fields['card']).toBe('date');
+    expect(typedDueBalances(input({ card: { amount: '', date: '2026-10-17' } })).problems['card']).toBe('Type the amount due.');
+    expect(typedDueBalances(input({ card: { amount: '28640', date: '' } })).problems['card']).toBe('Say the date on the statement.');
+  });
+
+  it('refuses an amount that is not an amount, and makes nothing of it', () => {
+    const out = typedDueBalances(input({ card: { amount: 'lots', date: '2026-10-17' } }));
+    expect(out.balances).toEqual([]);
+    expect(out.problems['card']).toBeDefined();
+  });
+
+  it('makes nothing for an account that is not a statement-date card, which is closed by its balance on the last day', () => {
+    expect(typedDueBalances(input({ hdfc: { amount: '1000', date: '2026-10-17' } })).balances).toEqual([]);
+  });
+
+  it('CY-I13 — a typed due makes the card’s cycle, from what was typed, and a statement for the same cycle then replaces it', () => {
+    const typed = typedDueBalances(input({ card: { amount: '28,640', date: '2026-10-17' } })).balances;
+    const base = { month: '2026-10', accounts: [card], balances: [balance('card', '2026-09-17', 20_200, 'statement'), ...typed] };
+    const cycle = cardCycles(base)[0];
+    expect(cycle).toMatchObject({ kind: 'cycle', from: '2026-09-18', to: '2026-10-17' });
+    expect(cycle?.kind === 'cycle' && cycle.sources).toEqual({ opening: 'statement', closing: 'typed' });
+    const replaced = cardCycles({ ...base, balances: [...base.balances, balance('card', '2026-10-18', 28_700, 'statement')] })[0];
+    expect(replaced).toMatchObject({ kind: 'cycle', to: '2026-10-18' });
+    expect(replaced?.kind === 'cycle' && replaced.sources.closing).toBe('statement');
   });
 });

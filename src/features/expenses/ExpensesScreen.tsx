@@ -167,7 +167,7 @@ export function ExpensesScreen({
           rates={rates}
           privacy={privacy}
           {...(money !== undefined && (listing.viewer.role === 'owner' || listing.viewer.role === 'partner')
-            ? { month: { householdId: listing.household.id, refreshKey: money.credits, last: money.lastMonth ?? null, members: listing.members } }
+            ? { month: { householdId: listing.household.id, refreshKey: money.credits, last: money.lastMonth ?? null, members: listing.members, ...(money.onPutBack === undefined ? {} : { onPutBack: money.onPutBack }) } }
             : {})}
           {...(money?.expected === undefined ? {} : { afterSurface: money.expected })}
           {...(money?.actions === undefined ? {} : { actions: money.actions })}
@@ -235,7 +235,7 @@ function Budget({
   onFile: (period: { start: string; end: string }) => void;
   privacy: boolean;
   /** The household and what to read the month's totals again on, where the month surface is shown: an owner or a partner, with money in. */
-  month?: { householdId: string; refreshKey: unknown; last: LastMonthView | null; members: readonly Member[] };
+  month?: { householdId: string; refreshKey: unknown; last: LastMonthView | null; members: readonly Member[]; onPutBack?: (accountId: string) => void };
 }) {
   const view = useBudgetComparison(inputs);
   // A second reading of the same inputs that is never moved off the month: the surface is the month, whatever the plan panel shows.
@@ -256,6 +256,7 @@ function Budget({
           refreshKey={month.refreshKey}
           last={month.last}
           members={month.members}
+          {...(month.onPutBack === undefined ? {} : { onPutBack: month.onPutBack })}
           {...(actions === undefined ? {} : { actions })}
         />
       )}

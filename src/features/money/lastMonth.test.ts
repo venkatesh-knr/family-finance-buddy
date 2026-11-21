@@ -22,6 +22,7 @@ describe('a closed month with a card on its statement date (card-cycles.md 8.3)'
     expect(view.kind === 'closed' && view.cardSummary).toEqual({
       byCycle: '1 card by its cycle (18 Sept – 17 Oct)',
       notes: ['A card payment made after a card’s statement date counts in this month, and comes off the next.'],
+      leftOut: [],
     });
   });
 

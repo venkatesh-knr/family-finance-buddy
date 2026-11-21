@@ -24,6 +24,8 @@ export interface LedgerMoney {
   readonly actions?: React.ReactNode;
   /** The Expected panel: placed under the month surface, or under a contributor's month card, where the board draws it. */
   readonly expected?: React.ReactNode;
+  /** Puts back a card that a closed month left out, for an owner or a partner (card-cycles.md 8.2). Absent for anyone else. */
+  readonly onPutBack?: (accountId: string) => void;
   /** Opens a credit to correct or void. Absent where credits are only read. */
   readonly onEditCredit?: (credit: Credit) => void;
   /** The month surface is shown, so what the list leaves out is said to be in Came in (the board's state 6). */

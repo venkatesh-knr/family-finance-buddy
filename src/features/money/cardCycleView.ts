@@ -63,8 +63,11 @@ export function cycleRowWords(cycle: CardCycle, context: { readonly month: strin
  * The closed month card's lines for the cards on their statement date (card-cycles.md 8.3): which cycle each used, a card left out, a card whose first cycle was, and, always, what a payment made
  * after a card's statement date does (a payment is skipped, so nothing is stored for it). Empty for a household with no such card (CY-I1).
  */
-export function cardSummary(cards: readonly CardCycle[], names: ReadonlyMap<string, string>): { readonly byCycle: string | null; readonly notes: readonly string[] } {
-  if (cards.length === 0) return { byCycle: null, notes: [] };
+export function cardSummary(
+  cards: readonly CardCycle[],
+  names: ReadonlyMap<string, string>,
+): { readonly byCycle: string | null; readonly notes: readonly string[]; /** The cards left out of the close, which an owner or a partner may put back. */ readonly leftOut: readonly { readonly accountId: string; readonly name: string }[] } {
+  if (cards.length === 0) return { byCycle: null, notes: [], leftOut: [] };
   const cycles = cards.filter((card): card is Extract<CardCycle, { kind: 'cycle' }> => card.kind === 'cycle');
   const first = cycles[0];
   const byCycle =
@@ -75,5 +78,5 @@ export function cardSummary(cards: readonly CardCycle[], names: ReadonlyMap<stri
     if (card.kind === 'closed-without') notes.push(`${name(card.accountId)} not in this close: its statement is not imported. Payments to it this month count as spent instead.`);
     if (card.kind === 'first-left-out') notes.push(`${name(card.accountId)}’s first cycle is left out: there is no earlier statement to start from.`);
   }
-  return { byCycle, notes };
+  return { byCycle, notes, leftOut: cards.flatMap((card) => (card.kind === 'closed-without' ? [{ accountId: card.accountId, name: name(card.accountId) }] : [])) };
 }

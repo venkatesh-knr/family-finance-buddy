@@ -27,6 +27,7 @@ import { CloseMonth } from './CloseMonth.tsx';
 import { CloseWithoutAccounts } from './CloseWithoutAccounts.tsx';
 import { accountSteps, cardCycles, closeFigures, monthToClose, offersClose } from './closeMonth.ts';
 import { titleOf } from './accountRows.ts';
+import { voidCloseWithoutCard } from '../../repo/closeWithoutCard.ts';
 import { lastMonthView, type LastMonthView } from './lastMonth.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
 import { useLoanPayments } from './useLoanPayments.ts';
@@ -88,6 +89,7 @@ export function MoneyScreen({
       typed: {},
       holdingMoves: lastEntries.moves,
       loanPayments: lastLoans.payments,
+      closedWithout: ledger.closesWithout,
       ...(lastPrivate.unread === null || lastPrivate.unread.length === 0 ? {} : { unreadable: lastPrivate.unread }),
     };
     const waiting = ledger.moneyStatus === 'loading' || (lastPrivate.unread === null && !lastPrivate.failed) || (lastEntries.blocked && !lastEntries.failed) || (lastLoans.blocked && !lastLoans.failed);
@@ -110,12 +112,13 @@ export function MoneyScreen({
       balances: ledger.data.balances,
       canRecord: ledger.data.viewer.canRecord,
       moneyReady: ledger.moneyStatus === 'ready',
+      closedWithout: ledger.closesWithout,
     });
   // The cards that close on their statement date whose statement dated in the month is not in: the month waits for them (card-cycles.md 2.4).
   const waitingCards =
     ledger.data === null
       ? []
-      : cardCycles({ month: closeMonthKey, accounts: ledger.data.accounts, balances: ledger.data.balances })
+      : cardCycles({ month: closeMonthKey, accounts: ledger.data.accounts, balances: ledger.data.balances, closedWithout: ledger.closesWithout })
           .filter((cycle) => cycle.kind === 'waiting')
           .map((cycle) => {
             const account = ledger.data?.accounts.find((each) => each.id === cycle.accountId);
@@ -188,6 +191,11 @@ export function MoneyScreen({
           today={today}
           credits={ledger.credits}
           transfers={ledger.transfers}
+          closedWithout={ledger.closesWithout}
+          canCloseWithout={mayState && viewer?.canRecord === true}
+          onClosedWithoutChanged={() => {
+            void ledger.reloadMoney();
+          }}
           privacy={privacy}
           onDone={(message) => {
             setClosing(false);
@@ -256,11 +264,25 @@ export function MoneyScreen({
         money={{
           // Quick add is first on the screen, then the month, and inside the month card three actions side by side: money in, the close, and the way
           // to Accounts (the owner, 15 November 2026). What was done is said under them.
+          // An owner or a partner may put back a card that the last month left out; the month then waits for its statement again.
+          ...(mayState && viewer?.canRecord === true
+            ? {
+                onPutBack: (accountId: string) => {
+                  const choice = ledger.closesWithout.find((each) => each.accountId === accountId && each.month === closeMonthKey);
+                  if (choice === undefined) return;
+                  void voidCloseWithoutCard(choice.id)
+                    .then(() => ledger.reloadMoney())
+                    .catch((error: unknown) => {
+                      setSaid(error instanceof Error ? error.message : 'That could not be undone.');
+                    });
+                },
+              }
+            : {}),
           actions: (
             <>
               <MonthFooter
                 closeMonthKey={closeMonthKey}
-                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth, waitingCards })}
+                status={monthFooterStatus({ closeMonthKey, mayClose, closeStated, closedStated, lastMonth, waitingCards, mayCloseWithout: mayState && viewer?.canRecord === true })}
                 onClose={() => {
                   setSaid(null);
                   if (mayClose) setClosing(true);

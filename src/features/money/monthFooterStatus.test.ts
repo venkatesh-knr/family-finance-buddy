@@ -99,6 +99,7 @@ describe('a month waiting for a card statement (card-cycles.md 8.3)', () => {
       kind: 'waiting',
       title: 'October is waiting for 1 card statement',
       sub: 'HDFC Regalia ••1188, dated in October',
+      canClose: false,
     });
   });
 
@@ -107,11 +108,22 @@ describe('a month waiting for a card statement (card-cycles.md 8.3)', () => {
       kind: 'waiting',
       title: 'October is waiting for 2 card statements',
       sub: 'HDFC Regalia ••1188, Axis Magnus ••3344, dated in October',
+      canClose: false,
     });
   });
 
   it('CY-I1 — is as it was with no card waiting', () => {
     expect(monthFooterStatus({ ...base, waitingCards: [] })).toEqual({ kind: 'ready', title: 'October is ready to close', sub: 'from your balances · about 2 minutes' });
     expect(monthFooterStatus(base)).toEqual({ kind: 'ready', title: 'October is ready to close', sub: 'from your balances · about 2 minutes' });
+  });
+});
+
+describe('a month waiting for a card statement, for someone who can close without it (card-cycles.md 2.4, 8.3)', () => {
+  const base = { closeMonthKey: '2026-10', mayClose: true, lastMonth: null, waitingCards: ['HDFC Regalia ••1188'] } as const;
+
+  it('offers Close to an owner or a partner, who may close without the card, and not to anyone else', () => {
+    expect(monthFooterStatus({ ...base, mayCloseWithout: true })).toMatchObject({ kind: 'waiting', canClose: true });
+    expect(monthFooterStatus({ ...base, mayCloseWithout: false })).toMatchObject({ kind: 'waiting', canClose: false });
+    expect(monthFooterStatus(base)).toMatchObject({ kind: 'waiting', canClose: false });
   });
 });
