@@ -23,13 +23,17 @@ export type LoanPaymentResult =
   | { readonly ok: true; readonly value: { readonly amount: Money; readonly date: string; readonly accountId: string | null } }
   | { readonly ok: false; readonly problem: string };
 
+/** Said of a payment typed against a card's EMI debt: the database refuses it too (CY-I17), with the same words. */
+export const CARD_DEBT_REFUSAL = 'This debt’s instalments come from its card’s statements, so a payment is not typed against it.';
+
 export function loanPaymentOf(input: {
-  readonly loan: Pick<Liability, 'currency'>;
+  readonly loan: Pick<Liability, 'currency' | 'cardAccountId'>;
   readonly amount: string;
   readonly date: string;
   readonly accountId: string;
   readonly accounts: readonly Account[];
 }): LoanPaymentResult {
+  if (input.loan.cardAccountId !== undefined && input.loan.cardAccountId !== null) return { ok: false, problem: CARD_DEBT_REFUSAL };
   let minor: bigint;
   try {
     minor = parseAmountToMinor(input.amount, input.loan.currency);

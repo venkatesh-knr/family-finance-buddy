@@ -36,6 +36,8 @@ export function annualFromListing(listing: PlanListing): AnnualExpense | null {
 
   for (const liability of listing.liabilities) {
     if (liability.isClosed) continue;
+    // A card's EMI debt has no instalment of its own: its instalments are counted from the card's statements (CY-I17), as spending is, so it is neither planned nor unplanned here.
+    if (liability.cardAccountId !== undefined && liability.cardAccountId !== null) continue;
     outgoings.push({
       label: liability.name,
       amount: liability.instalment,

@@ -283,3 +283,58 @@ test('a month-end card’s EMI figures are folded under its closing balance, and
     }
   }
 });
+
+test('a card’s EMI plans are not in the debts until they are added, and then the debt takes no payment typed against it', async ({ page }) => {
+  test.setTimeout(300_000);
+  const household = testHouseholdName();
+  test.skip(household === null, 'a household the suite may reset is needed, since this leaves a card and a debt behind');
+  const name = testName('emi-debt-card');
+  const word = monthBefore();
+
+  try {
+    await onAccounts(page);
+    await page.getByRole('button', { name: '+ Add an account' }).click();
+    const add = page.getByRole('form', { name: 'Add an account' });
+    await add.getByLabel('Name').fill(name);
+    await add.getByRole('button', { name: 'Card', exact: true }).click();
+    await add.getByLabel('Last four digits').fill('5511');
+    await add.getByRole('button', { name: 'Add account' }).click();
+    await expect(add).toHaveCount(0, { timeout: 20_000 });
+
+    // The close records what the card's bill converted to EMIs.
+    await page.goto('/#/money');
+    await page.getByRole('button', { name: new RegExp(`^Close ${word}$`) }).click();
+    const close = page.getByRole('form', { name: `Close ${word}` });
+    const closing = close.getByRole('region', { name: new RegExp(name) });
+    await closing.getByLabel(/^Closing balance/).fill('12000');
+    await closing.getByLabel(/^Opening balance/).fill('6000');
+    await closing.getByText('EMIs on this bill?').click();
+    await closing.getByLabel('Converted to EMIs this cycle').fill('6000');
+    await close.getByRole('button', { name: `Close ${word}`, exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: `${word} closed.` })).toBeVisible({ timeout: 30_000 });
+
+    // The card's row says its plans are not in the debts, and what is owed; adding them puts them there.
+    await onAccounts(page);
+    const line = page.locator('li', { hasText: name }).getByTestId('card-emi-line');
+    await expect(line).toContainText('EMI plans not in your debts (₹6,000 owed)', { timeout: 20_000 });
+    await line.getByRole('button', { name: /to your debts$/ }).click();
+    await expect(line).toContainText('EMI plans: ₹6,000 owed, in your debts', { timeout: 20_000 });
+    await expect(line.getByRole('button', { name: /to your debts$/ })).toHaveCount(0);
+
+    // It is among the loans, and a payment cannot be typed against it, with the reason.
+    await page.goto('/#fire');
+    await expect(page.getByText('Financial independence', { exact: true })).toBeVisible({ timeout: 20_000 });
+    const toggle = page.getByRole('button', { name: /^Loans and policies/ }).first();
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    const debt = page.locator('li', { hasText: `${name} ••5511 — EMI plans` });
+    await expect(debt).toBeVisible({ timeout: 20_000 });
+    await debt.getByRole('button', { name: /^Payments/ }).click();
+    await expect(debt.getByText('This debt’s instalments come from its card’s statements, so a payment is not typed against it.')).toBeVisible();
+    await expect(debt.getByRole('form', { name: /^Record a payment on/ })).toHaveCount(0);
+  } finally {
+    if (household !== null) {
+      await chooseHousehold(page, household);
+      await resetHousehold(page);
+    }
+  }
+});

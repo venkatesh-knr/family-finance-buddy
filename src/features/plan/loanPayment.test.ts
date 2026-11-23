@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { Account, Liability, LoanPayment } from '../../repo/types.ts';
-import { accountLabelFor, loanPaymentChoices, loanPaymentOf, suggestedAmount } from './loanPayment.ts';
+import { accountLabelFor, CARD_DEBT_REFUSAL, loanPaymentChoices, loanPaymentOf, suggestedAmount } from './loanPayment.ts';
 
 /**
  * Recording a payment on a loan (docs/design/ledger-income.md section 4c; LI-I36): the amount of what left, in the loan's own currency, on a day, and, when
@@ -78,6 +78,12 @@ describe('loanPaymentOf', () => {
     expect(loanPaymentOf({ ...ok, accountId: 'usd' })).toMatchObject({ ok: false });
     expect(loanPaymentOf({ ...ok, accountId: 'old' })).toMatchObject({ ok: false });
     expect(loanPaymentOf({ ...ok, accountId: 'nope' })).toMatchObject({ ok: false });
+  });
+
+  it('CY-I17 — refuses a payment against a card’s EMI debt, with the reason, since its instalments are counted from the card’s statements', () => {
+    const result = loanPaymentOf({ ...ok, loan: { currency: 'INR', cardAccountId: 'card' } });
+    expect(result).toEqual({ ok: false, problem: CARD_DEBT_REFUSAL });
+    expect(CARD_DEBT_REFUSAL).toBe('This debt’s instalments come from its card’s statements, so a payment is not typed against it.');
   });
 
   it('is in a dollar loan’s own currency', () => {

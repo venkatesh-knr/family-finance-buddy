@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow, NewCredit, NewEntry, Proposal } from '../../domain/statement/match.ts';
 import { findMoves } from '../../domain/statement/moves.ts';
-import { cardNoteWords, decisionLabel, lineTitle, previewRows, statementDateChoice } from './statementPreview.ts';
+import { cardNoteWords, decisionLabel, emiDebtWords, lineTitle, previewRows, statementDateChoice } from './statementPreview.ts';
 
 /**
  * What the import's preview says of each line (docs/design/spending-capture.md section 4): what the statement printed in words a person can read, what the import will do, and what the
@@ -191,6 +191,26 @@ describe('statementDateChoice', () => {
     expect(statementDateChoice(true)).toEqual({
       label: 'Keep month end',
       sentence: 'Every month will be worked out again with this card’s statements. It is saved when you press Import, and not before.',
+    });
+  });
+});
+
+describe('CY-I17 — what the preview says of a card’s EMI plans', () => {
+  const shown = (minor: bigint): string => `₹${String(minor / 100n)}`;
+
+  it('offers to add what was converted to the household’s debts, naming the debt, when the card has none', () => {
+    expect(emiDebtWords({ converted: 6_000_000n, name: 'HDFC Regalia ••1188 — EMI plans', existing: false }, shown)).toEqual({
+      label: 'Add the ₹60000 converted to EMIs to your debts as “HDFC Regalia ••1188 — EMI plans”. Its outstanding then follows this card’s statements.',
+      note: null,
+      explained: 'The ₹60000 counts as spent in this cycle; each instalment’s principal as paid to loans.',
+    });
+  });
+
+  it('says it is added to the card’s debt that is already there, and offers nothing to tick', () => {
+    expect(emiDebtWords({ converted: 6_000_000n, name: 'HDFC Regalia ••1188 — EMI plans', existing: true }, shown)).toEqual({
+      label: null,
+      note: 'The ₹60000 converted to EMIs is added to “HDFC Regalia ••1188 — EMI plans”, which is already in your debts.',
+      explained: 'The ₹60000 counts as spent in this cycle; each instalment’s principal as paid to loans.',
     });
   });
 });

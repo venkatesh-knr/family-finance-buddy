@@ -178,7 +178,7 @@ const isStatementCard = (account: Account): boolean => account.type === 'card' &
  * The dues of a statement-date card that the close reads: every statement's, and a typed one only in a month that has no statement's. One cycle, one figure (CY-I13): a typed 17 October and
  * a statement of 18 October are the same cycle, and the statement is used; the typed row is kept in the database and not read. One per day, a statement's beating a typed one.
  */
-function cycleDues(balances: readonly AccountBalance[], accountId: string): AccountBalance[] {
+export function cycleDues(balances: readonly AccountBalance[], accountId: string): AccountBalance[] {
   const own = balances.filter((b) => b.accountId === accountId);
   const statedMonths = new Set(own.filter((b) => b.source === 'statement').map((b) => b.asAt.slice(0, 7)));
   const read = own.filter((b) => b.source === 'statement' || !statedMonths.has(b.asAt.slice(0, 7)));

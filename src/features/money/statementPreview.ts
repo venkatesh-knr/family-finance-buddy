@@ -74,6 +74,20 @@ export function cardNoteWords(note: CardNote, format: { readonly amount: (minor:
 }
 
 /**
+ * What the preview says of the EMI plans a card statement converted (card-cycles.md 4a; CY-I17): a tick to add them to the household's debts, which a card's debt already there needs no tick
+ * for. The money is formatted by the caller.
+ */
+export function emiDebtWords(
+  offer: { readonly converted: bigint; readonly name: string; readonly existing: boolean },
+  shown: (minor: bigint) => string,
+): { readonly label: string | null; readonly note: string | null; readonly explained: string } {
+  const explained = `The ${shown(offer.converted)} counts as spent in this cycle; each instalment’s principal as paid to loans.`;
+  return offer.existing
+    ? { label: null, note: `The ${shown(offer.converted)} converted to EMIs is added to “${offer.name}”, which is already in your debts.`, explained }
+    : { label: `Add the ${shown(offer.converted)} converted to EMIs to your debts as “${offer.name}”. Its outstanding then follows this card’s statements.`, note: null, explained };
+}
+
+/**
  * The choice to close a month-end card on its statement date, offered under a card statement dated off a month end (card-cycles.md 5). Pressed, the card's statement closes the month at once in
  * the preview; the setting is written with the import, after the fresh code, and the label turns into the way to undo it before then.
  */
