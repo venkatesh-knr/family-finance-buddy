@@ -207,6 +207,7 @@ advice for a fee needs SEBI registration as an investment adviser; this app is n
 - Terms of service and a privacy notice reviewed by a lawyer; GST and invoicing
   reviewed by a CA.
 - §2 to §7 built and their invariants tested.
+- **Closed months protected when a card's cycle is switched** (`card-cycles.md` section 6.1, `docs/later.md`): required before the first real, non-demo household, so that a switch leaves months already closed as they were (the owner, 23 November 2026).
 - One full restore from backup, done and timed.
 
 ## 12. Decisions owed to the owner

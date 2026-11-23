@@ -141,7 +141,11 @@ already lists missing balances. For such a card, the line says what it is waitin
 words (§8).
 
 **The owner has control to close** (decided, 20 November 2026). An owner or a partner may
-close the month without a card that is still waiting:
+close the month without a card that is still waiting. It is a choice on the waiting card's row
+inside the close, **saved with the close and not before it: Cancel leaves nothing behind**, so a
+month never shows as closed because someone cancelled a close (the owner, 23 November 2026). A
+contributor reads the choice for the cards they can read, so their month stops saying *waiting*;
+only an owner or a partner makes or undoes it.
 
 - The close offers *Close without HDFC Regalia*, with one line saying what that does.
 - That card adds nothing to the month. A payment made to it from a bank account in the
@@ -372,6 +376,8 @@ never stored, so a switch simply works every month out again under the new rule.
 already recorded are kept whichever rule is in force; each rule reads the ones it needs.
 
 ### 6.1 Deferred: protecting closed months when real households switch
+
+**A launch blocker** (the owner, 23 November 2026): `commercial-launch.md` section 11 requires it before the first real, non-demo household. Once it is built, the import's *Use the statement date* applies from the first open month.
 
 Written down so it is not lost, and **not built now**. It is also in `docs/later.md`.
 Before real households use the app, a switch should leave months already closed as they
@@ -664,6 +670,8 @@ only.
 
 ### 8.4 Months of cover and the Overview
 
+**Decided by the owner, 23 November 2026: months of cover reads the close.** Each month uses its best source: from balances, then stated, then itemised, and the caveat counts them. It is its own slice, with a test that a month-end-only household's figure equals the close's spent.
+
 - **Months of cover** (PF-C9) reads each month's spent as the close gives it.
   - A month whose card cycle was left out (§3) reads low, as an itemised-only month does.
     The caveat counts it: *Of the last twelve months: 9 from balances (1 with a card's
@@ -842,7 +850,7 @@ Nothing is open.
 
 ## Invariants
 
-**CY-I1 — A household with no card that closes on its statement date has every month's figures exactly as today,** to the paisa, and is never asked about card cycles beyond the setting's default on a card. (§0)
+**CY-I1 — A household with no card on its statement date has every month's figures exactly as today,** to the paisa. It is asked about card cycles only when it imports a card statement dated off a month end, where the preview offers the switch in one line and nothing changes unless it is chosen (the owner, 23 November 2026). (§0, §5)
 
 **CY-I2 — A statement-date card's money in, transfers in and refunds are counted in its window for the month,** from the day after its previous statement to its statement dated in the month; every other account is counted over the calendar month, and each leg of a transfer in the window of its own account. (§2.2)
 
