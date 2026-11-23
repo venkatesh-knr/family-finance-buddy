@@ -30,7 +30,7 @@ import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.
 import { monthWord } from './closeMonth.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { cardNoteWords, previewRows, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
+import { cardNoteWords, previewRows, statementDateChoice, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 const KIND_WORDS: Record<StatementKind, string> = {
@@ -620,11 +620,11 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                               });
                             }}
                           >
-                            {switched(read) ? 'This card will close on its statement date. Undo' : 'Use the statement date for this card'}
+                            {statementDateChoice(switched(read)).label}
                           </button>
                           {switched(read) && (
                             <p className="note mt-1" data-testid="statement-cycle-set">
-                              When you import, this card is set to close on its statement date. It applies to every month.
+                              {statementDateChoice(true).sentence}
                             </p>
                           )}
                         </>

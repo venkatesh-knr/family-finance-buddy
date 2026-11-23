@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow, NewCredit, NewEntry, Proposal } from '../../domain/statement/match.ts';
 import { findMoves } from '../../domain/statement/moves.ts';
-import { cardNoteWords, decisionLabel, lineTitle, previewRows } from './statementPreview.ts';
+import { cardNoteWords, decisionLabel, lineTitle, previewRows, statementDateChoice } from './statementPreview.ts';
 
 /**
  * What the import's preview says of each line (docs/design/spending-capture.md section 4): what the statement printed in words a person can read, what the import will do, and what the
@@ -175,5 +175,22 @@ describe('what the preview says of a card statement (card-cycles.md 5)', () => {
 
   it('does not say they differ when they do not', () => {
     expect(say({ kind: 'replaces-typed', typedAsAt: '2026-10-17', typedMinor: 2_864_000n, asAt: '2026-10-17', dueMinor: 2_864_000n, differenceMinor: 0n })).not.toContain('differ');
+  });
+});
+
+/**
+ * The line that offers a card's statement date in the preview (card-cycles.md 5; the owner, 23 November 2026): nothing is saved until Import is pressed; once the choice is made the preview
+ * reads that the statement closes the month and says what the setting does, and the line offers *Keep month end* so it can be undone before importing.
+ */
+describe('statementDateChoice', () => {
+  it('offers the statement date before it is chosen, and says nothing of the setting yet', () => {
+    expect(statementDateChoice(false)).toEqual({ label: 'Use the statement date for this card', sentence: null });
+  });
+
+  it('once chosen, offers Keep month end and says what the setting does and when it is saved', () => {
+    expect(statementDateChoice(true)).toEqual({
+      label: 'Keep month end',
+      sentence: 'Every month will be worked out again with this card’s statements. It is saved when you press Import, and not before.',
+    });
   });
 });
