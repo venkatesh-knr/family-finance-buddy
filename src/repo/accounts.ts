@@ -104,6 +104,8 @@ export async function saveBalance(input: NewBalance): Promise<void> {
         currency: input.balance.currency,
         source: 'typed',
         note: text(input.note),
+        ...(input.emiConvertedMinor === undefined ? {} : { emi_converted_minor: input.emiConvertedMinor.toString() }),
+        ...(input.emiPrincipalMinor === undefined ? {} : { emi_principal_minor: input.emiPrincipalMinor.toString() }),
       },
       { onConflict: 'account_id,as_at,source' },
     );

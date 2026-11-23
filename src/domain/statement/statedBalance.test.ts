@@ -92,6 +92,16 @@ describe('a card statement', () => {
     expect(statedBalances(card(35_050n))).toEqual([]);
   });
 
+  it('CY-I15 — a month-end card’s due dated a month end carries what it converted and the principal of its instalments, as a statement-date card’s does', () => {
+    const lines = [line('2026-10-02', 'credit', 6_000_000n, null), line('2026-10-05', 'debit', 500_000n, null), line('2026-10-05', 'debit', 66_000n, null)].map((each, at) => ({
+      ...each,
+      raw: ['EMI CONVERSION CREDIT SAMPLE SHOP', 'PRINCIPAL AMOUNT AMORTIZATION SAMPLE SHOP', 'INTEREST AMOUNT AMORTIZATION SAMPLE SHOP'][at] as string,
+    }));
+    expect(statedBalances(onMonthEnd(2_864_000n, { lines }))).toEqual([
+      { asAt: '2026-10-31', balanceMinor: 2_864_000n, basis: 'due', emiConvertedMinor: 6_000_000n, emiPrincipalMinor: 500_000n },
+    ]);
+  });
+
   it('keeps a card that is in credit as a negative figure', () => {
     expect(statedBalances(onMonthEnd(-2_500n))[0]?.balanceMinor).toBe(-2_500n);
   });

@@ -63,7 +63,7 @@ export interface StatedOptions {
 
 export function statedBalances(statement: ParsedStatement, today: IsoDate, cycleEnds: CycleEnds = 'month_end', options: StatedOptions = {}): readonly StatedBalance[] {
   if (statement.accountType === 'card' && cycleEnds === 'statement') return statedOnItsCycle(statement, options).filter((stated) => stated.asAt <= today);
-  return statedOnAnyDay(statement).filter((stated) => stated.asAt === lastDayOfMonth(stated.asAt) && stated.asAt < today);
+  return statedOnAnyDay(statement, options).filter((stated) => stated.asAt === lastDayOfMonth(stated.asAt) && stated.asAt < today);
 }
 
 /** The same day one month earlier, clamped to that month's length: the 31st of March is the 28th of February. */
@@ -93,19 +93,15 @@ function statedOnItsCycle(statement: ParsedStatement, options: StatedOptions): r
   if (card === undefined || asAt === null) return [];
 
   const openingDay = openingDayOf(statement, asAt, options.previousDue);
+  return [{ asAt: openingDay, balanceMinor: card.previousBalanceMinor, basis: 'opening' }, { asAt, balanceMinor: card.totalDueMinor, basis: 'due', ...emiOf(statement, options) }];
+}
+
+/** What a card statement's lines converted to EMI plans and the principal of the instalments it billed, for the due that carries them (card-cycles.md 4a). Only the lines still counted as EMI lines. */
+function emiOf(statement: ParsedStatement, options: StatedOptions): { readonly emiConvertedMinor?: bigint; readonly emiPrincipalMinor?: bigint } {
   const counts = options.countsAsEmi ?? (() => true);
   const converted = statement.lines.filter((line) => line.direction === 'credit' && isEmiConversionCredit(line.raw) && counts(line)).reduce((total, line) => total + line.amountMinor, 0n);
   const principal = statement.lines.filter((line) => line.direction === 'debit' && isEmiPrincipalDebit(line.raw) && counts(line)).reduce((total, line) => total + line.amountMinor, 0n);
-  return [
-    { asAt: openingDay, balanceMinor: card.previousBalanceMinor, basis: 'opening' },
-    {
-      asAt,
-      balanceMinor: card.totalDueMinor,
-      basis: 'due',
-      ...(converted > 0n ? { emiConvertedMinor: converted } : {}),
-      ...(principal > 0n ? { emiPrincipalMinor: principal } : {}),
-    },
-  ];
+  return { ...(converted > 0n ? { emiConvertedMinor: converted } : {}), ...(principal > 0n ? { emiPrincipalMinor: principal } : {}) };
 }
 
 /**
@@ -154,14 +150,14 @@ export function cardNotes(
   return notes;
 }
 
-function statedOnAnyDay(statement: ParsedStatement): readonly StatedBalance[] {
+function statedOnAnyDay(statement: ParsedStatement, options: StatedOptions = {}): readonly StatedBalance[] {
   if (statement.problems.length > 0) return [];
 
   if (statement.accountType === 'card') {
     const card = statement.card;
     const asAt = card?.statementDate ?? statement.periodEnd;
     if (card === undefined || asAt === null) return [];
-    return [{ asAt, balanceMinor: card.totalDueMinor, basis: 'due' }];
+    return [{ asAt, balanceMinor: card.totalDueMinor, basis: 'due', ...emiOf(statement, options) }];
   }
 
   const lines = statement.lines;

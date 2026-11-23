@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { money } from '../../lib/money.ts';
 import type { AccountBalance } from '../../repo/types.ts';
 import type { CardCycle } from './closeMonth.ts';
-import { cardSummary, cycleRowWords, lateStatementDay, nextDueMonth, ordinal } from './cardCycleView.ts';
+import { cardEmiWords, cardSummary, cycleRowWords, lateStatementDay, nextDueMonth, ordinal } from './cardCycleView.ts';
 
 /**
  * What the screens say of a card that closes on its statement date (docs/design/card-cycles.md sections 2.4, 3 and 8; CY-I11): every state in words, never in colour alone. Pure: the cycles the
@@ -126,5 +126,35 @@ describe('the closed month card (card-cycles.md 8.3)', () => {
 
   it('says nothing for a household with no statement-date card, which is every household before the setting is used (CY-I1)', () => {
     expect(cardSummary([], names)).toEqual({ byCycle: null, notes: [], leftOut: [] });
+  });
+});
+
+describe('a plan that began before the card’s first statement (card-cycles.md 4a)', () => {
+  it('is said once, on the cycle that first bills principal nobody converted', () => {
+    const cycle = {
+      kind: 'cycle' as const,
+      accountId: 'axis',
+      from: '2026-09-18',
+      to: '2026-10-17',
+      opening: money(900_000n, 'INR'),
+      closing: money(1_200_000n, 'INR'),
+      emiConvertedMinor: 0n,
+      emiPrincipalMinor: 500_000n,
+      planBeganEarlier: true as const,
+      sources: { opening: 'statement' as const, closing: 'statement' as const },
+    };
+    const words = cycleRowWords(cycle, { month: '2026-10', lateDay: 17, nextMonth: null, shown: (value) => String(value.minor) });
+    expect(words).toContain("Includes EMI instalments of a plan that began before this card's first statement: their principal is not counted as spent.");
+    const later = cycleRowWords({ ...cycle, planBeganEarlier: undefined } as never, { month: '2026-10', lateDay: 17, nextMonth: null, shown: (value) => String(value.minor) });
+    expect(later).not.toContain('began before');
+  });
+});
+
+describe('cardEmiWords — the line under Paid to loans (card-cycles.md 4a)', () => {
+  const rupees = (minor: bigint): string => `₹${String(minor / 100n)}`;
+  it('says what was converted as spent and owed, and the instalments as paid and not spent, only for what there is', () => {
+    expect(cardEmiWords({ converted: 6_000_000n, principal: 500_000n }, rupees)).toBe('Card EMIs: ₹60000 converted (counted as spent, now owed), ₹5000 of instalments paid (not spent)');
+    expect(cardEmiWords({ converted: 6_000_000n, principal: 0n }, rupees)).toBe('Card EMIs: ₹60000 converted (counted as spent, now owed)');
+    expect(cardEmiWords({ converted: 0n, principal: 500_000n }, rupees)).toBe('Card EMIs: ₹5000 of instalments paid (not spent)');
   });
 });

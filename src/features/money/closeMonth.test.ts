@@ -670,3 +670,137 @@ describe('effectiveClosedWithout', () => {
     expect(effectiveClosedWithout({ saved: [], month: '2026-10', leaveOut: new Set(['card-a']), putBack: new Set(['card-a']) })).toEqual([]);
   });
 });
+
+/**
+ * EMI conversions on a card (card-cycles.md 4a; CY-I15, CY-I17): a conversion is spent in its cycle and borrowed (a minus in paid to loans); the instalment's principal is paid to loans and not
+ * spent. A month-end card gets the same correction from the figures its month-end statement or a typed due carries, and a plan begun before the first statement is said once.
+ */
+describe('EMIs on a card (card-cycles.md 4a)', () => {
+  const card = account('axis', 'card', 'Axis card');
+  const bank = account('hdfc', 'savings', 'HDFC');
+  const emiBalance = (asAt: string, rupees: number, converted: number, principal: number, source: AccountBalance['source'] = 'statement'): AccountBalance => ({
+    ...balance('axis', asAt, rupees, source),
+    emiConvertedMinor: BigInt(converted) * 100n,
+    emiPrincipalMinor: BigInt(principal) * 100n,
+  });
+  const month = (balances: AccountBalance[], typed: TypedBalancesInput = {}) =>
+    closeFigures({
+      month: '2026-10',
+      today: '2026-11-14',
+      accounts: [bank, card],
+      balances: [balance('hdfc', '2026-09-30', 100_000), balance('hdfc', '2026-10-31', 100_000), balance('axis', '2026-09-30', 0), ...balances],
+      credits: [],
+      transfers: [],
+      typed,
+    });
+  type TypedBalancesInput = Parameters<typeof closeFigures>[0]['typed'];
+
+  it('a month-end card whose month-end statement shows ₹60,000 converted counts it as spent and as a minus in paid to loans, with a gap of nothing', () => {
+    const result = month([emiBalance('2026-10-31', 0, 60_000, 0)]);
+    expect(result.status).toBe('figures');
+    if (result.status !== 'figures') return;
+    const inr = result.currencies[0];
+    expect(inr?.spent).toBe(6_000_000n);
+    expect(inr?.paidToLoans).toBe(-6_000_000n);
+    expect(inr?.cardEmi).toEqual({ converted: 6_000_000n, principal: 0n });
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('a month-end card’s instalment of ₹5,000 principal and ₹660 of interest and GST is ₹660 spent and ₹5,000 paid to loans', () => {
+    const result = month([emiBalance('2026-10-31', 5_660, 0, 5_000)]);
+    if (result.status !== 'figures') throw new Error('closes');
+    const inr = result.currencies[0];
+    expect(inr?.spent).toBe(66_000n);
+    expect(inr?.paidToLoans).toBe(500_000n);
+    expect(inr?.gapMinor).toBe(0n);
+  });
+
+  it('a due typed at the close carries its two figures the same way, and what is typed in the close is read over what was recorded, as a typed closing is', () => {
+    const typedCard = { axis: { closing: r(0), emi: { converted: r(60_000), principal: r(0) } } };
+    const result = month([], typedCard);
+    if (result.status !== 'figures') throw new Error('closes');
+    expect(result.currencies[0]?.spent).toBe(6_000_000n);
+    const overStatement = month([emiBalance('2026-10-31', 0, 0, 0)], typedCard);
+    if (overStatement.status !== 'figures') throw new Error('closes');
+    expect(overStatement.currencies[0]?.spent).toBe(6_000_000n);
+    const closingOnly = month([emiBalance('2026-10-31', 0, 60_000, 0)], { axis: { closing: r(0) } });
+    if (closingOnly.status !== 'figures') throw new Error('closes');
+    expect(closingOnly.currencies[0]?.spent).toBe(0n);
+  });
+
+  it('a household with no EMI figures has its figures exactly as before, and no card EMI line', () => {
+    const result = month([balance('axis', '2026-10-31', 1_200, 'statement')]);
+    if (result.status !== 'figures') throw new Error('closes');
+    expect(result.currencies[0]?.cardEmi).toBeUndefined();
+  });
+});
+
+describe('typedDueBalances — the two EMI fields (card-cycles.md 4a, 8.2)', () => {
+  const card: Account = { ...account('axis', 'card', 'Axis card'), cycleEnds: 'statement' };
+  const typedOf = (extra: { converted?: string; principal?: string }) => ({ axis: { amount: '28,640', date: '2026-10-17', ...extra } });
+
+  it('are read into the typed due’s balance, and left empty are none', () => {
+    const out = typedDueBalances({ month: '2026-10', accounts: [card], typed: typedOf({ converted: '60,000', principal: '5,000' }) });
+    expect(out.problems).toEqual({});
+    expect(out.balances[0]?.emiConvertedMinor).toBe(6_000_000n);
+    expect(out.balances[0]?.emiPrincipalMinor).toBe(500_000n);
+    const empty = typedDueBalances({ month: '2026-10', accounts: [card], typed: typedOf({}) });
+    expect(empty.balances[0]?.emiConvertedMinor).toBeUndefined();
+  });
+
+  it('typed with no amount are not dropped: the amount due is asked for', () => {
+    const out = typedDueBalances({ month: '2026-10', accounts: [card], typed: { axis: { amount: '', date: '', converted: '60,000' } } });
+    expect(out.problems['axis']).toBe('Type the amount due.');
+    expect(out.balances).toEqual([]);
+  });
+
+  it('say which field is wrong, in words, by card', () => {
+    const out = typedDueBalances({ month: '2026-10', accounts: [card], typed: typedOf({ converted: 'lots' }) });
+    expect(out.fields).toEqual({ axis: 'converted' });
+    expect(out.problems['axis']).toBe('What was converted to EMIs is a number, such as 60,000, with no minus sign.');
+    expect(out.balances).toEqual([]);
+  });
+});
+
+describe('a plan that began before the card’s first statement (card-cycles.md 4a)', () => {
+  const card: Account = { ...account('axis', 'card', 'Axis card'), cycleEnds: 'statement' };
+  const row = (asAt: string, rupees: number, converted: number, principal: number): AccountBalance => ({
+    ...balance('axis', asAt, rupees, 'statement'),
+    emiConvertedMinor: BigInt(converted) * 100n,
+    emiPrincipalMinor: BigInt(principal) * 100n,
+  });
+
+  it('is named on the first cycle that bills principal nobody converted, and not again after it', () => {
+    const balances = [row('2026-09-17', 9_000, 0, 0), row('2026-10-17', 12_000, 0, 5_000), row('2026-11-17', 12_000, 0, 5_000)];
+    const october = cardCycles({ month: '2026-10', accounts: [card], balances });
+    expect(october[0]?.kind === 'cycle' && october[0].planBeganEarlier).toBe(true);
+    const november = cardCycles({ month: '2026-11', accounts: [card], balances });
+    expect(november[0]?.kind === 'cycle' && november[0].planBeganEarlier).toBeFalsy();
+  });
+
+  it('the first cycle left out adds nothing to the month, EMI figures included, and the sentence waits for the first cycle that is counted', () => {
+    // The card's first statement in the app is 17 Oct, and its due carries principal billed on a plan from before. That cycle is left out, so it takes nothing off spent.
+    const balances = [row('2026-10-17', 12_000, 0, 5_000), row('2026-11-17', 12_000, 0, 5_000)];
+    const october = closeFigures({
+      month: '2026-10',
+      today: '2026-11-20',
+      accounts: [account('hdfc', 'savings', 'HDFC'), card],
+      balances: [...balances, balance('hdfc', '2026-09-30', 100_000), balance('hdfc', '2026-10-31', 90_000)],
+      credits: [],
+      transfers: [],
+      typed: {},
+    });
+    if (october.status !== 'figures') throw new Error('closes');
+    expect(october.currencies[0]?.spent).toBe(1_000_000n);
+    expect(october.currencies[0]?.paidToLoans).toBe(0n);
+    expect(october.currencies[0]?.cardEmi).toBeUndefined();
+    expect(cardCycles({ month: '2026-10', accounts: [card], balances })[0]).not.toHaveProperty('planBeganEarlier');
+    const november = cardCycles({ month: '2026-11', accounts: [card], balances });
+    expect(november[0]?.kind === 'cycle' && november[0].planBeganEarlier).toBe(true);
+  });
+
+  it('is not named when the card converted the plan itself', () => {
+    const balances = [row('2026-09-17', 9_000, 0, 0), row('2026-10-17', 12_000, 60_000, 0), row('2026-11-17', 12_000, 0, 5_000)];
+    expect(cardCycles({ month: '2026-11', accounts: [card], balances })[0]).not.toHaveProperty('planBeganEarlier');
+  });
+});

@@ -169,6 +169,11 @@ test('an owner closes the month without a waiting card and undoes it, or types t
     await expect(row.getByText(`The statement date must fall in ${word}.`)).toBeVisible();
     await row.getByLabel('Statement date').fill(`${monthBeforeKey()}-17`);
 
+    // The bill's EMI figures are folded away. A card's first cycle is left out, and adds nothing, EMI figures included (card-cycles.md 4a).
+    await row.getByText('EMIs on this bill?').click();
+    await row.getByLabel('Converted to EMIs this cycle').fill('6000');
+    await expect(close.getByTestId('close-card-emis')).toHaveCount(0);
+
     // Closing saves the typed due, and the month is closed.
     await close.getByRole('button', { name: `Close ${word}`, exact: true }).click();
     await expect(page.getByText(new RegExp(`^${word} closed`))).toBeVisible({ timeout: 30_000 });
@@ -229,6 +234,48 @@ test('cancelling the close writes no choice to close without a card, and the mon
     await close.getByRole('button', { name: `Close ${word}`, exact: true }).click();
     await expect(page.getByText(new RegExp(`^${word} closed`))).toBeVisible({ timeout: 30_000 });
     expect(writes.length).toBeGreaterThan(0);
+  } finally {
+    if (household !== null) {
+      await chooseHousehold(page, household);
+      await resetHousehold(page);
+    }
+  }
+});
+
+test('a month-end card’s EMI figures are folded under its closing balance, and show as the Card EMIs line, which counts the conversion as spent', async ({ page }) => {
+  test.setTimeout(300_000);
+  const household = testHouseholdName();
+  test.skip(household === null, 'a household the suite may reset is needed, since this leaves a card that holds the close open');
+  const name = testName('emi-card');
+  const word = monthBefore();
+
+  try {
+    await onAccounts(page);
+    await page.getByRole('button', { name: '+ Add an account' }).click();
+    const add = page.getByRole('form', { name: 'Add an account' });
+    await add.getByLabel('Name').fill(name);
+    await add.getByRole('button', { name: 'Card', exact: true }).click();
+    await add.getByLabel('Last four digits').fill('4477');
+    await add.getByRole('button', { name: 'Add account' }).click();
+    await expect(add).toHaveCount(0, { timeout: 20_000 });
+
+    await page.goto('/#/money');
+    await page.getByRole('button', { name: new RegExp(`^Close ${word}$`) }).click();
+    const close = page.getByRole('form', { name: `Close ${word}` });
+    const row = close.getByRole('region', { name: new RegExp(name) });
+    await row.getByLabel(/^Closing balance/).fill('12000');
+    await row.getByLabel(/^Opening balance/).fill('6000');
+    await expect(close.getByTestId('close-card-emis')).toHaveCount(0);
+    await row.getByText('EMIs on this bill?').click();
+    await row.getByLabel('Converted to EMIs this cycle').fill('6000');
+    await expect(close.getByTestId('close-card-emis')).toContainText('Card EMIs: ₹6,000 converted (counted as spent, now owed)', { timeout: 20_000 });
+    // Not an amount: said beside the field, in its own words, and the month cannot be closed.
+    await row.getByLabel('Converted to EMIs this cycle').fill('lots');
+    await expect(row.getByText('What was converted to EMIs is a number, such as 60,000, with no minus sign.')).toBeVisible();
+    await expect(close.getByRole('button', { name: `Close ${word}`, exact: true })).toBeDisabled();
+    // Cancelling saves nothing.
+    await close.getByRole('button', { name: `Close Close ${word}` }).click();
+    await expect(close).toHaveCount(0);
   } finally {
     if (household !== null) {
       await chooseHousehold(page, household);

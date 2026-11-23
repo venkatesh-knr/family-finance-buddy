@@ -129,6 +129,8 @@ export interface MonthFigures {
   readonly invested: bigint;
   /** The change in what is in savings and current accounts less what is due on cards. */
   readonly cashReserveChange: bigint;
+  /** What the cards converted to EMI plans in the month, and the principal of the instalments they billed (card-cycles.md 4a). Present only when either is not zero. */
+  readonly cardEmi?: { readonly converted: bigint; readonly principal: bigint };
   readonly split: {
     readonly spent: bigint;
     readonly invested: bigint;
@@ -212,6 +214,8 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
   const loanPayments = sum(loans.map((p) => p.amount.minor));
   const cardEmi = sum(accounts.map((a) => (a.emiPrincipalMinor ?? 0n) - (a.emiConvertedMinor ?? 0n)));
   const paidToLoans = loanPayments + cardEmi;
+  const cardConverted = sum(accounts.map((a) => a.emiConvertedMinor ?? 0n));
+  const cardPrincipal = sum(accounts.map((a) => a.emiPrincipalMinor ?? 0n));
   const leftTotal = sum(left.map((l) => l.leftMinor)) + sum(hidden.map((u) => u.left));
   const outside = sum(credits.filter((c) => c.accountId === null).map((c) => c.amount.minor)) + sum(hidden.map((u) => u.outside));
 
@@ -248,6 +252,7 @@ function figuresFor(input: MonthInput, currency: string): MonthFigures {
     saved,
     invested,
     cashReserveChange,
+    ...(cardConverted === 0n && cardPrincipal === 0n ? {} : { cardEmi: { converted: cardConverted, principal: cardPrincipal } }),
     split: { spent, invested, paidToLoans, toCashReserve: cashReserveChange, ...(paymentsInTransit === 0n ? {} : { paymentsInTransit }) },
     paymentsInTransit,
     gapMinor: saved - (invested + paidToLoans + cashReserveChange + paymentsInTransit),
