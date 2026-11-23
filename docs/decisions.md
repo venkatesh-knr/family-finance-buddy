@@ -638,3 +638,28 @@ decided it is not required, since a salary recorded for a different amount is re
 - **A card's cycle can be switched either way at any time and applies to every month** (question 4): only demo data exists, so protecting closed months is deferred (`docs/later.md`, `card-cycles.md` section 6.1). Question 8: the import preview offers the switch ("yes"). Question 9: each card's owner sets it, and the app uses the dates it is given.
 - **Also decided that day:** editing a payee, date or amount in the import preview is not needed.
 - **The build order is `card-cycles.md` section 10:** the migration for review, then the domain with tests first, then `household_private_close` by window, the import, the screens, closing without a card, and EMI conversions, one pull request each.
+
+## The owner's answers to the open decisions (23 November 2026)
+
+Card cycles (`docs/design/card-cycles.md`):
+
+- **Months of cover reads the close.** Each month uses its best source: from balances, then stated, then itemised, and the caveat counts them (*4 from balances, 3 stated, 5 itemised only*). `spending-capture.md` 11.4 and `card-cycles.md` 8.4 both assume this. Only demo data exists, so changing every household's figure costs nothing now. **Its own slice**, with a test that a month-end-only household's figure equals the close's spent.
+- **CY-I1 is reworded and the question stays** (answer 8): *a household with no card on its statement date has every month's figures exactly as today, to the paisa. It is asked about card cycles only when it imports a card statement dated off a month end, where the preview offers the switch in one line and nothing changes unless it is chosen.*
+- **The import's *Use the statement date* is decided**, on three conditions: nothing is saved until Import is pressed; after pressing it the preview at once reads *It closes October for this card* and shows the setting's sentence, *Every month will be worked out again with this card's statements*; and the line offers *Keep month end*, so the person can undo it before importing.
+- **Closing without a card is chosen inside the close, as a choice on the waiting card's row, and is saved with the close, not before it.** Cancel leaves nothing behind: a month must never show as closed because someone cancelled a close. A test shows that cancelling writes no `close_without_card` row.
+- **A contributor reads `close_without_card` rows for accounts they can read** (their own cards), so their month stops saying *waiting*. Insert and update stay owner and partner only; rows for other members' cards stay unreadable to them. A pgTAP test for both.
+- **Protecting closed months on a cycle switch stays deferred, and is a launch blocker:** required before the first real, non-demo household (`docs/design/commercial-launch.md` section 11). Once it is built, the import switch applies from the first open month.
+
+Broker files (`docs/build-plan.md` step 7c):
+
+- **A holdings statement is a stated quantity as at its day** (`stated_quantity`, `stated_as_at`, `stated_source_batch_id`), never a lot. A later date supersedes and an earlier one does not, as for eCAS in step 2.
+- **The broker's average price is kept, as a stated figure only,** on the stated row with its currency and date under the same supersede rule, and shown on the holding's detail in words (*Zerodha's average price ₹X on 30 Sep, as the broker states it*). It never enters cost, gain, return, tax or the allocation return column: those come from lots alone.
+- **A Zerodha tradewise exit is written as a lot and a disposal,** and the app's first-in-first-out matcher pairs them; the broker's pairing is not stored. Where first-in-first-out gives a different buy date than the broker's, the row is refused with a sentence. A buy that is already a lot (from eCAS or an earlier import) is matched by its source hash, or by date, units and cost, so no lot is written twice. Matches are shown in the preview.
+- **INDmoney trades are lots and disposals in USD,** fractional units allowed, currency of record USD. Tax on them stays refused until the prescribed rate exists. Dividends are out of scope.
+- **The tax-year P&L and US-stock tax workbooks are not imported as data:** the reader recognises them and refuses with a sentence (*This is a tax summary. The app works out tax from your trades, so import the tradewise or trades file instead.*). Later, they may serve as a cross-check on the Tax screen and Schedule FA, the broker's figure beside the app's and never replacing it (`docs/later.md`).
+
+Older:
+
+- **Two departures are decided:** several files chosen at once in the import, and a move as the default for a debit and a credit that match, shown in the preview as *Move between your accounts*, which the person can untick. The rest stay proposed, and are listed by area for one sitting (`docs/drafts/departures-review.md`).
+- **An unrecognised bank credit (a UPI from a person) does not default to income.** It waits with no category chosen and offers the existing chips (*Other income*, *Refund or money back*, *From my own account*, or leave it out); the rest of the import goes ahead; waiting credits show in the close's *Needs attention*, because Came in is incomplete until they are sorted.
+- **A card's due in a month with no statement:** a statement-date card waits, and the owner may close without it; when the next statement shows its period began in that month, the month says *No statement dated in February: this card's spending is in March's close* (`card-cycles.md` 2.4). A month-end card is unchanged: a statement not dated on a month end gives nothing, and the close asks for the balance on the last day, typed as today.
