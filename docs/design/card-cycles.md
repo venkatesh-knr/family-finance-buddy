@@ -672,6 +672,8 @@ only.
 
 **Decided by the owner, 23 November 2026: months of cover reads the close.** Each month uses its best source: from balances, then stated, then itemised, and the caveat counts them. It is its own slice, with a test that a month-end-only household's figure equals the close's spent.
 
+**Built, 23 November 2026** (`src/features/overview/useMonthsOfCover.ts`, `coverFigures.ts`, `src/domain/spend-source.ts`): for an owner or a partner, a month closed from balances is read as the close reads it, each currency on its own; a contributor cannot read every account, so their months stay stated or itemised. The caveat's parenthetical for a first cycle left out is not built; it is a `proposed` row in `conformance.md`.
+
 - **Months of cover** (PF-C9) reads each month's spent as the close gives it.
   - A month whose card cycle was left out (§3) reads low, as an itemised-only month does.
     The caveat counts it: *Of the last twelve months: 9 from balances (1 with a card's

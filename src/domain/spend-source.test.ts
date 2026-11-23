@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countBySource, coverCaveat, coverSources, statementsForCover, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
+import { countBySource, coverAmounts, coverCaveat, coverSources, statementsForCover, monthSpend, restToTotal, savedFor, totalToRest } from './spend-source.ts';
 
 /**
  * A month's spent and where it came from (docs/design/spending-capture.md section 11; SC-I15 to SC-I18). Amounts are paise: ₹82,000 is 8_200_000n.
@@ -170,5 +170,45 @@ describe('SC-I9 — months of cover says how many of its months were stated and 
 
   it('has no caveat for no months', () => {
     expect(coverCaveat({ balances: 0, stated: 0, itemised: 0 })).toBeNull();
+  });
+});
+
+/**
+ * Months of cover reads each month's best source (the owner, 23 November 2026; spending-capture.md 11.4; card-cycles.md 8.4): the balances at a close, then a stated spend, then the itemised
+ * sum, in each currency on its own, and the caveat counts the months by source.
+ */
+describe('months of cover names each month’s best source', () => {
+  it('names a month closed from balances as such, even when it has a stated spend: balances beat a statement (SC-I17)', () => {
+    expect(coverSources(['2026-08', '2026-09', '2026-10'], new Set(['2026-09', '2026-10']), new Set(['2026-10']))).toEqual(['itemised', 'stated', 'balances']);
+  });
+
+  it('is as it was with no month closed', () => {
+    expect(coverSources(['2026-08', '2026-09'], new Set(['2026-09']))).toEqual(['itemised', 'stated']);
+  });
+
+  it('counts the months by source for the caveat: 4 from balances, 3 stated, 5 itemised', () => {
+    const window = Array.from({ length: 12 }, (_unused, at) => `2026-${String(at + 1).padStart(2, '0')}`);
+    const closed = new Set(window.slice(0, 4));
+    const stated = new Set(window.slice(4, 7));
+    expect(countBySource(coverSources(window, stated, closed))).toEqual({ balances: 4, stated: 3, itemised: 5 });
+  });
+});
+
+describe('coverAmounts — what a month contributes, in each currency from its best source', () => {
+  const inr = (minor: bigint) => ({ minor, currency: 'INR' });
+  const usd = (minor: bigint) => ({ minor, currency: 'USD' });
+
+  it('SC-I15 — is the close’s spent for a month closed from balances, and never the itemised sum beside it', () => {
+    expect(coverAmounts({ closed: [inr(6_967_000n)], stated: [], itemised: [inr(100n), inr(200n)] })).toEqual([inr(6_967_000n)]);
+  });
+
+  it('takes a stated spend for a month with no close, and the itemised sum where there is neither', () => {
+    expect(coverAmounts({ closed: null, stated: [inr(5_000n)], itemised: [inr(100n), inr(200n)] })).toEqual([inr(5_000n)]);
+    expect(coverAmounts({ closed: null, stated: [], itemised: [inr(100n), inr(200n)] })).toEqual([inr(100n), inr(200n)]);
+  });
+
+  it('is per currency: a currency the close does not cover is stated or itemised on its own, and is not lost', () => {
+    const out = coverAmounts({ closed: [inr(6_967_000n)], stated: [usd(4_999n)], itemised: [inr(100n), usd(300n), { minor: 50n, currency: 'AED' }] });
+    expect(out).toEqual([inr(6_967_000n), usd(4_999n), { minor: 50n, currency: 'AED' }]);
   });
 });
