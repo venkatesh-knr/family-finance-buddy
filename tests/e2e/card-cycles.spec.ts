@@ -180,3 +180,59 @@ test('an owner closes the month without a waiting card and undoes it, or types t
     }
   }
 });
+
+test('cancelling the close writes no choice to close without a card, and the month still waits', async ({ page }) => {
+  test.setTimeout(300_000);
+  const household = testHouseholdName();
+  test.skip(household === null, 'a household the suite may reset is needed, since this leaves a card that holds the close open');
+  const name = testName('cancel-card');
+  const word = monthBefore();
+  // Every write to the choices table, so that cancelling can be shown to have made none.
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && request.url().includes('close_without_card')) writes.push(`${request.method()} ${request.url()}`);
+  });
+
+  try {
+    await onAccounts(page);
+    await page.getByRole('button', { name: '+ Add an account' }).click();
+    const add = page.getByRole('form', { name: 'Add an account' });
+    await add.getByLabel('Name').fill(name);
+    await add.getByRole('button', { name: 'Card', exact: true }).click();
+    await add.getByLabel('Last four digits').fill('3366');
+    await add.getByRole('button', { name: 'On its statement date' }).click();
+    await add.getByRole('button', { name: 'Add account' }).click();
+    await expect(add).toHaveCount(0, { timeout: 20_000 });
+
+    await page.goto('/#/money');
+    await expect(page.getByText(`${word} is waiting for 1 card statement`)).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: new RegExp(`^Close ${word}$`) }).click();
+    const close = page.getByRole('form', { name: `Close ${word}` });
+    const row = close.getByRole('region', { name: new RegExp(name) });
+    await row.getByRole('button', { name: new RegExp(`^Close without ${name}`) }).click();
+    await expect(row.getByTestId('close-without-confirm')).toContainText('cancelling the close saves nothing');
+    await row.getByRole('button', { name: 'Close without it' }).click();
+    await expect(row.getByTestId('close-card-cycle')).toContainText('Not in this close');
+
+    // Cancelling the close writes nothing, and the month is still waiting.
+    await close.getByRole('button', { name: `Close Close ${word}` }).click();
+    await expect(close).toHaveCount(0);
+    expect(writes, 'cancelling the close must not write a choice').toEqual([]);
+    await expect(page.getByText(`${word} is waiting for 1 card statement`)).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(`${word} is waiting for 1 card statement`)).toBeVisible({ timeout: 20_000 });
+
+    // Closing saves it: only then is there a write, and the month is closed.
+    await page.getByRole('button', { name: new RegExp(`^Close ${word}$`) }).click();
+    await row.getByRole('button', { name: new RegExp(`^Close without ${name}`) }).click();
+    await row.getByRole('button', { name: 'Close without it' }).click();
+    await close.getByRole('button', { name: `Close ${word}`, exact: true }).click();
+    await expect(page.getByText(new RegExp(`^${word} closed`))).toBeVisible({ timeout: 30_000 });
+    expect(writes.length).toBeGreaterThan(0);
+  } finally {
+    if (household !== null) {
+      await chooseHousehold(page, household);
+      await resetHousehold(page);
+    }
+  }
+});

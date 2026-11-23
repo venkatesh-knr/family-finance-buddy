@@ -25,7 +25,7 @@ import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { accountSteps, cardCycles, closeFigures, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, typedDueBalances, type TypedBalances, type TypedDue } from './closeMonth.ts';
+import { accountSteps, cardCycles, closeFigures, effectiveClosedWithout, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, typedDueBalances, type TypedBalances, type TypedDue } from './closeMonth.ts';
 import { cardSummary, cycleRowWords, lateStatementDay, nextDueMonth } from './cardCycleView.ts';
 import { titleOf } from './accountRows.ts';
 import { amountText } from './creditForm.ts';
@@ -110,6 +110,11 @@ export function CloseMonth({
 
   // A due typed for a statement-date card that is still waiting (card-cycles.md 8.2): an amount and the date on the statement. It is read as the card's cycle until a statement for the
   // same cycle replaces it, and is saved with the close, as a typed balance.
+  // Closing without a card is a choice made here and saved with the close, not before it: cancelling the close leaves nothing behind (card-cycles.md 2.4). What the close shows is the
+  // choices already saved, with these added and the ones undone here taken away.
+  const [leaveNow, setLeaveNow] = useState<ReadonlySet<string>>(new Set());
+  const [putBackNow, setPutBackNow] = useState<ReadonlySet<string>>(new Set());
+  const choices = useMemo(() => effectiveClosedWithout({ saved: closedWithout, month, leaveOut: leaveNow, putBack: putBackNow }), [closedWithout, month, leaveNow, putBackNow]);
   const [dueTexts, setDueTexts] = useState<Record<string, TypedDue>>({});
   const [typingDue, setTypingDue] = useState<ReadonlySet<string>>(new Set());
   // A missing date is said once its field has been left, and not while the amount is still being typed.
@@ -123,7 +128,7 @@ export function CloseMonth({
       today,
       accounts: data.accounts,
       balances: balancesAll,
-      closedWithout,
+      closedWithout: choices,
       credits,
       transfers,
       typed: {} as TypedBalances,
@@ -131,7 +136,7 @@ export function CloseMonth({
       loanPayments: loans.payments,
       ...(unread === null || unread.length === 0 ? {} : { unreadable: unread }),
     }),
-    [month, today, data.accounts, balancesAll, closedWithout, credits, transfers, unread, entries.moves, loans.payments],
+    [month, today, data.accounts, balancesAll, choices, credits, transfers, unread, entries.moves, loans.payments],
   );
   const steps = useMemo(() => accountSteps(base), [base]);
 
@@ -165,7 +170,7 @@ export function CloseMonth({
   const itemised = itemisedFigures(expenses ?? [], credits, month);
   const accountsInUse = steps.length;
   // A card that closes on its statement date is closed by its statement, not by a balance typed here: its cycle is worked out from its statements (card-cycles.md 2).
-  const cycles = useMemo(() => cardCycles({ month, accounts: data.accounts, balances: balancesAll, closedWithout }), [month, data.accounts, balancesAll, closedWithout]);
+  const cycles = useMemo(() => cardCycles({ month, accounts: data.accounts, balances: balancesAll, closedWithout: choices }), [month, data.accounts, balancesAll, choices]);
   const cycleOf = new Map(cycles.map((cycle) => [cycle.accountId, cycle] as const));
   const accountsTyped = parsed.filter((p) => (p.closing.ok && p.closing.balance !== null) || (cycleOf.get(p.step.accountId) !== undefined && cycleOf.get(p.step.accountId)?.kind !== 'waiting')).length;
   const names = new Map(data.accounts.map((account) => [account.id, titleOf(account)]));
@@ -173,35 +178,25 @@ export function CloseMonth({
   // An owner or a partner reads every account. A contributor reads their own only: say so wherever there is another member to have one.
   const privateNote = asks ? '' : data.members.length > 1 ? ' This close covers only the accounts you can read: your own.' : '';
 
-  // Closing a month without a card: asked once, written at once (it is a choice about the month and not a figure), and undone by voiding.
+  // Closing a month without a card: asked once, and chosen here; it is saved with the close and not before it, so cancelling the close leaves nothing behind (card-cycles.md 2.4).
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [choosing, setChoosing] = useState(false);
-  const leaveOut = async (accountId: string): Promise<void> => {
-    setChoosing(true);
-    setProblem(null);
-    try {
-      await closeWithoutCard({ householdId: data.household.id, accountId, month });
-      setConfirming(null);
-      onClosedWithoutChanged();
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'That could not be saved.');
-    } finally {
-      setChoosing(false);
-    }
+  const leaveOut = (accountId: string): void => {
+    setLeaveNow((was) => new Set(was).add(accountId));
+    setPutBackNow((was) => {
+      const next = new Set(was);
+      next.delete(accountId);
+      return next;
+    });
+    setConfirming(null);
   };
-  const putBack = async (accountId: string): Promise<void> => {
-    const choice = closedWithout.find((each) => each.accountId === accountId && each.month === month);
-    if (choice === undefined) return;
-    setChoosing(true);
-    setProblem(null);
-    try {
-      await voidCloseWithoutCard(choice.id);
-      onClosedWithoutChanged();
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'That could not be undone.');
-    } finally {
-      setChoosing(false);
-    }
+  const putBack = (accountId: string): void => {
+    const saved = closedWithout.some((each) => each.accountId === accountId && each.month === month);
+    setLeaveNow((was) => {
+      const next = new Set(was);
+      next.delete(accountId);
+      return next;
+    });
+    if (saved) setPutBackNow((was) => new Set(was).add(accountId));
   };
 
   const finish = async (): Promise<void> => {
@@ -219,6 +214,16 @@ export function CloseMonth({
           await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: closesOn, balance: closing.balance });
         }
       }
+      // The choices last: a card left out closes the month, so it is written only once everything else is. A failure before this leaves the card waiting, which is the safe side.
+      for (const accountId of leaveNow) {
+        if (closedWithout.some((each) => each.accountId === accountId && each.month === month)) continue;
+        await closeWithoutCard({ householdId: data.household.id, accountId, month });
+      }
+      for (const accountId of putBackNow) {
+        const choice = closedWithout.find((each) => each.accountId === accountId && each.month === month);
+        if (choice !== undefined) await voidCloseWithoutCard(choice.id);
+      }
+      if (leaveNow.size > 0 || putBackNow.size > 0) onClosedWithoutChanged();
       onDone(
         live.currencies.length === 0
           ? `${word} closed.`
@@ -341,10 +346,9 @@ export function CloseMonth({
                           <button
                             type="button"
                             className="btn btn-quiet self-start"
-                            disabled={choosing}
                             aria-label={`Undo: close ${word} with ${row.title}’s statement`}
                             onClick={() => {
-                              void putBack(row.accountId);
+                              putBack(row.accountId);
                             }}
                           >
                             Undo
@@ -412,15 +416,14 @@ export function CloseMonth({
                               <div role="group" aria-label={`Close ${word} without ${row.title}`} className="flex flex-col gap-1.5" data-testid="close-without-confirm">
                                 <h4 className="label">Close {word} without {row.title}?</h4>
                                 <p className="note">
-                                  {row.title}’s {word} cycle will be left out until its statement is imported. Payments to it this month count as spent instead.
+                                  {row.title}’s {word} cycle will be left out until its statement is imported. Payments to it this month count as spent instead. It is saved when you close {word}, and cancelling the close saves nothing.
                                 </p>
                                 <div className="flex flex-wrap gap-2">
                                   <button
                                     type="button"
                                     className="btn"
-                                    disabled={choosing}
-                                    onClick={() => {
-                                      void leaveOut(row.accountId);
+                                            onClick={() => {
+                                      leaveOut(row.accountId);
                                     }}
                                   >
                                     Close without it
@@ -428,8 +431,7 @@ export function CloseMonth({
                                   <button
                                     type="button"
                                     className="btn btn-quiet"
-                                    disabled={choosing}
-                                    onClick={() => {
+                                            onClick={() => {
                                       setConfirming(null);
                                     }}
                                   >
