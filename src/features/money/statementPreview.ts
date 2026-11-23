@@ -73,6 +73,16 @@ export function cardNoteWords(note: CardNote, format: { readonly amount: (minor:
   }
 }
 
+/**
+ * The choice to close a month-end card on its statement date, offered under a card statement dated off a month end (card-cycles.md 5). Pressed, the card's statement closes the month at once in
+ * the preview; the setting is written with the import, after the fresh code, and the label turns into the way to undo it before then.
+ */
+export function statementDateChoice(chosen: boolean): { readonly label: string; readonly sentence: string | null } {
+  return chosen
+    ? { label: 'Keep month end', sentence: 'Every month will be worked out again with this card’s statements. It is saved when you press Import, and not before.' }
+    : { label: 'Use the statement date for this card', sentence: null };
+}
+
 const GROUP_ORDER: readonly PreviewGroup[] = ['decide', 'guess', 'add', 'merge', 'left'];
 
 const groupOf = (decision: Decision | null, guessedSkip: boolean): PreviewGroup =>
