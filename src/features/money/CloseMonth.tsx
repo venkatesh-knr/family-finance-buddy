@@ -25,12 +25,17 @@ import { useLoanPayments } from './useLoanPayments.ts';
 import { usePrivateClose } from './usePrivateClose.ts';
 import { Field, Problem, RequiredKey } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { accountSteps, cardCycles, closeFigures, effectiveClosedWithout, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, typedDueBalances, type TypedBalances, type TypedDue } from './closeMonth.ts';
-import { cardSummary, cycleRowWords, lateStatementDay, nextDueMonth } from './cardCycleView.ts';
+import { accountSteps, cardCycles, closeFigures, effectiveClosedWithout, itemisedFigures, lastDayOf, monthlyPlanned, monthWord, parseBalance, planYearOf, typedDueBalances, typedEmi, type TypedBalances, type TypedDue } from './closeMonth.ts';
+import { cardEmiWords, cardSummary, cycleRowWords, lateStatementDay, nextDueMonth } from './cardCycleView.ts';
 import { titleOf } from './accountRows.ts';
 import { amountText } from './creditForm.ts';
 import type { AccountsData } from './useAccounts.ts';
 import { addMonths } from '../../domain/accrual.ts';
+
+/** What the month paid on loans from accounts: the split's paid to loans less the cards' EMI part, which is counted from the cards' statements and said apart (card-cycles.md 4a). */
+function loansOnly(figures: { readonly paidToLoans: bigint; readonly cardEmi?: { readonly converted: bigint; readonly principal: bigint } }): bigint {
+  return figures.paidToLoans - ((figures.cardEmi?.principal ?? 0n) - (figures.cardEmi?.converted ?? 0n));
+}
 
 export function CloseMonth({
   data,
@@ -144,6 +149,35 @@ export function CloseMonth({
   const [texts, setTexts] = useState<Record<string, { opening: string; closing: string }>>(() =>
     Object.fromEntries(steps.map((step) => [step.accountId, { opening: '', closing: step.closing === null ? '' : amountText(step.closing.minor, step.currency) }])),
   );
+  // What a month-end card's bill converted to EMI plans and the principal of the instalments it billed (card-cycles.md 4a), as text: what is recorded on its closing day, or nothing.
+  const emiSaved = useMemo(
+    () =>
+      new Set(
+        steps
+          .filter((step) => step.type === 'card')
+          .filter((step) => {
+            const here = data.balances.filter((b) => b.accountId === step.accountId && b.asAt === closesOn);
+            const row = here.find((b) => b.source === 'statement') ?? here[0];
+            return (row?.emiConvertedMinor ?? 0n) !== 0n || (row?.emiPrincipalMinor ?? 0n) !== 0n;
+          })
+          .map((step) => step.accountId),
+      ),
+    // Read once, when the close opens: what was already saved is what is hidden, and what is typed now is never taken from the person.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [emiTexts, setEmiTexts] = useState<Record<string, { converted: string; principal: string }>>(() =>
+    Object.fromEntries(
+      steps
+        .filter((step) => step.type === 'card')
+        .map((step) => {
+          const here = data.balances.filter((b) => b.accountId === step.accountId && b.asAt === closesOn);
+          const row = here.find((b) => b.source === 'statement') ?? here[0];
+          const say = (minor: bigint | undefined): string => (minor === undefined || minor === 0n ? '' : amountText(minor, step.currency));
+          return [step.accountId, { converted: say(row?.emiConvertedMinor), principal: say(row?.emiPrincipalMinor) }];
+        }),
+    ),
+  );
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -152,7 +186,13 @@ export function CloseMonth({
     opening: parseBalance(texts[step.accountId]?.opening ?? '', step.currency),
     closing: parseBalance(texts[step.accountId]?.closing ?? '', step.currency),
   }));
-  const anyBad = parsed.some((p) => !p.opening.ok || !p.closing.ok) || Object.keys(typedDues.problems).length > 0;
+  // The two EMI fields of a month-end card; a statement-date card's are typed with its due.
+  const emiRead = Object.fromEntries(
+    parsed
+      .filter(({ step }) => step.type === 'card')
+      .map(({ step }) => [step.accountId, typedEmi(emiTexts[step.accountId] ?? {}, step.currency)] as const),
+  );
+  const anyBad = parsed.some((p) => !p.opening.ok || !p.closing.ok) || Object.keys(typedDues.problems).length > 0 || Object.values(emiRead).some((read) => !read.ok);
 
   const typed: TypedBalances = Object.fromEntries(
     parsed.map(({ step, opening, closing }) => [
@@ -160,6 +200,10 @@ export function CloseMonth({
       {
         ...(opening.ok && opening.balance !== null ? { opening: opening.balance } : {}),
         ...(closing.ok && closing.balance !== null ? { closing: closing.balance } : {}),
+        ...(() => {
+          const read = emiRead[step.accountId];
+          return read?.ok === true ? { emi: { converted: read.converted ?? money(0n, step.currency), principal: read.principal ?? money(0n, step.currency) } } : {};
+        })(),
       },
     ]),
   );
@@ -205,13 +249,28 @@ export function CloseMonth({
     setProblem(null);
     try {
       // A due typed for a card that was waiting is saved on the statement's date, as a typed balance: a statement for the same cycle replaces it when it is imported.
-      for (const due of typedDues.balances) await saveBalance({ householdId: data.household.id, accountId: due.accountId, asAt: due.asAt, balance: due.balance });
+      for (const due of typedDues.balances) {
+        await saveBalance({
+          householdId: data.household.id,
+          accountId: due.accountId,
+          asAt: due.asAt,
+          balance: due.balance,
+          emiConvertedMinor: due.emiConvertedMinor ?? 0n,
+          emiPrincipalMinor: due.emiPrincipalMinor ?? 0n,
+        });
+      }
       for (const { step, opening, closing } of parsed) {
         if (opening.ok && opening.balance !== null) {
           await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: opensOn, balance: opening.balance });
         }
         if (closing.ok && closing.balance !== null) {
-          await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: closesOn, balance: closing.balance });
+          // A month-end card's closing carries its EMI figures, written as given (none is zero), so a corrected figure never keeps an old one beside it.
+          const read = emiRead[step.accountId];
+          const emi =
+            step.type === 'card' && cycleOf.get(step.accountId) === undefined && read?.ok === true
+              ? { emiConvertedMinor: read.converted?.minor ?? 0n, emiPrincipalMinor: read.principal?.minor ?? 0n }
+              : {};
+          await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: closesOn, balance: closing.balance, ...emi });
         }
       }
       // The choices last: a card left out closes the month, so it is written only once everything else is. A failure before this leaves the card waiting, which is the safe side.
@@ -378,7 +437,7 @@ export function CloseMonth({
                                   value={dueTexts[row.accountId]?.amount ?? ''}
                                   error={typedDues.fields[row.accountId] === 'amount' ? (typedDues.problems[row.accountId] ?? null) : null}
                                   onChange={(event) => {
-                                    setDueTexts((was) => ({ ...was, [row.accountId]: { amount: event.target.value, date: was[row.accountId]?.date ?? '' } }));
+                                    setDueTexts((was) => ({ ...was, [row.accountId]: { ...was[row.accountId], amount: event.target.value, date: was[row.accountId]?.date ?? '' } }));
                                   }}
                                 />
                                 <Field
@@ -393,9 +452,38 @@ export function CloseMonth({
                                     setDateLeft((was) => new Set(was).add(row.accountId));
                                   }}
                                   onChange={(event) => {
-                                    setDueTexts((was) => ({ ...was, [row.accountId]: { amount: was[row.accountId]?.amount ?? '', date: event.target.value } }));
+                                    setDueTexts((was) => ({ ...was, [row.accountId]: { ...was[row.accountId], amount: was[row.accountId]?.amount ?? '', date: event.target.value } }));
                                   }}
                                 />
+                                <details>
+                                  <summary>EMIs on this bill?</summary>
+                                  <div className="flex flex-col gap-1.5">
+                                    <Field
+                                      label="Converted to EMIs this cycle"
+                                      numeric
+                                      inputMode="decimal"
+                                      autoComplete="off"
+                                      placeholder="0"
+                                      value={dueTexts[row.accountId]?.converted ?? ''}
+                                      error={typedDues.fields[row.accountId] === 'converted' ? (typedDues.problems[row.accountId] ?? null) : null}
+                                      onChange={(event) => {
+                                        setDueTexts((was) => ({ ...was, [row.accountId]: { amount: '', date: '', ...was[row.accountId], converted: event.target.value } }));
+                                      }}
+                                    />
+                                    <Field
+                                      label="EMI principal billed this cycle"
+                                      numeric
+                                      inputMode="decimal"
+                                      autoComplete="off"
+                                      placeholder="0"
+                                      value={dueTexts[row.accountId]?.principal ?? ''}
+                                      error={typedDues.fields[row.accountId] === 'principal' ? (typedDues.problems[row.accountId] ?? null) : null}
+                                      onChange={(event) => {
+                                        setDueTexts((was) => ({ ...was, [row.accountId]: { amount: '', date: '', ...was[row.accountId], principal: event.target.value } }));
+                                      }}
+                                    />
+                                  </div>
+                                </details>
                               </>
                             )}
                           </>
@@ -463,6 +551,45 @@ export function CloseMonth({
                             }}
                           />
                         )}
+                        {row.type === 'card' && (
+                          <details>
+                            <summary>EMIs on this bill?</summary>
+                            <div className="flex flex-col gap-1.5">
+                              <Field
+                                label="Converted to EMIs this cycle"
+                                numeric
+                                inputMode="decimal"
+                                autoComplete="off"
+                                placeholder="0"
+                                {...(privacy && emiSaved.has(row.accountId) ? { readOnly: true, hint: 'Hidden while amounts are hidden.' } : {})}
+                                value={privacy && emiSaved.has(row.accountId) ? '••••••' : (emiTexts[row.accountId]?.converted ?? '')}
+                                error={(() => {
+                                  const read = emiRead[row.accountId];
+                                  return read !== undefined && !read.ok && read.field === 'converted' ? read.problem : null;
+                                })()}
+                                onChange={(event) => {
+                                  setEmiTexts((was) => ({ ...was, [row.accountId]: { converted: event.target.value, principal: was[row.accountId]?.principal ?? '' } }));
+                                }}
+                              />
+                              <Field
+                                label="EMI principal billed this cycle"
+                                numeric
+                                inputMode="decimal"
+                                autoComplete="off"
+                                placeholder="0"
+                                {...(privacy && emiSaved.has(row.accountId) ? { readOnly: true, hint: 'Hidden while amounts are hidden.' } : {})}
+                                value={privacy && emiSaved.has(row.accountId) ? '••••••' : (emiTexts[row.accountId]?.principal ?? '')}
+                                error={(() => {
+                                  const read = emiRead[row.accountId];
+                                  return read !== undefined && !read.ok && read.field === 'principal' ? read.problem : null;
+                                })()}
+                                onChange={(event) => {
+                                  setEmiTexts((was) => ({ ...was, [row.accountId]: { converted: was[row.accountId]?.converted ?? '', principal: event.target.value } }));
+                                }}
+                              />
+                            </div>
+                          </details>
+                        )}
                         {steps.find((s) => s.accountId === row.accountId)?.openingNeeded === true ? (
                           <Field
                             label={`Opening balance, ${formatShortDate(opensOn)}`}
@@ -504,7 +631,7 @@ export function CloseMonth({
                       <p className="note tabular-nums">
                         Left the accounts{multi} · {shown(money(figures.leftTotal, figures.currency))}
                       </p>
-                      {(own.length > 0 || figures.outside !== 0n || figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n || figures.paidToLoans !== 0n) && (
+                      {(own.length > 0 || figures.outside !== 0n || figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n || loansOnly(figures) !== 0n) && (
                         <section aria-label={`Not spending${multi}`} className="flex flex-col gap-1">
                           <h3 className="label">Not spending{multi}</h3>
                           {own.length > 0 && (
@@ -522,9 +649,7 @@ export function CloseMonth({
                               </ul>
                             </details>
                           )}
-                          {figures.paidToLoans !== 0n && (
-                            <p className="note tabular-nums">Paid to loans · {shown(money(figures.paidToLoans, figures.currency))}</p>
-                          )}
+                          {loansOnly(figures) !== 0n && <p className="note tabular-nums">Paid to loans · {shown(money(loansOnly(figures), figures.currency))}</p>}
                           {(figures.putIntoHoldings !== 0n || figures.takenOutOfHoldings !== 0n) && (
                             <p className="note tabular-nums">
                               Into holdings · {shown(money(figures.putIntoHoldings, figures.currency))}
@@ -537,6 +662,11 @@ export function CloseMonth({
                             </p>
                           )}
                         </section>
+                      )}
+                      {figures.cardEmi !== undefined && (
+                        <p className="note tabular-nums" data-testid="close-card-emis">
+                          {cardEmiWords(figures.cardEmi, (value) => shown(money(value, figures.currency)))}
+                        </p>
                       )}
                     </div>
                   );

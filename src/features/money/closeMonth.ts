@@ -75,11 +75,20 @@ export type CardCycle =
       readonly closing: Money;
       readonly emiConvertedMinor: bigint;
       readonly emiPrincipalMinor: bigint;
+      /** Set where this is the first cycle to bill principal on a plan the card never stated as converted: it began before the card's first statement in the app. */
+      readonly planBeganEarlier?: true;
       /** Where the two dues came from, so a typed figure is never said to be a statement's. */
       readonly sources: { readonly opening: 'typed' | 'statement'; readonly closing: 'typed' | 'statement' };
     }
   /** The earliest statement in the app has no balance before it, so its cycle is left out: the card adds nothing that month. */
-  | { readonly kind: 'first-left-out'; readonly accountId: string; readonly to: IsoDate; readonly closing: Money; readonly emiConvertedMinor: bigint; readonly emiPrincipalMinor: bigint }
+  | {
+      readonly kind: 'first-left-out';
+      readonly accountId: string;
+      readonly to: IsoDate;
+      readonly closing: Money;
+      readonly emiConvertedMinor: bigint;
+      readonly emiPrincipalMinor: bigint;
+    }
   /** No statement is dated in the month and a later one shows that none was: its spending is in the later close, and the card adds nothing now. */
   | { readonly kind: 'none-this-month'; readonly accountId: string }
   /** The month waits for the statement dated in it. */
@@ -107,8 +116,13 @@ export function effectiveClosedWithout(input: {
   return [...kept, ...added];
 }
 
-/** What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. */
-export type TypedBalances = Readonly<Record<string, { readonly opening?: Money; readonly closing?: Money }>>;
+/**
+ * What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. For a card, `emi` is what the bill converted to EMI plans and the
+ * principal of the instalments it billed (card-cycles.md 4a), typed with the due.
+ */
+export type TypedBalances = Readonly<
+  Record<string, { readonly opening?: Money; readonly closing?: Money; readonly emi?: { readonly converted: Money; readonly principal: Money } }>
+>;
 
 /** A payment on a loan, as the close reads it: the account it left, if one was named, the amount and the day. A voided one is not counted. */
 export interface CloseLoanPayment {
@@ -138,10 +152,24 @@ export interface CloseInput {
   readonly closedWithout?: ClosedWithout;
 }
 
+/** An account's balance row on a day: a statement's beats a typed one. Undefined when none was recorded for that day. */
+function balanceRowOn(balances: readonly AccountBalance[], accountId: string, day: string): AccountBalance | undefined {
+  const here = balances.filter((b) => b.accountId === accountId && b.asAt === day);
+  return here.find((b) => b.source === 'statement') ?? here[0];
+}
+
 /** An account's balance on a day: a statement's beats a typed one. Null when none was recorded for that day. */
 function balanceOn(balances: readonly AccountBalance[], accountId: string, day: string): Money | null {
-  const here = balances.filter((b) => b.accountId === accountId && b.asAt === day);
-  return (here.find((b) => b.source === 'statement') ?? here[0])?.balance ?? null;
+  return balanceRowOn(balances, accountId, day)?.balance ?? null;
+}
+
+/**
+ * Whether a card owes principal on EMI plans that nothing it has stated converted: the plans converted so far, less the principal billed so far, is below nothing. Said once, on the cycle that
+ * first shows it, since after that it stays below nothing for as long as the plan runs (card-cycles.md 4a).
+ */
+function planBeganEarlier(rows: readonly AccountBalance[], upTo: IsoDate): boolean {
+  const owed = (through: (asAt: IsoDate) => boolean): bigint => rows.filter((row) => through(row.asAt)).reduce((total, row) => total + (row.emiConvertedMinor ?? 0n) - (row.emiPrincipalMinor ?? 0n), 0n);
+  return owed((asAt) => asAt <= upTo) < 0n && owed((asAt) => asAt < upTo) >= 0n;
 }
 
 const isStatementCard = (account: Account): boolean => account.type === 'card' && account.cycleEnds === 'statement';
@@ -185,6 +213,8 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
       if (openingRow === undefined) {
         return { kind: 'first-left-out', accountId: account.id, to: closingRow.asAt, closing: closingRow.balance, emiConvertedMinor, emiPrincipalMinor };
       }
+      // The earliest due only opens the first cycle that counts, so its own EMI figures are not counted and cannot make a plan look begun earlier.
+      const earlier = planBeganEarlier(dues.slice(1), closingRow.asAt) ? ({ planBeganEarlier: true } as const) : {};
       return {
         kind: 'cycle',
         accountId: account.id,
@@ -194,6 +224,7 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
         closing: closingRow.balance,
         emiConvertedMinor,
         emiPrincipalMinor,
+        ...earlier,
         sources: { opening: openingRow.source, closing: closingRow.source },
       };
     });
@@ -203,7 +234,12 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
 export interface TypedDue {
   readonly amount: string;
   readonly date: string;
+  /** Folded under *EMIs on this bill?*: what the bill converted to EMI plans, and the principal of the instalments it billed. Empty is none. */
+  readonly converted?: string;
+  readonly principal?: string;
 }
+
+export type TypedDueField = 'amount' | 'date' | 'converted' | 'principal';
 
 /**
  * The balances that a due typed at the close makes: for each statement-date card with an amount and a date typed, a typed balance on the statement's date, which must fall in the month. It
@@ -213,16 +249,16 @@ export function typedDueBalances(input: { readonly month: string; readonly accou
   readonly balances: AccountBalance[];
   readonly problems: Record<string, string>;
   /** Which field each problem is about, so it is said under that one. */
-  readonly fields: Record<string, 'amount' | 'date'>;
+  readonly fields: Record<string, TypedDueField>;
 } {
   const balances: AccountBalance[] = [];
   const problems: Record<string, string> = {};
-  const fields: Record<string, 'amount' | 'date'> = {};
+  const fields: Record<string, TypedDueField> = {};
   const used = inUse(input.accounts, input.month);
   for (const [accountId, due] of Object.entries(input.typed)) {
     const account = used.find((each) => each.id === accountId);
     if (account === undefined || !isStatementCard(account)) continue;
-    if (due.amount.trim() === '' && due.date.trim() === '') continue;
+    if (due.amount.trim() === '' && due.date.trim() === '' && (due.converted ?? '').trim() === '' && (due.principal ?? '').trim() === '') continue;
     if (due.amount.trim() === '') {
       problems[accountId] = 'Type the amount due.';
       fields[accountId] = 'amount';
@@ -246,9 +282,46 @@ export function typedDueBalances(input: { readonly month: string; readonly accou
       continue;
     }
     if (amount.balance === null) continue;
-    balances.push({ id: `typed-due-${accountId}`, householdId: account.householdId, accountId, asAt: due.date, balance: amount.balance, source: 'typed', note: null });
+    const emi = typedEmi(due, account.currency);
+    if (!emi.ok) {
+      problems[accountId] = emi.problem;
+      fields[accountId] = emi.field;
+      continue;
+    }
+    balances.push({
+      id: `typed-due-${accountId}`,
+      householdId: account.householdId,
+      accountId,
+      asAt: due.date,
+      balance: amount.balance,
+      source: 'typed',
+      note: null,
+      ...(emi.converted === null ? {} : { emiConvertedMinor: emi.converted.minor }),
+      ...(emi.principal === null ? {} : { emiPrincipalMinor: emi.principal.minor }),
+    });
   }
   return { balances, problems, fields };
+}
+
+/** The two EMI fields of a typed due, read as amounts; empty is none, and what is not an amount is said, with the field it is about. */
+export function typedEmi(
+  due: { readonly converted?: string; readonly principal?: string },
+  currency: string,
+): { readonly ok: true; readonly converted: Money | null; readonly principal: Money | null } | { readonly ok: false; readonly field: 'converted' | 'principal'; readonly problem: string } {
+  const read = (text: string | undefined, field: 'converted' | 'principal') => {
+    if ((text ?? '').trim() === '') return { ok: true as const, value: null };
+    const parsed = parseBalance(text ?? '', currency);
+    if (!parsed.ok) {
+      const what = field === 'converted' ? 'What was converted to EMIs' : 'The EMI principal billed';
+      return { ok: false as const, field, problem: parsed.problem.includes('decimal places') ? parsed.problem : `${what} is a number, such as 60,000, with no minus sign.` };
+    }
+    return { ok: true as const, value: parsed.balance };
+  };
+  const converted = read(due.converted, 'converted');
+  if (!converted.ok) return converted;
+  const principal = read(due.principal, 'principal');
+  if (!principal.ok) return principal;
+  return { ok: true, converted: converted.value, principal: principal.value };
 }
 
 /** The accounts in a month's close: those in use, and those archived in that month or after it (ledger-income.md section 1a). */
@@ -308,12 +381,19 @@ export function closeFigures(input: CloseInput): CloseFigures {
     accounts: inClose.map((account) => {
       const cycle = cycleOf.get(account.id);
       if (cycle === undefined) {
+        // A month-end card's EMI figures are the ones its month-end statement or typed due carries (card-cycles.md 4a); a figure typed in this close is read over a recorded one.
+        const typedEmi = input.typed[account.id]?.emi;
+        const row = balanceRowOn(input.balances, account.id, closesOn);
+        const converted = typedEmi?.converted.minor ?? (input.typed[account.id]?.closing === undefined ? row?.emiConvertedMinor : undefined) ?? 0n;
+        const principal = typedEmi?.principal.minor ?? (input.typed[account.id]?.closing === undefined ? row?.emiPrincipalMinor : undefined) ?? 0n;
         return {
           id: account.id,
           type: account.type,
           currency: account.currency,
           opening: input.typed[account.id]?.opening ?? balanceOn(input.balances, account.id, opensOn),
           closing: input.typed[account.id]?.closing ?? balanceOn(input.balances, account.id, closesOn),
+          ...(account.type === 'card' && converted !== 0n ? { emiConvertedMinor: converted } : {}),
+          ...(account.type === 'card' && principal !== 0n ? { emiPrincipalMinor: principal } : {}),
         };
       }
       const base = { id: account.id, type: account.type, currency: account.currency };
@@ -327,8 +407,6 @@ export function closeFigures(input: CloseInput): CloseFigures {
             opening: cycle.closing,
             closing: cycle.closing,
             window: { from: `${cycle.to.slice(0, 7)}-01`, to: cycle.to },
-            emiConvertedMinor: cycle.emiConvertedMinor,
-            emiPrincipalMinor: cycle.emiPrincipalMinor,
           };
         case 'none-this-month':
           return { ...base, opening: money(0n, account.currency), closing: money(0n, account.currency), window: NO_DAYS };

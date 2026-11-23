@@ -1164,6 +1164,9 @@ export interface NewBalance {
   readonly asAt: IsoDate;
   readonly balance: Money;
   readonly note?: string | null;
+  /** For a card's due: what was converted to EMI plans in the cycle and the principal of the instalments billed in it (card-cycles.md 4a). Left out, the row's figures are not touched. */
+  readonly emiConvertedMinor?: bigint;
+  readonly emiPrincipalMinor?: bigint;
 }
 
 export type CreditSource = 'typed' | 'rule' | 'import';

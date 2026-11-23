@@ -481,6 +481,15 @@ describe('a card that closes on its statement date', () => {
       expect(month.gapMinor).toBe(0n);
     });
 
+    it('says what the cards converted and what their instalments billed, for the line under Paid to loans, and says nothing when there is none', () => {
+      const converted = closed(plain({ opening: r(0), closing: r(0), emiConvertedMinor: 6_000_000n }, '2026-10', { from: '2026-09-18', to: '2026-10-17' }));
+      expect(converted.cardEmi).toEqual({ converted: 6_000_000n, principal: 0n });
+      const billed = closed(plain({ opening: r(0), closing: r(5_660), emiPrincipalMinor: 500_000n }, '2026-11', { from: '2026-10-18', to: '2026-11-17' }));
+      expect(billed.cardEmi).toEqual({ converted: 0n, principal: 500_000n });
+      const none = closed(plain({ opening: r(0), closing: r(100) }, '2026-10', { from: '2026-09-18', to: '2026-10-17' }));
+      expect(none.cardEmi).toBeUndefined();
+    });
+
     it('counts the next cycle’s instalment as ₹660 spent (its interest and GST) and ₹5,000 paid to loans (its principal), with a gap of nothing', () => {
       const month = closed(plain({ opening: r(0), closing: r(5_660), emiPrincipalMinor: 500_000n }, '2026-11', { from: '2026-10-18', to: '2026-11-17' }));
       expect(month.spent).toBe(66_000n);

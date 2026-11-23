@@ -36,6 +36,21 @@ export function nextDueMonth(balances: readonly AccountBalance[], accountId: str
   return after[0] ?? null;
 }
 
+/** Said once, on the cycle that first bills principal on a plan the card never stated as converted (card-cycles.md 4a). */
+const EARLIER_PLAN = "Includes EMI instalments of a plan that began before this card's first statement: their principal is not counted as spent.";
+
+/**
+ * The line under Paid to loans for a month with a card EMI (card-cycles.md 4a): what the cards converted, which is counted as spent and is now owed, and the principal of the instalments paid,
+ * which is paid to loans and not spent.
+ */
+export function cardEmiWords(emi: { readonly converted: bigint; readonly principal: bigint }, shown: (value: bigint) => string): string {
+  const parts = [
+    ...(emi.converted !== 0n ? [`${shown(emi.converted)} converted (counted as spent, now owed)`] : []),
+    ...(emi.principal !== 0n ? [`${shown(emi.principal)} of instalments paid (not spent)`] : []),
+  ];
+  return `Card EMIs: ${parts.join(', ')}`;
+}
+
 /** One card's row in the close, in words (card-cycles.md 8.2). */
 export function cycleRowWords(cycle: CardCycle, context: { readonly month: string; readonly lateDay: number | null; readonly nextMonth: string | null; readonly shown: (value: Money) => string }): string {
   const word = monthWord(context.month);
@@ -49,7 +64,7 @@ export function cycleRowWords(cycle: CardCycle, context: { readonly month: strin
           : cycle.sources.opening === 'typed' && cycle.sources.closing === 'typed'
             ? 'from the dues you typed'
             : 'from a statement and a typed due'
-      }.`;
+      }.${cycle.planBeganEarlier === true ? ` ${EARLIER_PLAN}` : ''}`;
     case 'first-left-out':
       return `First cycle left out: there is no earlier statement to start from. From ${monthWord(addMonths(`${context.month}-01`, 1).slice(0, 7))} it is counted in full.`;
     case 'none-this-month':
