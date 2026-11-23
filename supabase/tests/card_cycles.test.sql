@@ -16,7 +16,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(40);
+select plan(42);
 
 -- ============================================================== the fixture
 --
@@ -223,6 +223,10 @@ select throws_ok(
 insert into public.close_without_card (id, household_id, account_id, month, created_by) values
   ('c7300000-0000-4000-8000-000000000001', 'e7000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000002', '2020-10-01', 'd7000000-0000-4000-8000-0000000000a1');
 
+-- A month closed without the contributor's own card: the one choice a contributor may read (the owner, 23 November 2026).
+insert into public.close_without_card (id, household_id, account_id, month, created_by) values
+  ('c7300000-0000-4000-8000-000000000002', 'e7000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000003', '2020-07-01', 'd7000000-0000-4000-8000-0000000000a1');
+
 select throws_ok(
   $q$ insert into public.close_without_card (household_id, account_id, month, created_by)
       values ('e7000000-0000-4000-8000-0000000000f1', 'a7000000-0000-4000-8000-000000000002', '2020-10-01', 'd7000000-0000-4000-8000-0000000000a2') $q$,
@@ -251,7 +255,7 @@ set local request.jwt.claims   to '{"sub":"c7000000-0000-4000-8000-0000000000a1"
 
 select is(
   (select count(*)::int from public.close_without_card),
-  1,
+  2,
   'the owner reads the household''s closes without a card'
 );
 
@@ -279,7 +283,7 @@ set local request.jwt.claims   to '{"sub":"c7000000-0000-4000-8000-0000000000a2"
 
 select is(
   (select count(*)::int from public.close_without_card),
-  2,
+  3,
   'the partner reads them too'
 );
 
@@ -296,8 +300,22 @@ set local request.jwt.claims   to '{"sub":"c7000000-0000-4000-8000-0000000000a3"
 
 select is(
   (select count(*)::int from public.close_without_card),
-  0,
-  'CY-I14 — a contributor reads none'
+  1,
+  'CY-I14 — a contributor reads the choice for their own card, so their month stops saying waiting, and none for the cards of other members'
+);
+
+select is(
+  (select account_id::text from public.close_without_card),
+  'a7000000-0000-4000-8000-000000000003',
+  'and the one they read is of their own card, not the owner''s'
+);
+
+update public.close_without_card set voided_at = now(), voided_by = 'd7000000-0000-4000-8000-0000000000a3' where id = 'c7300000-0000-4000-8000-000000000002';
+
+select is(
+  (select voided_at from public.close_without_card where id = 'c7300000-0000-4000-8000-000000000002'),
+  null::timestamptz,
+  'CY-I14 — but cannot void it: only an owner or a partner undoes a choice'
 );
 
 select throws_ok(
