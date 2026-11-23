@@ -90,6 +90,23 @@ export type CardCycle =
 /** The months an owner or a partner closed without a card (`close_without_card`), as the close reads them. A voided one is not passed. */
 export type ClosedWithout = readonly { readonly accountId: string; readonly month: string }[];
 
+/**
+ * The choices to close a month without a card, as the close screen has them: those saved, with the cards the person chose to leave out on this screen added, and those they undid taken away
+ * (card-cycles.md 2.4). Nothing here is written: the choices are saved with the close, so cancelling it leaves nothing behind (the owner, 23 November 2026).
+ */
+export function effectiveClosedWithout(input: {
+  readonly saved: readonly { readonly id?: string; readonly accountId: string; readonly month: string }[];
+  readonly month: string;
+  readonly leaveOut: ReadonlySet<string>;
+  readonly putBack: ReadonlySet<string>;
+}): ClosedWithout {
+  const kept = input.saved.filter((choice) => !(choice.month === input.month && input.putBack.has(choice.accountId))).map((choice) => ({ accountId: choice.accountId, month: choice.month }));
+  const added = [...input.leaveOut]
+    .filter((accountId) => !input.putBack.has(accountId) && !kept.some((choice) => choice.accountId === accountId && choice.month === input.month))
+    .map((accountId) => ({ accountId, month: input.month }));
+  return [...kept, ...added];
+}
+
 /** What has been typed on the close screen and not saved: an account's closing balance, and its opening at the first close. */
 export type TypedBalances = Readonly<Record<string, { readonly opening?: Money; readonly closing?: Money }>>;
 

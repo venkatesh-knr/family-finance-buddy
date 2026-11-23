@@ -16,6 +16,7 @@ import {
   offersClose,
   parseBalance,
   planYearOf,
+  effectiveClosedWithout,
 } from './closeMonth.ts';
 
 /**
@@ -631,5 +632,41 @@ describe('typedDueBalances', () => {
     const replaced = cardCycles({ ...base, balances: [...base.balances, balance('card', '2026-10-18', 28_700, 'statement')] })[0];
     expect(replaced).toMatchObject({ kind: 'cycle', to: '2026-10-18' });
     expect(replaced?.kind === 'cycle' && replaced.sources.closing).toBe('statement');
+  });
+});
+
+/**
+ * Closing without a card is saved with the close and not before it (card-cycles.md 2.4; the owner, 23 November 2026): what the close shows is the choices already saved, with what has been
+ * chosen on the screen and not yet saved added, and a saved one the person has undone taken away. Nothing is written until the close is.
+ */
+describe('effectiveClosedWithout', () => {
+  const saved = [
+    { id: 'c-1', accountId: 'card-a', month: '2026-10' },
+    { id: 'c-2', accountId: 'card-b', month: '2026-09' },
+  ];
+  const none = new Set<string>();
+
+  it('is the saved choices as they are when nothing has been chosen here', () => {
+    expect(effectiveClosedWithout({ saved, month: '2026-10', leaveOut: none, putBack: none })).toEqual([
+      { accountId: 'card-a', month: '2026-10' },
+      { accountId: 'card-b', month: '2026-09' },
+    ]);
+  });
+
+  it('adds a card chosen here and not saved, for this month', () => {
+    expect(effectiveClosedWithout({ saved: [], month: '2026-10', leaveOut: new Set(['card-a']), putBack: none })).toEqual([{ accountId: 'card-a', month: '2026-10' }]);
+  });
+
+  it('does not add a card twice when it is saved already', () => {
+    expect(effectiveClosedWithout({ saved, month: '2026-10', leaveOut: new Set(['card-a']), putBack: none }).filter((each) => each.accountId === 'card-a')).toHaveLength(1);
+  });
+
+  it('takes away a saved choice the person has undone, for this month only', () => {
+    const out = effectiveClosedWithout({ saved, month: '2026-10', leaveOut: none, putBack: new Set(['card-a', 'card-b']) });
+    expect(out).toEqual([{ accountId: 'card-b', month: '2026-09' }]);
+  });
+
+  it('an undone card is not added back by a choice made earlier on the same screen', () => {
+    expect(effectiveClosedWithout({ saved: [], month: '2026-10', leaveOut: new Set(['card-a']), putBack: new Set(['card-a']) })).toEqual([]);
   });
 });
