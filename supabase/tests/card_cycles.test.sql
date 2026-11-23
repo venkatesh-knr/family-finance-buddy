@@ -16,7 +16,7 @@ set search_path to extensions, public, pg_catalog;
 
 begin;
 
-select plan(41);
+select plan(42);
 
 -- ============================================================== the fixture
 --
