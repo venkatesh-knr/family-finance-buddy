@@ -21,6 +21,7 @@ import { AddAccount } from './AddAccount.tsx';
 import { CloseMonth } from './CloseMonth.tsx';
 import { lateStatementDay } from './cardCycleView.ts';
 import { accountRow, latestBalances, splitAccounts } from './accountRows.ts';
+import { cardEmiDebtLine, syncCardEmiDebts } from './cardEmiDebt.ts';
 import { cardCycles, lastBalanceMonth, lastDayOf, monthToClose, monthWord, offersClose } from './closeMonth.ts';
 import { useCashReserve } from './useCashReserve.ts';
 import { useMoneyLedger } from './useMoneyLedger.ts';
@@ -46,6 +47,7 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [addingDebt, setAddingDebt] = useState<string | null>(null);
   const today = todayInIst();
   const closeMonthKey = monthToClose(today);
   // The reserve is as at the last day of the last closed month, and is read again when a close writes balances.
@@ -96,7 +98,22 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
     setForm({ account, locked });
   };
 
+  // A card's EMI plans: added to the household's debts from here, when they were not added at the import (card-cycles.md 4a). Only an owner or a partner reads and writes debts.
+  const addToDebts = async (account: Account): Promise<void> => {
+    setAddingDebt(account.id);
+    try {
+      const changed = await syncCardEmiDebts({ householdId: data.household.id, role: data.viewer.role, add: (card) => card.id === account.id });
+      setSaid(changed > 0 ? `${account.name} EMI plans are in your debts, as its statements say.` : `${account.name} EMI plans already say what its statements do.`);
+      void ledger.reload();
+    } catch (error) {
+      setSaid(error instanceof Error ? error.message : 'Those EMI plans could not be added to your debts.');
+    } finally {
+      setAddingDebt(null);
+    }
+  };
+
   const row = (account: Account) => {
+    const emiLine = readsHousehold && account.type === 'card' ? cardEmiDebtLine(data.balances, account, data.cardDebts, privacy) : null;
     const parts = accountRow(account, { members: data.members, balance: latest.get(account.id) ?? null, privacy, statementDay: lateStatementDay(data.balances, account.id) });
     return (
       <li key={account.id}>
@@ -121,6 +138,24 @@ export function AccountsTab({ householdId, privacy }: { householdId: string | nu
             <Chevron />
           </span>
         </button>
+        {emiLine !== null && (
+          <p className="note mt-1 flex flex-wrap items-center gap-x-3" data-testid="card-emi-line">
+            <span>{emiLine.text}</span>
+            {(!emiLine.inDebts || emiLine.behind) && mayAdd && (
+              <button
+                type="button"
+                className="btn btn-quiet"
+                disabled={addingDebt !== null}
+                aria-label={emiLine.inDebts ? `Bring ${parts.title} EMI plans up to date` : `Add ${parts.title} EMI plans to your debts`}
+                onClick={() => {
+                  void addToDebts(account);
+                }}
+              >
+                {emiLine.inDebts ? 'Bring up to date' : 'Add to your debts'}
+              </button>
+            )}
+          </p>
+        )}
       </li>
     );
   };

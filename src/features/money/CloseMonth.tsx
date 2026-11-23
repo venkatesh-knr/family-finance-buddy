@@ -18,6 +18,7 @@ import { formatMoney, money, type Money } from '../../lib/money.ts';
 import { listExpensesBetween } from '../../repo/expenses.ts';
 import { listPlan } from '../../repo/planning.ts';
 import { saveBalance } from '../../repo/accounts.ts';
+import { syncCardEmiDebts } from './cardEmiDebt.ts';
 import { closeWithoutCard, voidCloseWithoutCard, type CloseWithoutCard } from '../../repo/closeWithoutCard.ts';
 import type { Credit, Expense, PlanListing, Transfer } from '../../repo/types.ts';
 import { useHoldingMoves } from './useHoldingMoves.ts';
@@ -272,6 +273,12 @@ export function CloseMonth({
               : {};
           await saveBalance({ householdId: data.household.id, accountId: step.accountId, asAt: closesOn, balance: closing.balance, ...emi });
         }
+      }
+      // A card whose EMI plans are among the household's debts has what they owe brought up to its statements, which a typed due or closing may have changed (CY-I17). One that has none is not given one here.
+      try {
+        await syncCardEmiDebts({ householdId: data.household.id, role: data.viewer.role, add: () => false });
+      } catch {
+        // The close is saved; the debt is brought up to date by the next close or import, or from the card's row on Accounts, which says when it is behind.
       }
       // The choices last: a card left out closes the month, so it is written only once everything else is. A failure before this leaves the card waiting, which is the safe side.
       for (const accountId of leaveNow) {

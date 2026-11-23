@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { addAccount, listAccounts, listBalances, updateAccount } from '../../repo/accounts.ts';
+import { listCardDebts, type CardDebt } from '../../repo/cardDebt.ts';
 import { listExpenses } from '../../repo/expenses.ts';
 import type { Account, AccountBalance, AccountPatch, ExpenseListing, NewAccount } from '../../repo/types.ts';
 
@@ -17,6 +18,8 @@ export interface AccountsData {
   readonly members: ExpenseListing['members'];
   readonly accounts: readonly Account[];
   readonly balances: readonly AccountBalance[];
+  /** The debts that are a card's EMI plans, read for an owner or a partner, who read every debt; a contributor's own are not read here, since nothing on this screen offers them to one (card-cycles.md 4a). */
+  readonly cardDebts: readonly CardDebt[];
 }
 
 export function useAccounts(householdId: string | null) {
@@ -30,9 +33,15 @@ export function useAccounts(householdId: string | null) {
     const turn = ++asked.current;
     try {
       const listing = await listExpenses(householdId === null ? { limit: 1 } : { limit: 1, householdId });
-      const [accounts, balances] = await Promise.all([listAccounts(listing.household.id, { includeArchived: true }), listBalances(listing.household.id)]);
+      const mayRead = listing.viewer.role === 'owner' || listing.viewer.role === 'partner';
+      const [accounts, balances, cardDebts] = await Promise.all([
+        listAccounts(listing.household.id, { includeArchived: true }),
+        listBalances(listing.household.id),
+        // A card's debt is a nicety on this screen: if it cannot be read, nothing here is wrong without it.
+        mayRead ? listCardDebts(listing.household.id).catch((): readonly CardDebt[] => []) : Promise.resolve<readonly CardDebt[]>([]),
+      ]);
       if (turn !== asked.current) return;
-      setData({ household: listing.household, viewer: listing.viewer, members: listing.members, accounts, balances });
+      setData({ household: listing.household, viewer: listing.viewer, members: listing.members, accounts, balances, cardDebts });
       setProblem(null);
     } catch (error) {
       if (turn !== asked.current) return;

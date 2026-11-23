@@ -321,6 +321,8 @@ So:
 - **A month-end card** whose statement is dated on a month end gets the same correction.
   For a month-end card whose due is typed, the same two fields are offered.
 
+**Built, 23 November 2026** (slice 7, second part): the debt is a `credit card` liability linked to the card, one per card, offered by the statement's preview (ticked) and from the card's row on Accounts, named from the card, and kept after each import and close from the card's recorded dues, those the close reads. Its outstanding is written to the liability's own balance and date, as at the card's latest statement, and is never typed. It is closed when it is nothing and open again when the card converts again. A payment typed against it is refused in the Plan list and by the database. Not built: the statement's printed *EMI outstanding* and a typed start figure.
+
 ## 5. The import side (`statedBalance.ts`)
 
 - **For a card on its statement date**, `statedBalances` records:

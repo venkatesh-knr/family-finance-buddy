@@ -77,4 +77,3 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 - CY-I11 — not built: the first-cycle state *started from the statement's previous balance* is not said apart from a cycle, since a balance does not record whether it was a statement's printed previous balance; the other states are said in the close and on the month card (card-cycles.md §8.2, slice 5) — 2026-11-20
 - CY-I9 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
-- CY-I17 — not built: the debit link and the loan-payment guard are in the migration of slice 1 and its pgTAP file; the debt and its outstanding are slice 7 (card-cycles.md §10) — 2026-11-20

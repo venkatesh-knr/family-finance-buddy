@@ -947,6 +947,7 @@ function Commitments({
               cadence={liability.cadence}
               inactive={liability.isClosed}
               privacy={privacy}
+              owed={liability.cardAccountId !== undefined && liability.cardAccountId !== null ? (liability.outstanding === null ? 'from its card’s statements' : `${formatMoney(liability.outstanding, { privacy })} owed`) : undefined}
             >
               <LoanPayments
                 liability={liability}
@@ -987,6 +988,7 @@ function CommitmentRow({
   cadence,
   inactive,
   privacy,
+  owed,
   children,
 }: {
   name: string;
@@ -995,6 +997,8 @@ function CommitmentRow({
   cadence: CommitmentCadence;
   inactive: boolean;
   privacy: boolean;
+  /** A card's EMI debt has no instalment to show: what it owes, in words, in its place. */
+  owed?: string | undefined;
   /** What sits under the row: a loan's payments. */
   children?: React.ReactNode;
 }) {
@@ -1006,8 +1010,14 @@ function CommitmentRow({
         {inactive && <Pill tone="due">not counted</Pill>}
       </span>
       <span className="tabular-nums" style={{ color: 'var(--ink)' }}>
-        {amount === null ? <span className="note">not set</span> : formatMoney(amount, { privacy })}
-        <span className="note"> / {cadence.replace(/_/g, ' ')}</span>
+        {owed !== undefined ? (
+          owed
+        ) : (
+          <>
+            {amount === null ? <span className="note">not set</span> : formatMoney(amount, { privacy })}
+            <span className="note"> / {cadence.replace(/_/g, ' ')}</span>
+          </>
+        )}
       </span>
       {children}
     </li>

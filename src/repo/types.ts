@@ -697,6 +697,8 @@ export interface Liability {
   readonly outstanding: Money | null;
   /** The date that balance was true. A balance without one ages into a wrong figure. */
   readonly outstandingAsOf: IsoDate | null;
+  /** The card whose EMI plans this debt is, when it is one: its outstanding follows that card's statements and is not typed, and no payment is typed against it (card-cycles.md 4a, CY-I17). */
+  readonly cardAccountId?: Uuid | null;
 }
 
 export type PolicyKind =

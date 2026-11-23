@@ -45,7 +45,7 @@ const CAN_PLAN: readonly string[] = ['owner', 'partner'];
 const CATEGORY_COLUMNS = 'id, name, nature, parent_id, is_essential, sort_order, status';
 const BUDGET_COLUMNS = 'id, category_id, fy, cadence, period, planned_minor::text, currency, member_id';
 const LIABILITY_COLUMNS =
-  'id, name, kind, instalment_minor::text, currency, cadence, member_id, status, outstanding_minor::text, outstanding_as_of';
+  'id, name, kind, instalment_minor::text, currency, cadence, member_id, status, outstanding_minor::text, outstanding_as_of, card_account_id';
 const POLICY_COLUMNS =
   'id, name, kind, premium_minor::text, currency, cadence, member_id, status, insurer, policy_last4, cover_minor::text, started_on, premiums_end_on, lapsed_at, renewal_on, note, linked_holding_id';
 
@@ -211,6 +211,7 @@ export async function listPlan(options: {
       isClosed: c.closed,
       outstanding: outstandingOf(row, requireString(row['currency'], 'liability.currency')),
       outstandingAsOf: optionalString(row['outstanding_as_of'], 'liability.outstanding_as_of') as IsoDate | null,
+      cardAccountId: optionalString(row['card_account_id'], 'liability.card_account_id'),
     };
   });
 

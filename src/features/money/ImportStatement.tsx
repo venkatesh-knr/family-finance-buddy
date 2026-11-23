@@ -30,7 +30,8 @@ import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.
 import { monthWord } from './closeMonth.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
-import { cardNoteWords, previewRows, statementDateChoice, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
+import { cardNoteWords, emiDebtWords, previewRows, statementDateChoice, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
+import { cardDebtName, syncCardEmiDebts } from './cardEmiDebt.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 const KIND_WORDS: Record<StatementKind, string> = {
@@ -88,6 +89,8 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   // The statements whose card the person said closes on its statement date, by their place in the list: it is set so when the import is written (card-cycles.md 5).
   // It is the card's, so it is kept by the card's last four and applies to every statement of that card read together.
   const [statementDateFor, setStatementDateFor] = useState<ReadonlySet<string>>(new Set());
+  // The cards whose converted EMIs the person chose not to add to the household's debts, by the card's last four. Adding is the default (card-cycles.md 4a).
+  const [emiDebtOff, setEmiDebtOff] = useState<ReadonlySet<string>>(new Set());
   // The category a person chose for a row, where it differs from the suggestion; an empty string is no category.
   const [chosen, setChosen] = useState<ReadonlyMap<number, string>>(new Map());
   const [label, setLabel] = useState('');
@@ -224,6 +227,22 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
             return local < 0 || resolved[offsetOf(at) + local]?.decision === 'skip';
           },
         });
+  // What a card statement converted to EMI plans, and whether the card's debt is already in the household's debts. Only an owner or a partner records a debt, so for anybody else nothing is offered.
+  const mayRecordDebt = data.viewer.role === 'owner' || data.viewer.role === 'partner';
+  const emiOffer = (read: Read, at: number): { readonly last4: string; readonly converted: bigint; readonly name: string; readonly existing: boolean } | null => {
+    const last4 = read.statement.last4;
+    if (!mayRecordDebt || read.statement.accountType !== 'card' || last4 === null) return null;
+    const converted = balancesOf(read, at).reduce((total, stated) => total + (stated.emiConvertedMinor ?? 0n), 0n);
+    if (converted <= 0n) return null;
+    const card = cardOf(read);
+    const added = read.matched.accountsToAdd.find((account) => account.last4 === last4);
+    return {
+      last4,
+      converted,
+      name: cardDebtName(data.accounts.find((account) => account.type === 'card' && account.last4 === last4) ?? { name: `${added?.institution ?? 'Account'} ••${last4}`, last4 }),
+      existing: card !== undefined && data.cardDebts.some((debt) => debt.cardAccountId === card.id),
+    };
+  };
   const notesOf = (read: Read) => {
     const known = cardOf(read);
     return cardNotes(
@@ -245,6 +264,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
     setReads([]);
     setDecisions(new Map());
     setStatementDateFor(new Set());
+    setEmiDebtOff(new Set());
     setChosen(new Map());
     setProblem(null);
     if (picked.length > 0) void readFrom(picked, 0, '', []);
@@ -301,7 +321,16 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
           return write.kind === 'move' && batchId !== undefined ? [{ move: write.move, batchId }] : [];
         }),
       });
+      // A card's EMI plans as one debt, from what its statements now say: made for a card whose conversions the person did not untick, and kept for one that has it (CY-I17).
+      const addDebtFor = new Set(reads.flatMap((read, at) => (emiOffer(read, at) === null || read.statement.last4 === null || emiDebtOff.has(read.statement.last4) ? [] : [read.statement.last4])));
+      let debts = 0;
+      try {
+        debts = await syncCardEmiDebts({ householdId: data.household.id, role: data.viewer.role, add: (card) => card.last4 !== null && addDebtFor.has(card.last4) });
+      } catch {
+        // The statements are in; a debt that could not be written is added from the card's row on Accounts, so the import is not undone for it.
+      }
       const parts = [`${String(total.entries)} ${total.entries === 1 ? 'expense' : 'expenses'} added`];
+      if (debts > 0) parts.push(`${String(debts)} card ${debts === 1 ? 'debt' : 'debts'} for EMI plans updated`);
       if (total.credits > 0) parts.push(`${String(total.credits)} money in added`);
       if (made.created > 0) parts.push(`${String(made.created)} ${made.created === 1 ? 'move' : 'moves'} between your accounts added`);
       if (total.witnesses > 0) parts.push(`${String(total.witnesses)} added to entries you already had`);
@@ -571,7 +600,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                   const balances = balancesOf(read, at);
                   const notes = notesOf(read);
                   const onItsDate = cycleOf(read) === 'statement';
-                  if (balances.length === 0 && notes.length === 0) return null;
+                  if (balances.length === 0 && notes.length === 0 && emiOffer(read, at) === null) return null;
                   const amount = (minor: bigint): string => (read.statement.accountType === 'card' && minor < 0n ? `${show(-minor)} in credit` : show(minor));
                   return (
                     <div key={at} data-testid="statement-balances">
@@ -605,6 +634,41 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                           {cardNoteWords(note, { amount, date: formatShortDate, month: (day) => monthWord(day.slice(0, 7)) })}
                         </p>
                       ))}
+                      {(() => {
+                        const offer = emiOffer(read, at);
+                        if (offer === null) return null;
+                        const words = emiDebtWords(offer, show);
+                        return words.label === null ? (
+                          <>
+                            <p className="note mt-1" data-testid="statement-emi-debt">
+                              {words.note}
+                            </p>
+                            <p className="note mt-1">{words.explained}</p>
+                          </>
+                        ) : (
+                          <>
+                          <label className="mt-1.5 flex items-start gap-2" data-testid="statement-emi-debt">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5"
+                              checked={!emiDebtOff.has(offer.last4)}
+                              onChange={(event) => {
+                                setEmiDebtOff((was) => {
+                                  const next = new Set(was);
+                                  if (event.target.checked) next.delete(offer.last4);
+                                  else next.add(offer.last4);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="text-caption" style={{ color: 'var(--ink-2)' }}>
+                              {words.label}
+                            </span>
+                          </label>
+                          <p className="note mt-1">{words.explained}</p>
+                          </>
+                        );
+                      })()}
                       {canSwitch(read) && read.statement.last4 !== null && (
                         <>
                           <button

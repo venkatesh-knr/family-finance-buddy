@@ -16,7 +16,7 @@ import type { Account, Liability, LoanPayment } from '../../repo/types.ts';
 import { Button, Field, Pill, Problem } from '../../ui/primitives.tsx';
 import { PaidFromField } from '../holdings/PaidFromField.tsx';
 import { recentlyNamed } from '../holdings/paidFrom.ts';
-import { accountLabelFor, loanPaymentChoices, loanPaymentOf, suggestedAmount } from './loanPayment.ts';
+import { accountLabelFor, CARD_DEBT_REFUSAL, loanPaymentChoices, loanPaymentOf, suggestedAmount } from './loanPayment.ts';
 
 export function LoanPayments({
   liability,
@@ -54,6 +54,8 @@ export function LoanPayments({
 
   const choices = useMemo(() => loanPaymentChoices(accounts, liability.currency, recentlyNamed(mine)), [accounts, liability.currency, mine]);
   const panelId = `loan-payments-${liability.id}`;
+  // A card's EMI debt takes no payment typed against it: its instalments are counted from the card's statements (CY-I17).
+  const isCardDebt = liability.cardAccountId !== undefined && liability.cardAccountId !== null;
 
   const record = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -166,8 +168,9 @@ export function LoanPayments({
             </ul>
           )}
 
-          {editable && paymentsState === 'read' && privacy && <p className="note">Amounts are hidden, so a payment cannot be typed. Show them to record one.</p>}
-          {editable && paymentsState === 'read' && !privacy && (
+          {isCardDebt && <p className="note">{CARD_DEBT_REFUSAL}</p>}
+          {editable && !isCardDebt && paymentsState === 'read' && privacy && <p className="note">Amounts are hidden, so a payment cannot be typed. Show them to record one.</p>}
+          {editable && !isCardDebt && paymentsState === 'read' && !privacy && (
             <form
               aria-label={`Record a payment on ${liability.name}`}
               className="flex flex-wrap items-end gap-3"
