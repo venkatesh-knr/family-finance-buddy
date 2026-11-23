@@ -6,6 +6,8 @@
  * read as more certain than it is. Pure: amounts are integer minor units of one currency, passed in; nothing here reads a database or a clock.
  */
 
+import type { Money } from '../lib/money.ts';
+
 export type SpendSource = 'balances' | 'stated' | 'itemised';
 
 export interface SpendInput {
@@ -95,19 +97,37 @@ export function countBySource(sources: readonly SpendSource[]): Record<SpendSour
 
 /**
  * The statements months of cover may use: those of months that were not closed from balances. Balances beat a statement (SC-I17), so a closed month is never
- * averaged at its stated figure; it is averaged as it is for every month, itemised, and counted so.
+ * averaged at its stated figure; the balances' figure is what it is averaged at, for an owner or a partner who can read the close, and itemised for anyone else.
  */
 export function statementsForCover<T extends { readonly month: string }>(statements: readonly T[], closedMonths: ReadonlySet<string>): readonly T[] {
   return statements.filter((statement) => !closedMonths.has(statement.month));
 }
 
 /**
- * The source of each month of the window months of cover is averaged over (section 11.4): *stated* where the month has a statement, whose figure the average
- * then takes as stated, and *itemised* for every other. A month closed from balances is not told apart here: months of cover is averaged over what was itemised,
- * and says so, rather than naming a source it does not use.
+ * The source of each month of the window months of cover is averaged over (section 11.4; the owner, 23 November 2026): *balances* where the month was closed from them, which beat a
+ * statement (SC-I17), *stated* where it has a statement, and *itemised* for every other.
  */
-export function coverSources(window: readonly string[], statedMonths: ReadonlySet<string>): readonly SpendSource[] {
-  return window.map((month) => (statedMonths.has(month) ? 'stated' : 'itemised'));
+export function coverSources(window: readonly string[], statedMonths: ReadonlySet<string>, closedMonths: ReadonlySet<string> = new Set()): readonly SpendSource[] {
+  return window.map((month) => (closedMonths.has(month) ? 'balances' : statedMonths.has(month) ? 'stated' : 'itemised'));
+}
+
+/**
+ * What one month contributes to months of cover, each currency from its best source on its own: the close's spent where the close covers that currency, else a stated spend, else what was
+ * itemised there. The three are never added or blended (SC-I15), and a currency only a lower source has is still counted, so it is not lost. Amounts are in their own currencies; the caller
+ * converts and adds them.
+ */
+export function coverAmounts(input: {
+  readonly closed: readonly Money[] | null;
+  readonly stated: readonly Money[];
+  readonly itemised: readonly Money[];
+}): Money[] {
+  const closedIn = new Set((input.closed ?? []).map((amount) => amount.currency));
+  const statedIn = new Set(input.stated.filter((amount) => !closedIn.has(amount.currency)).map((amount) => amount.currency));
+  return [
+    ...(input.closed ?? []),
+    ...input.stated.filter((amount) => !closedIn.has(amount.currency)),
+    ...input.itemised.filter((amount) => !closedIn.has(amount.currency) && !statedIn.has(amount.currency)),
+  ];
 }
 
 /** The words under months of cover that say how its months were made, and why the itemised ones matter; null when there are no months to say. */

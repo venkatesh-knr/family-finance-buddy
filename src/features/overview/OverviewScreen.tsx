@@ -221,6 +221,7 @@ export function OverviewScreen({
     display,
     rates,
     emergency,
+    role: listing?.viewer.role ?? null,
   });
   // How the months the cover is averaged over were made: said only beside a figure.
   const coverNote = cover.status === 'ready' && cover.months !== null ? coverCaveat(countsOf(cover.sources)) : null;
