@@ -77,3 +77,16 @@ suites (`scripts/lib/sql-tap.mjs`), and counts a file only when its own assertio
 
 - CY-I11 — not built: the first-cycle state *started from the statement's previous balance* is not said apart from a cycle, since a balance does not record whether it was a statement's printed previous balance; the other states are said in the close and on the month card (card-cycles.md §8.2, slice 5) — 2026-11-20
 - CY-I9 — not built: the domain of slice 2 (card-cycles.md §10) — 2026-11-20
+
+## password-reset.md
+
+- PW-I1 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the request screen) — 2026-11-26
+- PW-I2 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the reset and the sign-in after it) — 2026-11-26
+- PW-I3 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the arrival of the link) — 2026-11-26
+- PW-I4 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the recovery stage) — 2026-11-26
+- PW-I5 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the new-password form) — 2026-11-26
+- PW-I6 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the global sign-out) — 2026-11-26
+- PW-I7 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the recovery email) — 2026-11-26
+- PW-I8 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the reset calls) — 2026-11-26
+- PW-I9 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the request button) — 2026-11-26
+- PW-I10 — not built: designed on 26 November 2026, awaiting the owner's answers in password-reset.md §11 and slice 2 of its §9 (the sign-in screens) — 2026-11-26

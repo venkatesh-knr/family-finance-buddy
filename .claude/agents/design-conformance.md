@@ -48,6 +48,7 @@ When two documents disagree, this is the order. Say which one you applied.
    the owner on 20 November 2026, every question in its section 12 answered, and built in the slices of its section 10**, so read
    `docs/build-plan.md` and `conformance.md` for which are built; **it amends `ledger-income.md` and `spending-capture.md` as its section 11
    lists**, so on what it amends this document applies; a household with no card on its statement date must see no change, CY-I1),
+   `docs/design/password-reset.md` (a forgotten password, recovered by a link to the account's address; **designed on 26 November 2026, nothing built, its questions open for the owner**, so nothing is expected of the code; the authenticator is still asked for, PW-I2),
    `docs/design/gold.md` (the gold kind and the jeweller's gold savings scheme; not built),
    `docs/design/detail-level.md` (the per-viewer detail preference) and
    `docs/design/holdings.md` (how Holdings lists, groups, filters and opens a
