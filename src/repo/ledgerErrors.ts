@@ -32,3 +32,12 @@ export function asLedgerError(error: ProviderError): Error {
       return new Error(error.message);
   }
 }
+
+/**
+ * An account's refusals: as the ledger's, except that a guard of the database written as a sentence for a person (a card's cycle that cannot be switched without changing a closed month,
+ * card-cycles.md 6.1) is passed on as it is. A constraint's own message starts "new row for relation" and is not.
+ */
+export function asAccountError(error: ProviderError): Error {
+  if (error.code === '23514' && !error.message.startsWith('new row for relation')) return new Error(error.message);
+  return asLedgerError(error);
+}

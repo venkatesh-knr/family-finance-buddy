@@ -1113,6 +1113,8 @@ export interface Account {
   readonly archivedOn?: IsoDate | null;
   /** When a card's month closes: at month end (the default, and absent) or on its statement date (docs/design/card-cycles.md). Always month end for a bank account. */
   readonly cycleEnds?: 'month_end' | 'statement';
+  /** The first month a card is on its statement date, `YYYY-MM`; the months before it were closed at month end and stay as they were (card-cycles.md 6.1). Absent is every month. */
+  readonly cycleFrom?: string;
 }
 
 export interface NewAccount {

@@ -10,11 +10,11 @@
 
 import { supabase } from './client.ts';
 import { checkAccount, checkBalance } from './ledgerChecks.ts';
-import { asLedgerError } from './ledgerErrors.ts';
+import { asAccountError, asLedgerError } from './ledgerErrors.ts';
 import { toAccount, toAccountBalance } from './ledgerMapping.ts';
 import type { Account, AccountBalance, AccountPatch, NewAccount, NewBalance, Uuid } from './types.ts';
 
-const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, status, archived_at, cycle_ends';
+const ACCOUNT_COLUMNS = 'id, household_id, member_id, name, institution, type, currency, account_last4, is_foreign, opened_on, status, archived_at, cycle_ends, cycle_from';
 const BALANCE_COLUMNS = 'id, household_id, account_id, as_at, balance_minor::text, currency, source, note, emi_converted_minor::text, emi_principal_minor::text';
 
 const text = (value: string | null | undefined): string | null => (value === undefined || value === null || value.trim() === '' ? null : value.trim());
@@ -73,7 +73,7 @@ export async function updateAccount(id: Uuid, patch: AccountPatch): Promise<void
   }
   if (Object.keys(row).length === 0) return;
   const { data, error } = await supabase().from('account').update(row).eq('id', id).select('id');
-  if (error !== null) throw asLedgerError(error);
+  if (error !== null) throw asAccountError(error);
   if ((data ?? []).length === 0) throw new Error('That account is not yours to change.');
 }
 

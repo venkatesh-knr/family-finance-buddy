@@ -172,7 +172,31 @@ function planBeganEarlier(rows: readonly AccountBalance[], upTo: IsoDate): boole
   return owed((asAt) => asAt <= upTo) < 0n && owed((asAt) => asAt < upTo) >= 0n;
 }
 
-const isStatementCard = (account: Account): boolean => account.type === 'card' && account.cycleEnds === 'statement';
+/**
+ * Whether a card closes the given month on its statement date: it is on its statement date, and the month is its first month or after it. The months before were closed at month end and stay
+ * as they were (card-cycles.md 6.1, CY-I18); a card with no first month is on its statement date in every month.
+ */
+const isStatementCard = (account: Account, month: string): boolean =>
+  account.type === 'card' && account.cycleEnds === 'statement' && (account.cycleFrom === undefined || month >= account.cycleFrom);
+
+/**
+ * The dues a statement-date card's windows are worked out from. Those of its first month and after, and, for a card switched from month end, the one due before them that opens the first
+ * window: the later of the last month-end due and a statement's due dated between it and the first month (card-cycles.md 6.1), so no day is counted twice. A statement's own previous balance,
+ * dated mid-month in a month already closed, is earlier than the month-end due and opens nothing.
+ */
+function windowDues(balances: readonly AccountBalance[], account: Account): AccountBalance[] {
+  const dues = cycleDues(balances, account.id);
+  if (account.cycleFrom === undefined) return dues;
+  const start = `${account.cycleFrom}-01`;
+  const own = balances.filter((b) => b.accountId === account.id && b.asAt < start && (b.source === 'statement' || b.asAt === lastDayOf(b.asAt.slice(0, 7))));
+  const byDay = new Map<string, AccountBalance>();
+  for (const b of own) {
+    const held = byDay.get(b.asAt);
+    if (held === undefined || (b.source === 'statement' && held.source !== 'statement')) byDay.set(b.asAt, b);
+  }
+  const anchor = [...byDay.values()].sort((a, b) => (a.asAt < b.asAt ? 1 : -1))[0];
+  return [...(anchor === undefined ? [] : [anchor]), ...dues.filter((due) => due.asAt >= start)];
+}
 
 /**
  * The dues of a statement-date card that the close reads: every statement's, and a typed one only in a month that has no statement's. One cycle, one figure (CY-I13): a typed 17 October and
@@ -197,9 +221,9 @@ export function cycleDues(balances: readonly AccountBalance[], accountId: string
 export function cardCycles(input: { readonly month: string; readonly accounts: readonly Account[]; readonly balances: readonly AccountBalance[]; readonly closedWithout?: ClosedWithout }): CardCycle[] {
   const lastDay = lastDayOf(input.month);
   return inUse(input.accounts, input.month)
-    .filter(isStatementCard)
+    .filter((account) => isStatementCard(account, input.month))
     .map((account): CardCycle => {
-      const dues = cycleDues(input.balances, account.id);
+      const dues = windowDues(input.balances, account);
       const inMonth = dues.filter((due) => due.asAt.slice(0, 7) === input.month);
       const closingRow = inMonth[inMonth.length - 1];
       if (closingRow === undefined) {
@@ -214,7 +238,8 @@ export function cardCycles(input: { readonly month: string; readonly accounts: r
         return { kind: 'first-left-out', accountId: account.id, to: closingRow.asAt, closing: closingRow.balance, emiConvertedMinor, emiPrincipalMinor };
       }
       // The earliest due only opens the first cycle that counts, so its own EMI figures are not counted and cannot make a plan look begun earlier.
-      const earlier = planBeganEarlier(dues.slice(1), closingRow.asAt) ? ({ planBeganEarlier: true } as const) : {};
+      // From the card's whole history, not from the windows: a conversion recorded on a month-end due before a switch is still a conversion the app has.
+      const earlier = planBeganEarlier(cycleDues(input.balances, account.id).slice(1), closingRow.asAt) ? ({ planBeganEarlier: true } as const) : {};
       return {
         kind: 'cycle',
         accountId: account.id,
@@ -257,7 +282,7 @@ export function typedDueBalances(input: { readonly month: string; readonly accou
   const used = inUse(input.accounts, input.month);
   for (const [accountId, due] of Object.entries(input.typed)) {
     const account = used.find((each) => each.id === accountId);
-    if (account === undefined || !isStatementCard(account)) continue;
+    if (account === undefined || !isStatementCard(account, input.month)) continue;
     if (due.amount.trim() === '' && due.date.trim() === '' && (due.converted ?? '').trim() === '' && (due.principal ?? '').trim() === '') continue;
     if (due.amount.trim() === '') {
       problems[accountId] = 'Type the amount due.';
@@ -517,7 +542,7 @@ export function lastBalanceMonth(input: { readonly today: string; readonly accou
     const closesOn = lastDayOf(month);
     // A statement-date card has a balance in a month when one is dated anywhere in it: its statement's.
     const has = (account: Account): boolean =>
-      isStatementCard(account) ? input.balances.some((b) => b.accountId === account.id && b.asAt.slice(0, 7) === month) : balanceOn(input.balances, account.id, closesOn) !== null;
+      isStatementCard(account, month) ? input.balances.some((b) => b.accountId === account.id && b.asAt.slice(0, 7) === month) : balanceOn(input.balances, account.id, closesOn) !== null;
     if (inUse(input.accounts, month).some(has)) return month;
     month = addMonths(`${month}-01`, -1).slice(0, 7);
   }
@@ -553,5 +578,5 @@ export function isClosed(input: { readonly month: string; readonly accounts: rea
       .filter((cycle) => cycle.kind === 'waiting')
       .map((cycle) => cycle.accountId),
   );
-  return used.every((account) => (isStatementCard(account) ? !waiting.has(account.id) : balanceOn(input.balances, account.id, closesOn) !== null));
+  return used.every((account) => (isStatementCard(account, input.month) ? !waiting.has(account.id) : balanceOn(input.balances, account.id, closesOn) !== null));
 }

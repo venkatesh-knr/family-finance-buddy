@@ -59,7 +59,7 @@ So:
   - **4, from when and switching back:** *"No real data is available now, only demo data,
     and checking is happening, so we need not consider old-data correction scenarios for
     now."* A card's cycle can be switched either way at any time, and it applies to every
-    month (§6). Protecting closed months on a switch is deferred (§6.1, `docs/later.md`).
+    month (§6) while only demo data existed. Protecting closed months on a switch is §6.1: its schema and domain are built (27 November 2026), its screens are not.
 
 ## 1. The problem, in the code as it is
 
@@ -80,7 +80,7 @@ close nothing, and the person must type a month-end due that no document prints.
 
 **A card has a cycle:** *ends at month end* (the default, today's behaviour) or *ends on
 its statement date*. A bank account has no choice: it is always month end. A card on its
-statement date uses it for every month (§6).
+statement date uses it from its first month on it, which is every month for a card with no month closed at month end before it (§6, §6.1).
 
 The boundaries are **the dates of the card's own statements**, as recorded balances. They
 are not a stored day number:
@@ -362,7 +362,7 @@ So:
   worked out from all of a card's statements whenever the close is read; nothing is stored
   per window.
 
-## 6. The schema (proposed; not applied)
+## 6. The schema (slice 1 applied; the SQL below is as proposed, and §6.1's is in its own migration)
 
 On `public.account`:
 
@@ -376,20 +376,31 @@ any card, and a contributor for their own (`ledger-income.md` §1a; the owner, 2
 only demo data exists, so old-data correction is not considered now). Spent is derived,
 never stored, so a switch simply works every month out again under the new rule. Balances
 already recorded are kept whichever rule is in force; each rule reads the ones it needs.
+**Superseded for real households by §6.1** (`account.cycle_from`, below): a card switched to its
+statement date keeps the months before its first month as they were closed.
 
-### 6.1 Deferred: protecting closed months when real households switch
+### 6.1 Protecting closed months when a card is switched
 
 **A launch blocker** (the owner, 23 November 2026): `commercial-launch.md` section 11 requires it before the first real, non-demo household. Once it is built, the import's *Use the statement date* applies from the first open month.
 
-Written down so it is not lost, and **not built now**. It is also in `docs/later.md`.
-Before real households use the app, a switch should leave months already closed as they
-were. That needs:
+**Built, 27 November 2026 — schema and domain** (`supabase/migrations/20261127120000_card_cycle_from.sql` is shown for review; `closeMonth.ts`; pgTAP `card_cycles_cycle_from.test.sql`). **Not built: its screens** — the first month on the card's row and in its setting, the sentence when a switch is refused, and the import's *Use the statement date* from the first open month. Until that slice, three sentences the screens already say stay as §8.1 and the CardSetting board have them and are no longer true of a card with months closed at month end: *Every month will be worked out again with this card's statements* (the setting and the import's preview), *…to close on its statement date, for every month* (the import's confirmation) and *the month its date falls in takes this cycle* (the import's note). They are corrected with the screens, as a proposed departure. It is also in `docs/later.md`.
+A switch leaves months already closed as they were:
 
-- a `cycle_from` month;
-- a trigger refusing a start before the last month-end close;
-- switching back allowed only until a statement under the rule is in use;
+- **A month is closed for a card when it has a due dated on that month's last day** (the owner,
+  27 November 2026: *month-end due recorded*). A closed month is derived, never stored, as
+  everywhere in the close; no table was added for it.
+- an `account.cycle_from` month, the first month a card is on its statement date, null for every
+  month; the months before it are read by the month-end rule;
+- a trigger that sets it to the month after the card's latest month-end due when the card is
+  switched, refuses an earlier month and lets a later one stand, and refuses to edit it otherwise;
+- switching back allowed only while no due is dated in or after `cycle_from` (any due, for a card
+  with no `cycle_from`); it clears `cycle_from`;
 - the first statement window opening from the later of its previous-balance date and the
-  last month-end due, so no day is counted twice.
+  last month-end due, so no day is counted twice: the window opens at the month-end due before
+  `cycle_from`, and the statement's own previous balance, dated in a month already closed, opens
+  nothing;
+- a card is left out of a close only for a month it closes on its statement date, and the
+  database's `household_private_close` counts it over the calendar month before `cycle_from`.
 
 The example the owner asked for, kept for that day: a card billed on the 17th, closed at
 month end with dues of ₹15,000 on 30 September and ₹24,000 on 31 October, switched on 20
@@ -423,7 +434,7 @@ alter table public.account
 comment on column public.account.cycle_ends is
   'When a card''s month closes: at month end (default) or on its statement date. Always month_end for a bank account.';
 -- A switch applies to every month, both ways (the owner, 20 November 2026: demo data only for now).
--- Protecting closed months on a switch is deferred: card-cycles.md 6.1 and docs/later.md.
+-- Protecting closed months on a switch is card-cycles.md 6.1 (account.cycle_from, migration 20261127120000).
 
 -- The export lists `account` already; its two new columns are added to the complete backup's Accounts sheet
 -- (and to the report's Accounts sheet as "Bill closes": "Month end" or "On its statement date"), in the same change.
@@ -847,10 +858,16 @@ Each slice is vertical, has its tests first for anything numeric, and its own pu
 10. **A bill converted to EMIs:** *"converted amount as spent"* (§4a).
 
 4. **From when, and switching back:** *"no real data is available now, only demo data, so
-   we need not consider old-data correction scenarios for now."* A switch applies to every
-   month, either way. Protection is deferred (§6.1).
+   we need not consider old-data correction scenarios for now."* A switch applied to every
+   month, either way, while only demo data existed. Protection of closed months is §6.1.
 
-Nothing is open.
+**Raised by the review of 27 November 2026, for the owner (§6.1):**
+
+11. **A later first month.** The database lets a switch ask for a first month later than the month after the last month-end due, leaving the months between at month end; no screen asks for one. Keep it, or always start at the month after the last close?
+12. **A statement dated on a month's last day.** A due dated on the last day of a month counts as that month being closed at month end, whatever its source, so a card billed on the 31st is closed by its statement. Confirm.
+13. **Who may switch.** The guard is security definer so that a contributor switching their own card is held to the same rule without being able to read every due. Confirm.
+14. **A statement beside a typed month-end due.** If a statement dated on a month's last day is imported for a month already closed by a typed due of a different amount, the close prefers the statement and the month's figure changes (a rule older than this slice: a statement beats a typed due on the same day). Should an import refuse, or warn on, a statement that would change a month closed before the switch?
+15. **The sentences that say "every month"** (above): their replacement is part of the screens slice and a proposed departure there.
 
 ## Invariants
 
@@ -884,6 +901,8 @@ Nothing is open.
 
 **CY-I17 — A card's EMI plans are one debt per card, linked to the card, whose outstanding follows its statements (before + converted − principal billed);** its instalments are counted as paid to loans from the card's statement only, and the database refuses a loan payment typed against it. (§4a, §6)
 
+**CY-I18 — A card switched to its statement date keeps the months already closed at month end as they were:** a switch starts from the month after its latest month-end due, never earlier; it cannot go back once a due is dated in or after that month; and the first window opens at the month-end due, so no day is counted twice. (§6.1)
+
 ## Tests
 
 - CY-I1: every existing test of `money-month.ts` and `closeMonth.ts` passes unchanged. A property test with random households of banks and month-end cards gives identical figures before and after the change.
@@ -900,4 +919,5 @@ Nothing is open.
 - CY-I13: a typed due of 2864000 on 17 Oct, then a statement of 18 Oct with 2864000, leaves October's closing at the statement's figure, keeps the typed row, and the preview's text names both dates. With 2900000 typed, the preview names the difference of 36000. After a statement is imported, the close offers no input for that card.
 - CY-I14: pgTAP and domain. A partner closes October without the card. The card's left is 0 and a 25 Oct payment of 624000 is in spent. Adding the 17 Oct statement then gives the §9 (b) figures for October, with no change to the stored choice. A contributor's insert is refused.
 - CY-I15: a cycle with a purchase of 6000000, converted in the same cycle (`emi_converted_minor` 6000000), counts 6000000 in spent and −6000000 in paid to loans. The next cycle's instalment, with principal 500000 and interest and GST of 66000, counts 66000 in spent and 500000 in paid to loans. The gap is 0 in both.
+- CY-I18: pgTAP and domain. For the design's card (dues of 30 September and 31 October, the statement of 17 October printing a previous balance, switched on 20 November): `cycle_from` is 1 November, October is closed as it was, November's window is 1 to 17 November opening at the 31 October due, December's is 18 November to 17 December; an earlier start is refused, switching back is refused once the 17 November statement is in, and the database's private close counts a 20 October refund in October's.
 - CY-I17: a conversion of 6000000 with the debt ticked makes one `credit_card` debt linked to the card, outstanding 6000000 at the statement date; the next statement, with principal 500000, leaves 5500000. A second conversion on the same card adds to the same debt. A `loan_payment` against it is refused (pgTAP). Net worth counts the card's due once and the debt's 5500000 once.

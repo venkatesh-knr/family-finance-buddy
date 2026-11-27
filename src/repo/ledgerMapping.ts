@@ -57,6 +57,7 @@ export function toAccount(raw: unknown): Account {
     archivedOn: archivedDay(row['archived_at']),
     // At month end is the default and is not said: only a card on its statement date carries it (card-cycles.md).
     ...(requireCycle(row['cycle_ends']) === 'statement' ? { cycleEnds: 'statement' as const } : {}),
+    ...(typeof row['cycle_from'] === 'string' ? { cycleFrom: (row['cycle_from'] as string).slice(0, 7) } : {}),
   };
 }
 
