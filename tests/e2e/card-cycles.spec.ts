@@ -79,6 +79,8 @@ test('a card is set to close on its statement date, says so on its row, and the 
     await expect(close).toBeVisible();
     await expect(close.getByTestId('close-card-cycle')).toContainText(`Waiting for its statement dated in ${monthBefore()}`);
     await expect(close.getByTestId('close-card-cycle')).toContainText('Import it from Money → Import a statement.');
+    // The calendar mark: drawn for a card that waits on a date, with the words saying the same.
+    await expect(close.getByTestId('close-card-waiting-mark')).toBeVisible();
     await expect(close.getByRole('region', { name: new RegExp(name) }).getByLabel(/^Closing balance/)).toHaveCount(0);
     await expect(close.getByTestId('close-cycle-explained')).toContainText(`Each card on its statement date uses the cycle that ended in ${monthBefore()}`);
     await expect(close.getByTestId('close-cycle-explained')).toContainText('1 waiting for a statement');

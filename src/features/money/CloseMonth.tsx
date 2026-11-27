@@ -400,13 +400,26 @@ export function CloseMonth({
                     <h3 className="label">{row.title}</h3>
                     {cycleOf.get(row.accountId) !== undefined ? (
                       <div className="flex flex-col gap-1.5">
-                        <p className="note" data-testid="close-card-cycle">
+                        <p className="note flex items-start gap-1.5" data-testid="close-card-cycle">
+                          {cycleOf.get(row.accountId)?.kind === 'waiting' && (
+                            // The calendar mark the close uses for what waits on a date (card-cycles.md 8.2): drawn, never the only sign, since the words say it too.
+                            <span className="attention-action-mark" aria-hidden="true" data-testid="close-card-waiting-mark">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="5" width="18" height="16" rx="2" />
+                                <path d="M3 10h18" />
+                                <path d="M8 3v4" />
+                                <path d="M16 3v4" />
+                              </svg>
+                            </span>
+                          )}
+                          <span>
                           {cycleRowWords(cycleOf.get(row.accountId) as NonNullable<ReturnType<typeof cycleOf.get>>, {
                             month,
                             lateDay: lateStatementDay(data.balances, row.accountId),
                             nextMonth: nextDueMonth(data.balances, row.accountId, month),
                             shown: (value) => shown(value),
                           })}
+                          </span>
                         </p>
                         {cycleOf.get(row.accountId)?.kind === 'closed-without' && canCloseWithout && (
                           <button
