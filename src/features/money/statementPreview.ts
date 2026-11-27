@@ -6,6 +6,7 @@
  * is left out; the last is folded on the screen, since it is mostly what is not spending and the person need only look at it if something is missing.
  */
 
+import { cycleSwitchSentence } from './cardCycleStart.ts';
 import { formatShortDate, type IsoDate } from '../../lib/dates.ts';
 import type { StatementLine } from '../../domain/statement/common.ts';
 import type { ExistingEntry, MatchedRow } from '../../domain/statement/match.ts';
@@ -91,9 +92,9 @@ export function emiDebtWords(
  * The choice to close a month-end card on its statement date, offered under a card statement dated off a month end (card-cycles.md 5). Pressed, the card's statement closes the month at once in
  * the preview; the setting is written with the import, after the fresh code, and the label turns into the way to undo it before then.
  */
-export function statementDateChoice(chosen: boolean): { readonly label: string; readonly sentence: string | null } {
+export function statementDateChoice(chosen: boolean, firstMonth: string | null = null): { readonly label: string; readonly sentence: string | null } {
   return chosen
-    ? { label: 'Keep month end', sentence: 'Every month will be worked out again with this card’s statements. It is saved when you press Import, and not before.' }
+    ? { label: 'Keep month end', sentence: `${cycleSwitchSentence({ to: 'statement', firstMonth })} It is saved when you press Import, and not before.` }
     : { label: 'Use the statement date for this card', sentence: null };
 }
 

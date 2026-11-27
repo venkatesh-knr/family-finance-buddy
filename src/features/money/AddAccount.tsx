@@ -17,6 +17,7 @@ import { Select } from '../../ui/Select.tsx';
 import { Field, Problem, RequiredKey, RequiredMark } from '../../ui/primitives.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
 import { TYPE_WORD } from './accountRows.ts';
+import { cycleSwitchSentence, firstStatementMonth } from './cardCycleStart.ts';
 import type { AccountsData } from './useAccounts.ts';
 
 const TYPES: readonly AccountType[] = ['savings', 'current', 'card'];
@@ -234,7 +235,7 @@ export function AddAccount({
                   </span>
                   {isEdit && cycleEnds !== (editing.cycleEnds ?? 'month_end') && (
                     <span className="field-help" data-testid="account-cycle-change">
-                      Every month will be worked out again with this card’s statements.
+                      {cycleSwitchSentence({ to: cycleEnds, firstMonth: firstStatementMonth(data.balances.filter((b) => b.accountId === editing.id).map((b) => b.asAt)) })}
                     </span>
                   )}
                 </div>

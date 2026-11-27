@@ -61,7 +61,7 @@ test('a card is set to close on its statement date, says so on its row, and the 
     await expect(change).toBeVisible();
     await expect(change.getByTestId('account-cycle-change')).toHaveCount(0);
     await change.getByRole('button', { name: 'At month end' }).click();
-    await expect(change.getByTestId('account-cycle-change')).toContainText('Every month will be worked out again');
+    await expect(change.getByTestId('account-cycle-change')).toContainText('close at month end again');
     await change.getByRole('button', { name: 'On its statement date' }).click();
     await expect(change.getByTestId('account-cycle-change')).toHaveCount(0);
     await change.getByRole('button', { name: 'Close Change an account' }).click();

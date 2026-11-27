@@ -177,7 +177,7 @@ export async function readMatchingContext(input: {
     existingTransfers,
     cardDues,
     memberOf,
-    accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type, ...(account.cycleEnds === undefined ? {} : { cycleEnds: account.cycleEnds }) })),
+    accounts: accounts.map((account) => ({ id: account.id, last4: account.last4, type: account.type, ...(account.cycleEnds === undefined ? {} : { cycleEnds: account.cycleEnds }), ...(account.cycleFrom === undefined ? {} : { cycleFrom: account.cycleFrom }) })),
     knownLineHashes: known,
   };
 }
