@@ -83,6 +83,8 @@ export interface KnownAccount {
   readonly type: 'savings' | 'current' | 'card';
   /** A card that closes on its statement date says so; absent is at month end (card-cycles.md). */
   readonly cycleEnds?: 'month_end' | 'statement';
+  /** The first month it closes on its statement date, `YYYY-MM`; absent is every month (card-cycles.md 6.1). */
+  readonly cycleFrom?: string;
 }
 
 export type SkipReason = 'already-imported' | 'card-payment' | 'emi-principal' | 'money-in' | 'investment' | 'own-transfer' | 'credit-typed' | 'loan-money' | 'move-recorded' | 'emi-conversion';

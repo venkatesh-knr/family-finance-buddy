@@ -143,6 +143,11 @@ describe('a card that closes on its statement date (card-cycles.md 8.1)', () => 
     expect(accountRow(card, { members, balance: null, statementDay: 17 }).sub).toBe('Card · Venkat · bill closes on its statement date (17th lately)');
   });
 
+  it('CY-I18 — says from which month a card switched after months were closed at month end is on its statement date', () => {
+    expect(accountRow({ ...card, cycleFrom: '2026-11' }, { members, balance: null, statementDay: 17 }).sub).toBe('Card · Venkat · bill closes on its statement date (17th lately) from November 2026');
+    expect(accountRow({ ...card, cycleFrom: '2026-11' }, { members, balance: null }).sub).toBe('Card · Venkat · bill closes on its statement date from November 2026');
+  });
+
   it('CY-I1 — says nothing of it for a card at month end, or for a bank account', () => {
     expect(accountRow(account({ type: 'card', name: 'HDFC Regalia', last4: '1188' }), { members, balance: null, statementDay: 17 }).sub).not.toContain('statement date');
     expect(accountRow(account({}), { members, balance: null }).sub).not.toContain('statement date');

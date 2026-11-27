@@ -30,6 +30,7 @@ import { Field, PasswordField, Problem, RequiredKey } from '../../ui/primitives.
 import { monthWord } from './closeMonth.ts';
 import { Select } from '../../ui/Select.tsx';
 import { Stepper } from '../../ui/Stepper.tsx';
+import { monthYear, firstStatementMonth, statementBeforeFirstMonth } from './cardCycleStart.ts';
 import { cardNoteWords, emiDebtWords, previewRows, statementDateChoice, type PreviewGroup, type PreviewRow } from './statementPreview.ts';
 import { cardDebtName, syncCardEmiDebts } from './cardEmiDebt.ts';
 import type { AccountsData } from './useAccounts.ts';
@@ -201,6 +202,17 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
   // said so here) states its due on its statement date and the one before its period; any other account only a balance on a month's last day.
   const today = istCalendarDate(new Date());
   const cardOf = (read: Read) => (read.statement.accountType === 'card' && read.statement.last4 !== null ? read.context.accounts.find((account) => account.type === 'card' && account.last4 === read.statement.last4) : undefined);
+  /** The month the card would start on its statement date, from the month-end dues it has: the months before stay as they were closed (card-cycles.md 6.1). Null for none, or for a new card. */
+  const firstMonthOf = (read: Read): string | null => {
+    const card = cardOf(read);
+    return card === undefined ? null : firstStatementMonth(read.context.cardDues.filter((due) => due.accountId === card.id).map((due) => due.asAt));
+  };
+  /** What the confirmation says of the cards switched to their statement date here: each with the month it starts from, or every month when none was closed at month end. */
+  const switchedWords = (): string => {
+    const firsts = [...statementDateFor].map((last4) => ({ last4, first: firstMonthOf(reads.find((read) => read.statement.last4 === last4) ?? (reads[0] as Read)) }));
+    const list = firsts.map(({ last4, first }) => `••${last4}${first === null ? '' : ` (from ${monthYear(first)})`}`).join(', ');
+    return `${list} to close on its statement date${firsts.every(({ first }) => first === null) ? ', for every month' : ''}`;
+  };
   const switched = (read: Read): boolean => read.statement.last4 !== null && statementDateFor.has(read.statement.last4);
   const cycleOf = (read: Read): CycleEnds => (read.statement.accountType === 'card' && (cardOf(read)?.cycleEnds === 'statement' || switched(read)) ? 'statement' : 'month_end');
   const resolved = resolveRows(rowsAll, decisions, moves);
@@ -624,7 +636,9 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                           </ul>
                           <p className="note mt-1">
                             {onItsDate
-                              ? 'A card that closes on its statement date is closed by its statement: the month its date falls in takes this cycle, and the close reads these two figures.'
+                              ? statementBeforeFirstMonth(read.statement.card?.statementDate ?? read.statement.periodEnd ?? '', cardOf(read)?.cycleFrom)
+                                ? `This card closes on its statement date from ${monthYear(cardOf(read)?.cycleFrom ?? '')}; this statement is dated before that, so the month it falls in stays as it was closed.`
+                                : 'A card that closes on its statement date is closed by its statement: the month its date falls in takes this cycle, and the close reads these two figures.'
                               : 'The month close reads a balance on the last day of a month, and prefers one from a statement to one typed for the same day. A balance on any other day is not recorded.'}
                           </p>
                         </>
@@ -688,7 +702,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                           </button>
                           {switched(read) && (
                             <p className="note mt-1" data-testid="statement-cycle-set">
-                              {statementDateChoice(true).sentence}
+                              {statementDateChoice(true, firstMonthOf(read)).sentence}
                             </p>
                           )}
                         </>
@@ -785,7 +799,7 @@ export function ImportStatement({ data, privacy, onDone, onCancel }: { data: Acc
                 {plan !== null && plan.counts.credit > 0 ? `, ${String(plan.counts.credit)} money in` : ''}
                 {plan !== null && plan.counts.move > 0 ? `, and ${String(plan.counts.move)} ${plan.counts.move === 1 ? 'move' : 'moves'} between your own accounts` : ''}
                 {plan !== null && plan.counts.witness > 0 ? ` and adds ${many ? 'these statements' : 'this statement'} to ${String(plan.counts.witness)} you already have` : ''}
-                {statementDateFor.size > 0 ? `, and sets ${[...statementDateFor].map((last4) => `••${last4}`).join(', ')} to close on its statement date, for every month` : ''}
+                {statementDateFor.size > 0 ? `, and sets ${switchedWords()}` : ''}
                 {plan === null ? '' : `. Nothing is doubled if ${many ? 'the same statements are' : 'the same statement is'} imported again.`}
               </p>
               <Field

@@ -42,7 +42,8 @@ export function accountRow(
   if (account.isForeign) parts.push('held outside India');
   // A card whose bill closes on its statement date says so, and the day it lately closes on once a statement is in (card-cycles.md 8.1).
   if (account.type === 'card' && account.cycleEnds === 'statement') {
-    parts.push(context.statementDay === undefined || context.statementDay === null ? 'bill closes on its statement date' : `bill closes on its statement date (${ordinal(context.statementDay)} lately)`);
+    const from = account.cycleFrom === undefined ? '' : ` from ${new Date(`${account.cycleFrom}-01T00:00:00Z`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+    parts.push((context.statementDay === undefined || context.statementDay === null ? 'bill closes on its statement date' : `bill closes on its statement date (${ordinal(context.statementDay)} lately)`) + from);
   }
 
   if (context.balance === null) {
