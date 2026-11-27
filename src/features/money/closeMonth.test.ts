@@ -454,6 +454,13 @@ describe('a card that closes on its statement date', () => {
     expect(cycles[0]?.kind === 'cycle' && cycles[0].closing.minor).toBe(2_864_000n);
   });
 
+  it('CY-I9 — the close’s closing for the card is its latest due on or before the month’s end, which is the figure the cash reserve takes for it', () => {
+    const [cycle] = cardCycles(october());
+    const latestOnOrBefore = [...statements].filter((each) => each.asAt <= '2026-10-31').sort((a, b) => (a.asAt < b.asAt ? 1 : -1))[0];
+    expect(cycle?.kind === 'cycle' && cycle.closing.minor).toBe(latestOnOrBefore?.balance.minor);
+    expect(latestOnOrBefore?.balance.minor).toBe(2_864_000n);
+  });
+
   it('CY-I5 — closes October at ₹75,910 spent with its payments skipped (§9 b), counting the card over its cycle and the banks over the month', () => {
     const out = closeFigures(october());
     expect(out.status).toBe('figures');
