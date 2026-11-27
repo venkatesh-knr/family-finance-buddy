@@ -811,3 +811,78 @@ describe('a plan that began before the card’s first statement (card-cycles.md 
     expect(cardCycles({ month: '2026-11', accounts: [card], balances })[0]).not.toHaveProperty('planBeganEarlier');
   });
 });
+
+describe('a card switched to its statement date after months were closed at month end (card-cycles.md 6.1, CY-I18)', () => {
+  // The design's example: a card billed on the 17th, closed at month end with dues of ₹15,000 on 30 September and ₹24,000 on 31 October, switched on 20 November.
+  // The first statement under the new rule, dated 17 November, prints its previous balance, which the import records the day before its period: 17 October.
+  const switched: Account = { ...account('card', 'card', 'HDFC Regalia'), cycleEnds: 'statement', cycleFrom: '2026-11' };
+  const bank = [balance('hdfc', '2026-09-30', 200_000), balance('hdfc', '2026-10-31', 200_000), balance('hdfc', '2026-11-30', 200_000), balance('hdfc', '2026-12-31', 200_000)];
+  const monthEnds = [balance('card', '2026-09-30', 15_000), balance('card', '2026-10-31', 24_000)];
+  const statements = [balance('card', '2026-10-17', 20_000, 'statement'), balance('card', '2026-11-17', 22_400, 'statement'), balance('card', '2026-12-17', 18_000, 'statement')];
+  const all = [...bank, ...monthEnds, ...statements];
+  const accounts = [account('hdfc', 'savings', 'HDFC'), switched];
+
+  it('leaves October as it was closed: the card is a month-end account in it, due ₹15,000 to ₹24,000, however the statement’s previous balance is dated', () => {
+    expect(cardCycles({ month: '2026-10', accounts, balances: all })).toEqual([]);
+    const out = closeFigures({ month: '2026-10', today: '2026-11-25', accounts, balances: all, credits: [], transfers: [], typed: {} });
+    if (out.status !== 'figures') throw new Error('closes');
+    // The card's due went up by ₹9,000 and nothing was paid into it, so ₹9,000 was spent on it; the bank did not move.
+    expect(out.currencies[0]?.spent).toBe(900_000n);
+  });
+
+  it('opens November’s window at the 31 October due, not at the 17 October the statement prints: 1 to 17 November', () => {
+    const [cycle] = cardCycles({ month: '2026-11', accounts, balances: all });
+    expect(cycle).toMatchObject({ kind: 'cycle', from: '2026-11-01', to: '2026-11-17' });
+    expect(cycle?.kind === 'cycle' && cycle.opening.minor).toBe(2_400_000n);
+    expect(cycle?.kind === 'cycle' && cycle.closing.minor).toBe(2_240_000n);
+  });
+
+  it('counts no day twice: October’s days are in October, November’s window begins on the 1st, and December’s is one full cycle from 18 November', () => {
+    const [december] = cardCycles({ month: '2026-12', accounts, balances: all });
+    expect(december).toMatchObject({ kind: 'cycle', from: '2026-11-18', to: '2026-12-17' });
+  });
+
+  it('is closed in October by its 31 October balance, and a statement-date month with its statement is closed too', () => {
+    expect(isClosed({ month: '2026-10', accounts, balances: all })).toBe(true);
+    expect(isClosed({ month: '2026-10', accounts, balances: [...bank, balance('card', '2026-10-17', 20_000, 'statement')] })).toBe(false);
+    expect(isClosed({ month: '2026-11', accounts, balances: all })).toBe(true);
+  });
+
+  it('with no month-end due before the first statement, November’s first cycle is left out as any first cycle is', () => {
+    const [cycle] = cardCycles({ month: '2026-11', accounts, balances: [balance('card', '2026-11-17', 22_400, 'statement')] });
+    expect(cycle?.kind).toBe('first-left-out');
+  });
+
+  it('reads a month-end due typed on the day a statement’s previous balance also sits in its month: the statement’s previous balance is not the anchor', () => {
+    const [cycle] = cardCycles({ month: '2026-11', accounts, balances: [balance('card', '2026-10-17', 20_000, 'statement'), balance('card', '2026-10-31', 24_000, 'statement'), balance('card', '2026-11-17', 22_400, 'statement')] });
+    expect(cycle?.kind === 'cycle' && cycle.opening.minor).toBe(2_400_000n);
+  });
+
+  it('opens the first window at the later of the month-end due and a statement’s due before the first month, where a later first month was asked for', () => {
+    const later: Account = { ...switched, cycleFrom: '2026-12' };
+    // November was left open at month end: no 30 November due, and the 17 December statement prints its previous balance, dated 17 November.
+    const rows = [...monthEnds, balance('card', '2026-10-17', 20_000, 'statement'), balance('card', '2026-11-17', 22_400, 'statement'), balance('card', '2026-12-17', 18_000, 'statement')];
+    const [cycle] = cardCycles({ month: '2026-12', accounts: [account('hdfc', 'savings', 'HDFC'), later], balances: rows });
+    expect(cycle).toMatchObject({ kind: 'cycle', from: '2026-11-18', to: '2026-12-17' });
+    expect(cycle?.kind === 'cycle' && cycle.opening.minor).toBe(2_240_000n);
+  });
+
+  it('does not say a plan began before the first statement when its conversion is on a month-end due before the switch', () => {
+    const row = (asAt: string, converted: number, principal: number, source: AccountBalance['source'] = 'typed'): AccountBalance => ({
+      ...balance('card', asAt, 10_000, source),
+      emiConvertedMinor: BigInt(converted) * 100n,
+      emiPrincipalMinor: BigInt(principal) * 100n,
+    });
+    const rows = [row('2026-09-30', 60_000, 0), row('2026-10-31', 0, 5_000), row('2026-11-17', 0, 5_000, 'statement')];
+    const [cycle] = cardCycles({ month: '2026-11', accounts: [account('hdfc', 'savings', 'HDFC'), switched], balances: rows });
+    expect(cycle?.kind).toBe('cycle');
+    expect(cycle).not.toHaveProperty('planBeganEarlier');
+  });
+
+  it('a card with no first month is on its statement date in every month, as before (CY-I1): the very switch the protection exists to prevent', () => {
+    const always: Account = { ...switched };
+    delete (always as { cycleFrom?: string }).cycleFrom;
+    // October is then counted from 1 October, the day after the 30 September due, to the statement of 17 October: the 17 days of its own and not the month it was closed as.
+    expect(cardCycles({ month: '2026-10', accounts: [account('hdfc', 'savings', 'HDFC'), always], balances: all })[0]).toMatchObject({ kind: 'cycle', from: '2026-10-01', to: '2026-10-17' });
+  });
+});
