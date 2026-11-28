@@ -216,7 +216,7 @@ export const ENTITIES: readonly Entity[] = [
       text('status'),
       ts('archived_at'),
     ],
-    leftOut: ['cost_account_id', 'cost_account_currency'],
+    leftOut: ['cost_account_id', 'cost_account_currency', 'stated_average_price', 'stated_average_price_currency'],
   },
   {
     key: 'valuation_snapshot',
